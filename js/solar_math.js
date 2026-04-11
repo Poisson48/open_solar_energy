@@ -145,14 +145,21 @@ const SolarMath = (() => {
    * @param {number} losses  pertes système %
    * @param {number} Tavg    température ambiante °C
    * @param {string} tech    technologie PV
+   * @param {number} month   numéro du mois (1-12) pour normalisation journalière
    */
-  function pvProduction(Htilt, Ppeak, losses, Tavg, tech = 'crystSi') {
-    // Coefficient de température selon technologie
+  function pvProduction(Htilt, Ppeak, losses, Tavg, tech = 'crystSi', month = 6) {
     const tempCoeff = { crystSi: -0.0045, CIS: -0.0036, CdTe: -0.0025, unknown: -0.004 };
     const gamma = tempCoeff[tech] || -0.004;
 
-    // Température cellule estimée (NOCT ~ 45°C, irradiance ref 800 W/m²)
-    const Tcell = Tavg + (45 - 20) * (Htilt / (30 * 0.8)); // approximation
+    // Normaliser Htilt mensuel → journalier (kWh/m²/jour)
+    const days = DAYS_IN_MONTH[month - 1];
+    const Htilt_daily = Htilt / days;
+
+    // Température cellule via NOCT (IEC 61215) :
+    // G_eff ≈ irradiance moyenne pendant les heures de production (~6h/jour)
+    // Tcell = Tamb + (NOCT - 20) × G_eff / 800
+    const G_eff = (Htilt_daily * 1000) / 6.0; // W/m²
+    const Tcell = Tavg + (45 - 20) * G_eff / 800;
     const dT = Math.max(0, Tcell - 25);
     const PR_temp = 1 + gamma * dT;
 
@@ -169,7 +176,7 @@ const SolarMath = (() => {
     const monthly = weatherData.map((m, i) => {
       const month = i + 1;
       const Htilt = tiltedIrradiation(m.GHI, m.DHI, lat, tilt, azimuth, month);
-      const E = pvProduction(Htilt, Ppeak, losses, m.T_avg, tech);
+      const E = pvProduction(Htilt, Ppeak, losses, m.T_avg, tech, month);
       return {
         month,
         name: m.name,
