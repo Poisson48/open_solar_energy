@@ -1,0 +1,84 @@
+{
+  "locations": {
+    "paris": {
+      "name": "Paris, France",
+      "lat": 48.8566,
+      "lon": 2.3522,
+      "alt": 35,
+      "monthly": [
+        {"month":1,"name":"Jan","GHI":28.4,"DHI":18.2,"DNI":45.1,"T_avg":4.5},
+        {"month":2,"name":"Fév","GHI":48.6,"DHI":26.4,"DNI":78.3,"T_avg":5.2},
+        {"month":3,"name":"Mar","GHI":90.2,"DHI":40.1,"DNI":125.4,"T_avg":8.6},
+        {"month":4,"name":"Avr","GHI":130.5,"DHI":55.3,"DNI":165.2,"T_avg":11.8},
+        {"month":5,"name":"Mai","GHI":168.3,"DHI":65.2,"DNI":198.6,"T_avg":15.6},
+        {"month":6,"name":"Jun","GHI":185.4,"DHI":68.1,"DNI":218.3,"T_avg":18.9},
+        {"month":7,"name":"Jul","GHI":192.6,"DHI":63.4,"DNI":236.5,"T_avg":21.2},
+        {"month":8,"name":"Aoû","GHI":168.2,"DHI":58.6,"DNI":215.4,"T_avg":21.0},
+        {"month":9,"name":"Sep","GHI":118.4,"DHI":48.2,"DNI":162.3,"T_avg":17.2},
+        {"month":10,"name":"Oct","GHI":72.6,"DHI":35.4,"DNI":98.5,"T_avg":12.6},
+        {"month":11,"name":"Nov","GHI":32.5,"DHI":19.8,"DNI":48.2,"T_avg":7.8},
+        {"month":12,"name":"Déc","GHI":22.1,"DHI":14.6,"DNI":32.4,"T_avg":4.8}
+      ]
+    },
+    "toulouse": {
+      "name": "Toulouse, France",
+      "lat": 43.6047,
+      "lon": 1.4442,
+      "alt": 150,
+      "monthly": [
+        {"month":1,"name":"Jan","GHI":52.3,"DHI":25.1,"DNI":89.2,"T_avg":6.2},
+        {"month":2,"name":"Fév","GHI":75.4,"DHI":32.6,"DNI":118.4,"T_avg":7.8},
+        {"month":3,"name":"Mar","GHI":118.6,"DHI":46.2,"DNI":158.3,"T_avg":10.5},
+        {"month":4,"name":"Avr","GHI":158.2,"DHI":58.4,"DNI":198.6,"T_avg":13.8},
+        {"month":5,"name":"Mai","GHI":195.4,"DHI":68.2,"DNI":238.4,"T_avg":17.6},
+        {"month":6,"name":"Jun","GHI":218.6,"DHI":72.1,"DNI":265.3,"T_avg":21.4},
+        {"month":7,"name":"Jul","GHI":238.4,"DHI":68.4,"DNI":295.6,"T_avg":24.2},
+        {"month":8,"name":"Aoû","GHI":215.6,"DHI":63.2,"DNI":278.4,"T_avg":23.8},
+        {"month":9,"name":"Sep","GHI":158.3,"DHI":52.4,"DNI":208.5,"T_avg":19.6},
+        {"month":10,"name":"Oct","GHI":102.4,"DHI":40.2,"DNI":145.6,"T_avg":14.8},
+        {"month":11,"name":"Nov","GHI":58.6,"DHI":28.4,"DNI":85.3,"T_avg":9.8},
+        {"month":12,"name":"Déc","GHI":42.3,"DHI":21.6,"DNI":65.4,"T_avg":6.8}
+      ]
+    },
+    "nice": {
+      "name": "Nice, France",
+      "lat": 43.7102,
+      "lon": 7.2620,
+      "alt": 6,
+      "monthly": [
+        {"month":1,"name":"Jan","GHI":72.4,"DHI":28.2,"DNI":128.6,"T_avg":8.2},
+        {"month":2,"name":"Fév","GHI":98.6,"DHI":35.4,"DNI":162.3,"T_avg":9.1},
+        {"month":3,"name":"Mar","GHI":148.2,"DHI":50.2,"DNI":208.4,"T_avg":11.8},
+        {"month":4,"name":"Avr","GHI":185.6,"DHI":62.4,"DNI":248.3,"T_avg":14.6},
+        {"month":5,"name":"Mai","GHI":225.4,"DHI":72.1,"DNI":292.6,"T_avg":18.4},
+        {"month":6,"name":"Jun","GHI":258.3,"DHI":76.4,"DNI":338.5,"T_avg":22.6},
+        {"month":7,"name":"Jul","GHI":278.6,"DHI":72.3,"DNI":368.4,"T_avg":25.8},
+        {"month":8,"name":"Aoû","GHI":252.4,"DHI":68.2,"DNI":338.6,"T_avg":25.4},
+        {"month":9,"name":"Sep","GHI":188.5,"DHI":58.4,"DNI":265.3,"T_avg":21.8},
+        {"month":10,"name":"Oct","GHI":128.6,"DHI":44.2,"DNI":182.4,"T_avg":17.2},
+        {"month":11,"name":"Nov","GHI":82.4,"DHI":32.6,"DNI":128.5,"T_avg":12.4},
+        {"month":12,"name":"Déc","GHI":62.3,"DHI":26.4,"DNI":102.6,"T_avg":9.2}
+      ]
+    },
+    "bordeaux": {
+      "name": "Bordeaux, France",
+      "lat": 44.8378,
+      "lon": -0.5792,
+      "alt": 16,
+      "monthly": [
+        {"month":1,"name":"Jan","GHI":42.3,"DHI":22.4,"DNI":68.5,"T_avg":6.8},
+        {"month":2,"name":"Fév","GHI":65.4,"DHI":30.2,"DNI":102.6,"T_avg":7.9},
+        {"month":3,"name":"Mar","GHI":108.6,"DHI":44.2,"DNI":148.3,"T_avg":10.8},
+        {"month":4,"name":"Avr","GHI":148.4,"DHI":58.6,"DNI":188.2,"T_avg":13.6},
+        {"month":5,"name":"Mai","GHI":185.2,"DHI":68.4,"DNI":225.6,"T_avg":17.2},
+        {"month":6,"name":"Jun","GHI":208.6,"DHI":72.2,"DNI":255.4,"T_avg":20.8},
+        {"month":7,"name":"Jul","GHI":225.4,"DHI":68.6,"DNI":278.3,"T_avg":23.2},
+        {"month":8,"name":"Aoû","GHI":202.6,"DHI":62.4,"DNI":258.5,"T_avg":22.8},
+        {"month":9,"name":"Sep","GHI":148.3,"DHI":50.2,"DNI":198.6,"T_avg":18.9},
+        {"month":10,"name":"Oct","GHI":88.4,"DHI":38.6,"DNI":122.4,"T_avg":14.2},
+        {"month":11,"name":"Nov","GHI":46.2,"DHI":24.8,"DNI":68.3,"T_avg":9.6},
+        {"month":12,"name":"Déc","GHI":32.4,"DHI":18.6,"DNI":48.2,"T_avg":7.2}
+      ]
+    }
+  }
+}
