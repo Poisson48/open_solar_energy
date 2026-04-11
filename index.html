@@ -93,33 +93,42 @@
         </div>
       </div>
 
-      <!-- Villes démo -->
-      <div style="margin-top:10px">
-        <label style="display:block;margin-bottom:5px">Villes de démonstration</label>
-        <div class="location-presets">
-          <button class="preset-btn" data-loc="paris">Paris</button>
-          <button class="preset-btn" data-loc="toulouse">Toulouse</button>
-          <button class="preset-btn" data-loc="nice">Nice</button>
-          <button class="preset-btn" data-loc="bordeaux">Bordeaux</button>
-        </div>
-      </div>
-
       <p id="loc-name" style="font-size:11px;color:var(--color-text-muted);margin-top:8px;font-style:italic">Paris, France</p>
     </div>
 
-    <!-- Base de données -->
-    <div class="sidebar-section">
-      <h3>Base de données</h3>
-      <div class="form-group">
-        <label>Source des données</label>
-        <select id="sel-db">
-          <option value="demo">Données de démonstration</option>
-          <option value="import" disabled>Importer un fichier JSON (bientôt)</option>
-        </select>
+    <!-- Import PVGIS -->
+    <div class="sidebar-section" id="pvgis-import-section">
+      <h3>Import PVGIS</h3>
+
+      <p style="font-size:11px;color:var(--color-text-muted);margin-bottom:10px;line-height:1.5">
+        Importe les données réelles depuis l'API officielle du JRC (Commission Européenne) pour le site sélectionné.
+      </p>
+
+      <div class="btn-group" style="flex-direction:column;gap:6px">
+        <button class="btn btn-primary" id="btn-pvgis-weather" style="width:100%;justify-content:flex-start;gap:8px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-9.95h-2V3.5h2V.55zm7.45 3.91l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79zm-3.21 13.7l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 10.5v2h3v-2h-3zm-8-5c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm-1 16.95h2V19.5h-2v2.95zm-7.45-3.91l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z"/></svg>
+          Importer météo (MRcalc)
+        </button>
+        <button class="btn btn-outline" id="btn-pvgis-pvcalc" style="width:100%;justify-content:flex-start;gap:8px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4 8h-2v2h-2v-2H9v-2h2V7h2v2h2v2z"/></svg>
+          Comparer avec PVcalc PVGIS
+        </button>
       </div>
-      <div class="alert alert-info" style="margin-top:8px;font-size:11px">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-        Données météo issues de mesures représentatives pour chaque ville.
+
+      <p id="pvgis-import-status" style="display:none;font-size:11px;margin-top:8px;font-weight:600;line-height:1.5"></p>
+      <div id="pvgis-import-preview" style="display:none"></div>
+
+      <hr style="margin:10px 0">
+
+      <div style="font-size:11px;color:var(--color-text-muted)">
+        <strong>Base de données locale</strong>
+      </div>
+      <div class="location-presets" style="margin-top:5px">
+        <span style="font-size:11px;color:var(--color-text-muted)">Démo :</span>
+        <button class="preset-btn active" data-loc="paris">Paris</button>
+        <button class="preset-btn" data-loc="toulouse">Toulouse</button>
+        <button class="preset-btn" data-loc="nice">Nice</button>
+        <button class="preset-btn" data-loc="bordeaux">Bordeaux</button>
       </div>
     </div>
 
@@ -405,6 +414,12 @@
 <script src="js/charts.js"></script>
 <script src="js/export.js"></script>
 <script src="js/main.js"></script>
+<script src="js/pvgis_import.js"></script>
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => PVGISImport.init(), 100);
+});
+</script>
 
 <script>
 // Durée d'ensoleillement (onglet 5)
