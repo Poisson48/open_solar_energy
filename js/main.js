@@ -1,0 +1,502 @@
+/**
+ * main.js — Initialisation et coordination générale
+ */
+
+// ── État global ──────────────────────────────────────────────
+const AppState = {
+  location: { lat: 48.8566, lon: 2.3522, alt: 35, name: 'Paris, France' },
+  weatherData: null,
+  demoData: null,
+  map: null,
+  marker: null,
+  activeTab: 'grid',
+  lastGridResult: null,
+  lastOffgridResult: null
+};
+
+// ── Chargement données météo démo ────────────────────────────
+async function loadDemoData() {
+  try {
+    const r = await fetch('./data/demo_weather.json');
+    AppState.demoData = await r.json();
+    setLocation('paris');
+  } catch (e) {
+    console.warn('Impossible de charger les données météo démo', e);
+  }
+}
+
+// ── Initialisation carte Leaflet ─────────────────────────────
+function initMap() {
+  AppState.map = L.map('map', { zoomControl: true, attributionControl: false }).setView(
+    [AppState.location.lat, AppState.location.lon], 6
+  );
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19
+  }).addTo(AppState.map);
+
+  L.control.attribution({ prefix: '© OpenStreetMap' }).addTo(AppState.map);
+
+  const icon = L.divIcon({
+    html: `<div style="width:20px;height:20px;background:var(--color-accent);border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.4)"></div>`,
+    className: '',
+    iconSize: [20, 20],
+    iconAnchor: [10, 10]
+  });
+
+  AppState.marker = L.marker([AppState.location.lat, AppState.location.lon], { icon, draggable: true })
+    .addTo(AppState.map);
+
+  AppState.marker.on('dragend', e => {
+    const { lat, lng } = e.target.getLatLng();
+    setLocationCoords(lat, lng);
+  });
+
+  AppState.map.on('click', e => {
+    setLocationCoords(e.latlng.lat, e.latlng.lng);
+  });
+}
+
+// ── Définir localisation par preset ─────────────────────────
+function setLocation(key) {
+  if (!AppState.demoData) return;
+  const loc = AppState.demoData.locations[key];
+  if (!loc) return;
+  AppState.location = { lat: loc.lat, lon: loc.lon, alt: loc.alt, name: loc.name };
+  AppState.weatherData = loc.monthly;
+  updateLocationUI();
+  updateMapMarker();
+  document.querySelectorAll('.preset-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.loc === key);
+  });
+}
+
+// ── Définir localisation par coordonnées ────────────────────
+function setLocationCoords(lat, lon) {
+  AppState.location.lat = Math.round(lat * 10000) / 10000;
+  AppState.location.lon = Math.round(lon * 10000) / 10000;
+
+  // Chercher la ville la plus proche dans les données démo
+  if (AppState.demoData) {
+    let minDist = Infinity;
+    let bestKey = 'paris';
+    Object.entries(AppState.demoData.locations).forEach(([key, loc]) => {
+      const d = Math.hypot(loc.lat - lat, loc.lon - lon);
+      if (d < minDist) { minDist = d; bestKey = key; }
+    });
+    const loc = AppState.demoData.locations[bestKey];
+    AppState.weatherData = loc.monthly;
+    AppState.location.alt = loc.alt;
+    AppState.location.name = `${loc.name} (approx.)`;
+
+    document.querySelectorAll('.preset-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.loc === bestKey);
+    });
+  }
+  updateLocationUI();
+  updateMapMarker();
+}
+
+function updateMapMarker() {
+  if (!AppState.map || !AppState.marker) return;
+  AppState.marker.setLatLng([AppState.location.lat, AppState.location.lon]);
+  AppState.map.setView([AppState.location.lat, AppState.location.lon], AppState.map.getZoom());
+}
+
+function updateLocationUI() {
+  document.getElementById('inp-lat').value = AppState.location.lat.toFixed(4);
+  document.getElementById('inp-lon').value = AppState.location.lon.toFixed(4);
+  document.getElementById('inp-alt').value = AppState.location.alt;
+  document.getElementById('loc-name').textContent = AppState.location.name;
+  document.getElementById('coord-lat').textContent = AppState.location.lat.toFixed(4) + '°';
+  document.getElementById('coord-lon').textContent = AppState.location.lon.toFixed(4) + '°';
+  document.getElementById('coord-alt').textContent = AppState.location.alt + ' m';
+}
+
+// ── Gestion des onglets ──────────────────────────────────────
+function initTabs() {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + tab).classList.add('active');
+      AppState.activeTab = tab;
+    });
+  });
+}
+
+// ── Bind coordonnées manuelles ───────────────────────────────
+function initLocationInputs() {
+  document.getElementById('btn-go-coords').addEventListener('click', () => {
+    const lat = parseFloat(document.getElementById('inp-lat').value);
+    const lon = parseFloat(document.getElementById('inp-lon').value);
+    if (isNaN(lat) || isNaN(lon)) return;
+    setLocationCoords(lat, lon);
+  });
+
+  document.getElementById('inp-address').addEventListener('keydown', e => {
+    if (e.key === 'Enter') geocodeAddress();
+  });
+
+  document.getElementById('btn-geocode').addEventListener('click', geocodeAddress);
+
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => setLocation(btn.dataset.loc));
+  });
+}
+
+// ── Géocodage Nominatim ──────────────────────────────────────
+async function geocodeAddress() {
+  const address = document.getElementById('inp-address').value.trim();
+  if (!address) return;
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
+    const r = await fetch(url, { headers: { 'Accept-Language': 'fr' } });
+    const data = await r.json();
+    if (data.length > 0) {
+      const { lat, lon, display_name } = data[0];
+      AppState.location.name = display_name.split(',').slice(0, 2).join(',');
+      setLocationCoords(parseFloat(lat), parseFloat(lon));
+      AppState.map.setView([lat, lon], 10);
+    }
+  } catch (e) {
+    console.warn('Géocodage échoué', e);
+  }
+}
+
+// ── Gestion optimisation angle ───────────────────────────────
+function bindOptimizeCheckboxes() {
+  const chkTilt = document.getElementById('chk-optimize-tilt');
+  const chkAz = document.getElementById('chk-optimize-az');
+  const inpTilt = document.getElementById('inp-tilt');
+  const inpAz = document.getElementById('inp-azimuth');
+
+  function update() {
+    inpTilt.disabled = chkTilt.checked;
+    inpAz.disabled = chkAz.checked || chkTilt.checked;
+    if (chkTilt.checked && AppState.weatherData) {
+      const opt = SolarMath.optimalTilt(AppState.location.lat, AppState.weatherData);
+      inpTilt.value = opt;
+    }
+  }
+  chkTilt.addEventListener('change', update);
+  chkAz.addEventListener('change', update);
+}
+
+// ── Calcul système PV réseau ─────────────────────────────────
+function calcGridSystem() {
+  if (!AppState.weatherData) {
+    alert('Veuillez sélectionner un lieu avec des données météo.');
+    return;
+  }
+
+  const params = {
+    lat: AppState.location.lat,
+    weatherData: AppState.weatherData,
+    Ppeak: parseFloat(document.getElementById('inp-ppeak').value) || 3,
+    losses: parseFloat(document.getElementById('inp-losses').value) || 14,
+    tilt: parseFloat(document.getElementById('inp-tilt').value) || 30,
+    azimuth: parseFloat(document.getElementById('inp-azimuth').value) || 0,
+    tech: document.getElementById('sel-tech').value,
+    systemCost: parseFloat(document.getElementById('inp-cost').value) || 0,
+    kwhPrice: parseFloat(document.getElementById('inp-kwh-price').value) || 0.13,
+    co2Factor: parseFloat(document.getElementById('inp-co2').value) || 0.052
+  };
+
+  const results = SolarMath.gridSystemAnnual(params);
+  AppState.lastGridResult = results;
+  AppState.lastGridParams = params;
+  renderGridResults(results, params);
+}
+
+function renderGridResults(results, params) {
+  const el = document.getElementById('grid-results');
+  el.innerHTML = '';
+
+  // KPIs
+  const kpiHtml = `
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-value">${results.E_annual.toLocaleString('fr')}</div>
+        <div class="kpi-label">Production annuelle<br><span class="kpi-unit">kWh/an</span></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value accent">${results.specificYield.toLocaleString('fr')}</div>
+        <div class="kpi-label">Rendement spécifique<br><span class="kpi-unit">kWh/kWc/an</span></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value info">${results.PR}</div>
+        <div class="kpi-label">Performance Ratio<br><span class="kpi-unit">—</span></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-value">${results.CF} %</div>
+        <div class="kpi-label">Facteur de capacité<br><span class="kpi-unit">%</span></div>
+      </div>
+      ${results.ROI > 0 ? `<div class="kpi-card">
+        <div class="kpi-value accent">${results.ROI}</div>
+        <div class="kpi-label">Retour invest.<br><span class="kpi-unit">années</span></div>
+      </div>` : ''}
+      <div class="kpi-card">
+        <div class="kpi-value" style="color:var(--color-success)">${results.CO2.toLocaleString('fr')}</div>
+        <div class="kpi-label">CO₂ évité<br><span class="kpi-unit">kg/an</span></div>
+      </div>
+    </div>`;
+
+  // Chart + table
+  const chartId = 'chart-grid-' + Date.now();
+  const chartId2 = 'chart-grid2-' + Date.now();
+  const tableHtml = `
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Mois</th>
+          <th data-tooltip="Irradiation sur plan incliné (kWh/m²)">Irr. inclinée<br>kWh/m²</th>
+          <th data-tooltip="Production électrique estimée">Prod. PV<br>kWh</th>
+          <th>T° moy.<br>°C</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${results.monthly.map(m => `
+          <tr>
+            <td>${m.name}</td>
+            <td>${m.Htilt}</td>
+            <td>${m.E_month}</td>
+            <td>${m.T_avg}</td>
+          </tr>
+        `).join('')}
+        <tr>
+          <td>Total</td>
+          <td>${results.H_annual}</td>
+          <td>${results.E_annual.toLocaleString('fr')}</td>
+          <td>—</td>
+        </tr>
+      </tbody>
+    </table>`;
+
+  el.innerHTML = `
+    ${kpiHtml}
+    <div class="card">
+      <div class="section-header">
+        <div class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M4 22V8h16v14H4zm2-2h12V10H6v10zm1-4h10v2H7v-2zm0-3h10v2H7v-2zM3 8V6h18v2H3zM8 6V4h8v2H8z"/></svg>
+          Production mensuelle
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-outline btn-sm" onclick="Exporter.exportGridCSV(AppState.lastGridResult, AppState.lastGridParams)">CSV</button>
+          <button class="btn btn-outline btn-sm" onclick="Exporter.exportGridJSON(AppState.lastGridResult, AppState.lastGridParams)">JSON</button>
+          <button class="btn btn-outline btn-sm" onclick="Exporter.exportPDF()">PDF</button>
+        </div>
+      </div>
+      <div class="chart-container"><canvas id="${chartId}"></canvas></div>
+      <div style="margin-top:16px;"><div class="chart-container-sm"><canvas id="${chartId2}"></canvas></div></div>
+      <hr>
+      ${tableHtml}
+    </div>`;
+
+  // Rendre les graphiques après insertion dans le DOM
+  setTimeout(() => {
+    Charts.renderMonthlyProduction(chartId, results);
+    Charts.renderIrradiationTemp(chartId2, results);
+  }, 50);
+}
+
+// ── Calcul système hors réseau ───────────────────────────────
+function calcOffgrid() {
+  if (!AppState.weatherData) return;
+
+  const params = {
+    lat: AppState.location.lat,
+    weatherData: AppState.weatherData,
+    Ppeak: parseFloat(document.getElementById('og-ppeak').value) || 300,
+    battCap: parseFloat(document.getElementById('og-batt').value) || 2400,
+    dod: parseFloat(document.getElementById('og-dod').value) || 80,
+    dailyConsumption: parseFloat(document.getElementById('og-consumption').value) || 1000,
+    tilt: parseFloat(document.getElementById('og-tilt').value) || 30,
+    azimuth: 0
+  };
+
+  const results = SolarMath.offgridSystem(params);
+  AppState.lastOffgridResult = results;
+  renderOffgridResults(results);
+}
+
+function renderOffgridResults(monthly) {
+  const el = document.getElementById('offgrid-results');
+  const chartId = 'chart-offgrid-' + Date.now();
+
+  const tableRows = monthly.map(m => {
+    const cls = m.coverageRatio >= 80 ? '' : m.coverageRatio >= 50 ? 'medium' : 'low';
+    return `
+      <tr>
+        <td>${m.name}</td>
+        <td>${m.solarDaily}</td>
+        <td>
+          <div class="coverage-bar">
+            <div class="coverage-fill ${cls}" style="width:${m.coverageRatio}%"></div>
+            <span style="font-size:11px;min-width:30px">${m.coverageRatio}%</span>
+          </div>
+        </td>
+        <td>${m.autonomyDays}</td>
+        <td>${m.deficit > 0 ? m.deficit : '✓'}</td>
+      </tr>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="section-header">
+        <div class="card-title">Couverture solaire mensuelle</div>
+        <button class="btn btn-outline btn-sm" onclick="Exporter.exportOffgridCSV(AppState.lastOffgridResult)">CSV</button>
+      </div>
+      <div class="chart-container"><canvas id="${chartId}"></canvas></div>
+      <hr>
+      <table class="data-table" style="margin-top:10px">
+        <thead>
+          <tr>
+            <th>Mois</th>
+            <th>Prod. solaire<br>kWh/j</th>
+            <th>Couverture</th>
+            <th>Autonomie<br>jours</th>
+            <th>Déficit<br>kWh</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>`;
+
+  setTimeout(() => Charts.renderOffgridCoverage(chartId, monthly), 50);
+}
+
+// ── Données irradiation mensuelle ────────────────────────────
+function renderIrradiationData() {
+  if (!AppState.weatherData) return;
+  const el = document.getElementById('irradiation-results');
+  const chartId = 'chart-irr-' + Date.now();
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="section-header">
+        <div class="card-title">Données d'irradiation mensuelle — ${AppState.location.name}</div>
+        <button class="btn btn-outline btn-sm" onclick="Exporter.exportIrradiationCSV(AppState.weatherData)">CSV</button>
+      </div>
+      <div class="chart-container"><canvas id="${chartId}"></canvas></div>
+      <hr style="margin:14px 0">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Mois</th>
+            <th>GHI<br>kWh/m²</th>
+            <th>DHI<br>kWh/m²</th>
+            <th>DNI<br>kWh/m²</th>
+            <th>T° moy<br>°C</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${AppState.weatherData.map(m => `
+            <tr>
+              <td>${m.name}</td>
+              <td>${m.GHI}</td>
+              <td>${m.DHI}</td>
+              <td>${m.DNI}</td>
+              <td>${m.T_avg}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>`;
+
+  setTimeout(() => Charts.renderIrradiationMonthly(chartId, AppState.weatherData), 50);
+}
+
+// ── Optimisation inclinaison ─────────────────────────────────
+function calcOptimization() {
+  if (!AppState.weatherData) return;
+  const el = document.getElementById('optimizer-results');
+  const heatmap = SolarMath.tiltAzimuthHeatmap(AppState.location.lat, AppState.weatherData);
+  const optTilt = SolarMath.optimalTilt(AppState.location.lat, AppState.weatherData);
+  const chartId = 'chart-opt-' + Date.now();
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="kpi-grid" style="margin-bottom:14px">
+        <div class="kpi-card">
+          <div class="kpi-value">${optTilt}°</div>
+          <div class="kpi-label">Inclinaison optimale<br><span class="kpi-unit">azimut 0° (Sud)</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value accent">${Math.round(AppState.location.lat * 0.85)}°</div>
+          <div class="kpi-label">Règle empirique<br><span class="kpi-unit">lat × 0.85</span></div>
+        </div>
+      </div>
+      <div class="card-title">Carte de chaleur production (inclinaison × azimut)</div>
+      <div class="heatmap-container" id="${chartId}"></div>
+    </div>`;
+
+  setTimeout(() => renderHeatmap(chartId, heatmap), 50);
+}
+
+function renderHeatmap(containerId, heatmap) {
+  const tilts = [...new Set(heatmap.map(h => h.tilt))];
+  const azimuths = [...new Set(heatmap.map(h => h.az))];
+  const container = document.getElementById(containerId);
+
+  const rows = tilts.map(tilt => {
+    const cells = azimuths.map(az => {
+      const d = heatmap.find(h => h.tilt === tilt && h.az === az);
+      const pct = d ? d.pct : 0;
+      const color = heatmapColor(pct);
+      return `<td style="background:${color};color:${pct > 60 ? '#fff' : '#333'}">${pct}%</td>`;
+    }).join('');
+    return `<tr><th>${tilt}°</th>${cells}</tr>`;
+  }).join('');
+
+  container.innerHTML = `
+    <table class="heatmap-table">
+      <thead>
+        <tr>
+          <th>Incl. \\ Az.</th>
+          ${azimuths.map(a => `<th>${a > 0 ? '+' : ''}${a}°</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p style="font-size:11px;color:var(--color-text-muted);margin-top:8px">
+      100% = production maximale. Az. 0° = plein Sud. Valeurs relatives.
+    </p>`;
+}
+
+function heatmapColor(pct) {
+  // Gradient rouge → orange → vert
+  if (pct >= 90) return `hsl(${120 - (100 - pct) * 1.2}, 65%, 42%)`;
+  if (pct >= 70) return `hsl(${(pct - 70) * 3}, 70%, 48%)`;
+  return `hsl(0, ${30 + pct * 0.5}%, ${75 - pct * 0.3}%)`;
+}
+
+// ── Point d'entrée ───────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  await loadDemoData();
+  initMap();
+  initTabs();
+  initLocationInputs();
+  bindOptimizeCheckboxes();
+
+  document.getElementById('btn-calc-grid').addEventListener('click', calcGridSystem);
+  document.getElementById('btn-calc-offgrid').addEventListener('click', calcOffgrid);
+  document.getElementById('btn-calc-irr').addEventListener('click', renderIrradiationData);
+  document.getElementById('btn-calc-opt').addEventListener('click', calcOptimization);
+
+  // Recalculer si on change d'onglet et qu'il y a des données
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      if (tab === 'irradiation') renderIrradiationData();
+    });
+  });
+
+  // Lancer un calcul initial pour illustrer
+  setTimeout(() => {
+    calcGridSystem();
+    renderIrradiationData();
+  }, 300);
+});

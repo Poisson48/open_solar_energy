@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Open Solar Energy — PVGIS Open Source</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     HEADER
+════════════════════════════════════════════════════════════════ -->
+<header>
+  <div class="logo">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="5" fill="#f5a623"/>
+      <g stroke="#fff" stroke-width="1.8" stroke-linecap="round">
+        <line x1="12" y1="2" x2="12" y2="4.5"/>
+        <line x1="12" y1="19.5" x2="12" y2="22"/>
+        <line x1="2" y1="12" x2="4.5" y2="12"/>
+        <line x1="19.5" y1="12" x2="22" y2="12"/>
+        <line x1="4.93" y1="4.93" x2="6.64" y2="6.64"/>
+        <line x1="17.36" y1="17.36" x2="19.07" y2="19.07"/>
+        <line x1="19.07" y1="4.93" x2="17.36" y2="6.64"/>
+        <line x1="6.64" y1="17.36" x2="4.93" y2="19.07"/>
+      </g>
+    </svg>
+    <div>
+      <h1>Open Solar Energy</h1>
+      <span class="subtitle">Photovoltaic Geographical Information System</span>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <span class="badge">v1.0 — Open Source</span>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     LAYOUT PRINCIPAL
+════════════════════════════════════════════════════════════════ -->
+<div class="app-layout">
+
+  <!-- ─── SIDEBAR GAUCHE ───────────────────────────────────────── -->
+  <aside class="sidebar">
+
+    <!-- Localisation -->
+    <div class="sidebar-section">
+      <h3>Localisation</h3>
+
+      <!-- Recherche adresse -->
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label>Adresse</label>
+          <input type="text" id="inp-address" placeholder="Ex: Toulouse, France">
+        </div>
+        <button class="btn btn-primary btn-sm" id="btn-geocode" style="margin-bottom:1px">Aller !</button>
+      </div>
+
+      <!-- Coordonnées -->
+      <div class="form-row">
+        <div class="form-group">
+          <label>Latitude</label>
+          <input type="number" id="inp-lat" step="0.0001" value="48.8566">
+        </div>
+        <div class="form-group">
+          <label>Longitude</label>
+          <input type="number" id="inp-lon" step="0.0001" value="2.3522">
+        </div>
+        <button class="btn btn-primary btn-sm" id="btn-go-coords" style="margin-bottom:1px">OK</button>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Altitude (m)</label>
+          <input type="number" id="inp-alt" value="35" style="max-width:80px">
+        </div>
+      </div>
+
+      <!-- Coordonnées affichées -->
+      <div class="coord-display">
+        <div class="coord-item">
+          <div class="val" id="coord-lat">48.8566°</div>
+          <div class="lbl">Latitude</div>
+        </div>
+        <div class="coord-item">
+          <div class="val" id="coord-lon">2.3522°</div>
+          <div class="lbl">Longitude</div>
+        </div>
+        <div class="coord-item">
+          <div class="val" id="coord-alt">35 m</div>
+          <div class="lbl">Altitude</div>
+        </div>
+      </div>
+
+      <!-- Villes démo -->
+      <div style="margin-top:10px">
+        <label style="display:block;margin-bottom:5px">Villes de démonstration</label>
+        <div class="location-presets">
+          <button class="preset-btn" data-loc="paris">Paris</button>
+          <button class="preset-btn" data-loc="toulouse">Toulouse</button>
+          <button class="preset-btn" data-loc="nice">Nice</button>
+          <button class="preset-btn" data-loc="bordeaux">Bordeaux</button>
+        </div>
+      </div>
+
+      <p id="loc-name" style="font-size:11px;color:var(--color-text-muted);margin-top:8px;font-style:italic">Paris, France</p>
+    </div>
+
+    <!-- Base de données -->
+    <div class="sidebar-section">
+      <h3>Base de données</h3>
+      <div class="form-group">
+        <label>Source des données</label>
+        <select id="sel-db">
+          <option value="demo">Données de démonstration</option>
+          <option value="import" disabled>Importer un fichier JSON (bientôt)</option>
+        </select>
+      </div>
+      <div class="alert alert-info" style="margin-top:8px;font-size:11px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+        Données météo issues de mesures représentatives pour chaque ville.
+      </div>
+    </div>
+
+    <!-- Carte -->
+    <div id="map"></div>
+
+  </aside>
+
+  <!-- ─── PANNEAU PRINCIPAL ────────────────────────────────────── -->
+  <main class="main-panel">
+
+    <!-- Barre d'onglets -->
+    <nav class="tabs-bar">
+      <button class="tab-btn active" data-tab="grid">
+        <span class="tab-number">1</span>Système PV réseau
+      </button>
+      <button class="tab-btn" data-tab="tracker">
+        <span class="tab-number">2</span>Suiveur PV
+      </button>
+      <button class="tab-btn" data-tab="offgrid">
+        <span class="tab-number">3</span>Hors réseau
+      </button>
+      <button class="tab-btn" data-tab="irradiation">
+        <span class="tab-number">4</span>Données mensuelles
+      </button>
+      <button class="tab-btn" data-tab="daily">
+        <span class="tab-number">5</span>Données horaires
+      </button>
+      <button class="tab-btn" data-tab="optimizer">
+        <span class="tab-number">6</span>Optimisation
+      </button>
+    </nav>
+
+    <!-- Contenu des onglets -->
+    <div class="tabs-content">
+
+      <!-- ══ ONGLET 1 : PV RÉSEAU ══════════════════════════════ -->
+      <div class="tab-pane active" id="tab-grid">
+        <div style="display:grid;grid-template-columns:300px 1fr;gap:16px">
+
+          <!-- Paramètres -->
+          <div>
+            <div class="card">
+              <div class="card-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/></svg>
+                Paramètres système
+              </div>
+
+              <div class="form-group" style="margin-bottom:10px">
+                <label>Technologie PV</label>
+                <select id="sel-tech">
+                  <option value="crystSi">Silicium cristallin (c-Si)</option>
+                  <option value="CIS">CIS / CIGS</option>
+                  <option value="CdTe">Cadmium Telluride (CdTe)</option>
+                  <option value="unknown">Inconnue</option>
+                </select>
+              </div>
+
+              <div class="form-group" style="margin-bottom:10px">
+                <label>Puissance crête installée</label>
+                <div class="input-unit">
+                  <input type="number" id="inp-ppeak" value="3" step="0.1" min="0.1" max="1000">
+                  <span class="unit-tag">kWc</span>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom:10px">
+                <label>Pertes système</label>
+                <div class="input-unit">
+                  <input type="number" id="inp-losses" value="14" step="0.5" min="0" max="50">
+                  <span class="unit-tag">%</span>
+                </div>
+              </div>
+
+              <hr>
+
+              <div class="form-group" style="margin-bottom:6px">
+                <label>Inclinaison des panneaux</label>
+                <div class="input-unit">
+                  <input type="number" id="inp-tilt" value="30" step="1" min="0" max="90">
+                  <span class="unit-tag">°</span>
+                </div>
+                <div class="checkbox-row">
+                  <input type="checkbox" id="chk-optimize-tilt">
+                  <label for="chk-optimize-tilt">Optimiser automatiquement</label>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom:10px">
+                <label>Azimut <span style="font-weight:400;color:var(--color-text-muted)">(0°=Sud, -90°=Est)</span></label>
+                <div class="input-unit">
+                  <input type="number" id="inp-azimuth" value="0" step="5" min="-180" max="180">
+                  <span class="unit-tag">°</span>
+                </div>
+                <div class="checkbox-row">
+                  <input type="checkbox" id="chk-optimize-az">
+                  <label for="chk-optimize-az">Optimiser avec l'inclinaison</label>
+                </div>
+              </div>
+
+              <hr>
+
+              <div class="card-title" style="margin-top:4px;font-size:12px">Données économiques</div>
+
+              <div class="form-group" style="margin-bottom:8px">
+                <label>Coût total du système</label>
+                <div class="input-unit">
+                  <input type="number" id="inp-cost" value="3600" step="100" min="0">
+                  <span class="unit-tag">€</span>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom:8px">
+                <label>Prix de revente kWh</label>
+                <div class="input-unit">
+                  <input type="number" id="inp-kwh-price" value="0.13" step="0.01" min="0">
+                  <span class="unit-tag">€/kWh</span>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom:14px">
+                <label>Facteur émission CO₂</label>
+                <div class="input-unit">
+                  <input type="number" id="inp-co2" value="0.052" step="0.001" min="0">
+                  <span class="unit-tag">kgCO₂/kWh</span>
+                </div>
+              </div>
+
+              <button class="btn btn-accent" id="btn-calc-grid" style="width:100%">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4 8h-2v2h-2v-2H9v-2h2V7h2v2h2v2z"/></svg>
+                Calculer
+              </button>
+            </div>
+          </div>
+
+          <!-- Résultats -->
+          <div id="grid-results">
+            <div class="result-placeholder">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+              <p>Cliquez sur <strong>Calculer</strong> pour lancer la simulation</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ══ ONGLET 2 : SUIVEUR ════════════════════════════════ -->
+      <div class="tab-pane" id="tab-tracker">
+        <div class="alert alert-info">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+          Le module Suiveur PV (tracker 1 axe / 2 axes) est en développement. Disponible dans la prochaine version.
+        </div>
+        <div class="card">
+          <div class="card-title">Comparaison Fixe vs. Suiveur (estimations)</div>
+          <table class="data-table" style="max-width:500px">
+            <thead>
+              <tr><th>Configuration</th><th>Gain production est.</th><th>Complexité</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Plan fixe optimisé</td><td>Référence (100%)</td><td>Faible</td></tr>
+              <tr><td>Suiveur 1 axe horizontal</td><td>+15 à +20%</td><td>Moyenne</td></tr>
+              <tr><td>Suiveur 1 axe incliné</td><td>+18 à +25%</td><td>Moyenne</td></tr>
+              <tr><td>Suiveur 2 axes</td><td>+25 à +40%</td><td>Élevée</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══ ONGLET 3 : HORS RÉSEAU ═════════════════════════════ -->
+      <div class="tab-pane" id="tab-offgrid">
+        <div style="display:grid;grid-template-columns:280px 1fr;gap:16px">
+
+          <div>
+            <div class="card">
+              <div class="card-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 0 0 8 20C19 20 22 3 22 3c-1 2-8 2-8 2 0-3.5 2.5-7 6-8-1 4-3 5-3 5 0 0-2-3-4-3H9c-.5 0-1 .5-1 1l-.5 4.5h.01c-.01.16-.01.33-.01.5C7.5 13 9.5 15 12 15c.5 0 1-.1 1.5-.2C15 14.2 16.4 12.5 17 11V8z"/></svg>
+                Paramètres
+              </div>
+
+              <div class="form-group" style="margin-bottom:8px">
+                <label>Puissance panneau</label>
+                <div class="input-unit">
+                  <input type="number" id="og-ppeak" value="300" step="10">
+                  <span class="unit-tag">Wc</span>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom:8px">
+                <label>Capacité batterie</label>
+                <div class="input-unit">
+                  <input type="number" id="og-batt" value="2400" step="100">
+                  <span class="unit-tag">Wh</span>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom:8px">
+                <label>Profondeur de décharge max</label>
+                <div class="input-unit">
+                  <input type="number" id="og-dod" value="80" step="5" min="10" max="100">
+                  <span class="unit-tag">%</span>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom:8px">
+                <label>Consommation journalière</label>
+                <div class="input-unit">
+                  <input type="number" id="og-consumption" value="1000" step="50">
+                  <span class="unit-tag">Wh/j</span>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom:14px">
+                <label>Inclinaison panneau</label>
+                <div class="input-unit">
+                  <input type="number" id="og-tilt" value="30" step="1" min="0" max="90">
+                  <span class="unit-tag">°</span>
+                </div>
+              </div>
+
+              <button class="btn btn-accent" id="btn-calc-offgrid" style="width:100%">Calculer</button>
+            </div>
+          </div>
+
+          <div id="offgrid-results">
+            <div class="result-placeholder">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 0 0 8 20C19 20 22 3 22 3c-1 2-8 2-8 2 0-3.5 2.5-7 6-8-1 4-3 5-3 5 0 0-2-3-4-3H9c-.5 0-1 .5-1 1l-.5 4.5h.01c-.01.16-.01.33-.01.5C7.5 13 9.5 15 12 15c.5 0 1-.1 1.5-.2C15 14.2 16.4 12.5 17 11V8z"/></svg>
+              <p>Configurez les paramètres puis cliquez sur <strong>Calculer</strong></p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ══ ONGLET 4 : DONNÉES MENSUELLES ════════════════════ -->
+      <div class="tab-pane" id="tab-irradiation">
+        <div style="margin-bottom:12px;display:flex;gap:10px;align-items:center">
+          <button class="btn btn-accent" id="btn-calc-irr">Afficher les données</button>
+          <span style="font-size:12px;color:var(--color-text-muted)">Irradiation et température pour le site sélectionné</span>
+        </div>
+        <div id="irradiation-results">
+          <div class="result-placeholder">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+            <p>Sélectionnez un lieu et cliquez sur <strong>Afficher les données</strong></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ ONGLET 5 : DONNÉES HORAIRES ══════════════════════ -->
+      <div class="tab-pane" id="tab-daily">
+        <div class="alert alert-warning">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+          Les données horaires et l'Année Météorologique Typique (TMY) nécessitent une base de données horaires. Module prévu en Phase 2.
+        </div>
+        <div class="card">
+          <div class="card-title">Durée d'ensoleillement mensuelle (calculée)</div>
+          <div id="daylight-table"></div>
+        </div>
+      </div>
+
+      <!-- ══ ONGLET 6 : OPTIMISATION ═══════════════════════════ -->
+      <div class="tab-pane" id="tab-optimizer">
+        <div style="margin-bottom:12px;display:flex;gap:10px;align-items:center">
+          <button class="btn btn-accent" id="btn-calc-opt">Calculer l'optimum</button>
+          <span style="font-size:12px;color:var(--color-text-muted)">Carte de chaleur production par inclinaison et azimut</span>
+        </div>
+        <div id="optimizer-results">
+          <div class="result-placeholder">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <p>Cliquez sur <strong>Calculer l'optimum</strong> pour générer la carte de chaleur</p>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /tabs-content -->
+  </main>
+
+</div><!-- /app-layout -->
+
+<!-- Scripts -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="js/solar_math.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/export.js"></script>
+<script src="js/main.js"></script>
+
+<script>
+// Durée d'ensoleillement (onglet 5)
+window.addEventListener('DOMContentLoaded', () => {
+  const months = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  setTimeout(() => {
+    const lat = AppState.location.lat;
+    const rows = months.map((name, i) => {
+      const h = SolarMath.daylightHours(lat, i + 1);
+      return `<tr><td>${name}</td><td>${Math.round(h * 10) / 10} h</td></tr>`;
+    }).join('');
+    const el = document.getElementById('daylight-table');
+    if (el) el.innerHTML = `
+      <table class="data-table" style="max-width:300px">
+        <thead><tr><th>Mois</th><th>Durée ensoleillement</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }, 400);
+});
+</script>
+
+</body>
+</html>
