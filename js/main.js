@@ -475,7 +475,171 @@ function heatmapColor(pct) {
   return `hsl(0, ${30 + pct * 0.5}%, ${75 - pct * 0.3}%)`;
 }
 
-// ── Dimensionnement ─────────────────────────────────────────
+// ── Dimensionnement hors réseau ──────────────────────────────
+function calcOffgridSizing() {
+  if (!AppState.weatherData) { alert('Sélectionnez un lieu avec des données météo.'); return; }
+  const input = OffgridSizing.readFormInput();
+  const { recommended: rec, allCandidates, tech, annual_conso } =
+    OffgridSizing.run(input, AppState.weatherData, AppState.location.lat);
+  AppState.lastOffgridSizingResult = rec;
+  renderOffgridSizingResults(rec, allCandidates, tech, annual_conso);
+}
+
+function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso) {
+  const el = document.getElementById('offgrid2-results');
+  if (!rec) { el.innerHTML = '<div class="alert alert-warning">Aucune configuration trouvée — réduisez la cible de couverture ou augmentez la surface disponible.</div>'; return; }
+
+  const c1 = 'chart-og1-' + Date.now();
+  const c2 = 'chart-og2-' + Date.now();
+  const hmId = 'hm-og-' + Date.now();
+
+  const tableRows = rec.monthly.map(m => {
+    const cls = m.deficit_days === 0 ? 'color:var(--color-success)' : m.deficit_days <= 3 ? 'color:var(--color-accent-dark)' : 'color:var(--color-danger)';
+    return `<tr>
+      <td>${m.name}</td>
+      <td>${Math.round(m.e_prod_day * 1000)}</td>
+      <td>${Math.round(m.e_conso_day * 1000)}</td>
+      <td style="${cls};font-weight:700">${m.deficit_days > 0 ? m.deficit_days + ' j' : '✓'}</td>
+      <td>${m.deficit_kwh > 0 ? m.deficit_kwh : '—'}</td>
+      <td>${m.soc_end_pct}%</td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `
+    <!-- Recommandation -->
+    <div class="card" style="border-left:4px solid var(--color-accent);margin-bottom:16px">
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+        Système autonome recommandé — ${tech.label}
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card" style="border-left:3px solid var(--color-accent)">
+          <div class="kpi-value accent">${rec.Ppeak}</div>
+          <div class="kpi-label">Puissance PV<br><span class="kpi-unit">kWc</span></div>
+        </div>
+        <div class="kpi-card" style="border-left:3px solid var(--color-info)">
+          <div class="kpi-value info">${rec.C_batt_gross}</div>
+          <div class="kpi-label">Capacité batterie<br><span class="kpi-unit">kWh brut (${rec.C_usable} kWh utiles)</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value">${rec.nPanels}</div>
+          <div class="kpi-label">Panneaux<br><span class="kpi-unit">unités</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value" style="color:var(--color-success)">${rec.coverageRate} %</div>
+          <div class="kpi-label">Taux de couverture<br><span class="kpi-unit">énergie autonome</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value ${rec.deficit_days > 10 ? 'accent' : ''}" style="${rec.deficit_days === 0 ? 'color:var(--color-success)' : ''}">
+            ${rec.deficit_days}
+          </div>
+          <div class="kpi-label">Jours de déficit/an<br><span class="kpi-unit">(${rec.total_deficit} kWh manquants)</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value">${annual_conso.toLocaleString('fr')}</div>
+          <div class="kpi-label">Consommation annuelle<br><span class="kpi-unit">kWh/an</span></div>
+        </div>
+      </div>
+      <div class="kpi-grid" style="margin-top:8px">
+        <div class="kpi-card" style="border-left:3px solid var(--color-primary)">
+          <div class="kpi-value">${rec.costPV.toLocaleString('fr')}</div>
+          <div class="kpi-label">Coût PV + pose<br><span class="kpi-unit">€</span></div>
+        </div>
+        <div class="kpi-card" style="border-left:3px solid var(--color-info)">
+          <div class="kpi-value">${rec.costBatt.toLocaleString('fr')}</div>
+          <div class="kpi-label">Coût batterie (${tech.label.split('(')[0].trim()})<br><span class="kpi-unit">€</span></div>
+        </div>
+        <div class="kpi-card" style="border-left:3px solid var(--color-accent)">
+          <div class="kpi-value accent">${rec.systemCost.toLocaleString('fr')}</div>
+          <div class="kpi-label">Coût total système<br><span class="kpi-unit">€ (BOS inclus)</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value">${rec.battLifeYears}</div>
+          <div class="kpi-label">Durée de vie batterie<br><span class="kpi-unit">années (est.)</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Graphiques -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div class="card">
+        <div class="section-header">
+          <div class="card-title">Production vs Consommation journalière</div>
+          <button class="btn btn-outline btn-sm" onclick="OffgridSizing.exportCSV(AppState.lastOffgridSizingResult)">CSV</button>
+        </div>
+        <div class="chart-container"><canvas id="${c1}"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Jours de déficit par mois</div>
+        <div class="chart-container"><canvas id="${c2}"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Heatmap PV × Batterie -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">Matrice couverture — PV × Batterie</div>
+      <div id="${hmId}"></div>
+    </div>
+
+    <!-- Tableau mensuel -->
+    <div class="card">
+      <div class="card-title">Détail mensuel</div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Mois</th>
+            <th>Prod. moy.<br>Wh/j</th>
+            <th>Conso<br>Wh/j</th>
+            <th>Déficit<br>jours</th>
+            <th>Énergie<br>manquante kWh</th>
+            <th>SOC fin<br>mois %</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>`;
+
+  setTimeout(() => {
+    Charts.renderOffgridBalance(c1, rec);
+    Charts.renderOffgridDeficitDays(c2, rec);
+    Charts.renderOffgridHeatmap(hmId, allCandidates, rec.Ppeak, rec.C_batt_gross);
+  }, 50);
+}
+
+// ── Info batterie live ────────────────────────────────────────
+function bindBatteryInfo() {
+  const sel = document.getElementById('og2-batt-tech');
+  if (!sel) return;
+  function update() {
+    const tech = OffgridSizing.BATTERY_TECH[sel.value];
+    if (!tech) return;
+    const el = document.getElementById('og2-batt-info');
+    if (el) el.textContent = `DoD ${tech.dod*100}% · η ${tech.eta*100}% · ${tech.cycles} cycles · ~${tech.costPerKwh} €/kWh`;
+  }
+  sel.addEventListener('change', update);
+  update();
+}
+
+// ── Mise à jour total annuel offgrid ─────────────────────────
+function bindOffgridLiveTotal() {
+  const defInput = document.getElementById('og2-daily-default');
+  const monthInputs = Array.from({length:12}, (_, i) => document.getElementById(`og2-day-${i+1}`));
+  const DAYS = [31,28,31,30,31,30,31,31,30,31,30,31];
+  function update() {
+    const def = parseFloat(defInput?.value) || 1000;
+    const total = monthInputs.reduce((s, el, i) => {
+      const v = parseFloat(el?.value) || 0;
+      return s + (v > 0 ? v : def) * DAYS[i];
+    }, 0) / 1000;
+    const el = document.getElementById('og2-annual-total');
+    if (el) el.textContent = `Total annuel : ${Math.round(total).toLocaleString('fr')} kWh/an`;
+  }
+  defInput?.addEventListener('input', update);
+  monthInputs.forEach(el => el?.addEventListener('input', update));
+  update();
+}
+
+// ── Dimensionnement réseau ────────────────────────────────────
 function calcSizing() {
   if (!AppState.weatherData) {
     alert('Veuillez sélectionner un lieu avec des données météo.');
@@ -642,10 +806,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   initLocationInputs();
   bindOptimizeCheckboxes();
   bindSizingLiveTotal();
+  bindBatteryInfo();
+  bindOffgridLiveTotal();
 
   document.getElementById('btn-calc-sizing').addEventListener('click', calcSizing);
+  document.getElementById('btn-calc-offgrid2').addEventListener('click', calcOffgridSizing);
   document.getElementById('btn-calc-grid').addEventListener('click', calcGridSystem);
-  document.getElementById('btn-calc-offgrid').addEventListener('click', calcOffgrid);
   document.getElementById('btn-calc-irr').addEventListener('click', renderIrradiationData);
   document.getElementById('btn-calc-opt').addEventListener('click', calcOptimization);
 
