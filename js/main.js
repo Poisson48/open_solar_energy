@@ -9,9 +9,11 @@ const AppState = {
   demoData: null,
   map: null,
   marker: null,
-  activeTab: 'grid',
+  activeTab: 'sizing',
   lastGridResult: null,
-  lastOffgridResult: null
+  lastOffgridResult: null,
+  lastSizingResult: null,
+  lastSizingInput: null
 };
 
 // ── Chargement données météo démo ────────────────────────────
@@ -473,6 +475,165 @@ function heatmapColor(pct) {
   return `hsl(0, ${30 + pct * 0.5}%, ${75 - pct * 0.3}%)`;
 }
 
+// ── Dimensionnement ─────────────────────────────────────────
+function calcSizing() {
+  if (!AppState.weatherData) {
+    alert('Veuillez sélectionner un lieu avec des données météo.');
+    return;
+  }
+  const input = SizingEngine.readFormInput();
+  const { recommended, allCandidates, currentBill, annualConso } =
+    SizingEngine.run(input, AppState.weatherData, AppState.location.lat);
+
+  AppState.lastSizingResult = recommended;
+  AppState.lastSizingInput  = input;
+  renderSizingResults(recommended, allCandidates, currentBill, annualConso);
+}
+
+function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
+  const el = document.getElementById('sizing-results');
+  if (!rec) { el.innerHTML = '<div class="alert alert-warning">Impossible de calculer — vérifiez les données.</div>'; return; }
+
+  const c1 = 'chart-sz1-' + Date.now();
+  const c2 = 'chart-sz2-' + Date.now();
+  const c3 = 'chart-sz3-' + Date.now();
+  const c4 = 'chart-sz4-' + Date.now();
+
+  const tableRows = rec.monthlyMetrics.map(m => `
+    <tr>
+      <td>${m.name}</td>
+      <td>${Math.round(m.conso)}</td>
+      <td>${Math.round(m.prod)}</td>
+      <td style="color:var(--color-success);font-weight:700">${Math.round(m.autoconsoKwh)}</td>
+      <td style="color:var(--color-danger)">${Math.round(m.deficit)}</td>
+      <td style="color:var(--color-accent-dark)">${Math.round(m.surplus)}</td>
+    </tr>`).join('');
+
+  el.innerHTML = `
+    <!-- Recommandation principale -->
+    <div class="card" style="border-left:4px solid var(--color-accent);margin-bottom:16px">
+      <div class="card-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        Installation recommandée — ${AppState.location.name}
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card" style="border-left:3px solid var(--color-accent)">
+          <div class="kpi-value accent">${rec.Ppeak}</div>
+          <div class="kpi-label">Puissance recommandée<br><span class="kpi-unit">kWc</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value">${rec.nPanels}</div>
+          <div class="kpi-label">Nombre de panneaux<br><span class="kpi-unit">${Math.round(rec.Ppeak*1000/rec.nPanels)} Wc/panneau</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value">${rec.surfaceNeeded}</div>
+          <div class="kpi-label">Surface nécessaire<br><span class="kpi-unit">m²</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value accent">${rec.systemCost.toLocaleString('fr')}</div>
+          <div class="kpi-label">Coût estimé<br><span class="kpi-unit">€ TTC</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value" style="color:var(--color-success)">${rec.coverageRate} %</div>
+          <div class="kpi-label">Taux de couverture<br><span class="kpi-unit">facture couverte</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value info">${rec.selfSufficiencyRate} %</div>
+          <div class="kpi-label">Taux autoconsommation<br><span class="kpi-unit">prod. utilisée sur place</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value" style="color:var(--color-success)">${rec.savedOnBill.toLocaleString('fr')}</div>
+          <div class="kpi-label">Économies annuelles<br><span class="kpi-unit">€/an</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value accent">${rec.ROI}</div>
+          <div class="kpi-label">Retour investissement<br><span class="kpi-unit">années</span></div>
+        </div>
+      </div>
+      <div class="kpi-grid" style="margin-top:8px">
+        <div class="kpi-card" style="background:#fff3e0;border-color:#ffcc02">
+          <div class="kpi-value" style="color:#e65100">${currentBill.toLocaleString('fr')}</div>
+          <div class="kpi-label">Facture actuelle<br><span class="kpi-unit">€/an</span></div>
+        </div>
+        <div class="kpi-card" style="background:#e8f5e9;border-color:#a5d6a7">
+          <div class="kpi-value" style="color:var(--color-success)">${rec.newAnnualBill.toLocaleString('fr')}</div>
+          <div class="kpi-label">Nouvelle facture estimée<br><span class="kpi-unit">€/an</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value">${rec.annualProd.toLocaleString('fr')}</div>
+          <div class="kpi-label">Production annuelle<br><span class="kpi-unit">kWh/an</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value">${annualConso.toLocaleString('fr')}</div>
+          <div class="kpi-label">Consommation annuelle<br><span class="kpi-unit">kWh/an</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Graphiques -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div class="card">
+        <div class="section-header">
+          <div class="card-title">Production vs Consommation</div>
+          <button class="btn btn-outline btn-sm" onclick="SizingEngine.exportCSV(AppState.lastSizingResult)">CSV</button>
+        </div>
+        <div class="chart-container"><canvas id="${c1}"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Répartition de l'énergie</div>
+        <div class="chart-container-sm" style="height:220px"><canvas id="${c4}"></canvas></div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div class="card">
+        <div class="card-title">Flux mensuels (autoconso / déficit / surplus)</div>
+        <div class="chart-container"><canvas id="${c2}"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Courbe ROI selon puissance installée</div>
+        <div class="chart-container"><canvas id="${c3}"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Tableau mensuel -->
+    <div class="card">
+      <div class="card-title">Détail mensuel</div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Mois</th>
+            <th>Conso<br>kWh</th>
+            <th>Prod. PV<br>kWh</th>
+            <th style="color:var(--color-success)">Autoconso<br>kWh</th>
+            <th style="color:var(--color-danger)">Déficit<br>kWh</th>
+            <th style="color:var(--color-accent-dark)">Surplus<br>kWh</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>`;
+
+  setTimeout(() => {
+    Charts.renderSizingProductionVsConso(c1, rec);
+    Charts.renderSizingEnergyFlow(c2, rec);
+    Charts.renderSizingRoiCurve(c3, allCandidates, rec.Ppeak);
+    Charts.renderSizingDonut(c4, rec);
+  }, 50);
+}
+
+// ── Mise à jour total annuel en temps réel ────────────────────
+function bindSizingLiveTotal() {
+  const inputs = Array.from({length:12}, (_, i) => document.getElementById(`sz-kwh-${i+1}`));
+  function updateTotal() {
+    const total = inputs.reduce((s, el) => s + (parseFloat(el?.value) || 0), 0);
+    const el = document.getElementById('sz-annual-total');
+    if (el) el.textContent = `Total annuel : ${total.toLocaleString('fr')} kWh/an`;
+  }
+  inputs.forEach(el => el?.addEventListener('input', updateTotal));
+  updateTotal();
+}
+
 // ── Point d'entrée ───────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
   await loadDemoData();
@@ -480,13 +641,14 @@ window.addEventListener('DOMContentLoaded', async () => {
   initTabs();
   initLocationInputs();
   bindOptimizeCheckboxes();
+  bindSizingLiveTotal();
 
+  document.getElementById('btn-calc-sizing').addEventListener('click', calcSizing);
   document.getElementById('btn-calc-grid').addEventListener('click', calcGridSystem);
   document.getElementById('btn-calc-offgrid').addEventListener('click', calcOffgrid);
   document.getElementById('btn-calc-irr').addEventListener('click', renderIrradiationData);
   document.getElementById('btn-calc-opt').addEventListener('click', calcOptimization);
 
-  // Recalculer si on change d'onglet et qu'il y a des données
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const tab = btn.dataset.tab;
@@ -494,9 +656,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  // Lancer un calcul initial pour illustrer
   setTimeout(() => {
-    calcGridSystem();
     renderIrradiationData();
+    calcSizing();  // dimensionnement par défaut au démarrage
   }, 300);
 });
