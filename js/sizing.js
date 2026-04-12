@@ -130,7 +130,9 @@ const SizingEngine = (() => {
       const savedOnBill    = calcSavingsOnBill(monthlyMetrics, bill);
       const feedinRevenue  = annualSurplus * (sizing.feedinTariff || 0);
       const totalAnnualGain = savedOnBill + feedinRevenue;
-      const systemCost     = Ppeak * (sizing.systemCostPerKwp || 1200);
+      const systemCost     = sizing.realTotalCost > 0
+        ? sizing.realTotalCost
+        : Ppeak * (sizing.systemCostPerKwp || 900);
       const ROI            = totalAnnualGain > 0 ? systemCost / totalAnnualGain : 99;
       const nPanels        = Math.ceil((Ppeak * 1000) / (site.panelWattPeak || 400));
       const surfaceNeeded  = nPanels * (site.panelSurfaceM2 || 1.96);
@@ -199,7 +201,8 @@ const SizingEngine = (() => {
         strategy:           getStr('sz-strategy'),
         targetCoveragePct:  getVal('sz-target-coverage') || 60,
         feedinTariff:       getVal('sz-feedin')   || 0,
-        systemCostPerKwp:   getVal('sz-cost-kwp') || 900
+        systemCostPerKwp:   getVal('sz-cost-kwp') || 900,
+        realTotalCost:      getVal('sz-cost-total') || 0
       }
     };
   }
