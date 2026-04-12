@@ -40,7 +40,7 @@ const PROJECT_FIELDS = [
   // Hors réseau
   'og2-daily-default',
   ...Array.from({length:12}, (_,i) => `og2-day-${i+1}`),
-  'og2-batt-tech','og2-max-batt','og2-tilt','og2-azimuth','og2-surface',
+  'og2-batt-tech','og2-tilt','og2-azimuth','og2-surface',
   'og2-panel-wp','og2-panel-m2','og2-losses','og2-target-coverage',
   'og2-pv-cost-kwp','og2-bos-cost'
 ];
