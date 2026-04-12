@@ -551,7 +551,7 @@ function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso) {
         </div>
         <div class="kpi-card" style="border-left:3px solid var(--color-accent)">
           <div class="kpi-value accent">${rec.systemCost.toLocaleString('fr')}</div>
-          <div class="kpi-label">Coût total système<br><span class="kpi-unit">€ (BOS inclus)</span></div>
+          <div class="kpi-label">Coût total système<br><span class="kpi-unit">€ HT pro (BOS inclus, +20% TVA)</span></div>
         </div>
         <div class="kpi-card">
           <div class="kpi-value">${rec.battLifeYears}</div>
@@ -614,10 +614,32 @@ function bindBatteryInfo() {
     const tech = OffgridSizing.BATTERY_TECH[sel.value];
     if (!tech) return;
     const el = document.getElementById('og2-batt-info');
-    if (el) el.textContent = `DoD ${tech.dod*100}% · η ${tech.eta*100}% · ${tech.cycles} cycles · ~${tech.costPerKwh} €/kWh`;
+    if (!el) return;
+    const bmsStr = tech.bmsFixed > 0 ? ` · BMS ~${tech.bmsFixed} €` : '';
+    el.textContent = `DoD ${tech.dod*100}% · η ${tech.eta*100}% · ${tech.cycles} cycles · ~${tech.costPerKwh} €/kWh${bmsStr} (prix HT pro)`;
   }
   sel.addEventListener('change', update);
   update();
+}
+
+function importEDFToOffgrid() {
+  const input = AppState.lastSizingInput;
+  const DAYS = [31,28,31,30,31,30,31,31,30,31,30,31];
+  const statusEl = document.getElementById('og2-edf-import-status');
+  if (!input?.bill?.monthlyKwh) {
+    if (statusEl) statusEl.textContent = '⚠ Aucune donnée EDF — lancez d\'abord le dimensionnement réseau.';
+    return;
+  }
+  const kwh = input.bill.monthlyKwh;
+  kwh.forEach((k, i) => {
+    const el = document.getElementById(`og2-day-${i+1}`);
+    if (el) el.value = Math.round(k * 1000 / DAYS[i]);
+  });
+  const avg = Math.round(kwh.reduce((s, k, i) => s + k * 1000 / DAYS[i], 0) / 12);
+  const defEl = document.getElementById('og2-daily-default');
+  if (defEl) defEl.value = avg;
+  if (statusEl) statusEl.textContent = `✓ Consommation importée (${Math.round(kwh.reduce((s, k) => s + k, 0))} kWh/an)`;
+  document.getElementById('og2-day-1')?.dispatchEvent(new Event('input'));
 }
 
 // ── Mise à jour total annuel offgrid ─────────────────────────

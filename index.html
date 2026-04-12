@@ -288,7 +288,7 @@
                 <div class="form-row">
                   <div class="form-group">
                     <label>Coût installé</label>
-                    <div class="input-unit"><input type="number" id="sz-cost-kwp" value="1200" step="50"><span class="unit-tag">€/kWc</span></div>
+                    <div class="input-unit"><input type="number" id="sz-cost-kwp" value="900" step="50"><span class="unit-tag">€/kWc HT</span></div>
                   </div>
                   <div class="form-group">
                     <label>Tarif rachat surplus</label>
@@ -471,6 +471,10 @@
                     Laissez les mois à 0 pour utiliser cette valeur pour tous.
                   </div>
                 </div>
+                <button type="button" class="btn btn-outline btn-sm" onclick="importEDFToOffgrid()" style="margin-bottom:8px">
+                  ↓ Importer la consommation depuis la facture EDF
+                </button>
+                <div id="og2-edf-import-status" style="font-size:11px;color:var(--color-text-muted);margin-bottom:6px"></div>
                 <div style="font-size:12px;font-weight:700;color:var(--color-primary);margin-bottom:6px">
                   Profil mensuel détaillé (optionnel)
                 </div>
@@ -502,9 +506,12 @@
                 <div class="form-group" style="margin-bottom:10px">
                   <label>Type de batterie</label>
                   <select id="og2-batt-tech">
-                    <option value="lfp">LFP — Lithium Fer Phosphate (recommandé)</option>
-                    <option value="nmc">NMC — Lithium NMC</option>
+                    <option value="lfp">LFP standard — Lithium Fer Phosphate (neuf, recommandé)</option>
+                    <option value="lfp_diy">LFP DIY — Cellules CATL/EVE 280Ah (meilleur rapport qualité/prix)</option>
                     <option value="agm">AGM — Plomb Carbone (économique)</option>
+                    <option value="nmc_leaf">NMC recondit. — Nissan Leaf</option>
+                    <option value="nmc_zoe">NMC recondit. — Renault Zoé</option>
+                    <option value="nmc_tesla">NMC recondit. — Tesla</option>
                   </select>
                 </div>
                 <div id="og2-batt-info" class="alert alert-info" style="font-size:11px"></div>

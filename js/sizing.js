@@ -199,7 +199,7 @@ const SizingEngine = (() => {
         strategy:           getStr('sz-strategy'),
         targetCoveragePct:  getVal('sz-target-coverage') || 60,
         feedinTariff:       getVal('sz-feedin')   || 0,
-        systemCostPerKwp:   getVal('sz-cost-kwp') || 1200
+        systemCostPerKwp:   getVal('sz-cost-kwp') || 900
       }
     };
   }
