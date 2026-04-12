@@ -185,8 +185,10 @@ function bindOptimizeCheckboxes() {
     inpTilt.disabled = chkTilt.checked;
     inpAz.disabled = chkAz.checked || chkTilt.checked;
     if (chkTilt.checked && AppState.weatherData) {
-      const opt = SolarMath.optimalTilt(AppState.location.lat, AppState.weatherData);
-      inpTilt.value = opt;
+      const optimizeAz = chkAz.checked;
+      const opt = SolarMath.optimalTilt(AppState.location.lat, AppState.weatherData, optimizeAz);
+      inpTilt.value = opt.tilt;
+      if (optimizeAz) inpAz.value = opt.azimuth;
     }
   }
   chkTilt.addEventListener('change', update);
@@ -422,15 +424,20 @@ function calcOptimization() {
   if (!AppState.weatherData) return;
   const el = document.getElementById('optimizer-results');
   const heatmap = SolarMath.tiltAzimuthHeatmap(AppState.location.lat, AppState.weatherData);
-  const optTilt = SolarMath.optimalTilt(AppState.location.lat, AppState.weatherData);
+  const optTilt  = SolarMath.optimalTilt(AppState.location.lat, AppState.weatherData, false);
+  const optBoth  = SolarMath.optimalTilt(AppState.location.lat, AppState.weatherData, true);
   const chartId = 'chart-opt-' + Date.now();
 
   el.innerHTML = `
     <div class="card">
       <div class="kpi-grid" style="margin-bottom:14px">
         <div class="kpi-card">
-          <div class="kpi-value">${optTilt}°</div>
-          <div class="kpi-label">Inclinaison optimale<br><span class="kpi-unit">azimut 0° (Sud)</span></div>
+          <div class="kpi-value">${optTilt.tilt}°</div>
+          <div class="kpi-label">Inclinaison optimale<br><span class="kpi-unit">azimut 0° (plein Sud)</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value accent">${optBoth.tilt}° / ${optBoth.azimuth > 0 ? '+' : ''}${optBoth.azimuth}°</div>
+          <div class="kpi-label">Optimal tilt + azimut<br><span class="kpi-unit">inclinaison / orientation</span></div>
         </div>
         <div class="kpi-card">
           <div class="kpi-value accent">${Math.round(AppState.location.lat * 0.85)}°</div>
@@ -626,6 +633,23 @@ function bindBatteryInfo() {
   }
   sel.addEventListener('change', update);
   update();
+}
+
+// ── Optimisation inclinaison pour les formulaires de dimensionnement ──
+/**
+ * @param {string}  prefix  'sz' ou 'og2'
+ * @param {boolean} withAz  true = co-optimiser azimut aussi
+ */
+function optimizeTiltFor(prefix, withAz = false) {
+  if (!AppState.weatherData) {
+    alert('Sélectionnez d\'abord un lieu avec des données météo.');
+    return;
+  }
+  const opt = SolarMath.optimalTilt(AppState.location.lat, AppState.weatherData, withAz);
+  const tiltEl = document.getElementById(`${prefix}-tilt`);
+  const azEl   = document.getElementById(`${prefix}-azimuth`);
+  if (tiltEl) tiltEl.value = opt.tilt;
+  if (withAz && azEl) azEl.value = opt.azimuth;
 }
 
 function importEDFToOffgrid() {
