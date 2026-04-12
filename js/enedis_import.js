@@ -207,17 +207,61 @@ const EnedisImport = (() => {
     };
   }
 
+  // ── Décode un ArrayBuffer en texte (UTF-8 puis ISO-8859-1) ──
+  function decodeText(buffer) {
+    let text = new TextDecoder('utf-8').decode(buffer);
+    if (text.includes('�')) text = new TextDecoder('iso-8859-1').decode(buffer);
+    return text;
+  }
+
+  // ── Priorité des CSV dans le ZIP EDF/suiviconso ───────────────
+  const ZIP_PRIORITY = [
+    'ma-conso-mensuelle',
+    'ma-conso-quotidienne',
+    'mes-index-elec',
+    'mes-puissances-atteintes-30min',
+  ];
+
+  function pickBestCsv(names) {
+    for (const key of ZIP_PRIORITY) {
+      const match = names.find(n => n.toLowerCase().includes(key));
+      if (match) return match;
+    }
+    return names.find(n => n.endsWith('.csv')) || names[0];
+  }
+
+  // ── Gestionnaire ZIP (EDF suiviconso) ────────────────────────
+  function handleZip(file, onResult) {
+    if (typeof JSZip === 'undefined') {
+      onResult({ error: 'JSZip non chargé — rechargez la page.' });
+      return;
+    }
+    JSZip.loadAsync(file).then(zip => {
+      const names = Object.keys(zip.files).filter(n => !zip.files[n].dir);
+      const chosen = pickBestCsv(names);
+      if (!chosen) { onResult({ error: 'Aucun CSV trouvé dans le ZIP.' }); return; }
+      zip.files[chosen].async('arraybuffer').then(buf => {
+        onResult(parse(decodeText(buf)));
+      });
+    }).catch(err => onResult({ error: 'Impossible de lire le ZIP : ' + err.message }));
+  }
+
   // ── Gestionnaire de fichier ──────────────────────────────────
   function handleFile(file, onResult) {
     if (!file) return;
+    // ZIP EDF (suiviconso.edf.fr)
+    if (file.name.toLowerCase().endsWith('.zip') || file.type === 'application/zip') {
+      handleZip(file, onResult);
+      return;
+    }
+    // CSV direct
     const reader = new FileReader();
     reader.onload = e => {
       let text = e.target.result;
-      // Si décodage UTF-8 produit des "?" → essayer ISO-8859-1
       if (text.includes('�')) {
-        const reader2 = new FileReader();
-        reader2.onload = e2 => onResult(parse(e2.target.result));
-        reader2.readAsText(file, 'ISO-8859-1');
+        const r2 = new FileReader();
+        r2.onload = e2 => onResult(parse(e2.target.result));
+        r2.readAsText(file, 'ISO-8859-1');
         return;
       }
       onResult(parse(text));

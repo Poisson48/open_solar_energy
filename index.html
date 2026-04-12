@@ -69,15 +69,15 @@
         <div style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--color-primary);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center">1</div>
         <div>
           <div style="font-weight:600;margin-bottom:4px">Connectez-vous à votre espace client</div>
-          <div style="font-size:12px;color:var(--color-text-muted);margin-bottom:8px">Rendez-vous dans la section <em>Ma consommation</em>, puis <strong>« Télécharger mes données »</strong> → format <strong>CSV</strong>.</div>
+          <div style="font-size:12px;color:var(--color-text-muted);margin-bottom:8px">Cliquez sur <strong>« Télécharger mes données »</strong> et téléchargez le fichier <strong>ZIP</strong> (ou CSV).</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <a href="https://suiviconso.edf.fr/comprendre" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              Suivi conso EDF
+            </a>
             <a href="https://mon-compte-client.enedis.fr/" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
               Espace Enedis
-            </a>
-            <a href="https://particulier.edf.fr/fr/accueil/espace-client/tableau-de-bord.html" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-              Espace EDF
             </a>
           </div>
         </div>
@@ -92,7 +92,7 @@
           <label class="btn btn-primary btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             Choisir le fichier CSV
-            <input type="file" id="sz-csv-input" accept=".csv,.txt" style="display:none" onchange="handleEnedisCSV(this);closeEnedisModal()">
+            <input type="file" id="sz-csv-input" accept=".csv,.txt,.zip" style="display:none" onchange="handleEnedisCSV(this);closeEnedisModal()">
           </label>
         </div>
       </div>
@@ -1052,6 +1052,7 @@
 <!-- Scripts -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="js/solar_math.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/export.js"></script>
