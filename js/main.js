@@ -3,11 +3,12 @@
  */
 
 // ── Version ──────────────────────────────────────────────────
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 // Historique :
 //   1.0.0 — Base : carte, onglets, calcul PV réseau, dimensionnement EDF, hors réseau
 //   1.1.0 — Lien EDF→offgrid, prix HT pro, batteries DIY VE (CATL/EVE, Leaf, Zoé, Tesla)
 //   1.2.0 — Import CSV Enedis (journalier/mensuel/HP-HC/30min), optimisation tilt+azimut auto
+//   1.3.0 — Gestion de projets : save/load/clone/export/import JSON (localStorage)
 
 // ── État global ──────────────────────────────────────────────
 const AppState = {
@@ -20,8 +21,25 @@ const AppState = {
   lastGridResult: null,
   lastOffgridResult: null,
   lastSizingResult: null,
-  lastSizingInput: null
+  lastSizingInput: null,
+  currentProjectId: null   // id du projet chargé (null = non sauvegardé)
 };
+
+// ── Champs de formulaire à sauvegarder ───────────────────────
+const PROJECT_FIELDS = [
+  // Système PV réseau
+  'inp-ppeak','inp-losses','inp-tilt','inp-azimuth','inp-cost','inp-kwh-price','inp-co2',
+  // Dimensionnement EDF
+  'sz-tariff','sz-price-base','sz-subscription',
+  ...Array.from({length:12}, (_,i) => `sz-kwh-${i+1}`),
+  'sz-tilt','sz-azimuth','sz-surface','sz-panel-wp','sz-panel-m2','sz-losses','sz-tech',
+  'sz-strategy','sz-target-coverage','sz-cost-kwp','sz-feedin',
+  // Hors réseau
+  'og2-daily-default',
+  ...Array.from({length:12}, (_,i) => `og2-day-${i+1}`),
+  'og2-batt-tech','og2-max-batt','og2-tilt','og2-azimuth','og2-surface',
+  'og2-panel-wp','og2-panel-m2','og2-losses','og2-target-coverage'
+];
 
 // ── Chargement données météo démo ────────────────────────────
 async function loadDemoData() {
@@ -679,6 +697,201 @@ function handleEnedisCSV(input) {
   });
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  GESTION DE PROJETS
+// ═══════════════════════════════════════════════════════════════
+
+// ── Capture l'état complet du formulaire ──────────────────────
+function captureFormState() {
+  const fields = {};
+  PROJECT_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.type === 'checkbox') {
+      fields[id] = el.checked;
+    } else {
+      fields[id] = el.value;
+    }
+  });
+  return fields;
+}
+
+// ── Restaure l'état dans le formulaire ───────────────────────
+function restoreFormState(fields) {
+  if (!fields) return;
+  Object.entries(fields).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.type === 'checkbox') {
+      el.checked = !!val;
+    } else {
+      el.value = val;
+    }
+  });
+  // Déclencher les mises à jour des totaux
+  document.getElementById('sz-kwh-1')?.dispatchEvent(new Event('input'));
+  document.getElementById('og2-day-1')?.dispatchEvent(new Event('input'));
+  document.getElementById('og2-batt-tech')?.dispatchEvent(new Event('change'));
+}
+
+// ── Sauvegarder le projet courant ─────────────────────────────
+function saveCurrentProject() {
+  const nameEl = document.getElementById('project-name-input');
+  const name = (nameEl?.value || '').trim() || 'Projet sans nom';
+  if (nameEl) nameEl.value = name;
+
+  // Résumé pour affichage dans la liste
+  const sizingRec = AppState.lastSizingResult;
+  const offgridRec = AppState.lastOffgridSizingResult;
+  const summary = {
+    annualConso:     AppState.lastSizingInput?.bill?.monthlyKwh?.reduce((s,v)=>s+v,0) || null,
+    recommendedPpeak: sizingRec?.Ppeak || offgridRec?.Ppeak || null,
+    systemCost:       sizingRec?.systemCost || offgridRec?.systemCost || null,
+    coverageRate:     sizingRec?.coverageRate || offgridRec?.coverageRate || null,
+    locationName:     AppState.location.name
+  };
+
+  const project = {
+    id:          AppState.currentProjectId || ProjectManager.newId(),
+    name,
+    createdAt:   null,         // sera mis par save() si nouveau
+    updatedAt:   null,
+    location:    { ...AppState.location },
+    weatherData: AppState.weatherData,
+    formState:   captureFormState(),
+    summary
+  };
+
+  const ok = ProjectManager.save(project);
+  AppState.currentProjectId = project.id;
+
+  // Feedback visuel sur le bouton
+  const btn = document.querySelector('[onclick="saveCurrentProject()"]');
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = ok ? '✓' : '✗';
+    btn.style.color = ok ? 'var(--color-success)' : 'var(--color-danger)';
+    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1500);
+  }
+}
+
+// ── Charger un projet ─────────────────────────────────────────
+function loadProject(id) {
+  const project = ProjectManager.get(id);
+  if (!project) return;
+
+  AppState.currentProjectId = project.id;
+  AppState.location = { ...project.location };
+  if (project.weatherData) AppState.weatherData = project.weatherData;
+
+  // Mettre à jour l'UI localisation
+  const setField = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+  setField('inp-lat', project.location.lat);
+  setField('inp-lon', project.location.lon);
+  setField('inp-alt', project.location.alt || '');
+  updateLocationUI();
+  updateMapMarker();
+
+  // Restaurer les formulaires
+  restoreFormState(project.formState);
+
+  // Nom du projet dans la toolbar
+  const nameEl = document.getElementById('project-name-input');
+  if (nameEl) nameEl.value = project.name;
+
+  closeProjectsModal();
+}
+
+// ── Nouveau projet vierge ─────────────────────────────────────
+function newProjectBlank() {
+  AppState.currentProjectId = null;
+  const nameEl = document.getElementById('project-name-input');
+  if (nameEl) nameEl.value = '';
+  closeProjectsModal();
+}
+
+// ── Modal : ouvrir / fermer ───────────────────────────────────
+function openProjectsModal() {
+  renderProjectsList();
+  document.getElementById('projects-modal').style.display = 'block';
+}
+function closeProjectsModal() {
+  document.getElementById('projects-modal').style.display = 'none';
+}
+
+// ── Rendu de la liste ─────────────────────────────────────────
+function renderProjectsList() {
+  const container = document.getElementById('projects-list-container');
+  const projects = ProjectManager.list();
+
+  if (projects.length === 0) {
+    container.innerHTML = `<div style="text-align:center;padding:32px;color:var(--color-text-muted)">
+      Aucun projet sauvegardé. Renseignez les données puis cliquez 💾.
+    </div>`;
+    return;
+  }
+
+  container.innerHTML = projects.map(p => {
+    const date = new Date(p.updatedAt).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' });
+    const isCurrent = p.id === AppState.currentProjectId;
+    const kwh  = p.summary?.annualConso ? `${p.summary.annualConso.toLocaleString('fr')} kWh/an` : '';
+    const ppeak = p.summary?.recommendedPpeak ? `· ${p.summary.recommendedPpeak} kWc` : '';
+    const cost  = p.summary?.systemCost ? `· ${p.summary.systemCost.toLocaleString('fr')} €` : '';
+    const loc   = p.summary?.locationName || p.location?.name || '';
+
+    return `
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--color-border);${isCurrent ? 'background:var(--color-bg);margin:0 -22px;padding-left:22px;padding-right:22px;border-radius:4px' : ''}">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:14px;${isCurrent ? 'color:var(--color-accent)' : ''}">${p.name}${isCurrent ? ' <span style="font-size:11px;font-weight:400;color:var(--color-text-muted)">(actif)</span>' : ''}</div>
+        <div style="font-size:11px;color:var(--color-text-muted);margin-top:2px">${loc} · ${date} ${kwh} ${ppeak} ${cost}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-outline btn-sm" onclick="loadProject('${p.id}')" title="Charger ce projet">Charger</button>
+        <button class="btn btn-outline btn-sm" onclick="cloneProject('${p.id}')" title="Cloner pour créer un scénario alternatif">Cloner</button>
+        <button class="btn btn-sm" style="color:var(--color-danger);border-color:var(--color-danger);background:none" onclick="deleteProject('${p.id}')" title="Supprimer">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function cloneProject(id) {
+  const src = ProjectManager.get(id);
+  const name = prompt('Nom du clone :', (src?.name || '') + ' — variante');
+  if (name === null) return; // annulé
+  const copy = ProjectManager.clone(id, name.trim() || src.name + ' (copie)');
+  if (copy) renderProjectsList();
+}
+
+function deleteProject(id) {
+  const p = ProjectManager.get(id);
+  if (!p) return;
+  if (!confirm(`Supprimer "${p.name}" ?`)) return;
+  ProjectManager.remove(id);
+  if (AppState.currentProjectId === id) {
+    AppState.currentProjectId = null;
+    const nameEl = document.getElementById('project-name-input');
+    if (nameEl) nameEl.value = '';
+  }
+  renderProjectsList();
+}
+
+function importProjectsFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const result = ProjectManager.importFromJSON(e.target.result);
+    if (result.error) {
+      alert('Erreur import : ' + result.error);
+    } else {
+      alert(`${result.added} projet(s) importé(s).`);
+      renderProjectsList();
+    }
+    input.value = '';
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
 // ── Optimisation inclinaison pour les formulaires de dimensionnement ──
 /**
  * @param {string}  prefix  'sz' ou 'og2'
@@ -920,6 +1133,22 @@ window.addEventListener('DOMContentLoaded', async () => {
       const tab = btn.dataset.tab;
       if (tab === 'irradiation') renderIrradiationData();
     });
+  });
+
+  // Fermer la modal projets sur clic fond ou Escape
+  document.getElementById('projects-modal')?.addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeProjectsModal();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeProjectsModal();
+  });
+
+  // Sauvegarder avec Ctrl+S
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      saveCurrentProject();
+    }
   });
 
   setTimeout(() => {
