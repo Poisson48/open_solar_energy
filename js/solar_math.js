@@ -122,20 +122,25 @@ const SolarMath = (() => {
   /**
    * Trouver l'inclinaison optimale pour maximiser la production annuelle
    */
-  function optimalTilt(lat, weatherData) {
-    let bestTilt = 0;
-    let bestProduction = 0;
+  /**
+   * Retourne { tilt, azimuth } optimaux pour maximiser l'irradiation annuelle.
+   * Si optimizeAzimuth=false, azimut fixé à 0° (plein sud).
+   */
+  function optimalTilt(lat, weatherData, optimizeAzimuth = false) {
+    const azimuths = optimizeAzimuth
+      ? [-90,-75,-60,-45,-30,-15,0,15,30,45,60,75,90]
+      : [0];
+    let best = { tilt: 30, azimuth: 0, total: 0 };
     for (let tilt = 0; tilt <= 90; tilt++) {
-      let total = 0;
-      weatherData.forEach((m, i) => {
-        total += tiltedIrradiation(m.GHI, m.DHI, lat, tilt, 0, i + 1);
-      });
-      if (total > bestProduction) {
-        bestProduction = total;
-        bestTilt = tilt;
+      for (const az of azimuths) {
+        let total = 0;
+        weatherData.forEach((m, i) => {
+          total += tiltedIrradiation(m.GHI, m.DHI, lat, tilt, az, i + 1);
+        });
+        if (total > best.total) best = { tilt, azimuth: az, total };
       }
     }
-    return bestTilt;
+    return best;
   }
 
   /**
