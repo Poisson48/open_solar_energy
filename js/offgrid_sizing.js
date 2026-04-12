@@ -18,15 +18,18 @@ const OffgridSizing = (() => {
   const MONTH_NAMES = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
 
   const BATTERY_TECH = {
-    lfp:  { label:'LFP  (Li-FePO₄)',   dod:0.80, eta:0.97, cycles:3000, costPerKwh:500,  color:'#2d9e5c' },
-    agm:  { label:'AGM  (Plomb carbo)', dod:0.50, eta:0.85, cycles:600,  costPerKwh:150,  color:'#1565c0' },
-    nmc:  { label:'NMC  (Li-NMC)',      dod:0.90, eta:0.97, cycles:1000, costPerKwh:450,  color:'#7b1fa2' }
+    lfp:       { label:'LFP standard (neuf)',             dod:0.80, eta:0.97, cycles:3000, costPerKwh:400, bmsFixed:0,   color:'#2d9e5c' },
+    lfp_diy:   { label:'LFP DIY cellules CATL/EVE 280Ah', dod:0.90, eta:0.97, cycles:3000, costPerKwh:100, bmsFixed:200, color:'#1a6b3c' },
+    agm:       { label:'AGM (plomb carbone)',              dod:0.50, eta:0.85, cycles:600,  costPerKwh:120, bmsFixed:0,   color:'#1565c0' },
+    nmc_leaf:  { label:'NMC recondit. Nissan Leaf',        dod:0.80, eta:0.96, cycles:800,  costPerKwh:45,  bmsFixed:150, color:'#7b1fa2' },
+    nmc_zoe:   { label:'NMC recondit. Renault Zoé',        dod:0.80, eta:0.96, cycles:900,  costPerKwh:50,  bmsFixed:150, color:'#e91e63' },
+    nmc_tesla: { label:'NMC recondit. Tesla',              dod:0.85, eta:0.97, cycles:1000, costPerKwh:65,  bmsFixed:200, color:'#d32f2f' }
   };
 
   const INVERTER_EFF  = 0.93;
   const CONTROLLER_EFF= 0.96;
-  const PV_COST_PER_KWP = 900; // €/kWc (coût panneau + pose, hors batterie)
-  const BOS_COST = 600;         // Balance of System fixe (câblage, support, régulateur...)
+  const PV_COST_PER_KWP = 650; // €HT pro/kWc (panneau + pose)
+  const BOS_COST = 500;         // €HT (câblage, support, régulateur...)
 
   // ── Simulation énergétique mensuelle ─────────────────────────
   /**
@@ -154,7 +157,7 @@ const OffgridSizing = (() => {
 
         const nPanels  = Math.ceil((Ppeak * 1000) / (site.panelWattPeak || 400));
         const systemCostPV   = Ppeak * PV_COST_PER_KWP;
-        const systemCostBatt = C_batt_gross * tech.costPerKwh;
+        const systemCostBatt = C_batt_gross * tech.costPerKwh + (tech.bmsFixed || 0);
         const systemCost     = systemCostPV + systemCostBatt + BOS_COST;
 
         // Durée de vie batterie (années) basée sur cycles/an
