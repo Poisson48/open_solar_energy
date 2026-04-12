@@ -156,9 +156,9 @@ const OffgridSizing = (() => {
         const yearSim  = simulateYear(monthlyHtilt, dailyConso, Ppeak, losses, weatherData, C_usable, tech.eta);
 
         const nPanels  = Math.ceil((Ppeak * 1000) / (site.panelWattPeak || 400));
-        const systemCostPV   = Ppeak * PV_COST_PER_KWP;
+        const systemCostPV   = Ppeak * (sizing.pvCostPerKwp || PV_COST_PER_KWP);
         const systemCostBatt = C_batt_gross * tech.costPerKwh + (tech.bmsFixed || 0);
-        const systemCost     = systemCostPV + systemCostBatt + BOS_COST;
+        const systemCost     = systemCostPV + systemCostBatt + (sizing.bosCost != null ? sizing.bosCost : BOS_COST);
 
         // Durée de vie batterie (années) basée sur cycles/an
         const cycles_per_year = 365 * 0.6; // estimation (pas plein cycle tous les jours)
@@ -224,7 +224,9 @@ const OffgridSizing = (() => {
       },
       sizing: {
         targetCoveragePct: getVal('og2-target-coverage') || 90,
-        maxBattKwh:        getVal('og2-max-batt')        || 20
+        maxBattKwh:        getVal('og2-max-batt')        || 20,
+        pvCostPerKwp:      getVal('og2-pv-cost-kwp')     || PV_COST_PER_KWP,
+        bosCost:           getVal('og2-bos-cost')
       }
     };
   }
