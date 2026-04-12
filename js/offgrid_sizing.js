@@ -146,7 +146,10 @@ const OffgridSizing = (() => {
     // Grille de recherche : Ppeak × C_batt
     const ppeaks  = [];
     for (let p = 0.5; p <= PpeakMax + 0.05; p = Math.round((p + 0.5) * 10) / 10) ppeaks.push(p);
-    const batts   = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20].filter(b => b <= (sizing.maxBattKwh || 20));
+    // Plafond auto : 5× la conso journalière max, entre 10 et 50 kWh
+    const maxDailyKwh = Math.max(...dailyConso) / 1000;
+    const battCeil = Math.min(50, Math.max(10, Math.ceil(maxDailyKwh * 5)));
+    const batts = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50].filter(b => b <= battCeil);
 
     const allCandidates = [];
 
@@ -224,7 +227,6 @@ const OffgridSizing = (() => {
       },
       sizing: {
         targetCoveragePct: getVal('og2-target-coverage') || 90,
-        maxBattKwh:        getVal('og2-max-batt')        || 20,
         pvCostPerKwp:      getVal('og2-pv-cost-kwp')     || PV_COST_PER_KWP,
         bosCost:           getVal('og2-bos-cost')
       }
