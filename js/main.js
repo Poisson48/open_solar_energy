@@ -3,7 +3,7 @@
  */
 
 // ── Version ──────────────────────────────────────────────────
-const APP_VERSION = '1.3.2';
+const APP_VERSION = '1.4.0';
 // Historique :
 //   1.0.0 — Base : carte, onglets, calcul PV réseau, dimensionnement EDF, hors réseau
 //   1.1.0 — Lien EDF→offgrid, prix HT pro, batteries DIY VE (CATL/EVE, Leaf, Zoé, Tesla)
@@ -11,6 +11,7 @@ const APP_VERSION = '1.3.2';
 //   1.3.0 — Gestion de projets : save/load/clone/export/import JSON (localStorage)
 //   1.3.1 — UX projets : toast, bouton save coloré, toolbar compacte, badge stable, favicon
 //   1.3.2 — Barre projet sortie du header (barre dédiée), badge version en script inline
+//   1.4.0 — Module devis professionnel : client/installateur/chantier, lignes coût éditables, TVA, impression PDF
 
 // ── État global ──────────────────────────────────────────────
 const AppState = {
@@ -1128,6 +1129,130 @@ function bindSizingLiveTotal() {
   updateTotal();
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  MODULE DEVIS
+// ═══════════════════════════════════════════════════════════════
+
+// ── Mise à jour d'une ligne de coût en temps réel ─────────────
+function updateQuoteLine(key) {
+  const qty   = parseFloat(document.getElementById(`dv-line-${key}-qty`)?.value)   || 0;
+  const price = parseFloat(document.getElementById(`dv-line-${key}-price`)?.value) || 0;
+  const total = qty * price;
+  const el = document.getElementById(`dv-line-${key}-total`);
+  if (el) el.textContent = total > 0 ? total.toLocaleString('fr', {minimumFractionDigits:0, maximumFractionDigits:0}) + ' €' : '—';
+  updateQuoteTotals();
+}
+
+// ── Recalcule les totaux globaux ──────────────────────────────
+function updateQuoteTotals() {
+  const lineIds = ['panels','inverter','fixations','cabling','labor','admin','misc'];
+  const subtotalHT = lineIds.reduce((s, k) => {
+    const qty   = parseFloat(document.getElementById(`dv-line-${k}-qty`)?.value)   || 0;
+    const price = parseFloat(document.getElementById(`dv-line-${k}-price`)?.value) || 0;
+    return s + qty * price;
+  }, 0);
+
+  const tvaRate  = parseFloat(document.getElementById('dv-tva')?.value)    || 10;
+  const remisePct = parseFloat(document.getElementById('dv-remise')?.value) || 0;
+  const remise   = subtotalHT * remisePct / 100;
+  const baseHT   = subtotalHT - remise;
+  const tva      = baseHT * tvaRate / 100;
+  const totalTTC = baseHT + tva;
+
+  const fmt = n => n.toLocaleString('fr', {minimumFractionDigits:0, maximumFractionDigits:0}) + ' €';
+  const setEl = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+
+  setEl('dv-total-ht', fmt(subtotalHT));
+  setEl('dv-base-ht',  fmt(baseHT));
+  setEl('dv-total-tva', fmt(tva));
+  setEl('dv-total-ttc', fmt(totalTTC));
+  setEl('dv-tva-pct', tvaRate);
+
+  const remRow = document.getElementById('dv-remise-row');
+  if (remRow) remRow.style.display = remisePct > 0 ? '' : 'none';
+  setEl('dv-remise-pct', remisePct);
+  setEl('dv-total-remise', '− ' + fmt(remise));
+}
+
+// ── Import depuis le dimensionnement réseau ───────────────────
+function importSizingToQuote() {
+  const rec = AppState.lastSizingResult;
+  const inp = AppState.lastSizingInput;
+  if (!rec && !inp) {
+    showToast('⚠ Lancez d\'abord un dimensionnement réseau.', 'error');
+    return;
+  }
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+
+  if (rec?.Ppeak)         setVal('dv-sys-ppeak',   rec.Ppeak);
+  if (rec?.Ppeak && inp?.panelWp)
+    setVal('dv-sys-panels', Math.ceil(rec.Ppeak * 1000 / inp.panelWp));
+  if (rec?.annualProd)    setVal('dv-sys-prod',    Math.round(rec.annualProd));
+  if (rec?.co2Saved)      setVal('dv-sys-co2',     Math.round(rec.co2Saved));
+
+  // Chantier depuis localisation courante
+  setVal('dv-site-address', AppState.location.name || '');
+  if (inp?.tilt)    setVal('dv-site-tilt',    inp.tilt);
+  if (inp?.azimuth !== undefined) setVal('dv-site-azimuth', inp.azimuth);
+  if (inp?.surface) setVal('dv-site-surface', inp.surface);
+
+  // Date du jour si vide
+  const dateEl = document.getElementById('dv-date');
+  if (dateEl && !dateEl.value) dateEl.value = new Date().toLocaleDateString('fr-FR');
+
+  showToast('✓ Données système importées depuis le dimensionnement');
+}
+
+// ── Aperçu dans l'iframe ──────────────────────────────────────
+function previewQuote() {
+  if (typeof QuoteGen === 'undefined') { showToast('Erreur : module QuoteGen non chargé', 'error'); return; }
+  QuoteGen.preview();
+}
+
+// ── Impression / PDF ──────────────────────────────────────────
+function printQuote() {
+  if (typeof QuoteGen === 'undefined') { showToast('Erreur : module QuoteGen non chargé', 'error'); return; }
+  QuoteGen.print();
+}
+
+// ── Mémoriser les infos installateur ─────────────────────────
+function saveInstallerData() {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const data = {
+    company: v('dv-ins-company'), siret: v('dv-ins-siret'),
+    address: v('dv-ins-address'), phone: v('dv-ins-phone'),
+    email: v('dv-ins-email'), rge: v('dv-ins-rge')
+  };
+  if (typeof QuoteGen !== 'undefined') QuoteGen.saveInstaller(data);
+  showToast('✓ Informations installateur mémorisées');
+}
+
+// ── Charger les infos installateur sauvegardées ───────────────
+function loadInstallerData() {
+  if (typeof QuoteGen === 'undefined') return;
+  const data = QuoteGen.loadInstaller();
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+  setVal('dv-ins-company', data.company);
+  setVal('dv-ins-siret',   data.siret);
+  setVal('dv-ins-address', data.address);
+  setVal('dv-ins-phone',   data.phone);
+  setVal('dv-ins-email',   data.email);
+  setVal('dv-ins-rge',     data.rge);
+}
+
+// ── Initialisation de l'onglet devis ─────────────────────────
+function initQuoteTab() {
+  loadInstallerData();
+  // Date par défaut = aujourd'hui
+  const dateEl = document.getElementById('dv-date');
+  if (dateEl && !dateEl.value) dateEl.value = new Date().toLocaleDateString('fr-FR');
+  // Calcul initial des totaux
+  updateQuoteTotals();
+  // Recalcul en temps réel sur changement TVA / remise (pour les champs sans oninput inline)
+  document.getElementById('dv-tva')?.addEventListener('change', updateQuoteTotals);
+  document.getElementById('dv-remise')?.addEventListener('input', updateQuoteTotals);
+}
+
 // ── Point d'entrée ───────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
   await loadDemoData();
@@ -1138,6 +1263,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   bindSizingLiveTotal();
   bindBatteryInfo();
   bindOffgridLiveTotal();
+  initQuoteTab();
 
   document.getElementById('btn-calc-sizing').addEventListener('click', calcSizing);
   document.getElementById('btn-calc-offgrid2').addEventListener('click', calcOffgridSizing);
