@@ -3,13 +3,14 @@
  */
 
 // ── Version ──────────────────────────────────────────────────
-const APP_VERSION = '1.3.1';
+const APP_VERSION = '1.3.2';
 // Historique :
 //   1.0.0 — Base : carte, onglets, calcul PV réseau, dimensionnement EDF, hors réseau
 //   1.1.0 — Lien EDF→offgrid, prix HT pro, batteries DIY VE (CATL/EVE, Leaf, Zoé, Tesla)
 //   1.2.0 — Import CSV Enedis (journalier/mensuel/HP-HC/30min), optimisation tilt+azimut auto
 //   1.3.0 — Gestion de projets : save/load/clone/export/import JSON (localStorage)
 //   1.3.1 — UX projets : toast, bouton save coloré, toolbar compacte, badge stable, favicon
+//   1.3.2 — Barre projet sortie du header (barre dédiée), badge version en script inline
 
 // ── État global ──────────────────────────────────────────────
 const AppState = {
@@ -1129,10 +1130,6 @@ function bindSizingLiveTotal() {
 
 // ── Point d'entrée ───────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
-  // Injecter la version dans le badge
-  const badgeEl = document.querySelector('.badge');
-  if (badgeEl) badgeEl.textContent = `v${APP_VERSION} — Open Source`;
-
   await loadDemoData();
   initMap();
   initTabs();

@@ -88,26 +88,51 @@ header .badge {
   flex-shrink: 0;
 }
 
-/* Barre projet dans le header */
-#project-toolbar {
+/* ── BARRE PROJET ── */
+#project-bar {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  padding: 5px 20px;
+  background: var(--color-primary-light, #1a4a7a);
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  position: sticky;
+  top: 54px;
+  z-index: 99;
+}
+#project-bar-label {
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+  white-space: nowrap;
   flex-shrink: 0;
 }
-#project-toolbar #project-name-input {
-  width: 160px;
-  min-width: 80px;
-  padding: 3px 8px;
-  border: 1px solid rgba(255,255,255,0.35);
+#project-bar #project-name-input {
+  flex: 1;
+  max-width: 280px;
+  min-width: 100px;
+  padding: 4px 10px;
+  border: 1px solid rgba(255,255,255,0.3);
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 13px;
   background: rgba(255,255,255,0.12);
   color: #fff;
   outline: none;
 }
-#project-toolbar #project-name-input::placeholder { color: rgba(255,255,255,0.55); }
-#project-toolbar #project-name-input:focus { border-color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.2); }
+#project-bar #project-name-input::placeholder { color: rgba(255,255,255,0.45); }
+#project-bar #project-name-input:focus { border-color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.2); }
+#btn-save-project, #btn-open-projects {
+  padding: 4px 12px;
+  border: 1px solid rgba(255,255,255,0.35);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+#btn-save-project:hover, #btn-open-projects:hover { background: rgba(255,255,255,0.22); }
+#btn-save-project.saved { background: var(--color-success); border-color: var(--color-success); }
 
 /* Toast notification */
 #ose-toast {
@@ -133,7 +158,7 @@ header .badge {
 .app-layout {
   display: grid;
   grid-template-columns: 320px 1fr;
-  height: calc(100vh - 54px);
+  height: calc(100vh - 54px - 34px); /* header 54px + project-bar ~34px */
 }
 
 /* ── PANNEAU GAUCHE (localisation) ── */

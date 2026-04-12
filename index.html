@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Open Solar Energy — PVGIS Open Source</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><circle cx='12' cy='12' r='5' fill='%23f5a623'/><g stroke='%23fff' stroke-width='1.8' stroke-linecap='round'><line x1='12' y1='2' x2='12' y2='4.5'/><line x1='12' y1='19.5' x2='12' y2='22'/><line x1='2' y1='12' x2='4.5' y2='12'/><line x1='19.5' y1='12' x2='22' y2='12'/></g></svg>">
+  <!-- Version injectée immédiatement, sans attendre le JS principal -->
+  <script>document.addEventListener('DOMContentLoaded',function(){var b=document.getElementById('version-badge');if(b&&typeof APP_VERSION!=='undefined')b.textContent='v'+APP_VERSION+' — Open Source';});</script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="css/main.css">
 </head>
@@ -34,16 +36,18 @@
     </div>
   </div>
   <div class="spacer"></div>
-
-  <!-- Barre projet -->
-  <div id="project-toolbar">
-    <input type="text" id="project-name-input" placeholder="Nom du projet…">
-    <button class="btn btn-outline btn-sm" onclick="saveCurrentProject()" title="Sauvegarder (Ctrl+S)" id="btn-save-project">💾 Sauvegarder</button>
-    <button class="btn btn-outline btn-sm" onclick="openProjectsModal()" title="Gérer les projets" style="white-space:nowrap">📁 Projets</button>
-  </div>
-
-  <span class="badge">v… — Open Source</span>
+  <span class="badge" id="version-badge">v… — Open Source</span>
 </header>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     BARRE PROJET (sous le header, toujours visible)
+════════════════════════════════════════════════════════════════ -->
+<div id="project-bar">
+  <span id="project-bar-label">Projet :</span>
+  <input type="text" id="project-name-input" placeholder="Nom du projet…">
+  <button id="btn-save-project" onclick="saveCurrentProject()" title="Sauvegarder (Ctrl+S)">💾 Sauvegarder</button>
+  <button id="btn-open-projects" onclick="openProjectsModal()" title="Gérer les projets">📁 Projets</button>
+</div>
 
 <!-- ═══════════════════════════════════════════════════════════════
      MODAL PROJETS
