@@ -2,6 +2,12 @@
  * main.js — Initialisation et coordination générale
  */
 
+// ── Version ──────────────────────────────────────────────────
+const APP_VERSION = '1.1.0';
+// Historique :
+//   1.0.0 — Base : carte, onglets, calcul PV réseau, dimensionnement EDF, hors réseau
+//   1.1.0 — Lien EDF→offgrid, prix HT pro, batteries DIY VE (CATL/EVE, Leaf, Zoé, Tesla)
+
 // ── État global ──────────────────────────────────────────────
 const AppState = {
   location: { lat: 48.8566, lon: 2.3522, alt: 35, name: 'Paris, France' },
@@ -822,6 +828,10 @@ function bindSizingLiveTotal() {
 
 // ── Point d'entrée ───────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
+  // Injecter la version dans le badge
+  const badgeEl = document.querySelector('.badge');
+  if (badgeEl) badgeEl.textContent = `v${APP_VERSION} — Open Source`;
+
   await loadDemoData();
   initMap();
   initTabs();
