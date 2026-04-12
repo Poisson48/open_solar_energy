@@ -51,9 +51,10 @@ const EnedisImport = (() => {
   }
 
   // ── Détecte l'index d'une colonne par mots-clés ──────────────
-  function findCol(headers, keywords) {
+  // exclude : index à ignorer (évite collision ex. "Période de consommation")
+  function findCol(headers, keywords, exclude = -1) {
     const kw = keywords.map(k => k.toLowerCase());
-    return headers.findIndex(h => kw.some(k => h.toLowerCase().includes(k)));
+    return headers.findIndex((h, i) => i !== exclude && kw.some(k => h.toLowerCase().includes(k)));
   }
 
   // ── Détecte si l'unité est Wh (sinon kWh supposé) ───────────
@@ -98,9 +99,9 @@ const EnedisImport = (() => {
 
     // ── Identifier les colonnes ────────────────────────────────
     const idxDate = findCol(headerCells, ['horodate', 'date', 'mois', 'période', 'periode']);
-    const idxVal  = findCol(headerCells, ['valeur', 'energie active totale', 'consommation', 'total']);
-    const idxHp   = findCol(headerCells, ['heures pleines', 'heure pleine', 'hp']);
-    const idxHc   = findCol(headerCells, ['heures creuses', 'heure creuse', 'hc']);
+    const idxVal  = findCol(headerCells, ['valeur', 'energie active totale', 'consommation', 'total'], idxDate);
+    const idxHp   = findCol(headerCells, ['heures pleines', 'heure pleine', 'hp'], idxDate);
+    const idxHc   = findCol(headerCells, ['heures creuses', 'heure creuse', 'hc'], idxDate);
 
     if (idxDate === -1) {
       return { error: 'Colonne date/horodate introuvable dans l\'en-tête.' };
