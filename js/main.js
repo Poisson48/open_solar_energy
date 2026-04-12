@@ -3,10 +3,11 @@
  */
 
 // ── Version ──────────────────────────────────────────────────
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 // Historique :
 //   1.0.0 — Base : carte, onglets, calcul PV réseau, dimensionnement EDF, hors réseau
 //   1.1.0 — Lien EDF→offgrid, prix HT pro, batteries DIY VE (CATL/EVE, Leaf, Zoé, Tesla)
+//   1.2.0 — Import CSV Enedis (journalier/mensuel/HP-HC/30min), optimisation tilt+azimut auto
 
 // ── État global ──────────────────────────────────────────────
 const AppState = {
@@ -633,6 +634,49 @@ function bindBatteryInfo() {
   }
   sel.addEventListener('change', update);
   update();
+}
+
+// ── Import CSV Enedis ─────────────────────────────────────────
+function handleEnedisCSV(input) {
+  const file = input.files[0];
+  const statusEl = document.getElementById('sz-csv-status');
+  if (!file) return;
+
+  statusEl.style.display = 'block';
+  statusEl.style.color = 'var(--color-text-muted)';
+  statusEl.textContent = '⏳ Lecture du fichier…';
+
+  EnedisImport.handleFile(file, result => {
+    // Reset input pour permettre re-import du même fichier
+    input.value = '';
+
+    if (result.error) {
+      statusEl.style.color = 'var(--color-danger)';
+      statusEl.textContent = '✗ ' + result.error;
+      return;
+    }
+
+    // Remplir les 12 champs mensuels
+    result.monthlyKwh.forEach((kwh, i) => {
+      const el = document.getElementById(`sz-kwh-${i + 1}`);
+      if (el) el.value = kwh;
+    });
+
+    // Si HP/HC détecté, basculer le tarif et remplir les prix
+    if (result.monthlyKwhHp) {
+      const tariffEl = document.getElementById('sz-tariff');
+      if (tariffEl) tariffEl.value = 'hphc';
+    }
+
+    // Mettre à jour le total affiché
+    document.getElementById('sz-kwh-1')?.dispatchEvent(new Event('input'));
+
+    // Message de succès
+    const warns = result.warnings.length ? ` — ⚠ ${result.warnings[0]}` : '';
+    statusEl.style.color = 'var(--color-success)';
+    statusEl.textContent =
+      `✓ ${result.format} ${result.year} importé — ${result.totalAnnual.toLocaleString('fr')} kWh/an${warns}`;
+  });
 }
 
 // ── Optimisation inclinaison pour les formulaires de dimensionnement ──

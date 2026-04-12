@@ -201,9 +201,16 @@
                   </div>
                 </div>
 
-                <div style="font-size:12px;font-weight:700;color:var(--color-primary);margin-bottom:6px">
-                  Consommation mensuelle (kWh)
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                  <div style="font-size:12px;font-weight:700;color:var(--color-primary)">
+                    Consommation mensuelle (kWh)
+                  </div>
+                  <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Importer un CSV export Enedis (espace client)">
+                    📂 Importer CSV Enedis
+                    <input type="file" id="sz-csv-input" accept=".csv,.txt" style="display:none" onchange="handleEnedisCSV(this)">
+                  </label>
                 </div>
+                <div id="sz-csv-status" style="font-size:11px;margin-bottom:6px;display:none"></div>
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
                   <div class="form-group"><label>Jan</label><input type="number" id="sz-kwh-1"  value="320" min="0"></div>
                   <div class="form-group"><label>Fév</label><input type="number" id="sz-kwh-2"  value="290" min="0"></div>
@@ -635,6 +642,7 @@
 <script src="js/export.js"></script>
 <script src="js/sizing.js"></script>
 <script src="js/offgrid_sizing.js"></script>
+<script src="js/enedis_import.js"></script>
 <script src="js/main.js"></script>
 <script src="js/pvgis_import.js"></script>
 <script>
