@@ -657,6 +657,14 @@ function bindBatteryInfo() {
   update();
 }
 
+// ── Modal Enedis ──────────────────────────────────────────────
+function openEnedisModal() {
+  document.getElementById('enedis-modal').style.display = 'block';
+}
+function closeEnedisModal() {
+  document.getElementById('enedis-modal').style.display = 'none';
+}
+
 // ── Import CSV Enedis ─────────────────────────────────────────
 function handleEnedisCSV(input) {
   const file = input.files[0];
