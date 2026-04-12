@@ -3,12 +3,13 @@
  */
 
 // ── Version ──────────────────────────────────────────────────
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.3.1';
 // Historique :
 //   1.0.0 — Base : carte, onglets, calcul PV réseau, dimensionnement EDF, hors réseau
 //   1.1.0 — Lien EDF→offgrid, prix HT pro, batteries DIY VE (CATL/EVE, Leaf, Zoé, Tesla)
 //   1.2.0 — Import CSV Enedis (journalier/mensuel/HP-HC/30min), optimisation tilt+azimut auto
 //   1.3.0 — Gestion de projets : save/load/clone/export/import JSON (localStorage)
+//   1.3.1 — UX projets : toast, bouton save coloré, toolbar compacte, badge stable, favicon
 
 // ── État global ──────────────────────────────────────────────
 const AppState = {
@@ -734,17 +735,28 @@ function restoreFormState(fields) {
   document.getElementById('og2-batt-tech')?.dispatchEvent(new Event('change'));
 }
 
+// ── Toast de notification ─────────────────────────────────────
+let _toastTimer = null;
+function showToast(msg, type = 'ok') {
+  const el = document.getElementById('ose-toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.background = type === 'error' ? 'var(--color-danger)' : 'var(--color-primary)';
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
 // ── Sauvegarder le projet courant ─────────────────────────────
 function saveCurrentProject() {
   const nameEl = document.getElementById('project-name-input');
   const name = (nameEl?.value || '').trim() || 'Projet sans nom';
   if (nameEl) nameEl.value = name;
 
-  // Résumé pour affichage dans la liste
   const sizingRec = AppState.lastSizingResult;
   const offgridRec = AppState.lastOffgridSizingResult;
   const summary = {
-    annualConso:     AppState.lastSizingInput?.bill?.monthlyKwh?.reduce((s,v)=>s+v,0) || null,
+    annualConso:      AppState.lastSizingInput?.bill?.monthlyKwh?.reduce((s,v)=>s+v,0) || null,
     recommendedPpeak: sizingRec?.Ppeak || offgridRec?.Ppeak || null,
     systemCost:       sizingRec?.systemCost || offgridRec?.systemCost || null,
     coverageRate:     sizingRec?.coverageRate || offgridRec?.coverageRate || null,
@@ -754,7 +766,7 @@ function saveCurrentProject() {
   const project = {
     id:          AppState.currentProjectId || ProjectManager.newId(),
     name,
-    createdAt:   null,         // sera mis par save() si nouveau
+    createdAt:   null,
     updatedAt:   null,
     location:    { ...AppState.location },
     weatherData: AppState.weatherData,
@@ -765,14 +777,21 @@ function saveCurrentProject() {
   const ok = ProjectManager.save(project);
   AppState.currentProjectId = project.id;
 
-  // Feedback visuel sur le bouton
-  const btn = document.querySelector('[onclick="saveCurrentProject()"]');
+  // Feedback : bouton + toast
+  const btn = document.getElementById('btn-save-project');
   if (btn) {
-    const orig = btn.textContent;
-    btn.textContent = ok ? '✓' : '✗';
-    btn.style.color = ok ? 'var(--color-success)' : 'var(--color-danger)';
-    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1500);
+    btn.textContent = ok ? '✓ Sauvegardé' : '✗ Erreur';
+    btn.style.borderColor = ok ? 'var(--color-success)' : 'var(--color-danger)';
+    btn.style.color = ok ? '#fff' : '#fff';
+    btn.style.background = ok ? 'var(--color-success)' : 'var(--color-danger)';
+    setTimeout(() => {
+      btn.textContent = '💾 Sauvegarder';
+      btn.style.background = '';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }, 2500);
   }
+  showToast(ok ? `✓ Projet "${name}" sauvegardé` : '✗ Erreur de sauvegarde (localStorage plein ?)', ok ? 'ok' : 'error');
 }
 
 // ── Charger un projet ─────────────────────────────────────────
@@ -800,6 +819,7 @@ function loadProject(id) {
   if (nameEl) nameEl.value = project.name;
 
   closeProjectsModal();
+  showToast(`✓ Projet "${project.name}" chargé`);
 }
 
 // ── Nouveau projet vierge ─────────────────────────────────────
@@ -857,9 +877,9 @@ function renderProjectsList() {
 function cloneProject(id) {
   const src = ProjectManager.get(id);
   const name = prompt('Nom du clone :', (src?.name || '') + ' — variante');
-  if (name === null) return; // annulé
+  if (name === null) return;
   const copy = ProjectManager.clone(id, name.trim() || src.name + ' (copie)');
-  if (copy) renderProjectsList();
+  if (copy) { renderProjectsList(); showToast(`✓ Clone "${copy.name}" créé`); }
 }
 
 function deleteProject(id) {
