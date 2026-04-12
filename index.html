@@ -50,6 +50,57 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════
+     MODAL IMPORT ENEDIS
+════════════════════════════════════════════════════════════════ -->
+<div id="enedis-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);overflow-y:auto" onclick="if(event.target===this)closeEnedisModal()">
+  <div style="max-width:520px;margin:60px auto;background:var(--color-surface);border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.35);overflow:hidden">
+
+    <!-- En-tête -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--color-border)">
+      <div style="font-weight:700;font-size:16px">📂 Importer depuis Enedis</div>
+      <button onclick="closeEnedisModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--color-text-muted);line-height:1">✕</button>
+    </div>
+
+    <!-- Corps -->
+    <div style="padding:22px">
+
+      <!-- Étape 1 -->
+      <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:18px">
+        <div style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--color-primary);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center">1</div>
+        <div>
+          <div style="font-weight:600;margin-bottom:4px">Connectez-vous à votre espace client Enedis</div>
+          <div style="font-size:12px;color:var(--color-text-muted);margin-bottom:8px">Sur la page <em>Ma consommation</em>, cliquez sur <strong>« Télécharger mes données »</strong> puis exportez au format <strong>CSV</strong> (consommation mensuelle ou journalière).</div>
+          <a href="https://mon-compte-client.enedis.fr/" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Ouvrir mon espace Enedis
+          </a>
+        </div>
+      </div>
+
+      <!-- Étape 2 -->
+      <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:24px">
+        <div style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--color-primary);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center">2</div>
+        <div>
+          <div style="font-weight:600;margin-bottom:4px">Importez le fichier CSV téléchargé</div>
+          <div style="font-size:12px;color:var(--color-text-muted);margin-bottom:8px">Les formats acceptés : consommation mensuelle, journalière, pas de 30 min, HP/HC.</div>
+          <label class="btn btn-primary btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Choisir le fichier CSV
+            <input type="file" id="sz-csv-input" accept=".csv,.txt" style="display:none" onchange="handleEnedisCSV(this);closeEnedisModal()">
+          </label>
+        </div>
+      </div>
+
+      <!-- Note -->
+      <div style="background:var(--color-bg);border-radius:8px;padding:10px 14px;font-size:11px;color:var(--color-text-muted)">
+        ℹ️ Vos données restent <strong>entièrement locales</strong> — aucun envoi vers un serveur.
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
      MODAL PROJETS
 ════════════════════════════════════════════════════════════════ -->
 <div id="projects-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);overflow-y:auto">
@@ -247,10 +298,9 @@
                   <div style="font-size:12px;font-weight:700;color:var(--color-primary)">
                     Consommation mensuelle (kWh)
                   </div>
-                  <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Importer un CSV export Enedis (espace client)">
-                    📂 Importer CSV Enedis
-                    <input type="file" id="sz-csv-input" accept=".csv,.txt" style="display:none" onchange="handleEnedisCSV(this)">
-                  </label>
+                  <button class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" onclick="openEnedisModal()" title="Importer un CSV export Enedis">
+                    📂 Importer depuis Enedis
+                  </button>
                 </div>
                 <div id="sz-csv-status" style="font-size:11px;margin-bottom:6px;display:none"></div>
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
