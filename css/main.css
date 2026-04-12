@@ -719,3 +719,10 @@ details.card[open] > summary::after { transform: rotate(90deg); }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
+
+/* ── DEVIS ── */
+.dv-cost-row { border-bottom: 1px solid var(--color-border); }
+.dv-cost-row:hover { background: var(--color-surface2); }
+.dv-cost-row td { padding: 3px 4px; }
+.dv-cost-row input { padding: 3px 4px; border-radius: 3px; transition: background 0.15s; }
+.dv-cost-row input:focus { background: var(--color-bg); outline: 1px solid var(--color-primary); }

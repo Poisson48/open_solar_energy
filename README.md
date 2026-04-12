@@ -43,6 +43,18 @@
 
 - Matrice de couverture (heatmap PV × batterie), jours de déficit, surplus mensuel
 
+### Devis professionnel
+- Onglet **Devis** dédié avec formulaire complet
+- Informations **installateur** (société, SIRET, RGE, adresse) sauvegardées en localStorage
+- Informations **client** (nom, société, adresse, téléphone, email)
+- Descriptif **chantier** (adresse, type de toiture, surface, inclinaison, azimut)
+- Import automatique des résultats du dimensionnement (puissance, production, CO₂)
+- **7 lignes de coût éditables** : panneaux, onduleur, fixations, câblage, main d'œuvre, démarches admin, divers
+- **3 taux de TVA** : 5,5 % (amélioration énergétique), 10 % (rénovation résidentielle), 20 % (neuf/pro)
+- Remise en pourcentage, validité en jours, notes libres
+- Aperçu instantané dans la page + **impression / export PDF** (mise en page A4)
+- Numéro de devis auto-généré, bloc signature client
+
 ### Données météo
 - **Import Open-Meteo** : API gratuite, CORS natif, moyenne 2020–2023
 - **Import PVGIS** : via proxy CORS ou fichier JSON manuel
@@ -92,6 +104,7 @@ open_solar_energy/
 │   ├── project_manager.js     CRUD projets localStorage + export/import JSON
 │   ├── charts.js              Wrappers Chart.js (10+ types de graphiques)
 │   ├── export.js              Export CSV / JSON / impression PDF
+│   ├── quote_generator.js     Générateur de devis professionnel (HTML → impression)
 │   ├── pvgis_import.js        Import Open-Meteo et PVGIS (avec fallback proxy)
 │   └── main.js                Initialisation, état global AppState, UI
 └── data/
@@ -140,6 +153,8 @@ Pour un site réel, importer les données météo via **"Importer météo (Open-
 
 | Version | Changements |
 |---|---|
+| **1.4.0** | Module devis professionnel : client/installateur/chantier, lignes coût éditables, TVA, impression PDF |
+| **1.3.2** | Barre projet sortie du header, badge version en script inline |
 | **1.3.1** | UX projets : toast de confirmation, bouton coloré, badge stable, favicon |
 | **1.3.0** | Gestion de projets : save/load/clone/export/import JSON (localStorage) |
 | **1.2.0** | Import CSV Enedis multi-format, optimisation tilt+azimut automatique |
