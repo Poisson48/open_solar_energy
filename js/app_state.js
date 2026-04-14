@@ -3,11 +3,12 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.5.1';
 // Historique :
 //   1.4.0 — Module devis professionnel
 //   1.5.0 — Refactoring multi-fichiers, modal démarrage, infos client,
 //            module horaire EDF, dimensionnement onduleurs
+//   1.5.1 — Serveur de développement local (.claude/launch.json)
 
 const AppState = {
   location:   { lat: 48.8566, lon: 2.3522, alt: 35, name: 'Paris, France' },

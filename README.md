@@ -183,6 +183,7 @@ Pour un site réel, importer les données météo via **"Importer météo (Open-
 
 | Version | Changements |
 |---|---|
+| **1.5.1** | Serveur de développement local (`python -m http.server 8080`) via `.claude/launch.json` |
 | **1.5.0** | Refactoring multi-fichiers (index.html 230 lignes, main.js 90 lignes), modal démarrage avec infos client, export projet fichier local, module analyse horaire, recommandation onduleurs (catalogue 13 modèles + câblage MPPT) |
 | **1.4.0** | Module devis professionnel : client/installateur/chantier, lignes coût éditables, TVA, impression PDF |
 | **1.3.2** | Barre projet sortie du header, badge version en script inline |
