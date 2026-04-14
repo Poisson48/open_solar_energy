@@ -259,5 +259,59 @@ const SolarMath = (() => {
     return results.map(r => ({ ...r, pct: Math.round((r.value / maxVal) * 100) }));
   }
 
-  return { tiltedIrradiation, pvProduction, gridSystemAnnual, offgridSystem, optimalTilt, tiltAzimuthHeatmap, daylightHours, DAYS_IN_MONTH };
+  /**
+   * Irradiance horaire simplifiée (Wh/m²) pour une heure h d'un mois donné
+   * Distribution sinusoïdale de la GHI journalière sur les heures d'ensoleillement
+   * @param {number} lat  Latitude (degrés)
+   * @param {number} month  1–12
+   * @param {number} hour  Heure solaire locale (0–23)
+   * @param {Object} monthData  { GHI, DHI, DNI, T_avg }
+   * @param {number} tilt  Inclinaison panneau (°)
+   * @param {number} azimuth  Azimut (°, 0=Sud)
+   * @returns {number}  Irradiance Wh/m² pour cette heure
+   */
+  function hourlyIrradiance(lat, month, hour, monthData, tilt = 0, azimuth = 0) {
+    const days = DAYS_IN_MONTH[month - 1];
+    const daylightH = daylightHours(lat, month);
+    const sunriseH = 12 - daylightH / 2;
+    const sunsetH  = 12 + daylightH / 2;
+
+    if (hour < sunriseH || hour >= sunsetH) return 0;
+
+    // Profil sin : pic à midi solaire
+    const angle = Math.PI * (hour - sunriseH) / daylightH;
+    const sinWeight = Math.sin(angle);
+
+    // Normaliser : intégrale discrète des sin sur les heures d'ensoleillement
+    let totalWeight = 0;
+    for (let h = Math.ceil(sunriseH); h < sunsetH; h++) {
+      const a = Math.PI * (h - sunriseH) / daylightH;
+      totalWeight += Math.sin(a);
+    }
+    if (totalWeight === 0) return 0;
+
+    // GHI journalière (Wh/m²/j) → fraction de cette heure
+    const dailyGHI = (monthData.GHI / days) * 1000;
+    const ghiHour  = dailyGHI * sinWeight / totalWeight;
+
+    // Diffuse horaire (même profil)
+    const dailyDHI = (monthData.DHI / days) * 1000;
+    const dhiHour  = dailyDHI * sinWeight / totalWeight;
+
+    // Appliquer la transposition Liu & Jordan pour l'heure
+    if (tilt === 0) return ghiHour;
+    const tiltR = (Math.PI / 180) * tilt;
+    const Rb = Math.max(0, (ghiHour - dhiHour) > 0
+      ? 1 + 0.1 * tilt * Math.cos((Math.PI / 180) * azimuth)  // approximation simple
+      : 0);
+    const albedo = 0.2;
+    const H_tilt = Math.max(0,
+      (ghiHour - dhiHour) * Rb
+      + dhiHour * (1 + Math.cos(tiltR)) / 2
+      + ghiHour * albedo * (1 - Math.cos(tiltR)) / 2
+    );
+    return H_tilt;
+  }
+
+  return { tiltedIrradiation, pvProduction, gridSystemAnnual, offgridSystem, optimalTilt, tiltAzimuthHeatmap, daylightHours, hourlyIrradiance, DAYS_IN_MONTH };
 })();

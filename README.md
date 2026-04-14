@@ -62,11 +62,26 @@
 - Carte Leaflet interactive (clic ou glissé pour placer le site)
 
 ### Gestion de projets
+- **Modal démarrage** : nouveau projet ou chargement d'un projet existant à chaque démarrage
+- **Infos client** saisies à la création (nom, adresse, téléphone, email) — pré-remplies dans le devis
+- **Export fichier** : chaque projet exportable en `.json` local (bouton 📤 dans la barre et la liste)
 - Sauvegarde locale (localStorage), pas de serveur requis
 - Capture de 60+ champs de formulaire + localisation + météo
 - Clonage pour comparer plusieurs scénarios (orientation, technologie batterie, surface…)
 - Export / import JSON (partage entre machines)
 - Raccourci `Ctrl+S` pour sauvegarder
+
+### Analyse horaire (onglet 5)
+- Profil consommation heure par heure sur une journée typique
+- Source : données Enedis 30min importées, ou profil synthétique résidentiel
+- Simulation batterie avec SoC (State of Charge), taux d'autoconsommation, couverture
+- Graphiques : production PV vs consommation, SoC batterie, tableau horaire
+
+### Recommandation onduleurs
+- Catalogue simplifié de 13 modèles (Fronius, SMA, Huawei, Solis, Growatt, GoodWe, Victron, Enphase, APsystems)
+- Types : string monophasé/triphasé, hybride (avec batterie), micro-onduleurs
+- Filtrage par ratio PV/onduleur, compatibilité batterie, nombre de phases
+- Calcul câblage optimal (chaînes MPPT) en fonction de Voc/Isc des panneaux
 
 ---
 
@@ -93,20 +108,35 @@ python3 -m http.server 8080
 
 ```
 open_solar_energy/
-├── index.html                 Point d'entrée unique (SPA)
+├── index.html                 Squelette HTML (modal + layout + balises script)
 ├── css/
 │   └── main.css               Styles (variables CSS, flexbox/grid, responsive)
 ├── js/
-│   ├── solar_math.js          Algorithmes solaires (transposition, NOCT, optimisation)
+│   ├── app_state.js           État global AppState + PROJECT_FIELDS + APP_VERSION
+│   ├── solar_math.js          Algorithmes solaires (transposition, NOCT, optimisation, horaire)
 │   ├── sizing.js              Moteur dimensionnement réseau (depuis facture EDF)
 │   ├── offgrid_sizing.js      Moteur dimensionnement hors réseau (PV + batterie)
 │   ├── enedis_import.js       Parser CSV export Enedis (multi-format)
 │   ├── project_manager.js     CRUD projets localStorage + export/import JSON
-│   ├── charts.js              Wrappers Chart.js (10+ types de graphiques)
+│   ├── charts.js              Wrappers Chart.js (10+ types dont profils horaires)
 │   ├── export.js              Export CSV / JSON / impression PDF
 │   ├── quote_generator.js     Générateur de devis professionnel (HTML → impression)
 │   ├── pvgis_import.js        Import Open-Meteo et PVGIS (avec fallback proxy)
-│   └── main.js                Initialisation, état global AppState, UI
+│   ├── hourly_module.js       Analyse horaire : profil conso, PV, simulation batterie
+│   ├── inverter_sizing.js     Recommandation onduleurs + calcul câblage MPPT
+│   ├── location.js            Carte Leaflet + géocodage + chargement météo démo
+│   ├── project_ui.js          Modal démarrage, CRUD projets UI, infos client
+│   ├── renderers.js           Fonctions d'affichage de tous les onglets
+│   ├── main.js                Point d'entrée : initialisation + assemblage
+│   └── tabs/
+│       ├── tab_sizing.js      HTML onglet Dimensionnement
+│       ├── tab_grid.js        HTML onglet Système PV réseau
+│       ├── tab_tracker.js     HTML onglet Suiveur PV
+│       ├── tab_offgrid.js     HTML onglet Hors réseau
+│       ├── tab_irradiation.js HTML onglet Données mensuelles
+│       ├── tab_daily.js       HTML onglet Données horaires
+│       ├── tab_optimizer.js   HTML onglet Optimisation
+│       └── tab_quote.js       HTML onglet Devis
 └── data/
     └── demo_weather.json      Données météo de 4 villes françaises
 ```
@@ -153,6 +183,7 @@ Pour un site réel, importer les données météo via **"Importer météo (Open-
 
 | Version | Changements |
 |---|---|
+| **1.5.0** | Refactoring multi-fichiers (index.html 230 lignes, main.js 90 lignes), modal démarrage avec infos client, export projet fichier local, module analyse horaire, recommandation onduleurs (catalogue 13 modèles + câblage MPPT) |
 | **1.4.0** | Module devis professionnel : client/installateur/chantier, lignes coût éditables, TVA, impression PDF |
 | **1.3.2** | Barre projet sortie du header, badge version en script inline |
 | **1.3.1** | UX projets : toast de confirmation, bouton coloré, badge stable, favicon |

@@ -77,6 +77,35 @@ const ProjectManager = (() => {
     a.click();
   }
 
+  /** Exporte un seul projet en fichier JSON local */
+  function exportOne(id) {
+    const project = get(id);
+    if (!project) return;
+    const safeName = (project.name || 'projet').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `ose_${safeName}_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+  }
+
+  /** Importe un projet unique depuis un texte JSON */
+  function importOne(jsonText) {
+    try {
+      const p = JSON.parse(jsonText);
+      if (!p || typeof p !== 'object' || Array.isArray(p)) throw new Error('Format invalide');
+      if (!p.name) throw new Error('Le fichier ne contient pas de projet valide');
+      // Réattribuer un ID pour éviter les collisions
+      p.id = newId();
+      p.updatedAt = new Date().toISOString();
+      p.createdAt = p.createdAt || p.updatedAt;
+      save(p);
+      return { project: p };
+    } catch (e) {
+      return { error: e.message };
+    }
+  }
+
   function importFromJSON(jsonText) {
     try {
       const incoming = JSON.parse(jsonText);
@@ -99,5 +128,5 @@ const ProjectManager = (() => {
     }
   }
 
-  return { list, get, save, remove, clone, newId, exportAll, importFromJSON };
+  return { list, get, save, remove, clone, newId, exportAll, exportOne, importOne, importFromJSON };
 })();

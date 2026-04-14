@@ -5,29 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Open Solar Energy — PVGIS Open Source</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><circle cx='12' cy='12' r='5' fill='%23f5a623'/><g stroke='%23fff' stroke-width='1.8' stroke-linecap='round'><line x1='12' y1='2' x2='12' y2='4.5'/><line x1='12' y1='19.5' x2='12' y2='22'/><line x1='2' y1='12' x2='4.5' y2='12'/><line x1='19.5' y1='12' x2='22' y2='12'/></g></svg>">
-  <!-- Version injectée immédiatement, sans attendre le JS principal -->
   <script>document.addEventListener('DOMContentLoaded',function(){var b=document.getElementById('version-badge');if(b&&typeof APP_VERSION!=='undefined')b.textContent='v'+APP_VERSION+' — Open Source';});</script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     HEADER
-════════════════════════════════════════════════════════════════ -->
+<!-- ═══ HEADER ═══════════════════════════════════════════════ -->
 <header>
   <div class="logo">
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
       <circle cx="12" cy="12" r="5" fill="#f5a623"/>
       <g stroke="#fff" stroke-width="1.8" stroke-linecap="round">
-        <line x1="12" y1="2" x2="12" y2="4.5"/>
-        <line x1="12" y1="19.5" x2="12" y2="22"/>
-        <line x1="2" y1="12" x2="4.5" y2="12"/>
-        <line x1="19.5" y1="12" x2="22" y2="12"/>
-        <line x1="4.93" y1="4.93" x2="6.64" y2="6.64"/>
-        <line x1="17.36" y1="17.36" x2="19.07" y2="19.07"/>
-        <line x1="19.07" y1="4.93" x2="17.36" y2="6.64"/>
-        <line x1="6.64" y1="17.36" x2="4.93" y2="19.07"/>
+        <line x1="12" y1="2" x2="12" y2="4.5"/><line x1="12" y1="19.5" x2="12" y2="22"/>
+        <line x1="2" y1="12" x2="4.5" y2="12"/><line x1="19.5" y1="12" x2="22" y2="12"/>
+        <line x1="4.93" y1="4.93" x2="6.64" y2="6.64"/><line x1="17.36" y1="17.36" x2="19.07" y2="19.07"/>
+        <line x1="19.07" y1="4.93" x2="17.36" y2="6.64"/><line x1="6.64" y1="17.36" x2="4.93" y2="19.07"/>
       </g>
     </svg>
     <div>
@@ -39,84 +32,168 @@
   <span class="badge" id="version-badge">v… — Open Source</span>
 </header>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     BARRE PROJET (sous le header, toujours visible)
-════════════════════════════════════════════════════════════════ -->
+<!-- ═══ BARRE PROJET ═════════════════════════════════════════ -->
 <div id="project-bar">
   <span id="project-bar-label">Projet :</span>
   <input type="text" id="project-name-input" placeholder="Nom du projet…">
+  <span id="project-bar-client" style="font-size:12px;color:var(--color-text-muted);padding:0 4px"></span>
   <button id="btn-save-project" onclick="saveCurrentProject()" title="Sauvegarder (Ctrl+S)">💾 Sauvegarder</button>
+  <button class="btn btn-outline btn-sm" onclick="exportCurrentProject()" title="Exporter en fichier local">📤 Exporter</button>
   <button id="btn-open-projects" onclick="openProjectsModal()" title="Gérer les projets">📁 Projets</button>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     MODAL IMPORT ENEDIS
-════════════════════════════════════════════════════════════════ -->
+<!-- ═══ MODAL DÉMARRAGE ═══════════════════════════════════════ -->
+<div id="startup-modal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.72);align-items:center;justify-content:center">
+  <div style="width:min(680px,95vw);background:var(--color-surface);border-radius:14px;box-shadow:0 12px 48px rgba(0,0,0,0.4);overflow:hidden;max-height:90vh;overflow-y:auto">
+
+    <!-- En-tête modal -->
+    <div style="background:var(--color-primary);padding:22px 28px 18px;color:#fff;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:20px;font-weight:700;margin-bottom:2px">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:8px"><circle cx="12" cy="12" r="5" fill="#f5a623"/><g stroke="#fff" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="4.5"/><line x1="12" y1="19.5" x2="12" y2="22"/><line x1="2" y1="12" x2="4.5" y2="12"/><line x1="19.5" y1="12" x2="22" y2="12"/></g></svg>
+          Open Solar Energy
+        </div>
+        <div style="font-size:12px;opacity:0.75">Dimensionnement photovoltaïque — outil libre et gratuit</div>
+      </div>
+      <button onclick="closeStartupModal()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:18px;width:32px;height:32px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+
+    <!-- Étape 1 : choisir -->
+    <div id="startup-step-1" style="padding:28px">
+      <p style="text-align:center;color:var(--color-text-muted);margin-bottom:24px;font-size:14px">
+        Que souhaitez-vous faire ?
+      </p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+        <button onclick="showNewProjectForm()" style="background:var(--color-bg);border:2px solid var(--color-border);border-radius:10px;padding:20px 16px;cursor:pointer;text-align:center;transition:border-color .2s" onmouseover="this.style.borderColor='var(--color-accent)'" onmouseout="this.style.borderColor='var(--color-border)'">
+          <div style="font-size:32px;margin-bottom:8px">＋</div>
+          <div style="font-size:14px;font-weight:700;color:var(--color-primary);margin-bottom:4px">Nouveau projet</div>
+          <div style="font-size:12px;color:var(--color-text-muted)">Démarrer un nouveau dimensionnement pour un client</div>
+        </button>
+        <button onclick="showLoadProjectList()" style="background:var(--color-bg);border:2px solid var(--color-border);border-radius:10px;padding:20px 16px;cursor:pointer;text-align:center;transition:border-color .2s" onmouseover="this.style.borderColor='var(--color-accent)'" onmouseout="this.style.borderColor='var(--color-border)'">
+          <div style="font-size:32px;margin-bottom:8px">📂</div>
+          <div style="font-size:14px;font-weight:700;color:var(--color-primary);margin-bottom:4px">Continuer un projet</div>
+          <div style="font-size:12px;color:var(--color-text-muted)">Charger un projet existant depuis la liste ou un fichier</div>
+        </button>
+      </div>
+      <div style="text-align:center">
+        <button onclick="closeStartupModal()" style="background:none;border:none;color:var(--color-text-muted);cursor:pointer;font-size:12px;text-decoration:underline">
+          Passer et continuer sans projet
+        </button>
+      </div>
+    </div>
+
+    <!-- Étape 2a : nouveau projet -->
+    <div id="startup-step-new" style="display:none;padding:24px 28px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+        <button onclick="showStartupStep1()" style="background:none;border:none;cursor:pointer;color:var(--color-text-muted);font-size:18px">←</button>
+        <div style="font-size:16px;font-weight:700">Nouveau projet</div>
+      </div>
+      <form onsubmit="createNewProject(event)">
+        <div style="margin-bottom:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--color-primary);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Projet</div>
+          <div class="form-group">
+            <label>Nom du projet <span style="color:var(--color-danger)">*</span></label>
+            <input type="text" id="startup-project-name" placeholder="Ex : Maison Dupont - Toulouse" required style="font-size:14px">
+          </div>
+        </div>
+        <div style="margin-bottom:20px">
+          <div style="font-size:12px;font-weight:700;color:var(--color-primary);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Informations client (optionnel)</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-group">
+              <label>Nom du client</label>
+              <input type="text" id="startup-client-nom" placeholder="Jean Dupont">
+            </div>
+            <div class="form-group">
+              <label>Téléphone</label>
+              <input type="tel" id="startup-client-tel" placeholder="06 12 34 56 78">
+            </div>
+            <div class="form-group" style="grid-column:1/-1">
+              <label>Adresse du chantier</label>
+              <input type="text" id="startup-client-adresse" placeholder="5 rue des Roses, 31000 Toulouse">
+            </div>
+            <div class="form-group" style="grid-column:1/-1">
+              <label>Email</label>
+              <input type="email" id="startup-client-email" placeholder="client@mail.fr">
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button type="button" onclick="showStartupStep1()" class="btn btn-outline">Retour</button>
+          <button type="submit" class="btn btn-accent" style="font-size:14px;padding:10px 24px">
+            ＋ Créer le projet
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Étape 2b : charger un projet -->
+    <div id="startup-step-load" style="display:none;padding:24px 28px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <button onclick="showStartupStep1()" style="background:none;border:none;cursor:pointer;color:var(--color-text-muted);font-size:18px">←</button>
+          <div style="font-size:16px;font-weight:700">Continuer un projet</div>
+        </div>
+        <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Importer un projet depuis un fichier JSON">
+          📤 Importer fichier
+          <input type="file" accept=".json" style="display:none" onchange="importProjectsFile(this)">
+        </label>
+      </div>
+      <div id="startup-projects-list" style="min-height:80px"></div>
+      <div style="text-align:center;margin-top:12px">
+        <button onclick="closeStartupModal()" style="background:none;border:none;color:var(--color-text-muted);cursor:pointer;font-size:12px;text-decoration:underline">
+          Passer
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ MODAL IMPORT ENEDIS ═══════════════════════════════════ -->
 <div id="enedis-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);overflow-y:auto" onclick="if(event.target===this)closeEnedisModal()">
   <div style="max-width:520px;margin:60px auto;background:var(--color-surface);border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.35);overflow:hidden">
-
-    <!-- En-tête -->
     <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--color-border)">
       <div style="font-weight:700;font-size:16px">📂 Importer depuis Enedis</div>
       <button onclick="closeEnedisModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--color-text-muted);line-height:1">✕</button>
     </div>
-
-    <!-- Corps -->
     <div style="padding:22px">
-
-      <!-- Étape 1 -->
       <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:18px">
         <div style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--color-primary);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center">1</div>
         <div>
           <div style="font-weight:600;margin-bottom:4px">Connectez-vous à votre espace client</div>
-          <div style="font-size:12px;color:var(--color-text-muted);margin-bottom:8px">Cliquez sur <strong>« Télécharger mes données »</strong> et téléchargez le fichier <strong>ZIP</strong> (ou CSV).</div>
+          <div style="font-size:12px;color:var(--color-text-muted);margin-bottom:8px">Téléchargez le fichier ZIP ou CSV depuis <strong>« Télécharger mes données »</strong>.</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <a href="https://suiviconso.edf.fr/comprendre" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-              Suivi conso EDF
-            </a>
-            <a href="https://mon-compte-client.enedis.fr/" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-              Espace Enedis
-            </a>
+            <a href="https://suiviconso.edf.fr/comprendre" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="text-decoration:none">↗ Suivi conso EDF</a>
+            <a href="https://mon-compte-client.enedis.fr/" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="text-decoration:none">↗ Espace Enedis</a>
           </div>
         </div>
       </div>
-
-      <!-- Étape 2 -->
-      <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:24px">
+      <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:18px">
         <div style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--color-primary);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center">2</div>
         <div>
           <div style="font-weight:600;margin-bottom:4px">Importez le fichier CSV téléchargé</div>
-          <div style="font-size:12px;color:var(--color-text-muted);margin-bottom:8px">Les formats acceptés : consommation mensuelle, journalière, pas de 30 min, HP/HC.</div>
+          <div style="font-size:12px;color:var(--color-text-muted);margin-bottom:8px">Formats acceptés : mensuel, journalier, 30min, HP/HC.</div>
           <label class="btn btn-primary btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            Choisir le fichier CSV
+            ⬆ Choisir le fichier CSV
             <input type="file" id="sz-csv-input" accept=".csv,.txt,.zip" style="display:none" onchange="handleEnedisCSV(this);closeEnedisModal()">
           </label>
         </div>
       </div>
-
-      <!-- Note -->
       <div style="background:var(--color-bg);border-radius:8px;padding:10px 14px;font-size:11px;color:var(--color-text-muted)">
         ℹ️ Vos données restent <strong>entièrement locales</strong> — aucun envoi vers un serveur.
+        Les données 30min activent l'<strong>analyse horaire</strong> (onglet 5).
       </div>
-
     </div>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     MODAL PROJETS
-════════════════════════════════════════════════════════════════ -->
+<!-- ═══ MODAL PROJETS ═════════════════════════════════════════ -->
 <div id="projects-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);overflow-y:auto">
   <div style="max-width:760px;margin:40px auto;background:var(--color-surface);border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.35);overflow:hidden">
-
-    <!-- En-tête modal -->
     <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--color-border)">
       <div style="font-weight:700;font-size:16px">📁 Mes projets</div>
       <div style="display:flex;gap:8px;align-items:center">
-        <button class="btn btn-outline btn-sm" onclick="ProjectManager.exportAll()" title="Exporter tous les projets en JSON">⬇ Export</button>
+        <button class="btn btn-outline btn-sm" onclick="ProjectManager.exportAll()" title="Exporter tous les projets en JSON">⬇ Export tout</button>
         <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Importer des projets depuis un fichier JSON">
           ⬆ Import
           <input type="file" accept=".json" style="display:none" onchange="importProjectsFile(this)">
@@ -125,26 +202,19 @@
         <button onclick="closeProjectsModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--color-text-muted);line-height:1">✕</button>
       </div>
     </div>
-
-    <!-- Liste projets -->
     <div id="projects-list-container" style="padding:16px 22px;min-height:120px"></div>
-
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     LAYOUT PRINCIPAL
-════════════════════════════════════════════════════════════════ -->
+<!-- ═══ LAYOUT PRINCIPAL ══════════════════════════════════════ -->
 <div class="app-layout">
 
-  <!-- ─── SIDEBAR GAUCHE ───────────────────────────────────────── -->
+  <!-- ─── SIDEBAR ──────────────────────────────────────────── -->
   <aside class="sidebar">
 
     <!-- Localisation -->
     <div class="sidebar-section">
       <h3>Localisation</h3>
-
-      <!-- Recherche adresse -->
       <div class="form-row">
         <div class="form-group" style="flex:1">
           <label>Adresse</label>
@@ -152,8 +222,6 @@
         </div>
         <button class="btn btn-primary btn-sm" id="btn-geocode" style="margin-bottom:1px">Aller !</button>
       </div>
-
-      <!-- Coordonnées -->
       <div class="form-row">
         <div class="form-group">
           <label>Latitude</label>
@@ -165,15 +233,12 @@
         </div>
         <button class="btn btn-primary btn-sm" id="btn-go-coords" style="margin-bottom:1px">OK</button>
       </div>
-
       <div class="form-row">
         <div class="form-group">
           <label>Altitude (m)</label>
           <input type="number" id="inp-alt" value="35" style="max-width:80px">
         </div>
       </div>
-
-      <!-- Coordonnées affichées -->
       <div class="coord-display">
         <div class="coord-item">
           <div class="val" id="coord-lat">48.8566°</div>
@@ -188,18 +253,15 @@
           <div class="lbl">Altitude</div>
         </div>
       </div>
-
       <p id="loc-name" style="font-size:11px;color:var(--color-text-muted);margin-top:8px;font-style:italic">Paris, France</p>
     </div>
 
     <!-- Import PVGIS -->
     <div class="sidebar-section" id="pvgis-import-section">
       <h3>Import PVGIS</h3>
-
       <p style="font-size:11px;color:var(--color-text-muted);margin-bottom:10px;line-height:1.5">
-        Importe les données réelles depuis l'API officielle du JRC (Commission Européenne) pour le site sélectionné.
+        Données réelles depuis l'API JRC (Commission Européenne) pour le site sélectionné.
       </p>
-
       <div class="btn-group" style="flex-direction:column;gap:6px">
         <button class="btn btn-primary" id="btn-pvgis-weather" style="width:100%;justify-content:flex-start;gap:8px">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-9.95h-2V3.5h2V.55zm7.45 3.91l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79zm-3.21 13.7l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 10.5v2h3v-2h-3zm-8-5c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm-1 16.95h2V19.5h-2v2.95zm-7.45-3.91l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z"/></svg>
@@ -210,12 +272,9 @@
           Comparer avec PVcalc PVGIS
         </button>
       </div>
-
       <p id="pvgis-import-status" style="display:none;font-size:11px;margin-top:8px;font-weight:600;line-height:1.5"></p>
       <div id="pvgis-import-preview" style="display:none"></div>
-
       <hr style="margin:10px 0">
-
       <div style="font-size:11px;color:var(--color-text-muted)">
         <strong>Base de données locale</strong>
       </div>
@@ -233,7 +292,7 @@
 
   </aside>
 
-  <!-- ─── PANNEAU PRINCIPAL ────────────────────────────────────── -->
+  <!-- ─── PANNEAU PRINCIPAL ─────────────────────────────────── -->
   <main class="main-panel">
 
     <!-- Barre d'onglets -->
@@ -264,809 +323,34 @@
       </button>
     </nav>
 
-    <!-- Contenu des onglets -->
+    <!-- Contenu onglets — rempli dynamiquement par les fichiers js/tabs/*.js -->
     <div class="tabs-content">
+      <div class="tab-pane active" id="tab-sizing"></div>
+      <div class="tab-pane" id="tab-grid"></div>
+      <div class="tab-pane" id="tab-tracker"></div>
+      <div class="tab-pane" id="tab-offgrid"></div>
+      <div class="tab-pane" id="tab-irradiation"></div>
+      <div class="tab-pane" id="tab-daily"></div>
+      <div class="tab-pane" id="tab-optimizer"></div>
+      <div class="tab-pane" id="tab-quote"></div>
+    </div>
 
-      <!-- ══ ONGLET DIMENSIONNEMENT ════════════════════════════ -->
-      <div class="tab-pane active" id="tab-sizing">
-        <div style="display:grid;grid-template-columns:320px 1fr;gap:16px">
-
-          <!-- Colonne formulaire -->
-          <div>
-
-            <!-- Facture EDF -->
-            <details class="card" open>
-              <summary class="card-title" style="cursor:pointer;user-select:none">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>
-                Facture EDF / Enedis
-              </summary>
-
-              <div style="margin-top:10px">
-                <div class="form-group" style="margin-bottom:8px">
-                  <label>Type de tarif</label>
-                  <select id="sz-tariff">
-                    <option value="base">Tarif Base</option>
-                    <option value="hphc">Heures Pleines / Heures Creuses</option>
-                  </select>
-                </div>
-                <div class="form-row" style="gap:6px;margin-bottom:8px">
-                  <div class="form-group">
-                    <label>Prix kWh Base</label>
-                    <div class="input-unit"><input type="number" id="sz-price-base" value="0.2516" step="0.001"><span class="unit-tag">€</span></div>
-                  </div>
-                  <div class="form-group">
-                    <label>Abonnement</label>
-                    <div class="input-unit"><input type="number" id="sz-subscription" value="147" step="1"><span class="unit-tag">€/an</span></div>
-                  </div>
-                </div>
-
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-                  <div style="font-size:12px;font-weight:700;color:var(--color-primary)">
-                    Consommation mensuelle (kWh)
-                  </div>
-                  <button type="button" class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" onclick="event.stopPropagation();openEnedisModal()" title="Importer un CSV export Enedis">
-                    📂 Importer depuis Enedis
-                  </button>
-                </div>
-                <div id="sz-csv-status" style="font-size:11px;margin-bottom:6px;display:none"></div>
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
-                  <div class="form-group"><label>Jan</label><input type="number" id="sz-kwh-1"  value="320" min="0"></div>
-                  <div class="form-group"><label>Fév</label><input type="number" id="sz-kwh-2"  value="290" min="0"></div>
-                  <div class="form-group"><label>Mar</label><input type="number" id="sz-kwh-3"  value="280" min="0"></div>
-                  <div class="form-group"><label>Avr</label><input type="number" id="sz-kwh-4"  value="240" min="0"></div>
-                  <div class="form-group"><label>Mai</label><input type="number" id="sz-kwh-5"  value="210" min="0"></div>
-                  <div class="form-group"><label>Jun</label><input type="number" id="sz-kwh-6"  value="180" min="0"></div>
-                  <div class="form-group"><label>Jul</label><input type="number" id="sz-kwh-7"  value="170" min="0"></div>
-                  <div class="form-group"><label>Aoû</label><input type="number" id="sz-kwh-8"  value="175" min="0"></div>
-                  <div class="form-group"><label>Sep</label><input type="number" id="sz-kwh-9"  value="200" min="0"></div>
-                  <div class="form-group"><label>Oct</label><input type="number" id="sz-kwh-10" value="250" min="0"></div>
-                  <div class="form-group"><label>Nov</label><input type="number" id="sz-kwh-11" value="300" min="0"></div>
-                  <div class="form-group"><label>Déc</label><input type="number" id="sz-kwh-12" value="340" min="0"></div>
-                </div>
-                <p id="sz-annual-total" style="font-size:12px;font-weight:700;color:var(--color-primary);margin-top:6px;text-align:right"></p>
-              </div>
-            </details>
-
-            <!-- Toiture -->
-            <details class="card" open>
-              <summary class="card-title" style="cursor:pointer;user-select:none">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-                Toiture et installation
-              </summary>
-              <div style="margin-top:10px">
-                <div class="params-grid">
-                  <div class="form-group">
-                    <label>Inclinaison <button type="button" class="btn btn-outline btn-sm" id="sz-btn-opt-tilt" onclick="optimizeTiltFor('sz')" style="padding:1px 7px;font-size:10px;margin-left:4px" title="Calculer l'inclinaison optimale pour ce lieu">⚡ Auto</button></label>
-                    <div class="input-unit"><input type="number" id="sz-tilt" value="30" min="0" max="90"><span class="unit-tag">°</span></div>
-                  </div>
-                  <div class="form-group">
-                    <label>Azimut <button type="button" class="btn btn-outline btn-sm" id="sz-btn-opt-az" onclick="optimizeTiltFor('sz', true)" style="padding:1px 7px;font-size:10px;margin-left:4px" title="Co-optimiser inclinaison + orientation">⚡ Auto</button></label>
-                    <div class="input-unit"><input type="number" id="sz-azimuth" value="0" min="-180" max="180"><span class="unit-tag">°</span></div>
-                  </div>
-                  <div class="form-group">
-                    <label>Surface dispo</label>
-                    <div class="input-unit"><input type="number" id="sz-surface" value="20" min="1"><span class="unit-tag">m²</span></div>
-                  </div>
-                  <div class="form-group">
-                    <label>Panneaux (Wc)</label>
-                    <div class="input-unit"><input type="number" id="sz-panel-wp" value="400" step="10"><span class="unit-tag">Wc</span></div>
-                  </div>
-                  <div class="form-group">
-                    <label>Surface panneau</label>
-                    <div class="input-unit"><input type="number" id="sz-panel-m2" value="1.96" step="0.01"><span class="unit-tag">m²</span></div>
-                  </div>
-                  <div class="form-group">
-                    <label>Pertes système</label>
-                    <div class="input-unit"><input type="number" id="sz-losses" value="14" min="0" max="30"><span class="unit-tag">%</span></div>
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label>Technologie PV</label>
-                  <select id="sz-tech">
-                    <option value="crystSi">Silicium cristallin (c-Si)</option>
-                    <option value="CIS">CIS / CIGS</option>
-                    <option value="CdTe">CdTe</option>
-                  </select>
-                </div>
-              </div>
-            </details>
-
-            <!-- Stratégie -->
-            <details class="card" open>
-              <summary class="card-title" style="cursor:pointer;user-select:none">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
-                Stratégie et économie
-              </summary>
-              <div style="margin-top:10px">
-                <div class="form-group" style="margin-bottom:8px">
-                  <label>Objectif de dimensionnement</label>
-                  <select id="sz-strategy">
-                    <option value="autoconso_max">Maximiser l'autoconsommation</option>
-                    <option value="roi_optimal">Meilleur retour sur investissement</option>
-                    <option value="bill_coverage_pct">Atteindre un taux de couverture cible</option>
-                  </select>
-                </div>
-                <div class="form-group" style="margin-bottom:8px" id="sz-target-coverage-group">
-                  <label>Taux de couverture cible</label>
-                  <div class="input-unit"><input type="number" id="sz-target-coverage" value="60" min="10" max="100"><span class="unit-tag">%</span></div>
-                </div>
-                <div class="form-row">
-                  <div class="form-group">
-                    <label>Coût estimé <span style="font-weight:400;font-size:10px;color:var(--color-text-muted)">(si pas de coût réel)</span></label>
-                    <div class="input-unit"><input type="number" id="sz-cost-kwp" value="900" step="50"><span class="unit-tag">€/kWc HT</span></div>
-                  </div>
-                  <div class="form-group">
-                    <label>Tarif rachat surplus</label>
-                    <div class="input-unit"><input type="number" id="sz-feedin" value="0.13" step="0.01"><span class="unit-tag">€/kWh</span></div>
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label>Coût réel total <span style="font-weight:400;font-size:10px;color:var(--color-text-muted)">(optionnel — remplace l'estimation)</span></label>
-                  <div class="input-unit"><input type="number" id="sz-cost-total" value="" step="100" min="0" placeholder="ex : 8500"><span class="unit-tag">€ TTC</span></div>
-                </div>
-              </div>
-            </details>
-
-            <button class="btn btn-accent" id="btn-calc-sizing" style="width:100%;margin-bottom:8px">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4 8h-2v2h-2v-2H9v-2h2V7h2v2h2v2z"/></svg>
-              Dimensionner mon installation
-            </button>
-          </div>
-
-          <!-- Colonne résultats -->
-          <div id="sizing-results">
-            <div class="result-placeholder">
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-              <p>Renseignez vos données de facture<br>puis cliquez sur <strong>Dimensionner</strong></p>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- ══ ONGLET 1 : PV RÉSEAU ══════════════════════════════ -->
-      <div class="tab-pane" id="tab-grid">
-        <div style="display:grid;grid-template-columns:300px 1fr;gap:16px">
-
-          <!-- Paramètres -->
-          <div>
-            <div class="card">
-              <div class="card-title">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/></svg>
-                Paramètres système
-              </div>
-
-              <div class="form-group" style="margin-bottom:10px">
-                <label>Technologie PV</label>
-                <select id="sel-tech">
-                  <option value="crystSi">Silicium cristallin (c-Si)</option>
-                  <option value="CIS">CIS / CIGS</option>
-                  <option value="CdTe">Cadmium Telluride (CdTe)</option>
-                  <option value="unknown">Inconnue</option>
-                </select>
-              </div>
-
-              <div class="form-group" style="margin-bottom:10px">
-                <label>Puissance crête installée</label>
-                <div class="input-unit">
-                  <input type="number" id="inp-ppeak" value="3" step="0.1" min="0.1" max="1000">
-                  <span class="unit-tag">kWc</span>
-                </div>
-              </div>
-
-              <div class="form-group" style="margin-bottom:10px">
-                <label>Pertes système</label>
-                <div class="input-unit">
-                  <input type="number" id="inp-losses" value="14" step="0.5" min="0" max="50">
-                  <span class="unit-tag">%</span>
-                </div>
-              </div>
-
-              <hr>
-
-              <div class="form-group" style="margin-bottom:6px">
-                <label>Inclinaison des panneaux</label>
-                <div class="input-unit">
-                  <input type="number" id="inp-tilt" value="30" step="1" min="0" max="90">
-                  <span class="unit-tag">°</span>
-                </div>
-                <div class="checkbox-row">
-                  <input type="checkbox" id="chk-optimize-tilt">
-                  <label for="chk-optimize-tilt">Optimiser automatiquement</label>
-                </div>
-              </div>
-
-              <div class="form-group" style="margin-bottom:10px">
-                <label>Azimut <span style="font-weight:400;color:var(--color-text-muted)">(0°=Sud, -90°=Est)</span></label>
-                <div class="input-unit">
-                  <input type="number" id="inp-azimuth" value="0" step="5" min="-180" max="180">
-                  <span class="unit-tag">°</span>
-                </div>
-                <div class="checkbox-row">
-                  <input type="checkbox" id="chk-optimize-az">
-                  <label for="chk-optimize-az">Optimiser avec l'inclinaison</label>
-                </div>
-              </div>
-
-              <hr>
-
-              <div class="card-title" style="margin-top:4px;font-size:12px">Données économiques</div>
-
-              <div class="form-group" style="margin-bottom:8px">
-                <label>Coût total du système</label>
-                <div class="input-unit">
-                  <input type="number" id="inp-cost" value="3600" step="100" min="0">
-                  <span class="unit-tag">€</span>
-                </div>
-              </div>
-
-              <div class="form-group" style="margin-bottom:8px">
-                <label>Prix de revente kWh</label>
-                <div class="input-unit">
-                  <input type="number" id="inp-kwh-price" value="0.13" step="0.01" min="0">
-                  <span class="unit-tag">€/kWh</span>
-                </div>
-              </div>
-
-              <div class="form-group" style="margin-bottom:14px">
-                <label>Facteur émission CO₂</label>
-                <div class="input-unit">
-                  <input type="number" id="inp-co2" value="0.052" step="0.001" min="0">
-                  <span class="unit-tag">kgCO₂/kWh</span>
-                </div>
-              </div>
-
-              <button class="btn btn-accent" id="btn-calc-grid" style="width:100%">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4 8h-2v2h-2v-2H9v-2h2V7h2v2h2v2z"/></svg>
-                Calculer
-              </button>
-            </div>
-          </div>
-
-          <!-- Résultats -->
-          <div id="grid-results">
-            <div class="result-placeholder">
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
-              <p>Cliquez sur <strong>Calculer</strong> pour lancer la simulation</p>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- ══ ONGLET 2 : SUIVEUR ════════════════════════════════ -->
-      <div class="tab-pane" id="tab-tracker">
-        <div class="alert alert-info">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-          Le module Suiveur PV (tracker 1 axe / 2 axes) est en développement. Disponible dans la prochaine version.
-        </div>
-        <div class="card">
-          <div class="card-title">Comparaison Fixe vs. Suiveur (estimations)</div>
-          <table class="data-table" style="max-width:500px">
-            <thead>
-              <tr><th>Configuration</th><th>Gain production est.</th><th>Complexité</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>Plan fixe optimisé</td><td>Référence (100%)</td><td>Faible</td></tr>
-              <tr><td>Suiveur 1 axe horizontal</td><td>+15 à +20%</td><td>Moyenne</td></tr>
-              <tr><td>Suiveur 1 axe incliné</td><td>+18 à +25%</td><td>Moyenne</td></tr>
-              <tr><td>Suiveur 2 axes</td><td>+25 à +40%</td><td>Élevée</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- ══ ONGLET 3 : HORS RÉSEAU ═════════════════════════════ -->
-      <div class="tab-pane" id="tab-offgrid">
-        <div style="display:grid;grid-template-columns:320px 1fr;gap:16px">
-
-          <!-- Colonne formulaire -->
-          <div>
-
-            <!-- Consommation -->
-            <details class="card" open>
-              <summary class="card-title" style="cursor:pointer;user-select:none">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 0 0 8 20C19 20 22 3 22 3c-1 2-8 2-8 2 0-3.5 2.5-7 6-8-1 4-3 5-3 5 0 0-2-3-4-3H9c-.5 0-1 .5-1 1l-.5 4.5h.01c-.01.16-.01.33-.01.5C7.5 13 9.5 15 12 15c.5 0 1-.1 1.5-.2C15 14.2 16.4 12.5 17 11V8z"/></svg>
-                Consommation journalière
-              </summary>
-              <div style="margin-top:10px">
-                <div class="form-group" style="margin-bottom:10px">
-                  <label>Consommation par défaut (tous les mois)</label>
-                  <div class="input-unit">
-                    <input type="number" id="og2-daily-default" value="1000" step="50" min="0">
-                    <span class="unit-tag">Wh/j</span>
-                  </div>
-                  <div style="font-size:11px;color:var(--color-text-muted);margin-top:4px">
-                    Laissez les mois à 0 pour utiliser cette valeur pour tous.
-                  </div>
-                </div>
-                <button type="button" class="btn btn-outline btn-sm" onclick="importEDFToOffgrid()" style="margin-bottom:8px">
-                  ↓ Importer la consommation depuis la facture EDF
-                </button>
-                <div id="og2-edf-import-status" style="font-size:11px;color:var(--color-text-muted);margin-bottom:6px"></div>
-                <div style="font-size:12px;font-weight:700;color:var(--color-primary);margin-bottom:6px">
-                  Profil mensuel détaillé (optionnel)
-                </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
-                  <div class="form-group"><label>Jan</label><input type="number" id="og2-day-1"  value="0" min="0" step="50"></div>
-                  <div class="form-group"><label>Fév</label><input type="number" id="og2-day-2"  value="0" min="0" step="50"></div>
-                  <div class="form-group"><label>Mar</label><input type="number" id="og2-day-3"  value="0" min="0" step="50"></div>
-                  <div class="form-group"><label>Avr</label><input type="number" id="og2-day-4"  value="0" min="0" step="50"></div>
-                  <div class="form-group"><label>Mai</label><input type="number" id="og2-day-5"  value="0" min="0" step="50"></div>
-                  <div class="form-group"><label>Jun</label><input type="number" id="og2-day-6"  value="0" min="0" step="50"></div>
-                  <div class="form-group"><label>Jul</label><input type="number" id="og2-day-7"  value="0" min="0" step="50"></div>
-                  <div class="form-group"><label>Aoû</label><input type="number" id="og2-day-8"  value="0" min="0" step="50"></div>
-                  <div class="form-group"><label>Sep</label><input type="number" id="og2-day-9"  value="0" min="0" step="50"></div>
-                  <div class="form-group"><label>Oct</label><input type="number" id="og2-day-10" value="0" min="0" step="50"></div>
-                  <div class="form-group"><label>Nov</label><input type="number" id="og2-day-11" value="0" min="0" step="50"></div>
-                  <div class="form-group"><label>Déc</label><input type="number" id="og2-day-12" value="0" min="0" step="50"></div>
-                </div>
-                <p id="og2-annual-total" style="font-size:12px;font-weight:700;color:var(--color-primary);margin-top:6px;text-align:right"></p>
-              </div>
-            </details>
-
-            <!-- Batterie -->
-            <details class="card" open>
-              <summary class="card-title" style="cursor:pointer;user-select:none">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
-                Technologie batterie
-              </summary>
-              <div style="margin-top:10px">
-                <div class="form-group" style="margin-bottom:10px">
-                  <label>Type de batterie</label>
-                  <select id="og2-batt-tech">
-                    <option value="lfp">LFP standard — Lithium Fer Phosphate (neuf, recommandé)</option>
-                    <option value="lfp_diy">LFP DIY — Cellules CATL/EVE 280Ah (meilleur rapport qualité/prix)</option>
-                    <option value="agm">AGM — Plomb Carbone (économique)</option>
-                    <option value="nmc_leaf">NMC recondit. — Nissan Leaf</option>
-                    <option value="nmc_zoe">NMC recondit. — Renault Zoé</option>
-                    <option value="nmc_tesla">NMC recondit. — Tesla</option>
-                  </select>
-                </div>
-                <div id="og2-batt-info" class="alert alert-info" style="font-size:11px"></div>
-                <div style="font-size:11px;color:var(--color-text-muted);margin-top:6px">
-                  La capacité optimale est calculée automatiquement selon votre consommation.
-                </div>
-              </div>
-            </details>
-
-            <!-- Toiture & stratégie -->
-            <details class="card" open>
-              <summary class="card-title" style="cursor:pointer;user-select:none">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-                Toiture et objectif
-              </summary>
-              <div style="margin-top:10px">
-                <div class="params-grid">
-                  <div class="form-group">
-                    <label>Inclinaison <button type="button" class="btn btn-outline btn-sm" onclick="optimizeTiltFor('og2')" style="padding:1px 7px;font-size:10px;margin-left:4px" title="Calculer l'inclinaison optimale pour ce lieu">⚡ Auto</button></label>
-                    <div class="input-unit"><input type="number" id="og2-tilt" value="30" min="0" max="90"><span class="unit-tag">°</span></div>
-                  </div>
-                  <div class="form-group">
-                    <label>Azimut <button type="button" class="btn btn-outline btn-sm" onclick="optimizeTiltFor('og2', true)" style="padding:1px 7px;font-size:10px;margin-left:4px" title="Co-optimiser inclinaison + orientation">⚡ Auto</button></label>
-                    <div class="input-unit"><input type="number" id="og2-azimuth" value="0" min="-180" max="180"><span class="unit-tag">°</span></div>
-                  </div>
-                  <div class="form-group">
-                    <label>Surface dispo</label>
-                    <div class="input-unit"><input type="number" id="og2-surface" value="20"><span class="unit-tag">m²</span></div>
-                  </div>
-                  <div class="form-group">
-                    <label>Panneaux (Wc)</label>
-                    <div class="input-unit"><input type="number" id="og2-panel-wp" value="400" step="10"><span class="unit-tag">Wc</span></div>
-                  </div>
-                  <div class="form-group">
-                    <label>Surface panneau</label>
-                    <div class="input-unit"><input type="number" id="og2-panel-m2" value="1.96" step="0.01"><span class="unit-tag">m²</span></div>
-                  </div>
-                  <div class="form-group">
-                    <label>Pertes système</label>
-                    <div class="input-unit"><input type="number" id="og2-losses" value="14" min="0"><span class="unit-tag">%</span></div>
-                  </div>
-                </div>
-                <div class="form-group" style="margin-top:4px">
-                  <label>Taux de couverture visé</label>
-                  <div class="input-unit"><input type="number" id="og2-target-coverage" value="90" min="50" max="100"><span class="unit-tag">%</span></div>
-                </div>
-              </div>
-            </details>
-
-            <details class="card">
-              <summary class="card-title" style="cursor:pointer;user-select:none">💶 Coûts réels (optionnel)</summary>
-              <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                <div class="form-group">
-                  <label>Coût PV</label>
-                  <div class="input-unit"><input type="number" id="og2-pv-cost-kwp" value="650" step="50" min="0"><span class="unit-tag">€/kWc</span></div>
-                </div>
-                <div class="form-group">
-                  <label>BOS + câblage</label>
-                  <div class="input-unit"><input type="number" id="og2-bos-cost" value="500" step="50" min="0"><span class="unit-tag">€</span></div>
-                </div>
-              </div>
-            </details>
-
-            <button class="btn btn-accent" id="btn-calc-offgrid2" style="width:100%;margin-bottom:8px">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
-              Dimensionner mon système autonome
-            </button>
-          </div>
-
-          <!-- Résultats -->
-          <div id="offgrid2-results">
-            <div class="result-placeholder">
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
-              <p>Renseignez votre consommation et cliquez sur <strong>Dimensionner</strong></p>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- ══ ONGLET 4 : DONNÉES MENSUELLES ════════════════════ -->
-      <div class="tab-pane" id="tab-irradiation">
-        <div style="margin-bottom:12px;display:flex;gap:10px;align-items:center">
-          <button class="btn btn-accent" id="btn-calc-irr">Afficher les données</button>
-          <span style="font-size:12px;color:var(--color-text-muted)">Irradiation et température pour le site sélectionné</span>
-        </div>
-        <div id="irradiation-results">
-          <div class="result-placeholder">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
-            <p>Sélectionnez un lieu et cliquez sur <strong>Afficher les données</strong></p>
-          </div>
-        </div>
-      </div>
-
-      <!-- ══ ONGLET 5 : DONNÉES HORAIRES ══════════════════════ -->
-      <div class="tab-pane" id="tab-daily">
-        <div class="alert alert-warning">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
-          Les données horaires et l'Année Météorologique Typique (TMY) nécessitent une base de données horaires. Module prévu en Phase 2.
-        </div>
-        <div class="card">
-          <div class="card-title">Durée d'ensoleillement mensuelle (calculée)</div>
-          <div id="daylight-table"></div>
-        </div>
-      </div>
-
-      <!-- ══ ONGLET 6 : OPTIMISATION ═══════════════════════════ -->
-      <div class="tab-pane" id="tab-optimizer">
-        <div style="margin-bottom:12px;display:flex;gap:10px;align-items:center">
-          <button class="btn btn-accent" id="btn-calc-opt">Calculer l'optimum</button>
-          <span style="font-size:12px;color:var(--color-text-muted)">Carte de chaleur production par inclinaison et azimut</span>
-        </div>
-        <div id="optimizer-results">
-          <div class="result-placeholder">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-            <p>Cliquez sur <strong>Calculer l'optimum</strong> pour générer la carte de chaleur</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- ══ ONGLET DEVIS ═════════════════════════════════════ -->
-      <div class="tab-pane" id="tab-quote">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-
-          <!-- Colonne gauche : formulaire -->
-          <div style="display:flex;flex-direction:column;gap:12px">
-
-            <!-- Installateur -->
-            <details class="card" open>
-              <summary class="card-title" style="cursor:pointer;user-select:none">
-                🏢 Installateur (votre société)
-              </summary>
-              <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                <div class="form-group" style="grid-column:1/-1">
-                  <label>Nom de la société</label>
-                  <input type="text" id="dv-ins-company" placeholder="Solar Pro SARL">
-                </div>
-                <div class="form-group">
-                  <label>SIRET</label>
-                  <input type="text" id="dv-ins-siret" placeholder="000 000 000 00000">
-                </div>
-                <div class="form-group">
-                  <label>N° RGE</label>
-                  <input type="text" id="dv-ins-rge" placeholder="E-E190909-1234">
-                </div>
-                <div class="form-group" style="grid-column:1/-1">
-                  <label>Adresse (rue, CP, ville)</label>
-                  <textarea id="dv-ins-address" rows="2" placeholder="12 rue du Soleil&#10;31000 Toulouse"></textarea>
-                </div>
-                <div class="form-group">
-                  <label>Téléphone</label>
-                  <input type="tel" id="dv-ins-phone" placeholder="05 61 00 00 00">
-                </div>
-                <div class="form-group">
-                  <label>Email</label>
-                  <input type="email" id="dv-ins-email" placeholder="contact@solarpro.fr">
-                </div>
-              </div>
-            </details>
-
-            <!-- Client -->
-            <details class="card" open>
-              <summary class="card-title" style="cursor:pointer;user-select:none">
-                👤 Client
-              </summary>
-              <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                <div class="form-group">
-                  <label>Nom / Prénom</label>
-                  <input type="text" id="dv-cli-name" placeholder="Jean Dupont">
-                </div>
-                <div class="form-group">
-                  <label>Société (si pro)</label>
-                  <input type="text" id="dv-cli-company" placeholder="">
-                </div>
-                <div class="form-group" style="grid-column:1/-1">
-                  <label>Adresse</label>
-                  <textarea id="dv-cli-address" rows="2" placeholder="5 impasse des Collines&#10;31500 Toulouse"></textarea>
-                </div>
-                <div class="form-group">
-                  <label>Téléphone</label>
-                  <input type="tel" id="dv-cli-phone" placeholder="06 12 34 56 78">
-                </div>
-                <div class="form-group">
-                  <label>Email</label>
-                  <input type="email" id="dv-cli-email" placeholder="client@mail.fr">
-                </div>
-              </div>
-            </details>
-
-            <!-- Chantier -->
-            <details class="card" open>
-              <summary class="card-title" style="cursor:pointer;user-select:none">
-                📍 Site d'installation
-              </summary>
-              <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                <div class="form-group" style="grid-column:1/-1">
-                  <label>Adresse du chantier</label>
-                  <input type="text" id="dv-site-address" placeholder="Identique au client ou autre adresse">
-                </div>
-                <div class="form-group">
-                  <label>Type de toiture</label>
-                  <select id="dv-site-type">
-                    <option value="">Sélectionner…</option>
-                    <option>Tuiles mécaniques</option>
-                    <option>Tuiles plates</option>
-                    <option>Ardoises</option>
-                    <option>Bac acier</option>
-                    <option>Membrane EPDM</option>
-                    <option>Sol / Auvent</option>
-                    <option>Autre</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label>Surface disponible (m²)</label>
-                  <div class="input-unit"><input type="number" id="dv-site-surface" placeholder="20"><span class="unit-tag">m²</span></div>
-                </div>
-                <div class="form-group">
-                  <label>Inclinaison</label>
-                  <div class="input-unit"><input type="number" id="dv-site-tilt" placeholder="30"><span class="unit-tag">°</span></div>
-                </div>
-                <div class="form-group">
-                  <label>Azimut (0=Sud)</label>
-                  <div class="input-unit"><input type="number" id="dv-site-azimuth" placeholder="0"><span class="unit-tag">°</span></div>
-                </div>
-              </div>
-            </details>
-
-            <!-- Système PV -->
-            <details class="card" open>
-              <summary class="card-title" style="cursor:pointer;user-select:none">
-                ⚡ Système photovoltaïque
-                <button type="button" class="btn btn-outline btn-sm" onclick="importSizingToQuote()" style="margin-left:8px;padding:2px 8px;font-size:10px" title="Importer depuis le dimensionnement">↓ Importer depuis le dimensionnement</button>
-              </summary>
-              <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                <div class="form-group">
-                  <label>Puissance crête (kWc)</label>
-                  <div class="input-unit"><input type="number" id="dv-sys-ppeak" step="0.1" placeholder="3.0"><span class="unit-tag">kWc</span></div>
-                </div>
-                <div class="form-group">
-                  <label>Nombre de panneaux</label>
-                  <input type="number" id="dv-sys-panels" placeholder="8">
-                </div>
-                <div class="form-group">
-                  <label>Modèle panneau</label>
-                  <input type="text" id="dv-sys-panel-model" placeholder="Jinko Tiger 400W">
-                </div>
-                <div class="form-group">
-                  <label>Onduleur</label>
-                  <input type="text" id="dv-sys-inverter" placeholder="Fronius Primo 3.0">
-                </div>
-                <div class="form-group">
-                  <label>Batterie (kWh)</label>
-                  <div class="input-unit"><input type="number" id="dv-sys-batt" step="0.1" placeholder="0"><span class="unit-tag">kWh</span></div>
-                </div>
-                <div class="form-group">
-                  <label>Production annuelle</label>
-                  <div class="input-unit"><input type="number" id="dv-sys-prod" placeholder="3500"><span class="unit-tag">kWh/an</span></div>
-                </div>
-                <div class="form-group">
-                  <label>CO₂ évité</label>
-                  <div class="input-unit"><input type="number" id="dv-sys-co2" placeholder="0"><span class="unit-tag">kg/an</span></div>
-                </div>
-                <div class="form-group">
-                  <label>Autonomie estimée</label>
-                  <input type="text" id="dv-sys-autonomy" placeholder="Ex : 80 % de l'année">
-                </div>
-              </div>
-            </details>
-
-          </div><!-- /colonne gauche -->
-
-          <!-- Colonne droite : lignes de coût + conditions + aperçu -->
-          <div style="display:flex;flex-direction:column;gap:12px">
-
-            <!-- Lignes de coût -->
-            <details class="card" open>
-              <summary class="card-title" style="cursor:pointer;user-select:none">
-                💶 Détail du prix (HT)
-              </summary>
-              <div style="margin-top:10px">
-                <table style="width:100%;border-collapse:collapse;font-size:12px">
-                  <thead>
-                    <tr style="border-bottom:2px solid var(--color-border)">
-                      <th style="text-align:left;padding:4px 6px;width:36%">Désignation</th>
-                      <th style="text-align:center;padding:4px 6px;width:10%">Qté</th>
-                      <th style="text-align:center;padding:4px 6px;width:12%">Unité</th>
-                      <th style="text-align:right;padding:4px 6px;width:20%">Prix unit. HT</th>
-                      <th style="text-align:right;padding:4px 6px;width:22%">Montant HT</th>
-                    </tr>
-                  </thead>
-                  <tbody id="dv-lines-body">
-                    <!-- Panneau -->
-                    <tr class="dv-cost-row">
-                      <td><input type="text" id="dv-line-panels-label" value="Panneaux photovoltaïques" style="width:100%;border:none;background:transparent;font-size:12px"></td>
-                      <td><input type="number" id="dv-line-panels-qty" value="8" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center" oninput="updateQuoteLine('panels')"></td>
-                      <td><input type="text" id="dv-line-panels-unit" value="u" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center"></td>
-                      <td><input type="number" id="dv-line-panels-price" value="180" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:right" oninput="updateQuoteLine('panels')"></td>
-                      <td id="dv-line-panels-total" style="text-align:right;padding:4px 6px;font-weight:600">1 440 €</td>
-                    </tr>
-                    <!-- Onduleur -->
-                    <tr class="dv-cost-row">
-                      <td><input type="text" id="dv-line-inverter-label" value="Onduleur" style="width:100%;border:none;background:transparent;font-size:12px"></td>
-                      <td><input type="number" id="dv-line-inverter-qty" value="1" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center" oninput="updateQuoteLine('inverter')"></td>
-                      <td><input type="text" id="dv-line-inverter-unit" value="u" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center"></td>
-                      <td><input type="number" id="dv-line-inverter-price" value="900" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:right" oninput="updateQuoteLine('inverter')"></td>
-                      <td id="dv-line-inverter-total" style="text-align:right;padding:4px 6px;font-weight:600">900 €</td>
-                    </tr>
-                    <!-- Fixations -->
-                    <tr class="dv-cost-row">
-                      <td><input type="text" id="dv-line-fixations-label" value="Fixations / structure" style="width:100%;border:none;background:transparent;font-size:12px"></td>
-                      <td><input type="number" id="dv-line-fixations-qty" value="1" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center" oninput="updateQuoteLine('fixations')"></td>
-                      <td><input type="text" id="dv-line-fixations-unit" value="forfait" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center"></td>
-                      <td><input type="number" id="dv-line-fixations-price" value="350" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:right" oninput="updateQuoteLine('fixations')"></td>
-                      <td id="dv-line-fixations-total" style="text-align:right;padding:4px 6px;font-weight:600">350 €</td>
-                    </tr>
-                    <!-- Câblage -->
-                    <tr class="dv-cost-row">
-                      <td><input type="text" id="dv-line-cabling-label" value="Câblage DC/AC + protections" style="width:100%;border:none;background:transparent;font-size:12px"></td>
-                      <td><input type="number" id="dv-line-cabling-qty" value="1" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center" oninput="updateQuoteLine('cabling')"></td>
-                      <td><input type="text" id="dv-line-cabling-unit" value="forfait" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center"></td>
-                      <td><input type="number" id="dv-line-cabling-price" value="250" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:right" oninput="updateQuoteLine('cabling')"></td>
-                      <td id="dv-line-cabling-total" style="text-align:right;padding:4px 6px;font-weight:600">250 €</td>
-                    </tr>
-                    <!-- Main d'œuvre -->
-                    <tr class="dv-cost-row">
-                      <td><input type="text" id="dv-line-labor-label" value="Main d'œuvre pose" style="width:100%;border:none;background:transparent;font-size:12px"></td>
-                      <td><input type="number" id="dv-line-labor-qty" value="2" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center" oninput="updateQuoteLine('labor')"></td>
-                      <td><input type="text" id="dv-line-labor-unit" value="jours" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center"></td>
-                      <td><input type="number" id="dv-line-labor-price" value="400" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:right" oninput="updateQuoteLine('labor')"></td>
-                      <td id="dv-line-labor-total" style="text-align:right;padding:4px 6px;font-weight:600">800 €</td>
-                    </tr>
-                    <!-- Démarches admin -->
-                    <tr class="dv-cost-row">
-                      <td><input type="text" id="dv-line-admin-label" value="Démarches administratives" style="width:100%;border:none;background:transparent;font-size:12px"></td>
-                      <td><input type="number" id="dv-line-admin-qty" value="1" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center" oninput="updateQuoteLine('admin')"></td>
-                      <td><input type="text" id="dv-line-admin-unit" value="forfait" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center"></td>
-                      <td><input type="number" id="dv-line-admin-price" value="200" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:right" oninput="updateQuoteLine('admin')"></td>
-                      <td id="dv-line-admin-total" style="text-align:right;padding:4px 6px;font-weight:600">200 €</td>
-                    </tr>
-                    <!-- Divers -->
-                    <tr class="dv-cost-row">
-                      <td><input type="text" id="dv-line-misc-label" value="" placeholder="Ligne optionnelle" style="width:100%;border:none;background:transparent;font-size:12px"></td>
-                      <td><input type="number" id="dv-line-misc-qty" value="0" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center" oninput="updateQuoteLine('misc')"></td>
-                      <td><input type="text" id="dv-line-misc-unit" value="" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center"></td>
-                      <td><input type="number" id="dv-line-misc-price" value="0" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:right" oninput="updateQuoteLine('misc')"></td>
-                      <td id="dv-line-misc-total" style="text-align:right;padding:4px 6px;font-weight:600">—</td>
-                    </tr>
-                  </tbody>
-                </table>
-
-                <!-- Totaux -->
-                <div style="margin-top:12px;border-top:2px solid var(--color-border);padding-top:10px">
-                  <div style="display:flex;justify-content:flex-end">
-                    <table style="width:280px;font-size:13px">
-                      <tr>
-                        <td style="padding:3px 8px">Sous-total HT</td>
-                        <td id="dv-total-ht" style="text-align:right;padding:3px 8px;font-weight:600">3 940 €</td>
-                      </tr>
-                      <tr id="dv-remise-row" style="color:var(--color-danger);display:none">
-                        <td style="padding:3px 8px">Remise (<span id="dv-remise-pct">0</span>%)</td>
-                        <td id="dv-total-remise" style="text-align:right;padding:3px 8px">— €</td>
-                      </tr>
-                      <tr>
-                        <td style="padding:3px 8px">Base HT</td>
-                        <td id="dv-base-ht" style="text-align:right;padding:3px 8px;font-weight:600">3 940 €</td>
-                      </tr>
-                      <tr>
-                        <td style="padding:3px 8px">TVA (<span id="dv-tva-pct">10</span>%)</td>
-                        <td id="dv-total-tva" style="text-align:right;padding:3px 8px">394 €</td>
-                      </tr>
-                      <tr style="background:var(--color-primary);color:#fff;border-radius:4px">
-                        <td style="padding:6px 8px;font-weight:700;font-size:14px">TOTAL TTC</td>
-                        <td id="dv-total-ttc" style="text-align:right;padding:6px 8px;font-weight:700;font-size:14px">4 334 €</td>
-                      </tr>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </details>
-
-            <!-- Conditions -->
-            <details class="card" open>
-              <summary class="card-title" style="cursor:pointer;user-select:none">
-                📋 Conditions du devis
-              </summary>
-              <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-                <div class="form-group">
-                  <label>Date</label>
-                  <input type="text" id="dv-date" placeholder="JJ/MM/AAAA">
-                </div>
-                <div class="form-group">
-                  <label>Référence</label>
-                  <input type="text" id="dv-ref" placeholder="Auto si vide">
-                </div>
-                <div class="form-group">
-                  <label>Validité (jours)</label>
-                  <input type="number" id="dv-validity" value="30" min="1">
-                </div>
-                <div class="form-group">
-                  <label>TVA applicable</label>
-                  <select id="dv-tva" onchange="updateQuoteTotals()">
-                    <option value="10" selected>10 % — Rénovation résidentielle</option>
-                    <option value="5.5">5,5 % — Amélioration énergie</option>
-                    <option value="20">20 % — Neuf / Pro</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label>Remise (%)</label>
-                  <div class="input-unit"><input type="number" id="dv-remise" value="0" min="0" max="100" step="0.5" oninput="updateQuoteTotals()"><span class="unit-tag">%</span></div>
-                </div>
-              </div>
-              <div class="form-group" style="margin-top:8px">
-                <label>Notes / conditions particulières</label>
-                <textarea id="dv-notes" rows="3" placeholder="Ex : Acompte 30% à la commande. Garantie main d'œuvre 10 ans. Panneau garanti 25 ans."></textarea>
-              </div>
-            </details>
-
-            <!-- Actions -->
-            <div class="card" style="padding:12px 14px">
-              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-                <button class="btn btn-accent" onclick="printQuote()" style="font-size:13px">🖨 Imprimer / PDF</button>
-                <button class="btn btn-outline" onclick="previewQuote()" style="font-size:13px">👁 Aperçu</button>
-                <button class="btn btn-outline btn-sm" onclick="saveInstallerData()" style="font-size:12px" title="Sauvegarder les infos installateur pour les prochains devis">💾 Mémoriser installateur</button>
-              </div>
-            </div>
-
-            <!-- Aperçu iframe -->
-            <div class="card" style="padding:8px">
-              <div class="card-title" style="margin-bottom:8px">Aperçu</div>
-              <iframe id="dv-preview-frame" style="width:100%;height:600px;border:1px solid var(--color-border);border-radius:4px;background:#fff" srcdoc="<p style='padding:20px;color:#999;font-family:sans-serif'>Cliquez sur Aperçu pour voir le devis.</p>"></iframe>
-            </div>
-
-          </div><!-- /colonne droite -->
-
-        </div><!-- /grid -->
-      </div><!-- /tab-quote -->
-
-    </div><!-- /tabs-content -->
   </main>
-
 </div><!-- /app-layout -->
 
-<!-- Scripts -->
+<!-- Toast de notification -->
+<div id="ose-toast"></div>
+
+<!-- ═══ SCRIPTS ═══════════════════════════════════════════════ -->
+<!-- Dépendances externes -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+<!-- État global (en premier) -->
+<script src="js/app_state.js"></script>
+
+<!-- Algorithmes et moteurs de calcul -->
 <script src="js/solar_math.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/export.js"></script>
@@ -1075,34 +359,25 @@
 <script src="js/enedis_import.js"></script>
 <script src="js/project_manager.js"></script>
 <script src="js/quote_generator.js"></script>
-<script src="js/main.js"></script>
+<script src="js/hourly_module.js"></script>
+<script src="js/inverter_sizing.js"></script>
 <script src="js/pvgis_import.js"></script>
-<script>
-window.addEventListener('DOMContentLoaded', () => {
-  setTimeout(() => PVGISImport.init(), 100);
-});
-</script>
 
-<script>
-// Durée d'ensoleillement (onglet 5)
-window.addEventListener('DOMContentLoaded', () => {
-  const months = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
-  setTimeout(() => {
-    const lat = AppState.location.lat;
-    const rows = months.map((name, i) => {
-      const h = SolarMath.daylightHours(lat, i + 1);
-      return `<tr><td>${name}</td><td>${Math.round(h * 10) / 10} h</td></tr>`;
-    }).join('');
-    const el = document.getElementById('daylight-table');
-    if (el) el.innerHTML = `
-      <table class="data-table" style="max-width:300px">
-        <thead><tr><th>Mois</th><th>Durée ensoleillement</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>`;
-  }, 400);
-});
-</script>
+<!-- HTML des onglets (injectés au démarrage) -->
+<script src="js/tabs/tab_sizing.js"></script>
+<script src="js/tabs/tab_grid.js"></script>
+<script src="js/tabs/tab_tracker.js"></script>
+<script src="js/tabs/tab_offgrid.js"></script>
+<script src="js/tabs/tab_irradiation.js"></script>
+<script src="js/tabs/tab_daily.js"></script>
+<script src="js/tabs/tab_optimizer.js"></script>
+<script src="js/tabs/tab_quote.js"></script>
 
-<div id="ose-toast"></div>
+<!-- Logique applicative -->
+<script src="js/location.js"></script>
+<script src="js/project_ui.js"></script>
+<script src="js/renderers.js"></script>
+<script src="js/main.js"></script>
+
 </body>
 </html>

@@ -1,0 +1,109 @@
+/**
+ * tab_grid.js — HTML de l'onglet Système PV réseau
+ */
+function initTabGrid() {
+  document.getElementById('tab-grid').innerHTML = `
+    <div style="display:grid;grid-template-columns:300px 1fr;gap:16px">
+
+      <!-- Paramètres -->
+      <div>
+        <div class="card">
+          <div class="card-title">Paramètres système</div>
+
+          <div class="form-group" style="margin-bottom:10px">
+            <label>Technologie PV</label>
+            <select id="sel-tech">
+              <option value="crystSi">Silicium cristallin (c-Si)</option>
+              <option value="CIS">CIS / CIGS</option>
+              <option value="CdTe">Cadmium Telluride (CdTe)</option>
+              <option value="unknown">Inconnue</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom:10px">
+            <label>Puissance crête installée</label>
+            <div class="input-unit">
+              <input type="number" id="inp-ppeak" value="3" step="0.1" min="0.1" max="1000">
+              <span class="unit-tag">kWc</span>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:10px">
+            <label>Pertes système</label>
+            <div class="input-unit">
+              <input type="number" id="inp-losses" value="14" step="0.5" min="0" max="50">
+              <span class="unit-tag">%</span>
+            </div>
+          </div>
+
+          <hr>
+
+          <div class="form-group" style="margin-bottom:6px">
+            <label>Inclinaison des panneaux</label>
+            <div class="input-unit">
+              <input type="number" id="inp-tilt" value="30" step="1" min="0" max="90">
+              <span class="unit-tag">°</span>
+            </div>
+            <div class="checkbox-row">
+              <input type="checkbox" id="chk-optimize-tilt">
+              <label for="chk-optimize-tilt">Optimiser automatiquement</label>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:10px">
+            <label>Azimut <span style="font-weight:400;color:var(--color-text-muted)">(0°=Sud, -90°=Est)</span></label>
+            <div class="input-unit">
+              <input type="number" id="inp-azimuth" value="0" step="5" min="-180" max="180">
+              <span class="unit-tag">°</span>
+            </div>
+            <div class="checkbox-row">
+              <input type="checkbox" id="chk-optimize-az">
+              <label for="chk-optimize-az">Optimiser avec l'inclinaison</label>
+            </div>
+          </div>
+
+          <hr>
+
+          <div class="card-title" style="margin-top:4px;font-size:12px">Données économiques</div>
+
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Coût total du système</label>
+            <div class="input-unit">
+              <input type="number" id="inp-cost" value="3600" step="100" min="0">
+              <span class="unit-tag">€</span>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:8px">
+            <label>Prix de revente kWh</label>
+            <div class="input-unit">
+              <input type="number" id="inp-kwh-price" value="0.13" step="0.01" min="0">
+              <span class="unit-tag">€/kWh</span>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:14px">
+            <label>Facteur émission CO₂</label>
+            <div class="input-unit">
+              <input type="number" id="inp-co2" value="0.052" step="0.001" min="0">
+              <span class="unit-tag">kgCO₂/kWh</span>
+            </div>
+          </div>
+
+          <button class="btn btn-accent" id="btn-calc-grid" style="width:100%">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4 8h-2v2h-2v-2H9v-2h2V7h2v2h2v2z"/></svg>
+            Calculer
+          </button>
+        </div>
+      </div>
+
+      <!-- Résultats -->
+      <div id="grid-results">
+        <div class="result-placeholder">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+          <p>Cliquez sur <strong>Calculer</strong> pour lancer la simulation</p>
+        </div>
+      </div>
+
+    </div>`;
+}
