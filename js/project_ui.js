@@ -130,6 +130,13 @@ function loadProject(id) {
   closeProjectsModal();
   closeStartupModal();
   showToast(`✓ Projet "${project.name}" chargé`);
+
+  // Relancer les calculs après restauration des formulaires
+  setTimeout(() => {
+    if (typeof calcGridPanels === 'function') calcGridPanels();
+    if (typeof calcSizing     === 'function') calcSizing();
+    if (typeof renderIrradiationData === 'function') renderIrradiationData();
+  }, 100);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -175,17 +182,20 @@ function renderProjectsList(containerId = 'projects-list-container') {
     const cost  = p.summary?.systemCost ? `· ${p.summary.systemCost.toLocaleString('fr')} €` : '';
     const loc   = p.summary?.locationName || p.location?.name || '';
 
+    const demoTag = p.isDemo
+      ? `<span style="background:var(--color-accent);color:#fff;font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;margin-left:6px;vertical-align:middle">DÉMO</span>`
+      : '';
     return `
     <div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--color-border)${isCurrent?';background:var(--color-surface2);margin:0 -22px;padding-left:22px;padding-right:22px':''}" >
       <div style="flex:1;min-width:0">
-        <div style="font-weight:600;font-size:14px${isCurrent?';color:var(--color-accent)':''}">${p.name}${clientName}${isCurrent ? ' <span style="font-size:11px;font-weight:400;color:var(--color-text-muted)">(actif)</span>' : ''}</div>
+        <div style="font-weight:600;font-size:14px${isCurrent?';color:var(--color-accent)':''}">${p.name}${demoTag}${clientName}${isCurrent ? ' <span style="font-size:11px;font-weight:400;color:var(--color-text-muted)">(actif)</span>' : ''}</div>
         <div style="font-size:11px;color:var(--color-text-muted);margin-top:2px">${loc} · ${date} ${kwh} ${ppeak} ${cost}</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
         <button class="btn btn-outline btn-sm" onclick="loadProject('${p.id}')">Charger</button>
         <button class="btn btn-outline btn-sm" onclick="ProjectManager.exportOne('${p.id}')" title="Exporter en fichier JSON">📤</button>
         <button class="btn btn-outline btn-sm" onclick="cloneProject('${p.id}')">Cloner</button>
-        <button class="btn btn-sm" style="color:var(--color-danger);border-color:var(--color-danger);background:none" onclick="deleteProject('${p.id}')">✕</button>
+        ${p.isDemo ? '' : `<button class="btn btn-sm" style="color:var(--color-danger);border-color:var(--color-danger);background:none" onclick="deleteProject('${p.id}')">✕</button>`}
       </div>
     </div>`;
   }).join('');
@@ -320,6 +330,99 @@ function newProjectBlank() {
   if (nameEl) nameEl.value = '';
   updateProjectBar();
   closeProjectsModal();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PROJET DÉMO
+// ══════════════════════════════════════════════════════════════
+const DEMO_PROJECT_ID = 'demo_ose_v1';
+
+/**
+ * Insère le projet démo dans localStorage si absent.
+ * Utilise les données météo Toulouse depuis AppState.demoData.
+ */
+function seedDemoProject() {
+  if (ProjectManager.get(DEMO_PROJECT_ID)) return; // déjà présent
+
+  const toulouse = AppState.demoData?.locations?.toulouse;
+  if (!toulouse) return;
+
+  const formState = {
+    // Dimensionnement réseau
+    'sz-tariff':           'base',
+    'sz-price-base':       '0.2516',
+    'sz-subscription':     '147',
+    'sz-kwh-1':  '385', 'sz-kwh-2':  '345', 'sz-kwh-3':  '310',
+    'sz-kwh-4':  '268', 'sz-kwh-5':  '228', 'sz-kwh-6':  '192',
+    'sz-kwh-7':  '182', 'sz-kwh-8':  '188', 'sz-kwh-9':  '222',
+    'sz-kwh-10': '278', 'sz-kwh-11': '335', 'sz-kwh-12': '392',
+    'sz-tilt':           '32',
+    'sz-azimuth':        '0',
+    'sz-surface':        '22',
+    'sz-panel-wp':       '400',
+    'sz-panel-m2':       '1.96',
+    'sz-losses':         '14',
+    'sz-tech':           'crystSi',
+    'sz-strategy':       'autoconso_max',
+    'sz-target-coverage':'60',
+    'sz-cost-kwp':       '900',
+    'sz-cost-total':     '',
+    'sz-feedin':         '0.13',
+    // Système réseau (simulation directe)
+    'inp-surface':   '22',
+    'inp-panel-wp':  '400',
+    'inp-panel-m2':  '1.96',
+    'sel-tech':      'crystSi',
+    'inp-losses':    '14',
+    'inp-tilt':      '32',
+    'inp-azimuth':   '0',
+    'inp-cost':      '4400',
+    'inp-kwh-price': '0.13',
+    'inp-co2':       '0.052',
+    // Hors réseau
+    'og2-daily-default': '850',
+    'og2-batt-tech':     'lfp',
+    'og2-tilt':          '32',
+    'og2-azimuth':       '0',
+    'og2-surface':       '12',
+    'og2-panel-wp':      '400',
+    'og2-panel-m2':      '1.96',
+    'og2-losses':        '14',
+    'og2-target-coverage':'90',
+    'og2-pv-cost-kwp':   '650',
+    'og2-bos-cost':      '500',
+    ...Object.fromEntries(Array.from({length:12}, (_,i) => [`og2-day-${i+1}`, '0']))
+  };
+
+  const annualConso = Object.entries(formState)
+    .filter(([k]) => k.startsWith('sz-kwh-'))
+    .reduce((s, [, v]) => s + parseFloat(v), 0);
+
+  const demo = {
+    id:        DEMO_PROJECT_ID,
+    name:      'Démo — Maison Toulouse',
+    isDemo:    true,
+    client: {
+      nom:     'Famille Dupont',
+      adresse: '12 allée des Capucines, 31000 Toulouse',
+      tel:     '06 12 34 56 78',
+      email:   'dupont@example.fr'
+    },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    location:  { lat: toulouse.lat, lon: toulouse.lon, alt: toulouse.alt, name: toulouse.name },
+    weatherData: toulouse.monthly,
+    formState,
+    summary: {
+      annualConso,
+      recommendedPpeak: 4.4,
+      systemCost:       3960,
+      coverageRate:     62,
+      locationName:     toulouse.name
+    }
+  };
+
+  ProjectManager.save(demo);
 }
 
 // ══════════════════════════════════════════════════════════════

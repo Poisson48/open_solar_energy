@@ -51,7 +51,7 @@ const HourlyModule = (() => {
 
   /** Construit le profil réel depuis les données 30min Enedis */
   function _buildRealProfile(month) {
-    const DAYS = SolarMath.DAYS_IN_MONTH;
+    const DAYS = DAYS_IN_MONTH;
     // Calculer le jour de début du mois dans l'année
     let startDay = 0;
     for (let m = 0; m < month - 1; m++) startDay += DAYS[m];

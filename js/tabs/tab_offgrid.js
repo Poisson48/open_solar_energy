@@ -18,7 +18,7 @@ function initTabOffgrid() {
             <div class="form-group" style="margin-bottom:10px">
               <label>Consommation par défaut (tous les mois)</label>
               <div class="input-unit">
-                <input type="number" id="og2-daily-default" value="1000" step="50" min="0">
+                <input type="number" id="og2-daily-default" value="" step="50" min="0" placeholder="ex: 1000">
                 <span class="unit-tag">Wh/j</span>
               </div>
               <div style="font-size:11px;color:var(--color-text-muted);margin-top:4px">
@@ -93,7 +93,7 @@ function initTabOffgrid() {
               </div>
               <div class="form-group">
                 <label>Surface dispo</label>
-                <div class="input-unit"><input type="number" id="og2-surface" value="20"><span class="unit-tag">m²</span></div>
+                <div class="input-unit"><input type="number" id="og2-surface" value="" placeholder="m²"><span class="unit-tag">m²</span></div>
               </div>
               <div class="form-group">
                 <label>Panneaux (Wc)</label>

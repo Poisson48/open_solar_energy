@@ -21,22 +21,6 @@ function initTabs() {
   });
 }
 
-// ── Durée d'ensoleillement (onglet horaire) ──────────────────
-function renderDaylightTable() {
-  const months = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
-  const lat = AppState.location.lat;
-  const rows = months.map((name, i) => {
-    const h = SolarMath.daylightHours(lat, i + 1);
-    return `<tr><td>${name}</td><td>${Math.round(h * 10) / 10} h</td></tr>`;
-  }).join('');
-  const el = document.getElementById('daylight-table');
-  if (el) el.innerHTML = `
-    <table class="data-table" style="max-width:260px">
-      <thead><tr><th>Mois</th><th>Ensoleillement</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>`;
-}
-
 // ── Point d'entrée ───────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
 
@@ -50,8 +34,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   initTabOptimizer();
   initTabQuote();
 
-  // 2. Charger les données météo démo et initialiser la carte
+  // 2. Charger les données météo démo, initialiser la carte, injecter le projet démo
   await loadDemoData();
+  seedDemoProject();
   initMap();
   initTabs();
   initLocationInputs();
@@ -62,6 +47,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   bindBatteryInfo();
   bindOffgridLiveTotal();
   initQuoteTab();
+  calcGridPanels(); // initialise l'affichage panneaux/kWc
 
   // 4. Brancher les boutons de calcul
   document.getElementById('btn-calc-sizing')?.addEventListener('click', calcSizing);
@@ -83,7 +69,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   setTimeout(() => {
     renderIrradiationData();
     calcSizing();
-    renderDaylightTable();
     HourlyModule.updateSourceStatus();
   }, 350);
 

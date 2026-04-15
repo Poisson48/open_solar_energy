@@ -5,7 +5,7 @@
 
 const SolarMath = (() => {
 
-  const DAYS_IN_MONTH = [31,28,31,30,31,30,31,31,30,31,30,31];
+  // DAYS_IN_MONTH et MONTH_NAMES définis dans constants.js
 
   /** Jour julien moyen du mois (milieu du mois) */
   function midMonthDay(month) {
@@ -313,5 +313,5 @@ const SolarMath = (() => {
     return H_tilt;
   }
 
-  return { tiltedIrradiation, pvProduction, gridSystemAnnual, offgridSystem, optimalTilt, tiltAzimuthHeatmap, daylightHours, hourlyIrradiance, DAYS_IN_MONTH };
+  return { tiltedIrradiation, pvProduction, gridSystemAnnual, offgridSystem, optimalTilt, tiltAzimuthHeatmap, daylightHours, hourlyIrradiance };
 })();

@@ -14,8 +14,8 @@
 
 const OffgridSizing = (() => {
 
-  const DAYS = [31,28,31,30,31,30,31,31,30,31,30,31];
-  const MONTH_NAMES = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  // DAYS_IN_MONTH et MONTH_NAMES définis dans constants.js
+  const DAYS = DAYS_IN_MONTH;
 
   const BATTERY_TECH = {
     lfp:       { label:'LFP standard (neuf)',             dod:0.80, eta:0.97, cycles:3000, costPerKwh:400, bmsFixed:0,   color:'#2d9e5c' },

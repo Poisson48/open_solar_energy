@@ -20,13 +20,42 @@ function initTabGrid() {
             </select>
           </div>
 
-          <div class="form-group" style="margin-bottom:10px">
-            <label>Puissance crête installée</label>
-            <div class="input-unit">
-              <input type="number" id="inp-ppeak" value="3" step="0.1" min="0.1" max="1000">
-              <span class="unit-tag">kWc</span>
+          <div class="form-row" style="gap:8px;margin-bottom:10px">
+            <div class="form-group">
+              <label>Surface disponible</label>
+              <div class="input-unit">
+                <input type="number" id="inp-surface" value="" step="1" min="1" placeholder="m²" oninput="calcGridPanels()">
+                <span class="unit-tag">m²</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Surface / panneau</label>
+              <div class="input-unit">
+                <input type="number" id="inp-panel-m2" value="1.96" step="0.01" min="0.5" oninput="calcGridPanels()">
+                <span class="unit-tag">m²</span>
+              </div>
             </div>
           </div>
+
+          <div class="form-group" style="margin-bottom:10px">
+            <label>Puissance unitaire panneau</label>
+            <div class="input-unit">
+              <input type="number" id="inp-panel-wp" value="400" step="10" min="50" oninput="calcGridPanels()">
+              <span class="unit-tag">Wc</span>
+            </div>
+          </div>
+
+          <div id="grid-panels-info" style="background:var(--color-bg-card);border:1px solid var(--color-border);border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:13px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="color:var(--color-text-muted)">Panneaux installables</span>
+              <span id="grid-npanels" style="font-weight:700;font-size:16px;color:var(--color-primary)">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+              <span style="color:var(--color-text-muted)">Puissance crête totale</span>
+              <span id="grid-ppeak-display" style="font-weight:700;font-size:16px;color:var(--color-accent)">—</span>
+            </div>
+          </div>
+          <input type="hidden" id="inp-ppeak" value="3">
 
           <div class="form-group" style="margin-bottom:10px">
             <label>Pertes système</label>

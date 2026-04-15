@@ -16,8 +16,8 @@ const SizingEngine = (() => {
     hphc: { hp: 0.2460, hc: 0.1860 }
   };
 
-  const DAYS = [31,28,31,30,31,30,31,31,30,31,30,31];
-  const MONTH_NAMES = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  // DAYS_IN_MONTH et MONTH_NAMES définis dans constants.js
+  const DAYS = DAYS_IN_MONTH;
 
   // ── Calcul des économies selon le tarif ───────────────────────
   function calcSavingsOnBill(monthlyMetrics, bill) {

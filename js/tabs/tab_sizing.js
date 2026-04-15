@@ -41,18 +41,18 @@ function initTabSizing() {
             <div id="sz-csv-status" style="font-size:11px;margin-bottom:6px;display:none"></div>
             <div id="hourly-data-status" style="font-size:11px;color:var(--color-success);margin-bottom:4px"></div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
-              <div class="form-group"><label>Jan</label><input type="number" id="sz-kwh-1"  value="320" min="0"></div>
-              <div class="form-group"><label>Fév</label><input type="number" id="sz-kwh-2"  value="290" min="0"></div>
-              <div class="form-group"><label>Mar</label><input type="number" id="sz-kwh-3"  value="280" min="0"></div>
-              <div class="form-group"><label>Avr</label><input type="number" id="sz-kwh-4"  value="240" min="0"></div>
-              <div class="form-group"><label>Mai</label><input type="number" id="sz-kwh-5"  value="210" min="0"></div>
-              <div class="form-group"><label>Jun</label><input type="number" id="sz-kwh-6"  value="180" min="0"></div>
-              <div class="form-group"><label>Jul</label><input type="number" id="sz-kwh-7"  value="170" min="0"></div>
-              <div class="form-group"><label>Aoû</label><input type="number" id="sz-kwh-8"  value="175" min="0"></div>
-              <div class="form-group"><label>Sep</label><input type="number" id="sz-kwh-9"  value="200" min="0"></div>
-              <div class="form-group"><label>Oct</label><input type="number" id="sz-kwh-10" value="250" min="0"></div>
-              <div class="form-group"><label>Nov</label><input type="number" id="sz-kwh-11" value="300" min="0"></div>
-              <div class="form-group"><label>Déc</label><input type="number" id="sz-kwh-12" value="340" min="0"></div>
+              <div class="form-group"><label>Jan</label><input type="number" id="sz-kwh-1"  value="" min="0" placeholder="kWh"></div>
+              <div class="form-group"><label>Fév</label><input type="number" id="sz-kwh-2"  value="" min="0" placeholder="kWh"></div>
+              <div class="form-group"><label>Mar</label><input type="number" id="sz-kwh-3"  value="" min="0" placeholder="kWh"></div>
+              <div class="form-group"><label>Avr</label><input type="number" id="sz-kwh-4"  value="" min="0" placeholder="kWh"></div>
+              <div class="form-group"><label>Mai</label><input type="number" id="sz-kwh-5"  value="" min="0" placeholder="kWh"></div>
+              <div class="form-group"><label>Jun</label><input type="number" id="sz-kwh-6"  value="" min="0" placeholder="kWh"></div>
+              <div class="form-group"><label>Jul</label><input type="number" id="sz-kwh-7"  value="" min="0" placeholder="kWh"></div>
+              <div class="form-group"><label>Aoû</label><input type="number" id="sz-kwh-8"  value="" min="0" placeholder="kWh"></div>
+              <div class="form-group"><label>Sep</label><input type="number" id="sz-kwh-9"  value="" min="0" placeholder="kWh"></div>
+              <div class="form-group"><label>Oct</label><input type="number" id="sz-kwh-10" value="" min="0" placeholder="kWh"></div>
+              <div class="form-group"><label>Nov</label><input type="number" id="sz-kwh-11" value="" min="0" placeholder="kWh"></div>
+              <div class="form-group"><label>Déc</label><input type="number" id="sz-kwh-12" value="" min="0" placeholder="kWh"></div>
             </div>
             <p id="sz-annual-total" style="font-size:12px;font-weight:700;color:var(--color-primary);margin-top:6px;text-align:right"></p>
           </div>
@@ -76,7 +76,7 @@ function initTabSizing() {
               </div>
               <div class="form-group">
                 <label>Surface dispo</label>
-                <div class="input-unit"><input type="number" id="sz-surface" value="20" min="1"><span class="unit-tag">m²</span></div>
+                <div class="input-unit"><input type="number" id="sz-surface" value="" min="1" placeholder="m²"><span class="unit-tag">m²</span></div>
               </div>
               <div class="form-group">
                 <label>Panneaux (Wc)</label>

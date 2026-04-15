@@ -16,8 +16,7 @@ const PVGISImport = (() => {
   const OPENMETEO_BASE  = 'https://archive-api.open-meteo.com/v1/archive';
   const PVGIS_BASE      = 'https://re.jrc.ec.europa.eu/api/v5_2';
   const CORS_PROXY      = 'https://corsproxy.io/?url=';
-  const MONTH_NAMES     = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
-  const DAYS_IN_MONTH   = [31,28,31,30,31,30,31,31,30,31,30,31];
+  // MONTH_NAMES et DAYS_IN_MONTH définis dans constants.js
 
   // ─────────────────────────────────────────────────────────────
   // 1. OPEN-METEO : irradiation mensuelle (GHI) + température

@@ -63,7 +63,7 @@
       <p style="text-align:center;color:var(--color-text-muted);margin-bottom:24px;font-size:14px">
         Que souhaitez-vous faire ?
       </p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px">
         <button onclick="showNewProjectForm()" style="background:var(--color-bg);border:2px solid var(--color-border);border-radius:10px;padding:20px 16px;cursor:pointer;text-align:center;transition:border-color .2s" onmouseover="this.style.borderColor='var(--color-accent)'" onmouseout="this.style.borderColor='var(--color-border)'">
           <div style="font-size:32px;margin-bottom:8px">＋</div>
           <div style="font-size:14px;font-weight:700;color:var(--color-primary);margin-bottom:4px">Nouveau projet</div>
@@ -75,6 +75,14 @@
           <div style="font-size:12px;color:var(--color-text-muted)">Charger un projet existant depuis la liste ou un fichier</div>
         </button>
       </div>
+      <button onclick="loadProject(DEMO_PROJECT_ID)" style="width:100%;background:linear-gradient(135deg,var(--color-accent) 0%,var(--color-accent-dark) 100%);border:none;border-radius:10px;padding:14px 20px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px;margin-bottom:14px;color:#fff">
+        <div style="font-size:28px">☀️</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:2px">Découvrir avec le projet démo</div>
+          <div style="font-size:12px;opacity:0.85">Maison Toulouse · 22 m² · ~3 700 kWh/an · données météo réelles</div>
+        </div>
+        <div style="margin-left:auto;font-size:18px;opacity:0.8">→</div>
+      </button>
       <div style="text-align:center">
         <button onclick="closeStartupModal()" style="background:none;border:none;color:var(--color-text-muted);cursor:pointer;font-size:12px;text-decoration:underline">
           Passer et continuer sans projet
@@ -347,8 +355,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 
-<!-- État global (en premier) -->
+<!-- État global et constantes (en premier) -->
 <script src="js/app_state.js"></script>
+<script src="js/constants.js"></script>
 
 <!-- Algorithmes et moteurs de calcul -->
 <script src="js/solar_math.js"></script>

@@ -7,15 +7,55 @@
 // ══════════════════════════════════════════════════════════════
 //  SYSTÈME PV RÉSEAU
 // ══════════════════════════════════════════════════════════════
+
+/** Calcule et affiche en temps réel le nombre de panneaux + Ppeak depuis surface */
+function calcGridPanels() {
+  const surface  = parseFloat(document.getElementById('inp-surface')?.value)   || 0;
+  const panelM2  = parseFloat(document.getElementById('inp-panel-m2')?.value)  || 1.96;
+  const panelWp  = parseFloat(document.getElementById('inp-panel-wp')?.value)  || 400;
+
+  const nPanels = Math.floor(surface / panelM2);
+  const Ppeak   = (nPanels * panelWp) / 1000;
+
+  const nEl    = document.getElementById('grid-npanels');
+  const pEl    = document.getElementById('grid-ppeak-display');
+  const hidden = document.getElementById('inp-ppeak');
+
+  if (nEl)    nEl.textContent    = nPanels > 0 ? `${nPanels} panneaux` : '—';
+  if (pEl)    pEl.textContent    = Ppeak   > 0 ? `${Ppeak.toFixed(2)} kWc` : '—';
+  if (hidden) hidden.value       = Ppeak   > 0 ? Ppeak : 3;
+}
+
 function calcGridSystem() {
   if (!AppState.weatherData) {
     alert('Veuillez sélectionner un lieu avec des données météo.');
     return;
   }
+
+  // Recalculer Ppeak depuis les inputs surface/panneau au moment du clic
+  calcGridPanels();
+
+  const surface  = parseFloat(document.getElementById('inp-surface')?.value)  || 0;
+  if (!surface) {
+    document.getElementById('grid-results').innerHTML = `<div class="result-placeholder">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <p>Renseignez la surface disponible en toiture<br>puis cliquez sur <strong>Calculer</strong></p>
+    </div>`;
+    return;
+  }
+  const panelM2  = parseFloat(document.getElementById('inp-panel-m2')?.value) || 1.96;
+  const panelWp  = parseFloat(document.getElementById('inp-panel-wp')?.value) || 400;
+  const nPanels  = Math.floor(surface / panelM2);
+  const Ppeak    = nPanels > 0 ? (nPanels * panelWp) / 1000 : 3;
+
   const params = {
     lat:        AppState.location.lat,
     weatherData: AppState.weatherData,
-    Ppeak:      parseFloat(document.getElementById('inp-ppeak').value) || 3,
+    Ppeak,
+    nPanels,
+    panelWp,
+    surface,
+    panelM2,
     losses:     parseFloat(document.getElementById('inp-losses').value) || 14,
     tilt:       parseFloat(document.getElementById('inp-tilt').value) || 30,
     azimuth:    parseFloat(document.getElementById('inp-azimuth').value) || 0,
@@ -36,6 +76,14 @@ function renderGridResults(results, params) {
 
   const kpiHtml = `
     <div class="kpi-grid">
+      <div class="kpi-card" style="border-left:3px solid var(--color-primary)">
+        <div class="kpi-value">${params.nPanels ?? '—'}</div>
+        <div class="kpi-label">Panneaux installés<br><span class="kpi-unit">${params.nPanels ? `${params.panelWp} Wc × ${params.nPanels}` : '—'}</span></div>
+      </div>
+      <div class="kpi-card" style="border-left:3px solid var(--color-accent)">
+        <div class="kpi-value accent">${params.Ppeak.toFixed(2)}</div>
+        <div class="kpi-label">Puissance crête<br><span class="kpi-unit">kWc</span></div>
+      </div>
       <div class="kpi-card">
         <div class="kpi-value">${results.E_annual.toLocaleString('fr')}</div>
         <div class="kpi-label">Production annuelle<br><span class="kpi-unit">kWh/an</span></div>
@@ -284,7 +332,25 @@ function calcSizing() {
     return;
   }
   const input = SizingEngine.readFormInput();
-  const { recommended, allCandidates, currentBill, annualConso } =
+  const annualConso = input.bill.monthlyKwh.reduce((s, k) => s + k, 0);
+  if (annualConso === 0) {
+    const el = document.getElementById('sizing-results');
+    el.innerHTML = `<div class="result-placeholder">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 11h-2v2H9v-2H7v-2h2V9h2v2h2v2z"/></svg>
+      <p>Renseignez votre consommation mensuelle<br>puis cliquez sur <strong>Dimensionner</strong></p>
+    </div>`;
+    return;
+  }
+  const surface = input.site.maxSurfaceM2;
+  if (!surface) {
+    const el = document.getElementById('sizing-results');
+    el.innerHTML = `<div class="result-placeholder">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <p>Renseignez la surface disponible en toiture<br>puis cliquez sur <strong>Dimensionner</strong></p>
+    </div>`;
+    return;
+  }
+  const { recommended, allCandidates, currentBill } =
     SizingEngine.run(input, AppState.weatherData, AppState.location.lat);
   AppState.lastSizingResult = recommended;
   AppState.lastSizingInput  = input;
@@ -333,11 +399,11 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
           <div class="kpi-label">Taux de couverture<br><span class="kpi-unit">production/conso</span></div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-value">${rec.autoConso} %</div>
+          <div class="kpi-value">${rec.selfSufficiencyRate} %</div>
           <div class="kpi-label">Autoconsommation<br><span class="kpi-unit">% produit consommé</span></div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-value accent">${rec.roi}</div>
+          <div class="kpi-value accent">${rec.ROI}</div>
           <div class="kpi-label">Retour sur invest.<br><span class="kpi-unit">années</span></div>
         </div>
         <div class="kpi-card">
@@ -545,7 +611,6 @@ function bindSizingLiveTotal() {
 function bindOffgridLiveTotal() {
   const defInput = document.getElementById('og2-daily-default');
   const monthInputs = Array.from({length:12}, (_, i) => document.getElementById(`og2-day-${i+1}`));
-  const DAYS = [31,28,31,30,31,30,31,31,30,31,30,31];
   function update() {
     const def = parseFloat(defInput?.value) || 1000;
     const total = monthInputs.reduce((s, el, i) => {
@@ -574,7 +639,6 @@ function optimizeTiltFor(prefix, withAz = false) {
 
 function importEDFToOffgrid() {
   const input = AppState.lastSizingInput;
-  const DAYS = [31,28,31,30,31,30,31,31,30,31,30,31];
   const statusEl = document.getElementById('og2-edf-import-status');
   if (!input?.bill?.monthlyKwh) {
     if (statusEl) statusEl.textContent = '⚠ Aucune donnée EDF — lancez d\'abord le dimensionnement réseau.';
@@ -695,8 +759,8 @@ function importSizingToQuote() {
   const setVal = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
 
   if (rec?.Ppeak)       setVal('dv-sys-ppeak',   rec.Ppeak);
-  if (rec?.Ppeak && inp?.panelWp)
-    setVal('dv-sys-panels', Math.ceil(rec.Ppeak * 1000 / inp.panelWp));
+  if (rec?.Ppeak && inp?.site?.panelWattPeak)
+    setVal('dv-sys-panels', Math.ceil(rec.Ppeak * 1000 / inp.site.panelWattPeak));
   if (rec?.annualProd)  setVal('dv-sys-prod',    Math.round(rec.annualProd));
   if (rec?.co2Saved)    setVal('dv-sys-co2',     Math.round(rec.co2Saved));
 

@@ -3,12 +3,15 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '1.5.1';
+const APP_VERSION = '1.5.3';
 // Historique :
 //   1.4.0 — Module devis professionnel
 //   1.5.0 — Refactoring multi-fichiers, modal démarrage, infos client,
 //            module horaire EDF, dimensionnement onduleurs
 //   1.5.1 — Serveur de développement local (.claude/launch.json)
+//   1.5.2 — Refacto constants.js · bugfixes (autoConso/ROI/panelWp)
+//            · onglet réseau : calcul auto nb panneaux depuis surface
+//   1.5.3 — Suppression valeurs par défaut · projet démo au démarrage
 
 const AppState = {
   location:   { lat: 48.8566, lon: 2.3522, alt: 35, name: 'Paris, France' },
@@ -41,8 +44,8 @@ const AppState = {
 
 // Champs de formulaire persistés dans un projet
 const PROJECT_FIELDS = [
-  // Système PV réseau
-  'inp-ppeak','inp-losses','inp-tilt','inp-azimuth','inp-cost','inp-kwh-price','inp-co2',
+  // Système PV réseau (Ppeak calculé depuis surface + panneaux)
+  'inp-surface','inp-panel-wp','inp-panel-m2','sel-tech','inp-losses','inp-tilt','inp-azimuth','inp-cost','inp-kwh-price','inp-co2',
   // Dimensionnement EDF
   'sz-tariff','sz-price-base','sz-subscription',
   ...Array.from({length:12}, (_,i) => `sz-kwh-${i+1}`),
