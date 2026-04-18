@@ -50,6 +50,25 @@ const EnedisImport = (() => {
     return null;
   }
 
+  // ── Parse datetime complet → { year, month, day, hour, minute } ou null ──
+  function parseDatetime(s) {
+    const v = clean(s);
+    // ISO : 2024-01-15T00:30:00+01:00 ou 2024-01-15 00:30:00
+    let m = v.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+    if (m) return { year: +m[1], month: +m[2], day: +m[3], hour: +m[4], minute: +m[5] };
+    // Format français JJ/MM/AAAA HH:MM
+    m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+    if (m) return { year: +m[3], month: +m[2], day: +m[1], hour: +m[4], minute: +m[5] };
+    return null;
+  }
+
+  // ── Calcule le jour de l'année (0-based) ─────────────────────
+  function dayOfYear(year, month, day) {
+    const start = new Date(year, 0, 1);
+    const date  = new Date(year, month - 1, day);
+    return Math.floor((date - start) / 86400000);
+  }
+
   // ── Détecte l'index d'une colonne par mots-clés ──────────────
   // exclude : index à ignorer (évite collision ex. "Période de consommation")
   function findCol(headers, keywords, exclude = -1) {
@@ -114,13 +133,14 @@ const EnedisImport = (() => {
     const headerStr = lines[headerIdx];
     const unitFactor = isWh(headerStr) ? 0.001 : 1; // Wh→kWh ou kWh direct
 
-    // ── Agrégation par année → mois ────────────────────────────
+    // ── Agrégation par année → mois + collecte brute 30min ───────
     // Structure : data[year][month] = { kwh, khp, khc, count }
-    const data = {};
+    const data        = {};
+    const rawSlots    = {}; // year → Float32Array(366*48) valeurs kWh par slot
 
     for (const line of dataLines) {
       const cells = line.split(sep).map(clean);
-      const dt = parseDate(cells[idxDate]);
+      const dt = parseDatetime(cells[idxDate]) || parseDate(cells[idxDate]);
       if (!dt) continue;
 
       const { year, month } = dt;
@@ -134,7 +154,6 @@ const EnedisImport = (() => {
       };
 
       if (idxHp !== -1 && idxHc !== -1) {
-        // Format HP/HC
         const hp = parseVal(idxHp);
         const hc = parseVal(idxHc);
         data[year][month].khp   += hp;
@@ -144,6 +163,15 @@ const EnedisImport = (() => {
         data[year][month].kwh   += parseVal(idxVal);
       }
       data[year][month].count++;
+
+      // Collecte des valeurs brutes 30min si heure disponible
+      if (dt.day !== undefined && dt.hour !== undefined) {
+        const doy  = dayOfYear(year, month, dt.day);
+        const slot = Math.min(47, dt.hour * 2 + (dt.minute >= 30 ? 1 : 0));
+        const idx  = doy * 48 + slot;
+        if (!rawSlots[year]) rawSlots[year] = new Float32Array(366 * 48);
+        rawSlots[year][idx] = parseVal(idxVal) || (parseVal(idxHp) + parseVal(idxHc));
+      }
     }
 
     if (Object.keys(data).length === 0) {
@@ -197,6 +225,16 @@ const EnedisImport = (() => {
       ? (totalRows > 400 ? 'Données 30 min' : 'Données journalières')
       : 'Données mensuelles';
 
+    // ── Données brutes 30min si disponibles ────────────────────
+    let halfHourlyData = null;
+    const raw = rawSlots[chosenYear];
+    if (raw) {
+      const nonZero = raw.filter(v => v > 0).length;
+      if (nonZero >= 48 * 30) { // au moins 30 jours de données
+        halfHourlyData = { values: raw, year: chosenYear };
+      }
+    }
+
     return {
       monthlyKwh,
       monthlyKwhHp,
@@ -204,6 +242,7 @@ const EnedisImport = (() => {
       year: chosenYear,
       format: formatName,
       totalAnnual: Math.round(monthlyKwh.reduce((s, v) => s + v, 0)),
+      halfHourlyData,
       warnings
     };
   }
@@ -215,20 +254,27 @@ const EnedisImport = (() => {
     return text;
   }
 
-  // ── Priorité des CSV dans le ZIP EDF/suiviconso ───────────────
+  // ── Priorité des CSV dans le ZIP Enedis (30min en premier) ───
   const ZIP_PRIORITY = [
-    'ma-conso-mensuelle',
+    'mes-puissances-atteintes-30min',
+    'courbe_de_charge',
+    'courbe-de-charge',
+    'conso_heure',
+    'conso-heure',
+    '30min',
     'ma-conso-quotidienne',
     'mes-index-elec',
-    'mes-puissances-atteintes-30min',
+    'ma-conso-mensuelle',
   ];
 
   function pickBestCsv(names) {
+    const csvNames = names.filter(n => n.toLowerCase().endsWith('.csv'));
     for (const key of ZIP_PRIORITY) {
-      const match = names.find(n => n.toLowerCase().includes(key));
+      const match = csvNames.find(n => n.toLowerCase().includes(key));
       if (match) return match;
     }
-    return names.find(n => n.endsWith('.csv')) || names[0];
+    // Fallback : CSV avec le plus de contenu probable (nom le plus long)
+    return csvNames.sort((a, b) => b.length - a.length)[0] || names[0];
   }
 
   // ── Gestionnaire ZIP (EDF suiviconso) ────────────────────────
