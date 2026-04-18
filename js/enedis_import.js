@@ -236,8 +236,18 @@ const EnedisImport = (() => {
     const raw = rawSlots[chosenYear];
     if (raw) {
       const nonZero = raw.filter(v => v > 0).length;
-      if (nonZero >= 48 * 30) { // au moins 30 jours de données
+      if (nonZero >= 48 * 30) {
         halfHourlyData = { values: raw, year: chosenYear };
+        // Recalculer les kWh mensuels depuis les slots bruts (plus fiable que l'agrégation directe)
+        for (let m = 0; m < 12; m++) {
+          let startDay = 0;
+          for (let mm = 0; mm < m; mm++) startDay += DAYS_IN_MONTH[mm];
+          const endDay = startDay + DAYS_IN_MONTH[m];
+          let sum = 0;
+          for (let d = startDay; d < endDay; d++)
+            for (let s = 0; s < 48; s++) sum += raw[d * 48 + s];
+          if (sum > 0) monthlyKwh[m] = Math.round(sum);
+        }
       }
     }
 
@@ -260,41 +270,60 @@ const EnedisImport = (() => {
     return text;
   }
 
-  // ── Priorité des CSV dans le ZIP Enedis (30min en premier) ───
-  const ZIP_PRIORITY = [
-    'mes-puissances-atteintes-30min',
-    'courbe_de_charge',
-    'courbe-de-charge',
-    'conso_heure',
-    'conso-heure',
-    '30min',
-    'ma-conso-quotidienne',
-    'mes-index-elec',
-    'ma-conso-mensuelle',
-  ];
+  // ── Priorité pour les kWh mensuels (fichier dédié plus fiable) ─
+  const MONTHLY_KEYS    = ['ma-conso-mensuelle', 'ma-conso-quotidienne', 'mes-index-elec'];
+  const HALFHOURLY_KEYS = ['mes-puissances-atteintes-30min', 'courbe_de_charge', 'courbe-de-charge', 'conso_heure', '30min'];
 
-  function pickBestCsv(names) {
-    const csvNames = names.filter(n => n.toLowerCase().endsWith('.csv'));
-    for (const key of ZIP_PRIORITY) {
-      const match = csvNames.find(n => n.toLowerCase().includes(key));
-      if (match) return match;
-    }
-    // Fallback : CSV avec le plus de contenu probable (nom le plus long)
-    return csvNames.sort((a, b) => b.length - a.length)[0] || names[0];
-  }
-
-  // ── Gestionnaire ZIP (EDF suiviconso) ────────────────────────
+  // ── Gestionnaire ZIP : parse TOUS les CSV, merge le meilleur ──
   function handleZip(file, onResult) {
     if (typeof JSZip === 'undefined') {
       onResult({ error: 'JSZip non chargé — rechargez la page.' });
       return;
     }
     JSZip.loadAsync(file).then(zip => {
-      const names = Object.keys(zip.files).filter(n => !zip.files[n].dir);
-      const chosen = pickBestCsv(names);
-      if (!chosen) { onResult({ error: 'Aucun CSV trouvé dans le ZIP.' }); return; }
-      zip.files[chosen].async('arraybuffer').then(buf => {
-        onResult(parse(decodeText(buf)));
+      const csvNames = Object.keys(zip.files)
+        .filter(n => !zip.files[n].dir && n.toLowerCase().endsWith('.csv'));
+      if (!csvNames.length) { onResult({ error: 'Aucun CSV trouvé dans le ZIP.' }); return; }
+
+      Promise.all(csvNames.map(name =>
+        zip.files[name].async('arraybuffer')
+          .then(buf => ({ name: name.toLowerCase(), result: parse(decodeText(buf)) }))
+      )).then(parsed => {
+        const ok = parsed.filter(p => !p.result.error);
+        if (!ok.length) { onResult({ error: 'Aucun fichier CSV valide dans le ZIP.' }); return; }
+
+        // Meilleur fichier mensuel (kWh non nuls)
+        const pickByKeys = (keys) => {
+          for (const key of keys) {
+            const m = ok.find(p => p.name.includes(key) && p.result.monthlyKwh.some(v => v > 0));
+            if (m) return m.result;
+          }
+          return null;
+        };
+        const pickHalfhourly = () => {
+          for (const key of HALFHOURLY_KEYS) {
+            const m = ok.find(p => p.name.includes(key) && p.result.halfHourlyData);
+            if (m) return m.result;
+          }
+          return ok.find(p => p.result.halfHourlyData)?.result || null;
+        };
+
+        const bestMonthly    = pickByKeys(MONTHLY_KEYS)
+                            || ok.find(p => p.result.monthlyKwh.some(v => v > 0))?.result
+                            || ok[0].result;
+        const bestHalfhourly = pickHalfhourly();
+
+        // Merger : kWh mensuels + données 30min si fichiers séparés
+        const merged = { ...bestMonthly };
+        if (bestHalfhourly && bestHalfhourly !== bestMonthly) {
+          merged.halfHourlyData = bestHalfhourly.halfHourlyData;
+        }
+        merged.warnings = [
+          ...bestMonthly.warnings,
+          ...(bestHalfhourly && bestHalfhourly !== bestMonthly ? bestHalfhourly.warnings : [])
+        ];
+
+        onResult(merged);
       });
     }).catch(err => onResult({ error: 'Impossible de lire le ZIP : ' + err.message }));
   }
