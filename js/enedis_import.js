@@ -76,9 +76,15 @@ const EnedisImport = (() => {
     return headers.findIndex((h, i) => i !== exclude && kw.some(k => h.toLowerCase().includes(k)));
   }
 
-  // ── Détecte si l'unité est Wh (sinon kWh supposé) ───────────
-  function isWh(headerLine) {
-    return /\bwh\b/i.test(headerLine) && !/kwh/i.test(headerLine);
+  // ── Détecte l'unité dans l'en-tête ──────────────────────────
+  // Retourne le facteur de conversion vers kWh par slot 30min
+  function detectUnitFactor(headerLine) {
+    const h = headerLine.toLowerCase();
+    if (/kwh/i.test(h))  return 1;       // kWh direct
+    if (/\bwh\b/i.test(h)) return 0.001; // Wh → kWh
+    // Puissance en W (ex: "Puissance atteinte (W)") → W × 0.5h / 1000 = kWh/slot
+    if (/\bw\b(?!h)/i.test(h) || /puissance/i.test(h)) return 0.5 / 1000;
+    return 0.001; // défaut Wh
   }
 
   // ── Corps principal ──────────────────────────────────────────
@@ -117,8 +123,8 @@ const EnedisImport = (() => {
     }
 
     // ── Identifier les colonnes ────────────────────────────────
-    const idxDate = findCol(headerCells, ['horodate', 'date', 'mois', 'période', 'periode']);
-    const idxVal  = findCol(headerCells, ['valeur', 'energie active totale', 'consommation', 'total'], idxDate);
+    const idxDate = findCol(headerCells, ['horodate', 'date', 'mois', 'période', 'periode', 'heure de relève', 'releve']);
+    const idxVal  = findCol(headerCells, ['valeur', 'energie active totale', 'consommation', 'total', 'puissance atteinte', 'puissance'], idxDate);
     const idxHp   = findCol(headerCells, ['heures pleines', 'heure pleine', 'hp'], idxDate);
     const idxHc   = findCol(headerCells, ['heures creuses', 'heure creuse', 'hc'], idxDate);
 
@@ -130,8 +136,8 @@ const EnedisImport = (() => {
     }
 
     // ── Détection unité ────────────────────────────────────────
-    const headerStr = lines[headerIdx];
-    const unitFactor = isWh(headerStr) ? 0.001 : 1; // Wh→kWh ou kWh direct
+    const headerStr  = lines[headerIdx];
+    const unitFactor = detectUnitFactor(headerStr);
 
     // ── Agrégation par année → mois + collecte brute 30min ───────
     // Structure : data[year][month] = { kwh, khp, khc, count }

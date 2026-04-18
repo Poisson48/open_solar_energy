@@ -41,6 +41,9 @@ const AppState = {
   // Données horaires (depuis import Enedis 30min)
   hourlyEnedisData: null,   // { halfHourly: Float32Array, year: 2023, format: '30min' }
 
+  // Type d'installation : 'grid' (raccordé réseau) | 'offgrid' (autonome)
+  installationType: 'grid',
+
   // Paramètres d'installation partagés entre onglets
   install: {
     tilt:    30,

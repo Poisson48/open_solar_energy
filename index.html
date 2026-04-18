@@ -37,6 +37,7 @@
   <span id="project-bar-label">Projet :</span>
   <input type="text" id="project-name-input" placeholder="Nom du projet…">
   <span id="project-bar-client" style="font-size:12px;color:var(--color-text-muted);padding:0 4px"></span>
+  <button id="install-type-badge" onclick="toggleInstallationType()" title="Changer le type d'installation" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1.5px solid;cursor:pointer;transition:all .2s"></button>
   <button id="btn-save-project" onclick="saveCurrentProject()" title="Sauvegarder (Ctrl+S)">💾 Sauvegarder</button>
   <button class="btn btn-outline btn-sm" onclick="exportCurrentProject()" title="Exporter en fichier local">📤 Exporter</button>
   <button id="btn-open-projects" onclick="openProjectsModal()" title="Gérer les projets">📁 Projets</button>
@@ -90,10 +91,31 @@
       </div>
     </div>
 
+    <!-- Étape 1.5 : type d'installation -->
+    <div id="startup-step-type" style="display:none;padding:28px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <button onclick="showStartupStep1()" style="background:none;border:none;cursor:pointer;color:var(--color-text-muted);font-size:18px">←</button>
+        <div style="font-size:16px;font-weight:700">Type d'installation</div>
+      </div>
+      <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 20px 32px">Ce choix détermine les onglets et les calculs disponibles.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+        <button onclick="selectInstallationType('grid')" style="background:var(--color-bg);border:2px solid var(--color-border);border-radius:12px;padding:22px 16px;cursor:pointer;text-align:center;transition:border-color .2s" onmouseover="this.style.borderColor='var(--color-accent)'" onmouseout="this.style.borderColor='var(--color-border)'">
+          <div style="font-size:36px;margin-bottom:10px">⚡</div>
+          <div style="font-size:14px;font-weight:700;color:var(--color-primary);margin-bottom:6px">Raccordée au réseau</div>
+          <div style="font-size:12px;color:var(--color-text-muted)">Panneaux avec injection ou autoconsommation. Facture EDF / Enedis.</div>
+        </button>
+        <button onclick="selectInstallationType('offgrid')" style="background:var(--color-bg);border:2px solid var(--color-border);border-radius:12px;padding:22px 16px;cursor:pointer;text-align:center;transition:border-color .2s" onmouseover="this.style.borderColor='var(--color-accent)'" onmouseout="this.style.borderColor='var(--color-border)'">
+          <div style="font-size:36px;margin-bottom:10px">🔋</div>
+          <div style="font-size:14px;font-weight:700;color:var(--color-primary);margin-bottom:6px">Autonome (hors réseau)</div>
+          <div style="font-size:12px;color:var(--color-text-muted)">Panneaux + batteries sans connexion au réseau. Cabane, van, maison isolée.</div>
+        </button>
+      </div>
+    </div>
+
     <!-- Étape 2a : nouveau projet -->
     <div id="startup-step-new" style="display:none;padding:24px 28px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
-        <button onclick="showStartupStep1()" style="background:none;border:none;cursor:pointer;color:var(--color-text-muted);font-size:18px">←</button>
+        <button onclick="showInstallationTypeStep()" style="background:none;border:none;cursor:pointer;color:var(--color-text-muted);font-size:18px">←</button>
         <div style="font-size:16px;font-weight:700">Nouveau projet</div>
       </div>
       <form onsubmit="createNewProject(event)">

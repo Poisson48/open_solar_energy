@@ -71,14 +71,15 @@ function saveCurrentProject() {
   };
 
   const project = {
-    id:          AppState.currentProjectId || ProjectManager.newId(),
+    id:               AppState.currentProjectId || ProjectManager.newId(),
     name,
-    client:      { ...AppState.currentClient },
-    createdAt:   null,
-    updatedAt:   null,
-    location:    { ...AppState.location },
-    weatherData: AppState.weatherData,
-    formState:   captureFormState(),
+    installationType: AppState.installationType || 'grid',
+    client:           { ...AppState.currentClient },
+    createdAt:        null,
+    updatedAt:        null,
+    location:         { ...AppState.location },
+    weatherData:      AppState.weatherData,
+    formState:        captureFormState(),
     summary
   };
 
@@ -109,6 +110,9 @@ function loadProject(id) {
   AppState.currentProjectId = project.id;
   AppState.location = { ...project.location };
   if (project.weatherData) AppState.weatherData = project.weatherData;
+  const installType = project.installationType || 'grid';
+  AppState.installationType = installType;
+  if (typeof applyInstallationType === 'function') applyInstallationType(installType);
 
   // Infos client
   AppState.currentClient = project.client
@@ -267,13 +271,28 @@ function closeStartupModal() {
 }
 
 function showStartupStep1() {
-  document.getElementById('startup-step-1').style.display  = 'block';
+  document.getElementById('startup-step-1').style.display    = 'block';
+  document.getElementById('startup-step-type').style.display = 'none';
   document.getElementById('startup-step-new').style.display  = 'none';
   document.getElementById('startup-step-load').style.display = 'none';
 }
 
+function showInstallationTypeStep() {
+  document.getElementById('startup-step-1').style.display    = 'none';
+  document.getElementById('startup-step-type').style.display = 'block';
+  document.getElementById('startup-step-new').style.display  = 'none';
+  document.getElementById('startup-step-load').style.display = 'none';
+}
+
+function selectInstallationType(type) {
+  AppState.installationType = type;
+  if (typeof applyInstallationType === 'function') applyInstallationType(type);
+  showNewProjectForm();
+}
+
 function showNewProjectForm() {
-  document.getElementById('startup-step-1').style.display  = 'none';
+  document.getElementById('startup-step-1').style.display    = 'none';
+  document.getElementById('startup-step-type').style.display = 'none';
   document.getElementById('startup-step-new').style.display  = 'block';
   document.getElementById('startup-step-load').style.display = 'none';
   document.getElementById('startup-project-name').focus();

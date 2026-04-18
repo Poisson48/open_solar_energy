@@ -5,6 +5,49 @@
  *   location.js, project_ui.js, renderers.js, hourly_module.js, inverter_sizing.js
  */
 
+// ── Type d'installation : masque les onglets irrelevants ─────
+const TABS_GRID_ONLY    = ['sizing', 'grid', 'tracker', 'optimizer'];
+const TABS_OFFGRID_ONLY = ['offgrid'];
+
+function applyInstallationType(type) {
+  AppState.installationType = type;
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    const tab  = btn.dataset.tab;
+    const hide = (type === 'grid' && TABS_OFFGRID_ONLY.includes(tab))
+              || (type === 'offgrid' && TABS_GRID_ONLY.includes(tab));
+    btn.style.display = hide ? 'none' : '';
+  });
+
+  // Si l'onglet actif est masqué, aller au premier onglet visible
+  const activeBtn = document.querySelector('.tab-btn.active');
+  if (activeBtn && activeBtn.style.display === 'none') {
+    const first = document.querySelector('.tab-btn:not([style*="display: none"])');
+    if (first) first.click();
+  }
+
+  // Badge dans la barre projet
+  const badge = document.getElementById('install-type-badge');
+  if (badge) {
+    if (type === 'grid') {
+      badge.textContent = '⚡ Réseau';
+      badge.style.color = 'var(--color-accent)';
+      badge.style.borderColor = 'var(--color-accent)';
+      badge.style.background = 'rgba(245,166,35,0.08)';
+    } else {
+      badge.textContent = '🔋 Autonome';
+      badge.style.color = 'var(--color-primary)';
+      badge.style.borderColor = 'var(--color-primary)';
+      badge.style.background = 'rgba(30,90,200,0.08)';
+    }
+  }
+}
+
+function toggleInstallationType() {
+  const newType = AppState.installationType === 'grid' ? 'offgrid' : 'grid';
+  applyInstallationType(newType);
+}
+
 // ── Synchronisation des paramètres d'installation partagés ──
 const INSTALL_FIELDS = {
   sizing:  { tilt:'sz-tilt',    azimuth:'sz-azimuth',    surface:'sz-surface',    panelWp:'sz-panel-wp',    panelM2:'sz-panel-m2',    losses:'sz-losses'    },
@@ -86,6 +129,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   initTabs();
   Object.keys(INSTALL_FIELDS).forEach(bindInstallSync);
   writeInstallToTab('sizing');
+  applyInstallationType(AppState.installationType);
   initLocationInputs();
 
   // 3. Bind les interactions des formulaires
