@@ -682,6 +682,7 @@ function handleEnedisCSV(input) {
       statusEl.textContent = '✗ ' + result.error;
       return;
     }
+    // ── Onglet dimensionnement ──────────────────────────────────
     result.monthlyKwh.forEach((kwh, i) => {
       const el = document.getElementById(`sz-kwh-${i + 1}`);
       if (el) el.value = kwh;
@@ -690,18 +691,32 @@ function handleEnedisCSV(input) {
       const tariffEl = document.getElementById('sz-tariff');
       if (tariffEl) tariffEl.value = 'hphc';
     }
-    // Stocker les données horaires si disponibles
+
+    // ── Onglet hors-réseau : conso journalière (Wh/j) ──────────
+    result.monthlyKwh.forEach((kwh, i) => {
+      const whPerDay = Math.round(kwh * 1000 / DAYS_IN_MONTH[i]);
+      const el = document.getElementById(`og2-day-${i + 1}`);
+      if (el) el.value = whPerDay;
+    });
+    const avgWhPerDay = Math.round(result.monthlyKwh.reduce((s, k, i) => s + k * 1000 / DAYS_IN_MONTH[i], 0) / 12);
+    const defEl = document.getElementById('og2-daily-default');
+    if (defEl) defEl.value = avgWhPerDay;
+    document.getElementById('og2-day-1')?.dispatchEvent(new Event('input'));
+
+    // ── Données 30min → module horaire ─────────────────────────
     if (result.halfHourlyData) {
       AppState.hourlyEnedisData = result.halfHourlyData;
       if (typeof HourlyModule !== 'undefined') {
         HourlyModule.setData(result.halfHourlyData);
-        // Notifier l'onglet horaire
-        document.getElementById('hourly-data-status')?.style && (
-          document.getElementById('hourly-data-status').textContent =
-            '✓ Données 30min disponibles pour l\'analyse horaire'
-        );
+        document.getElementById('hourly-data-status') &&
+          (document.getElementById('hourly-data-status').textContent =
+            '✓ Données 30min disponibles pour l\'analyse horaire');
       }
     }
+
+    // ── Stocker kWh mensuels dans AppState ──────────────────────
+    AppState.monthlyKwh = result.monthlyKwh.slice();
+
     document.getElementById('sz-kwh-1')?.dispatchEvent(new Event('input'));
     const warns = result.warnings.length ? ` — ⚠ ${result.warnings[0]}` : '';
     statusEl.style.color = 'var(--color-success)';
