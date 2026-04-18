@@ -5,16 +5,61 @@
  *   location.js, project_ui.js, renderers.js, hourly_module.js, inverter_sizing.js
  */
 
+// ── Synchronisation des paramètres d'installation partagés ──
+const INSTALL_FIELDS = {
+  sizing:  { tilt:'sz-tilt',    azimuth:'sz-azimuth',    surface:'sz-surface',    panelWp:'sz-panel-wp',    panelM2:'sz-panel-m2',    losses:'sz-losses'    },
+  grid:    { tilt:'inp-tilt',   azimuth:'inp-azimuth',   surface:'inp-surface',   panelWp:'inp-panel-wp',   panelM2:'inp-panel-m2',   losses:'inp-losses'   },
+  offgrid: { tilt:'og2-tilt',   azimuth:'og2-azimuth',   surface:'og2-surface',   panelWp:'og2-panel-wp',   panelM2:'og2-panel-m2',   losses:'og2-losses'   },
+  daily:   { tilt:'hourly-tilt',azimuth:'hourly-azimuth' },
+};
+
+function readInstallFromTab(tab) {
+  const map = INSTALL_FIELDS[tab];
+  if (!map) return;
+  for (const [key, id] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    const v = el.value !== '' ? parseFloat(el.value) : null;
+    if (v !== null && !isNaN(v)) AppState.install[key] = v;
+  }
+}
+
+function writeInstallToTab(tab) {
+  const map = INSTALL_FIELDS[tab];
+  if (!map) return;
+  for (const [key, id] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    if (!el || AppState.install[key] == null) continue;
+    if (parseFloat(el.value) !== AppState.install[key]) el.value = AppState.install[key];
+  }
+}
+
+function bindInstallSync(tab) {
+  const map = INSTALL_FIELDS[tab];
+  if (!map) return;
+  for (const [key, id] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.addEventListener('input', () => {
+      const v = parseFloat(el.value);
+      if (!isNaN(v)) AppState.install[key] = v;
+    });
+  }
+}
+
 // ── Gestion des onglets ──────────────────────────────────────
 function initTabs() {
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const tab = btn.dataset.tab;
+      const prev = AppState.activeTab;
+      const tab  = btn.dataset.tab;
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('tab-' + tab).classList.add('active');
+      readInstallFromTab(prev);
       AppState.activeTab = tab;
+      writeInstallToTab(tab);
       // Rafraîchir automatiquement certains onglets
       if (tab === 'irradiation') renderIrradiationData();
     });
@@ -39,6 +84,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   seedDemoProject();
   initMap();
   initTabs();
+  Object.keys(INSTALL_FIELDS).forEach(bindInstallSync);
+  writeInstallToTab('sizing');
   initLocationInputs();
 
   // 3. Bind les interactions des formulaires

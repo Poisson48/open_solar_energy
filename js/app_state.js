@@ -39,7 +39,17 @@ const AppState = {
   },
 
   // Données horaires (depuis import Enedis 30min)
-  hourlyEnedisData: null    // { halfHourly: Float32Array, year: 2023, format: '30min' }
+  hourlyEnedisData: null,   // { halfHourly: Float32Array, year: 2023, format: '30min' }
+
+  // Paramètres d'installation partagés entre onglets
+  install: {
+    tilt:    30,
+    azimuth: 0,
+    surface: null,
+    panelWp: 400,
+    panelM2: 1.96,
+    losses:  14,
+  }
 };
 
 // Champs de formulaire persistés dans un projet
