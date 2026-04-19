@@ -134,9 +134,12 @@ async function geocodeAddress() {
     const data = await r.json();
     if (data.length > 0) {
       const { lat, lon, display_name } = data[0];
-      AppState.location.name = display_name.split(',').slice(0, 2).join(',');
+      const geocodedName = display_name.split(',').slice(0, 2).join(',');
       setLocationCoords(parseFloat(lat), parseFloat(lon));
       AppState.map.setView([lat, lon], 10);
+      // Restore geocoded name (setLocationCoords snaps to nearest demo city)
+      AppState.location.name = geocodedName;
+      updateLocationUI();
     }
   } catch (e) {
     console.warn('Géocodage échoué', e);

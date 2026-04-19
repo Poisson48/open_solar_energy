@@ -59,7 +59,7 @@ const HourlyModule = (() => {
 
     // Profil 24h initialisé à 0
     const profile = new Array(24).fill(0);
-    const counts  = new Array(24).fill(0);
+    const nDays = endDay - startDay;
 
     for (let day = startDay; day < endDay; day++) {
       for (let slot = 0; slot < 48; slot++) {
@@ -67,12 +67,11 @@ const HourlyModule = (() => {
         if (idx >= _rawData.length) break;
         const hour = Math.floor(slot / 2);
         profile[hour] += _rawData[idx] || 0;
-        counts[hour]++;
       }
     }
 
-    // Moyenne par heure
-    return profile.map((v, h) => counts[h] > 0 ? v / counts[h] : 0);
+    // Moyenne par heure (somme des 2 slots 30min / nombre de jours)
+    return profile.map(v => nDays > 0 ? v / nDays : 0);
   }
 
   /**

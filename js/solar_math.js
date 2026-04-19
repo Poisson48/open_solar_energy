@@ -107,8 +107,13 @@ const SolarMath = (() => {
     const DNI = GHI - DHI;
     const Ib = Math.max(0, DNI); // Direct beam
 
+    // Correction azimutale sur la composante directe
+    // Rb est calculé pour plein Sud (az=0) ; on réduit proportionnellement
+    // pour les autres orientations (cos(0)=1, cos(±90°)=0, cos(±180°)=-1)
+    const azCorr = 1 - 0.25 * (1 - Math.cos(azR)); // [0.5 au Nord … 1.0 au Sud]
+
     // Composante directe
-    const It_beam = Ib * Rb;
+    const It_beam = Ib * Rb * azCorr;
 
     // Composante diffuse (isotrope Liu & Jordan)
     const It_diff = DHI * (1 + Math.cos(tiltR)) / 2;

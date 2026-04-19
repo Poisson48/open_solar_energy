@@ -114,12 +114,35 @@ function loadProject(id) {
 
   AppState.currentProjectId = project.id;
   AppState.location = { ...project.location };
-  if (project.weatherData) AppState.weatherData = project.weatherData;
+  if (project.weatherData) {
+    AppState.weatherData = project.weatherData;
+  } else if (AppState.demoData && project.location) {
+    // Projet ancien sans météo : utiliser la ville démo la plus proche
+    const { lat, lon } = project.location;
+    let best = null, minDist = Infinity;
+    Object.values(AppState.demoData.locations).forEach(loc => {
+      const d = Math.hypot(loc.lat - lat, loc.lon - lon);
+      if (d < minDist) { minDist = d; best = loc; }
+    });
+    if (best) AppState.weatherData = best.monthly;
+  }
   AppState.hourlyEnedisData = project.hourlyEnedisData?.halfHourly
     ? { ...project.hourlyEnedisData, halfHourly: new Float32Array(project.hourlyEnedisData.halfHourly) }
     : null;
   if (AppState.hourlyEnedisData && typeof HourlyModule?.setData === 'function') {
-    HourlyModule.setData(AppState.hourlyEnedisData.halfHourly, AppState.hourlyEnedisData.year);
+    HourlyModule.setData({ values: AppState.hourlyEnedisData.halfHourly, year: AppState.hourlyEnedisData.year });
+    // Repeupler les champs og2-day-* si vides (projet ancien ou import fait avant la sauvegarde)
+    const anyFilled = Array.from({length:12}, (_, i) => document.getElementById(`og2-day-${i+1}`)?.value)
+      .some(v => parseFloat(v) > 0);
+    if (!anyFilled) {
+      for (let m = 1; m <= 12; m++) {
+        const profile = HourlyModule.getHourlyConsumptionProfile(m);
+        const whPerDay = Math.round(profile.reduce((s, v) => s + v, 0) * 1000);
+        const el = document.getElementById(`og2-day-${m}`);
+        if (el) el.value = whPerDay;
+      }
+      document.getElementById('og2-day-1')?.dispatchEvent(new Event('input'));
+    }
   }
   const installType = project.installationType || 'grid';
   AppState.installationType = installType;
@@ -137,6 +160,10 @@ function loadProject(id) {
 
   // Formulaires
   restoreFormState(project.formState);
+  // Synchroniser AppState.install avec les valeurs restaurées
+  if (typeof readInstallFromTab === 'function') {
+    Object.keys(INSTALL_FIELDS).forEach(readInstallFromTab);
+  }
 
   // Nom projet
   const nameEl = document.getElementById('project-name-input');

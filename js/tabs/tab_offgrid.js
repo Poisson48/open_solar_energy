@@ -25,9 +25,10 @@ function initTabOffgrid() {
                 Laissez les mois à 0 pour utiliser cette valeur pour tous.
               </div>
             </div>
-            <button type="button" class="btn btn-outline btn-sm" onclick="importEDFToOffgrid()" style="margin-bottom:8px">
-              ↓ Importer la consommation depuis la facture EDF
-            </button>
+            <label class="btn btn-outline btn-sm" style="margin-bottom:4px;cursor:pointer;display:inline-block">
+              📂 Importer fichier Enedis (ZIP/CSV)
+              <input type="file" accept=".csv,.zip" style="display:none" onchange="handleEnedisCSV(this,'og2-edf-import-status')">
+            </label>
             <div id="og2-edf-import-status" style="font-size:11px;color:var(--color-text-muted);margin-bottom:6px"></div>
             <div style="font-size:12px;font-weight:700;color:var(--color-primary);margin-bottom:6px">
               Profil mensuel détaillé (optionnel)

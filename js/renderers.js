@@ -746,9 +746,9 @@ function closeEnedisModal() {
   document.getElementById('enedis-modal').style.display = 'none';
 }
 
-function handleEnedisCSV(input) {
+function handleEnedisCSV(input, statusId = 'sz-csv-status') {
   const file = input.files[0];
-  const statusEl = document.getElementById('sz-csv-status');
+  const statusEl = document.getElementById(statusId);
   if (!file) return;
 
   statusEl.style.display = 'block';
@@ -785,9 +785,14 @@ function handleEnedisCSV(input) {
 
     // ── Données 30min → module horaire ─────────────────────────
     if (result.halfHourlyData) {
-      AppState.hourlyEnedisData = result.halfHourlyData;
+      // Normaliser la clé : save/load attend 'halfHourly', enedis_import produit 'values'
+      AppState.hourlyEnedisData = {
+        halfHourly: result.halfHourlyData.values,
+        year: result.halfHourlyData.year,
+        format: result.halfHourlyData.format
+      };
       if (typeof HourlyModule !== 'undefined') {
-        HourlyModule.setData(result.halfHourlyData);
+        HourlyModule.setData({ values: AppState.hourlyEnedisData.halfHourly, year: AppState.hourlyEnedisData.year });
         document.getElementById('hourly-data-status') &&
           (document.getElementById('hourly-data-status').textContent =
             '✓ Données 30min disponibles pour l\'analyse horaire');
