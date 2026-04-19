@@ -3,7 +3,7 @@
  */
 function initTabDaily() {
   document.getElementById('tab-daily').innerHTML = `
-    <div style="display:grid;grid-template-columns:300px 1fr;gap:16px">
+    <div class="tab-form-col">
 
       <!-- Paramètres -->
       <div>
@@ -22,7 +22,7 @@ function initTabDaily() {
           </div>
 
           <div class="form-group" style="margin-bottom:8px">
-            <label>Mois à analyser</label>
+            <label for="hourly-month">Mois à analyser</label>
             <select id="hourly-month">
               <option value="1">Janvier</option><option value="2">Février</option>
               <option value="3">Mars</option><option value="4">Avril</option>
@@ -37,23 +37,23 @@ function initTabDaily() {
           <div class="card-title" style="font-size:12px;margin-bottom:8px">Système PV (pour simulation)</div>
 
           <div class="form-group" style="margin-bottom:8px">
-            <label>Puissance PV</label>
+            <label for="hourly-ppeak">Puissance PV</label>
             <div class="input-unit"><input type="number" id="hourly-ppeak" value="3" step="0.5" min="0.1"><span class="unit-tag">kWc</span></div>
           </div>
           <div class="form-group" style="margin-bottom:8px">
-            <label>Batterie</label>
+            <label for="hourly-batt">Batterie</label>
             <div class="input-unit"><input type="number" id="hourly-batt" value="0" step="0.5" min="0"><span class="unit-tag">kWh</span></div>
           </div>
           <div class="form-group" style="margin-bottom:8px">
-            <label>DoD batterie</label>
+            <label for="hourly-dod">DoD batterie</label>
             <div class="input-unit"><input type="number" id="hourly-dod" value="80" step="5" min="20" max="100"><span class="unit-tag">%</span></div>
           </div>
           <div class="form-group" style="margin-bottom:8px">
-            <label>Inclinaison</label>
+            <label for="hourly-tilt">Inclinaison</label>
             <div class="input-unit"><input type="number" id="hourly-tilt" value="30" min="0" max="90"><span class="unit-tag">°</span></div>
           </div>
           <div class="form-group" style="margin-bottom:12px">
-            <label>Azimut</label>
+            <label for="hourly-azimuth">Azimut</label>
             <div class="input-unit"><input type="number" id="hourly-azimuth" value="0" min="-180" max="180"><span class="unit-tag">°</span></div>
           </div>
 

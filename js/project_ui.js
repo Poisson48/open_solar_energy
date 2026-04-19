@@ -302,6 +302,7 @@ function createNewProject(event) {
   if (nameEl) nameEl.value = name;
 
   updateProjectBar();
+  resetForNewProject();
   closeStartupModal();
 
   // Pré-remplir les infos client dans l'onglet devis
@@ -321,6 +322,54 @@ function prefillClientInQuote() {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  REMISE À ZÉRO DES FORMULAIRES (nouveau projet vierge)
+// ══════════════════════════════════════════════════════════════
+function resetForNewProject() {
+  // 1. Vider tous les champs persistés
+  PROJECT_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.type === 'checkbox') el.checked = false;
+    else if (el.tagName === 'SELECT') el.selectedIndex = 0;
+    else el.value = '';
+  });
+
+  // 2. Remettre les zones de résultats en état placeholder
+  [
+    { id: 'sizing-results',   text: 'Renseignez vos données de facture<br>puis cliquez sur <strong>Dimensionner</strong>' },
+    { id: 'grid-results',     text: 'Cliquez sur <strong>Calculer</strong> pour lancer la simulation' },
+    { id: 'offgrid2-results', text: 'Renseignez votre consommation et cliquez sur <strong>Dimensionner</strong>' },
+    { id: 'hourly-results',   text: 'Sélectionnez un mois et cliquez sur <strong>Analyser</strong>' },
+  ].forEach(({ id, text }) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = `<div class="result-placeholder"><p>${text}</p></div>`;
+  });
+
+  // 3. Vider les résultats en mémoire
+  AppState.lastGridResult          = null;
+  AppState.lastGridParams          = null;
+  AppState.lastSizingResult        = null;
+  AppState.lastSizingInput         = null;
+  AppState.lastOffgridResult       = null;
+  AppState.lastOffgridSizingResult = null;
+  AppState.hourlyEnedisData        = null;
+
+  // 4. Remettre à zéro les labels et statuts secondaires
+  const szTotal = document.getElementById('sz-annual-total');
+  if (szTotal) szTotal.textContent = '';
+  const ogTotal = document.getElementById('og2-annual-total');
+  if (ogTotal) ogTotal.textContent = '';
+  const csvStatus = document.getElementById('sz-csv-status');
+  if (csvStatus) { csvStatus.textContent = ''; csvStatus.style.display = 'none'; }
+  const hourlyStatus = document.getElementById('hourly-data-status');
+  if (hourlyStatus) hourlyStatus.textContent = '';
+
+  // 5. Rafraîchir les affichages calculés depuis les champs
+  if (typeof calcGridPanels === 'function') calcGridPanels();
+  document.getElementById('og2-batt-tech')?.dispatchEvent(new Event('change'));
+}
+
+// ══════════════════════════════════════════════════════════════
 //  NOUVEAU PROJET VIERGE (depuis la modal projets)
 // ══════════════════════════════════════════════════════════════
 function newProjectBlank() {
@@ -329,6 +378,7 @@ function newProjectBlank() {
   const nameEl = document.getElementById('project-name-input');
   if (nameEl) nameEl.value = '';
   updateProjectBar();
+  resetForNewProject();
   closeProjectsModal();
 }
 

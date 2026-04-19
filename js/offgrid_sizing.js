@@ -74,10 +74,66 @@ const OffgridSizing = (() => {
     return { soc_end: soc, deficit_days, deficit_kwh, surplus_kwh };
   }
 
+  // ── Simulation heure par heure (avec profil Enedis réel) ──────
+  /**
+   * Version haute fidélité : simule heure par heure en tenant compte
+   * du profil de consommation réel (nuit ≠ jour).
+   * La conso nocturne ne peut être couverte que par la batterie.
+   *
+   * @param {number[]} pvHours     24 valeurs de production PV (kWh/h)
+   * @param {number[]} consoHours  24 valeurs de consommation (kWh/h)
+   * @param {number}   C_usable    capacité batterie utilisable (kWh)
+   * @param {number}   days        jours dans le mois
+   * @param {number}   soc_init    état de charge initial (kWh)
+   * @param {number}   eta         rendement aller-retour batterie
+   */
+  function simulateMonthHourly(pvHours, consoHours, C_usable, days, soc_init, eta) {
+    let soc = Math.min(soc_init, C_usable);
+    let deficit_days = 0;
+    let deficit_kwh  = 0;
+    let surplus_kwh  = 0;
+
+    for (let d = 0; d < days; d++) {
+      let day_unmet = 0;
+      for (let h = 0; h < 24; h++) {
+        const pv    = (pvHours[h]    || 0) * CONTROLLER_EFF * INVERTER_EFF;
+        const conso = consoHours[h] || 0;
+        const balance = pv - conso;
+
+        if (balance >= 0) {
+          // Surplus diurne → charge batterie
+          const stored = Math.min(balance * eta, C_usable - soc);
+          soc += stored;
+          surplus_kwh += (balance - stored / eta);
+        } else {
+          // Déficit (nuit ou pics de conso) → décharge batterie
+          const needed    = -balance;
+          const from_batt = Math.min(needed, soc);
+          soc -= from_batt;
+          day_unmet += needed - from_batt;
+        }
+      }
+      if (day_unmet > 0.05) { // seuil 50 Wh
+        deficit_days++;
+        deficit_kwh += day_unmet;
+      }
+    }
+    return { soc_end: soc, deficit_days, deficit_kwh, surplus_kwh };
+  }
+
   // ── Simulation annuelle ───────────────────────────────────────
-  function simulateYear(monthlyHtilt, dailyConso, Ppeak, losses, weatherData, C_usable, eta) {
+  /**
+   * @param {Array}    hourlyConsoProfiles  optionnel — 12 × 24 valeurs kWh/h
+   *                                        (profil Enedis réel ou synthétique détaillé)
+   *                                        Si fourni, utilise simulateMonthHourly.
+   * @param {number}   lat                  latitude (requis si hourlyConsoProfiles)
+   * @param {object}   site                 { tilt, azimuth, losses, ... }
+   */
+  function simulateYear(monthlyHtilt, dailyConso, Ppeak, losses, weatherData, C_usable, eta,
+                        hourlyConsoProfiles, lat, site) {
     let soc = C_usable * 0.5; // SOC initial : 50%
     const monthly = [];
+    const lossF   = 1 - (losses || 14) / 100;
 
     for (let i = 0; i < 12; i++) {
       const Htilt = monthlyHtilt[i];
@@ -85,7 +141,17 @@ const OffgridSizing = (() => {
       const e_prod_day = SolarMath.pvProduction(Htilt, Ppeak, losses, weatherData[i].T_avg, 'crystSi', i+1) / days;
       const e_conso_day = dailyConso[i] / 1000; // Wh → kWh
 
-      const res = simulateMonth(e_prod_day, e_conso_day, C_usable, days, soc, eta);
+      let res;
+      if (hourlyConsoProfiles && hourlyConsoProfiles[i] && lat != null && site) {
+        // Simulation haute fidélité heure par heure
+        const pvHours = Array.from({length: 24}, (_, h) => {
+          const irr = SolarMath.hourlyIrradiance(lat, i + 1, h, weatherData[i], site.tilt, site.azimuth);
+          return irr * Ppeak * lossF / 1000; // kWh
+        });
+        res = simulateMonthHourly(pvHours, hourlyConsoProfiles[i], C_usable, days, soc, eta);
+      } else {
+        res = simulateMonth(e_prod_day, e_conso_day, C_usable, days, soc, eta);
+      }
       soc = res.soc_end;
 
       monthly.push({
@@ -125,7 +191,7 @@ const OffgridSizing = (() => {
    * @param {array}  weatherData 12 mois {GHI, DHI, T_avg}
    * @param {number} lat        latitude
    */
-  function run(input, weatherData, lat) {
+  function run(input, weatherData, lat, hourlyConsoProfiles) {
     const { site, conso, battery, sizing } = input;
     const tech   = BATTERY_TECH[battery.type] || BATTERY_TECH.lfp;
     const losses = site.losses || 14;
@@ -156,7 +222,8 @@ const OffgridSizing = (() => {
     ppeaks.forEach(Ppeak => {
       batts.forEach(C_batt_gross => {
         const C_usable = C_batt_gross * tech.dod;
-        const yearSim  = simulateYear(monthlyHtilt, dailyConso, Ppeak, losses, weatherData, C_usable, tech.eta);
+        const yearSim  = simulateYear(monthlyHtilt, dailyConso, Ppeak, losses, weatherData, C_usable, tech.eta,
+                                      hourlyConsoProfiles, lat, site);
 
         const nPanels  = Math.ceil((Ppeak * 1000) / (site.panelWattPeak || 400));
         const systemCostPV   = Ppeak * (sizing.pvCostPerKwp || PV_COST_PER_KWP);

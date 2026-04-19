@@ -3,7 +3,7 @@
  */
 function initTabQuote() {
   document.getElementById('tab-quote').innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="tab-form-col-half">
 
       <!-- Colonne gauche -->
       <div style="display:flex;flex-direction:column;gap:12px">
@@ -13,27 +13,27 @@ function initTabQuote() {
           <summary class="card-title" style="cursor:pointer;user-select:none">🏢 Installateur (votre société)</summary>
           <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <div class="form-group" style="grid-column:1/-1">
-              <label>Nom de la société</label>
+              <label for="dv-ins-company">Nom de la société</label>
               <input type="text" id="dv-ins-company" placeholder="Solar Pro SARL">
             </div>
             <div class="form-group">
-              <label>SIRET</label>
+              <label for="dv-ins-siret">SIRET</label>
               <input type="text" id="dv-ins-siret" placeholder="000 000 000 00000">
             </div>
             <div class="form-group">
-              <label>N° RGE</label>
+              <label for="dv-ins-rge">N° RGE</label>
               <input type="text" id="dv-ins-rge" placeholder="E-E190909-1234">
             </div>
             <div class="form-group" style="grid-column:1/-1">
-              <label>Adresse</label>
+              <label for="dv-ins-address">Adresse</label>
               <textarea id="dv-ins-address" rows="2" placeholder="12 rue du Soleil&#10;31000 Toulouse"></textarea>
             </div>
             <div class="form-group">
-              <label>Téléphone</label>
+              <label for="dv-ins-phone">Téléphone</label>
               <input type="tel" id="dv-ins-phone" placeholder="05 61 00 00 00">
             </div>
             <div class="form-group">
-              <label>Email</label>
+              <label for="dv-ins-email">Email</label>
               <input type="email" id="dv-ins-email" placeholder="contact@solarpro.fr">
             </div>
           </div>
@@ -44,23 +44,23 @@ function initTabQuote() {
           <summary class="card-title" style="cursor:pointer;user-select:none">👤 Client</summary>
           <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <div class="form-group">
-              <label>Nom / Prénom</label>
+              <label for="dv-cli-name">Nom / Prénom</label>
               <input type="text" id="dv-cli-name" placeholder="Jean Dupont">
             </div>
             <div class="form-group">
-              <label>Société (si pro)</label>
+              <label for="dv-cli-company">Société (si pro)</label>
               <input type="text" id="dv-cli-company" placeholder="">
             </div>
             <div class="form-group" style="grid-column:1/-1">
-              <label>Adresse</label>
+              <label for="dv-cli-address">Adresse</label>
               <textarea id="dv-cli-address" rows="2" placeholder="5 impasse des Collines&#10;31500 Toulouse"></textarea>
             </div>
             <div class="form-group">
-              <label>Téléphone</label>
+              <label for="dv-cli-phone">Téléphone</label>
               <input type="tel" id="dv-cli-phone" placeholder="06 12 34 56 78">
             </div>
             <div class="form-group">
-              <label>Email</label>
+              <label for="dv-cli-email">Email</label>
               <input type="email" id="dv-cli-email" placeholder="client@mail.fr">
             </div>
           </div>
@@ -71,11 +71,11 @@ function initTabQuote() {
           <summary class="card-title" style="cursor:pointer;user-select:none">📍 Site d'installation</summary>
           <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <div class="form-group" style="grid-column:1/-1">
-              <label>Adresse du chantier</label>
+              <label for="dv-site-address">Adresse du chantier</label>
               <input type="text" id="dv-site-address" placeholder="Identique au client ou autre adresse">
             </div>
             <div class="form-group">
-              <label>Type de toiture</label>
+              <label for="dv-site-type">Type de toiture</label>
               <select id="dv-site-type">
                 <option value="">Sélectionner…</option>
                 <option>Tuiles mécaniques</option>
@@ -88,15 +88,15 @@ function initTabQuote() {
               </select>
             </div>
             <div class="form-group">
-              <label>Surface disponible</label>
+              <label for="dv-site-surface">Surface disponible</label>
               <div class="input-unit"><input type="number" id="dv-site-surface" placeholder="20"><span class="unit-tag">m²</span></div>
             </div>
             <div class="form-group">
-              <label>Inclinaison</label>
+              <label for="dv-site-tilt">Inclinaison</label>
               <div class="input-unit"><input type="number" id="dv-site-tilt" placeholder="30"><span class="unit-tag">°</span></div>
             </div>
             <div class="form-group">
-              <label>Azimut (0=Sud)</label>
+              <label for="dv-site-azimuth">Azimut (0=Sud)</label>
               <div class="input-unit"><input type="number" id="dv-site-azimuth" placeholder="0"><span class="unit-tag">°</span></div>
             </div>
           </div>
@@ -110,35 +110,35 @@ function initTabQuote() {
           </summary>
           <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <div class="form-group">
-              <label>Puissance crête (kWc)</label>
+              <label for="dv-sys-ppeak">Puissance crête (kWc)</label>
               <div class="input-unit"><input type="number" id="dv-sys-ppeak" step="0.1" placeholder="3.0"><span class="unit-tag">kWc</span></div>
             </div>
             <div class="form-group">
-              <label>Nombre de panneaux</label>
+              <label for="dv-sys-panels">Nombre de panneaux</label>
               <input type="number" id="dv-sys-panels" placeholder="8">
             </div>
             <div class="form-group">
-              <label>Modèle panneau</label>
+              <label for="dv-sys-panel-model">Modèle panneau</label>
               <input type="text" id="dv-sys-panel-model" placeholder="Jinko Tiger 400W">
             </div>
             <div class="form-group">
-              <label>Onduleur</label>
+              <label for="dv-sys-inverter">Onduleur</label>
               <input type="text" id="dv-sys-inverter" placeholder="Fronius Primo 3.0">
             </div>
             <div class="form-group">
-              <label>Batterie</label>
+              <label for="dv-sys-batt">Batterie</label>
               <div class="input-unit"><input type="number" id="dv-sys-batt" step="0.1" placeholder="0"><span class="unit-tag">kWh</span></div>
             </div>
             <div class="form-group">
-              <label>Production annuelle</label>
+              <label for="dv-sys-prod">Production annuelle</label>
               <div class="input-unit"><input type="number" id="dv-sys-prod" placeholder="3500"><span class="unit-tag">kWh/an</span></div>
             </div>
             <div class="form-group">
-              <label>CO₂ évité</label>
+              <label for="dv-sys-co2">CO₂ évité</label>
               <div class="input-unit"><input type="number" id="dv-sys-co2" placeholder="0"><span class="unit-tag">kg/an</span></div>
             </div>
             <div class="form-group">
-              <label>Autonomie estimée</label>
+              <label for="dv-sys-autonomy">Autonomie estimée</label>
               <input type="text" id="dv-sys-autonomy" placeholder="Ex : 80 % de l'année">
             </div>
           </div>
@@ -250,19 +250,19 @@ function initTabQuote() {
           <summary class="card-title" style="cursor:pointer;user-select:none">📋 Conditions du devis</summary>
           <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
             <div class="form-group">
-              <label>Date</label>
+              <label for="dv-date">Date</label>
               <input type="text" id="dv-date" placeholder="JJ/MM/AAAA">
             </div>
             <div class="form-group">
-              <label>Référence</label>
+              <label for="dv-ref">Référence</label>
               <input type="text" id="dv-ref" placeholder="Auto si vide">
             </div>
             <div class="form-group">
-              <label>Validité (jours)</label>
+              <label for="dv-validity">Validité (jours)</label>
               <input type="number" id="dv-validity" value="30" min="1">
             </div>
             <div class="form-group">
-              <label>TVA applicable</label>
+              <label for="dv-tva">TVA applicable</label>
               <select id="dv-tva" onchange="updateQuoteTotals()">
                 <option value="10" selected>10 % — Rénovation résidentielle</option>
                 <option value="5.5">5,5 % — Amélioration énergie</option>
@@ -270,12 +270,12 @@ function initTabQuote() {
               </select>
             </div>
             <div class="form-group">
-              <label>Remise (%)</label>
+              <label for="dv-remise">Remise (%)</label>
               <div class="input-unit"><input type="number" id="dv-remise" value="0" min="0" max="100" step="0.5" oninput="updateQuoteTotals()"><span class="unit-tag">%</span></div>
             </div>
           </div>
           <div class="form-group" style="margin-top:8px">
-            <label>Notes / conditions particulières</label>
+            <label for="dv-notes">Notes / conditions particulières</label>
             <textarea id="dv-notes" rows="3" placeholder="Ex : Acompte 30% à la commande. Garantie main d'œuvre 10 ans."></textarea>
           </div>
         </details>

@@ -3,7 +3,7 @@
  */
 function initTabGrid() {
   document.getElementById('tab-grid').innerHTML = `
-    <div style="display:grid;grid-template-columns:300px 1fr;gap:16px">
+    <div class="tab-form-col">
 
       <!-- Paramètres -->
       <div>
@@ -11,7 +11,7 @@ function initTabGrid() {
           <div class="card-title">Paramètres système</div>
 
           <div class="form-group" style="margin-bottom:10px">
-            <label>Technologie PV</label>
+            <label for="sel-tech">Technologie PV</label>
             <select id="sel-tech">
               <option value="crystSi">Silicium cristallin (c-Si)</option>
               <option value="CIS">CIS / CIGS</option>
@@ -22,14 +22,14 @@ function initTabGrid() {
 
           <div class="form-row" style="gap:8px;margin-bottom:10px">
             <div class="form-group">
-              <label>Surface disponible</label>
+              <label for="inp-surface">Surface disponible</label>
               <div class="input-unit">
                 <input type="number" id="inp-surface" value="" step="1" min="1" placeholder="m²" oninput="calcGridPanels()">
                 <span class="unit-tag">m²</span>
               </div>
             </div>
             <div class="form-group">
-              <label>Surface / panneau</label>
+              <label for="inp-panel-m2">Surface / panneau</label>
               <div class="input-unit">
                 <input type="number" id="inp-panel-m2" value="1.96" step="0.01" min="0.5" oninput="calcGridPanels()">
                 <span class="unit-tag">m²</span>
@@ -38,7 +38,7 @@ function initTabGrid() {
           </div>
 
           <div class="form-group" style="margin-bottom:10px">
-            <label>Puissance unitaire panneau</label>
+            <label for="inp-panel-wp">Puissance unitaire panneau</label>
             <div class="input-unit">
               <input type="number" id="inp-panel-wp" value="400" step="10" min="50" oninput="calcGridPanels()">
               <span class="unit-tag">Wc</span>
@@ -58,7 +58,7 @@ function initTabGrid() {
           <input type="hidden" id="inp-ppeak" value="3">
 
           <div class="form-group" style="margin-bottom:10px">
-            <label>Pertes système</label>
+            <label for="inp-losses">Pertes système</label>
             <div class="input-unit">
               <input type="number" id="inp-losses" value="14" step="0.5" min="0" max="50">
               <span class="unit-tag">%</span>
@@ -68,7 +68,7 @@ function initTabGrid() {
           <hr>
 
           <div class="form-group" style="margin-bottom:6px">
-            <label>Inclinaison des panneaux</label>
+            <label for="inp-tilt">Inclinaison des panneaux</label>
             <div class="input-unit">
               <input type="number" id="inp-tilt" value="30" step="1" min="0" max="90">
               <span class="unit-tag">°</span>
@@ -80,7 +80,7 @@ function initTabGrid() {
           </div>
 
           <div class="form-group" style="margin-bottom:10px">
-            <label>Azimut <span style="font-weight:400;color:var(--color-text-muted)">(0°=Sud, -90°=Est)</span></label>
+            <label for="inp-azimuth">Azimut <span style="font-weight:400;color:var(--color-text-muted)">(0°=Sud, -90°=Est)</span></label>
             <div class="input-unit">
               <input type="number" id="inp-azimuth" value="0" step="5" min="-180" max="180">
               <span class="unit-tag">°</span>
@@ -96,7 +96,7 @@ function initTabGrid() {
           <div class="card-title" style="margin-top:4px;font-size:12px">Données économiques</div>
 
           <div class="form-group" style="margin-bottom:8px">
-            <label>Coût total du système</label>
+            <label for="inp-cost">Coût total du système</label>
             <div class="input-unit">
               <input type="number" id="inp-cost" value="3600" step="100" min="0">
               <span class="unit-tag">€</span>
@@ -104,7 +104,7 @@ function initTabGrid() {
           </div>
 
           <div class="form-group" style="margin-bottom:8px">
-            <label>Prix de revente kWh</label>
+            <label for="inp-kwh-price">Prix de revente kWh</label>
             <div class="input-unit">
               <input type="number" id="inp-kwh-price" value="0.13" step="0.01" min="0">
               <span class="unit-tag">€/kWh</span>
@@ -112,7 +112,7 @@ function initTabGrid() {
           </div>
 
           <div class="form-group" style="margin-bottom:14px">
-            <label>Facteur émission CO₂</label>
+            <label for="inp-co2">Facteur émission CO₂</label>
             <div class="input-unit">
               <input type="number" id="inp-co2" value="0.052" step="0.001" min="0">
               <span class="unit-tag">kgCO₂/kWh</span>

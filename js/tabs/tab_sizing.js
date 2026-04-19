@@ -3,7 +3,7 @@
  */
 function initTabSizing() {
   document.getElementById('tab-sizing').innerHTML = `
-    <div style="display:grid;grid-template-columns:320px 1fr;gap:16px">
+    <div class="tab-form-col">
 
       <!-- Formulaire -->
       <div>
@@ -16,7 +16,7 @@ function initTabSizing() {
           </summary>
           <div style="margin-top:10px">
             <div class="form-group" style="margin-bottom:8px">
-              <label>Type de tarif</label>
+              <label for="sz-tariff">Type de tarif</label>
               <select id="sz-tariff">
                 <option value="base">Tarif Base</option>
                 <option value="hphc">Heures Pleines / Heures Creuses</option>
@@ -24,11 +24,11 @@ function initTabSizing() {
             </div>
             <div class="form-row" style="gap:6px;margin-bottom:8px">
               <div class="form-group">
-                <label>Prix kWh Base</label>
+                <label for="sz-price-base">Prix kWh Base</label>
                 <div class="input-unit"><input type="number" id="sz-price-base" value="0.2516" step="0.001"><span class="unit-tag">€</span></div>
               </div>
               <div class="form-group">
-                <label>Abonnement</label>
+                <label for="sz-subscription">Abonnement</label>
                 <div class="input-unit"><input type="number" id="sz-subscription" value="147" step="1"><span class="unit-tag">€/an</span></div>
               </div>
             </div>
@@ -41,18 +41,18 @@ function initTabSizing() {
             <div id="sz-csv-status" style="font-size:11px;margin-bottom:6px;display:none"></div>
             <div id="hourly-data-status" style="font-size:11px;color:var(--color-success);margin-bottom:4px"></div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
-              <div class="form-group"><label>Jan</label><input type="number" id="sz-kwh-1"  value="" min="0" placeholder="kWh"></div>
-              <div class="form-group"><label>Fév</label><input type="number" id="sz-kwh-2"  value="" min="0" placeholder="kWh"></div>
-              <div class="form-group"><label>Mar</label><input type="number" id="sz-kwh-3"  value="" min="0" placeholder="kWh"></div>
-              <div class="form-group"><label>Avr</label><input type="number" id="sz-kwh-4"  value="" min="0" placeholder="kWh"></div>
-              <div class="form-group"><label>Mai</label><input type="number" id="sz-kwh-5"  value="" min="0" placeholder="kWh"></div>
-              <div class="form-group"><label>Jun</label><input type="number" id="sz-kwh-6"  value="" min="0" placeholder="kWh"></div>
-              <div class="form-group"><label>Jul</label><input type="number" id="sz-kwh-7"  value="" min="0" placeholder="kWh"></div>
-              <div class="form-group"><label>Aoû</label><input type="number" id="sz-kwh-8"  value="" min="0" placeholder="kWh"></div>
-              <div class="form-group"><label>Sep</label><input type="number" id="sz-kwh-9"  value="" min="0" placeholder="kWh"></div>
-              <div class="form-group"><label>Oct</label><input type="number" id="sz-kwh-10" value="" min="0" placeholder="kWh"></div>
-              <div class="form-group"><label>Nov</label><input type="number" id="sz-kwh-11" value="" min="0" placeholder="kWh"></div>
-              <div class="form-group"><label>Déc</label><input type="number" id="sz-kwh-12" value="" min="0" placeholder="kWh"></div>
+              <div class="form-group"><label for="sz-kwh-1">Jan</label><input type="number" id="sz-kwh-1"  value="" min="0" placeholder="kWh"></div>
+              <div class="form-group"><label for="sz-kwh-2">Fév</label><input type="number" id="sz-kwh-2"  value="" min="0" placeholder="kWh"></div>
+              <div class="form-group"><label for="sz-kwh-3">Mar</label><input type="number" id="sz-kwh-3"  value="" min="0" placeholder="kWh"></div>
+              <div class="form-group"><label for="sz-kwh-4">Avr</label><input type="number" id="sz-kwh-4"  value="" min="0" placeholder="kWh"></div>
+              <div class="form-group"><label for="sz-kwh-5">Mai</label><input type="number" id="sz-kwh-5"  value="" min="0" placeholder="kWh"></div>
+              <div class="form-group"><label for="sz-kwh-6">Jun</label><input type="number" id="sz-kwh-6"  value="" min="0" placeholder="kWh"></div>
+              <div class="form-group"><label for="sz-kwh-7">Jul</label><input type="number" id="sz-kwh-7"  value="" min="0" placeholder="kWh"></div>
+              <div class="form-group"><label for="sz-kwh-8">Aoû</label><input type="number" id="sz-kwh-8"  value="" min="0" placeholder="kWh"></div>
+              <div class="form-group"><label for="sz-kwh-9">Sep</label><input type="number" id="sz-kwh-9"  value="" min="0" placeholder="kWh"></div>
+              <div class="form-group"><label for="sz-kwh-10">Oct</label><input type="number" id="sz-kwh-10" value="" min="0" placeholder="kWh"></div>
+              <div class="form-group"><label for="sz-kwh-11">Nov</label><input type="number" id="sz-kwh-11" value="" min="0" placeholder="kWh"></div>
+              <div class="form-group"><label for="sz-kwh-12">Déc</label><input type="number" id="sz-kwh-12" value="" min="0" placeholder="kWh"></div>
             </div>
             <p id="sz-annual-total" style="font-size:12px;font-weight:700;color:var(--color-primary);margin-top:6px;text-align:right"></p>
           </div>
@@ -67,32 +67,32 @@ function initTabSizing() {
           <div style="margin-top:10px">
             <div class="params-grid">
               <div class="form-group">
-                <label>Inclinaison <button type="button" class="btn btn-outline btn-sm" onclick="optimizeTiltFor('sz')" style="padding:1px 7px;font-size:10px;margin-left:4px">⚡ Auto</button></label>
+                <label for="sz-tilt">Inclinaison <button type="button" class="btn btn-outline btn-sm" onclick="optimizeTiltFor('sz')" style="padding:1px 7px;font-size:10px;margin-left:4px">⚡ Auto</button></label>
                 <div class="input-unit"><input type="number" id="sz-tilt" value="30" min="0" max="90"><span class="unit-tag">°</span></div>
               </div>
               <div class="form-group">
-                <label>Azimut <button type="button" class="btn btn-outline btn-sm" onclick="optimizeTiltFor('sz', true)" style="padding:1px 7px;font-size:10px;margin-left:4px">⚡ Auto</button></label>
+                <label for="sz-azimuth">Azimut <button type="button" class="btn btn-outline btn-sm" onclick="optimizeTiltFor('sz', true)" style="padding:1px 7px;font-size:10px;margin-left:4px">⚡ Auto</button></label>
                 <div class="input-unit"><input type="number" id="sz-azimuth" value="0" min="-180" max="180"><span class="unit-tag">°</span></div>
               </div>
               <div class="form-group">
-                <label>Surface dispo</label>
+                <label for="sz-surface">Surface dispo</label>
                 <div class="input-unit"><input type="number" id="sz-surface" value="" min="1" placeholder="m²"><span class="unit-tag">m²</span></div>
               </div>
               <div class="form-group">
-                <label>Panneaux (Wc)</label>
+                <label for="sz-panel-wp">Panneaux (Wc)</label>
                 <div class="input-unit"><input type="number" id="sz-panel-wp" value="400" step="10"><span class="unit-tag">Wc</span></div>
               </div>
               <div class="form-group">
-                <label>Surface panneau</label>
+                <label for="sz-panel-m2">Surface panneau</label>
                 <div class="input-unit"><input type="number" id="sz-panel-m2" value="1.96" step="0.01"><span class="unit-tag">m²</span></div>
               </div>
               <div class="form-group">
-                <label>Pertes système</label>
+                <label for="sz-losses">Pertes système</label>
                 <div class="input-unit"><input type="number" id="sz-losses" value="14" min="0" max="30"><span class="unit-tag">%</span></div>
               </div>
             </div>
             <div class="form-group">
-              <label>Technologie PV</label>
+              <label for="sz-tech">Technologie PV</label>
               <select id="sz-tech">
                 <option value="crystSi">Silicium cristallin (c-Si)</option>
                 <option value="CIS">CIS / CIGS</option>
@@ -110,7 +110,7 @@ function initTabSizing() {
           </summary>
           <div style="margin-top:10px">
             <div class="form-group" style="margin-bottom:8px">
-              <label>Objectif</label>
+              <label for="sz-strategy">Objectif</label>
               <select id="sz-strategy">
                 <option value="autoconso_max">Maximiser l'autoconsommation</option>
                 <option value="roi_optimal">Meilleur retour sur investissement</option>
@@ -118,21 +118,21 @@ function initTabSizing() {
               </select>
             </div>
             <div class="form-group" style="margin-bottom:8px" id="sz-target-coverage-group">
-              <label>Taux de couverture cible</label>
+              <label for="sz-target-coverage">Taux de couverture cible</label>
               <div class="input-unit"><input type="number" id="sz-target-coverage" value="60" min="10" max="100"><span class="unit-tag">%</span></div>
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>Coût estimé <span style="font-weight:400;font-size:10px;color:var(--color-text-muted)">(si pas de coût réel)</span></label>
+                <label for="sz-cost-kwp">Coût estimé <span style="font-weight:400;font-size:10px;color:var(--color-text-muted)">(si pas de coût réel)</span></label>
                 <div class="input-unit"><input type="number" id="sz-cost-kwp" value="900" step="50"><span class="unit-tag">€/kWc HT</span></div>
               </div>
               <div class="form-group">
-                <label>Tarif rachat surplus</label>
+                <label for="sz-feedin">Tarif rachat surplus</label>
                 <div class="input-unit"><input type="number" id="sz-feedin" value="0.13" step="0.01"><span class="unit-tag">€/kWh</span></div>
               </div>
             </div>
             <div class="form-group">
-              <label>Coût réel total <span style="font-weight:400;font-size:10px;color:var(--color-text-muted)">(optionnel)</span></label>
+              <label for="sz-cost-total">Coût réel total <span style="font-weight:400;font-size:10px;color:var(--color-text-muted)">(optionnel)</span></label>
               <div class="input-unit"><input type="number" id="sz-cost-total" value="" step="100" min="0" placeholder="ex : 8500"><span class="unit-tag">€ TTC</span></div>
             </div>
           </div>

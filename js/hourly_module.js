@@ -71,8 +71,9 @@ const HourlyModule = (() => {
       }
     }
 
-    // Moyenne par heure
-    return profile.map((v, h) => counts[h] > 0 ? v / counts[h] : 0);
+    // Somme des 2 créneaux 30min par heure, divisée par le nombre de jours
+    // → kWh/heure (cohérent avec le profil synthétique)
+    return profile.map((v, h) => counts[h] > 0 ? v / (counts[h] / 2) : 0);
   }
 
   /**
