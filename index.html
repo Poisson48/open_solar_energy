@@ -165,7 +165,7 @@
         </div>
         <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Importer un projet depuis un fichier JSON">
           📤 Importer fichier
-          <input type="file" accept=".json" style="display:none" onchange="importProjectsFile(this)">
+          <input type="file" accept=".json,.zip" style="display:none" onchange="importProjectsFile(this)">
         </label>
       </div>
       <div id="startup-projects-list" style="min-height:80px"></div>
@@ -226,7 +226,7 @@
         <button class="btn btn-outline btn-sm" onclick="ProjectManager.exportAll()" title="Exporter tous les projets en JSON">⬇ Export tout</button>
         <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Importer des projets depuis un fichier JSON">
           ⬆ Import
-          <input type="file" accept=".json" style="display:none" onchange="importProjectsFile(this)">
+          <input type="file" accept=".json,.zip" style="display:none" onchange="importProjectsFile(this)">
         </label>
         <button class="btn btn-outline btn-sm" onclick="newProjectBlank()" style="color:var(--color-success);border-color:var(--color-success)">+ Nouveau</button>
         <button onclick="closeProjectsModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--color-text-muted);line-height:1">✕</button>

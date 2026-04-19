@@ -70,6 +70,10 @@ function saveCurrentProject() {
     locationName:     AppState.location.name
   };
 
+  const enedisSerial = AppState.hourlyEnedisData?.halfHourly
+    ? { ...AppState.hourlyEnedisData, halfHourly: Array.from(AppState.hourlyEnedisData.halfHourly) }
+    : null;
+
   const project = {
     id:               AppState.currentProjectId || ProjectManager.newId(),
     name,
@@ -79,6 +83,7 @@ function saveCurrentProject() {
     updatedAt:        null,
     location:         { ...AppState.location },
     weatherData:      AppState.weatherData,
+    hourlyEnedisData: enedisSerial,
     formState:        captureFormState(),
     summary
   };
@@ -110,6 +115,12 @@ function loadProject(id) {
   AppState.currentProjectId = project.id;
   AppState.location = { ...project.location };
   if (project.weatherData) AppState.weatherData = project.weatherData;
+  AppState.hourlyEnedisData = project.hourlyEnedisData?.halfHourly
+    ? { ...project.hourlyEnedisData, halfHourly: new Float32Array(project.hourlyEnedisData.halfHourly) }
+    : null;
+  if (AppState.hourlyEnedisData && typeof HourlyModule?.setData === 'function') {
+    HourlyModule.setData(AppState.hourlyEnedisData.halfHourly, AppState.hourlyEnedisData.year);
+  }
   const installType = project.installationType || 'grid';
   AppState.installationType = installType;
   if (typeof applyInstallationType === 'function') applyInstallationType(installType);
@@ -146,12 +157,12 @@ function loadProject(id) {
 // ══════════════════════════════════════════════════════════════
 //  EXPORT D'UN PROJET (fichier local)
 // ══════════════════════════════════════════════════════════════
-function exportCurrentProject() {
+async function exportCurrentProject() {
   if (!AppState.currentProjectId) {
     showToast('⚠ Sauvegardez d\'abord le projet', 'error');
     return;
   }
-  ProjectManager.exportOne(AppState.currentProjectId);
+  await ProjectManager.exportOneZip(AppState.currentProjectId);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -226,14 +237,30 @@ function deleteProject(id) {
   renderProjectsList();
 }
 
-function importProjectsFile(input) {
+async function importProjectsFile(input) {
   const file = input.files[0];
   if (!file) return;
+  input.value = '';
+
+  if (file.name.endsWith('.zip')) {
+    try {
+      const zip = await JSZip.loadAsync(file);
+      const projectFile = zip.file('project.json');
+      if (!projectFile) { alert('ZIP invalide : project.json manquant'); return; }
+      const jsonText = await projectFile.async('string');
+      const result = ProjectManager.importOne(jsonText);
+      if (result.error) { alert('Erreur import ZIP : ' + result.error); return; }
+      showToast(`✓ Projet "${result.project.name}" importé depuis ZIP`);
+      renderProjectsList();
+      renderProjectsList('startup-projects-list');
+    } catch(e) { alert('Erreur lecture ZIP : ' + e.message); }
+    return;
+  }
+
   const reader = new FileReader();
   reader.onload = e => {
     const text = e.target.result;
     let result;
-    // Détecter si c'est un projet unique (objet) ou une liste (tableau)
     try {
       const parsed = JSON.parse(text);
       if (Array.isArray(parsed)) {
@@ -243,17 +270,13 @@ function importProjectsFile(input) {
         result = ProjectManager.importOne(text);
         if (!result.error) result._msg = `✓ Projet "${result.project.name}" importé`;
       }
-    } catch {
-      result = { error: 'Fichier JSON invalide' };
-    }
-    if (result.error) {
-      alert('Erreur import : ' + result.error);
-    } else {
+    } catch { result = { error: 'Fichier JSON invalide' }; }
+    if (result.error) { alert('Erreur import : ' + result.error); }
+    else {
       showToast(result._msg);
       renderProjectsList();
       renderProjectsList('startup-projects-list');
     }
-    input.value = '';
   };
   reader.readAsText(file, 'UTF-8');
 }
