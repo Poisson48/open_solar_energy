@@ -108,6 +108,24 @@ function initTabOffgrid() {
                 <div class="input-unit"><input type="number" id="og2-losses" value="14" min="0"><span class="unit-tag">%</span></div>
               </div>
             </div>
+
+            <div style="margin-top:8px">
+              <label style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                <span style="font-size:12px;font-weight:600">Nombre de panneaux</span>
+                <span style="display:inline-flex;gap:3px">
+                  <button type="button" id="og2-pmode-surface" class="btn btn-outline btn-sm active" onclick="setPanelMode('og2','surface')" style="padding:2px 8px;font-size:10px" title="Limiter à la surface dispo">🏠 Surface</button>
+                  <button type="button" id="og2-pmode-conso"   class="btn btn-outline btn-sm"        onclick="setPanelMode('og2','conso')"   style="padding:2px 8px;font-size:10px" title="Dimensionnement libre selon conso">⚡ Conso</button>
+                  <button type="button" id="og2-pmode-fixe"    class="btn btn-outline btn-sm"        onclick="setPanelMode('og2','fixe')"    style="padding:2px 8px;font-size:10px" title="Fixer le nombre de panneaux">✏️ Fixe</button>
+                </span>
+              </label>
+              <div id="og2-npanels-fixe-wrap" style="display:none;margin-bottom:4px">
+                <div class="input-unit">
+                  <input type="number" id="og2-npanels-fixe" value="8" min="1" step="1" oninput="calcPanelsForMode('og2')">
+                  <span class="unit-tag">panneaux</span>
+                </div>
+              </div>
+              <div id="og2-npanels-display" style="font-size:12px;color:var(--color-text-muted)">Auto depuis surface</div>
+            </div>
             <div class="form-group" style="margin-top:4px">
               <label>Taux de couverture visé</label>
               <div class="input-unit"><input type="number" id="og2-target-coverage" value="90" min="50" max="100"><span class="unit-tag">%</span></div>

@@ -192,12 +192,18 @@ const OffgridSizing = (() => {
     const annual_conso = dailyConso.reduce((s, v, i) => s + v * DAYS[i], 0) / 1000;
 
     // Contraintes physiques
-    const nPanelsMax = Math.floor((site.maxSurfaceM2 || 30) / (site.panelSurfaceM2 || 1.96));
+    const nPanelsMax = site.nPanelsFixed > 0
+      ? site.nPanelsFixed
+      : Math.floor((site.maxSurfaceM2 || 30) / (site.panelSurfaceM2 || 1.96));
     const PpeakMax   = Math.min(15, (nPanelsMax * (site.panelWattPeak || 400)) / 1000);
 
-    // Grille de recherche : Ppeak × C_batt
-    const ppeaks  = [];
-    for (let p = 0.5; p <= PpeakMax + 0.05; p = Math.round((p + 0.5) * 10) / 10) ppeaks.push(p);
+    // Grille de recherche : Ppeak × C_batt (fixe = une seule valeur)
+    const ppeaks = [];
+    if (site.nPanelsFixed > 0) {
+      ppeaks.push(PpeakMax);
+    } else {
+      for (let p = 0.5; p <= PpeakMax + 0.05; p = Math.round((p + 0.5) * 10) / 10) ppeaks.push(p);
+    }
     // Plafond auto : 5× la conso journalière max, entre 10 et 50 kWh
     const maxDailyKwh = Math.max(...dailyConso) / 1000;
     const battCeil = Math.min(50, Math.max(10, Math.ceil(maxDailyKwh * 5)));
@@ -271,14 +277,20 @@ const OffgridSizing = (() => {
       return v > 0 ? v : defaultDay;
     });
 
+    const fixeMode  = document.getElementById('og2-pmode-fixe')?.classList.contains('active');
+    const consoMode = document.getElementById('og2-pmode-conso')?.classList.contains('active');
+    const nPanelsFixed = fixeMode ? (parseInt(document.getElementById('og2-npanels-fixe')?.value) || 0) : 0;
+    const maxSurf = consoMode ? 9999 : (getVal('og2-surface') || 20);
+
     return {
       site: {
         tilt:          getVal('og2-tilt')      || 30,
         azimuth:       getVal('og2-azimuth')   || 0,
-        maxSurfaceM2:  getVal('og2-surface')   || 20,
+        maxSurfaceM2:  maxSurf,
         panelWattPeak: getVal('og2-panel-wp')  || 400,
         panelSurfaceM2:getVal('og2-panel-m2')  || 1.96,
-        losses:        getVal('og2-losses')    || 14
+        losses:        getVal('og2-losses')    || 14,
+        nPanelsFixed
       },
       conso: { dailyWh },
       battery: {

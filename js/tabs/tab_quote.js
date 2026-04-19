@@ -114,7 +114,14 @@ function initTabQuote() {
               <div class="input-unit"><input type="number" id="dv-sys-ppeak" step="0.1" placeholder="3.0"><span class="unit-tag">kWc</span></div>
             </div>
             <div class="form-group">
-              <label>Nombre de panneaux</label>
+              <label style="display:flex;align-items:center;justify-content:space-between">
+                <span>Nombre de panneaux</span>
+                <span style="display:inline-flex;gap:2px">
+                  <button type="button" id="dv-pmode-surface" class="btn btn-outline btn-sm" onclick="setPanelMode('dv','surface')" style="padding:1px 6px;font-size:10px" title="Depuis la surface du chantier">🏠</button>
+                  <button type="button" id="dv-pmode-conso"   class="btn btn-outline btn-sm" onclick="setPanelMode('dv','conso')"   style="padding:1px 6px;font-size:10px" title="Depuis le dimensionnement">⚡</button>
+                  <button type="button" id="dv-pmode-fixe"    class="btn btn-outline btn-sm active" onclick="setPanelMode('dv','fixe')" style="padding:1px 6px;font-size:10px" title="Valeur manuelle">✏️</button>
+                </span>
+              </label>
               <input type="number" id="dv-sys-panels" placeholder="8">
             </div>
             <div class="form-group">
