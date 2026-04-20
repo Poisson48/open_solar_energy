@@ -488,7 +488,7 @@ const Charts = (() => {
   }
 
   // ── Graphique horaire : PV / Conso / Autoconso / Réseau ──────
-  function renderHourlyProfile(canvasId, sim, monthName) {
+  function renderHourlyProfile(canvasId, sim, monthName, gridLabel = 'Soutirage réseau (Wh)') {
     const labels = sim.map(r => `${String(r.hour).padStart(2,'0')}h`);
     new Chart(document.getElementById(canvasId), {
       type: 'bar',
@@ -500,7 +500,7 @@ const Charts = (() => {
           { label: 'Consommation (Wh)',      data: sim.map(r => Math.round(r.conso * 1000)),
             backgroundColor: 'rgba(26,107,60,0.2)', borderColor: 'rgba(26,107,60,0.8)',
             borderWidth: 2, type: 'line', order: 1, fill: false, tension: 0.3 },
-          { label: 'Soutirage réseau (Wh)',  data: sim.map(r => Math.round(r.grid * 1000)),
+          { label: gridLabel,  data: sim.map(r => Math.round(r.grid * 1000)),
             backgroundColor: 'rgba(198,40,40,0.45)', order: 3 },
         ]
       },
