@@ -179,12 +179,22 @@ const HourlyModule = (() => {
     const totalAuto    = sim.reduce((s, r) => s + r.autoconso, 0);
     const totalSurplus = sim.reduce((s, r) => s + r.surplus, 0);
     const totalGrid    = sim.reduce((s, r) => s + r.grid, 0);
-    const autoPct      = totalPv > 0 ? Math.round(totalAuto / totalPv * 100) : 0;
-    const coverPct     = totalConso > 0 ? Math.round(totalAuto / totalConso * 100) : 0;
+    const autoPct  = totalPv > 0 ? Math.round(totalAuto / totalPv * 100) : 0;
+    // Si déficit > 0, le taux ne peut pas afficher 100% (évite l'arrondi trompeur)
+    const coverPct = totalConso > 0
+      ? (totalGrid > 0 ? Math.min(99, Math.round(totalAuto / totalConso * 100)) : 100)
+      : 0;
 
     const MONTHS = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
     const monthName = MONTHS[month - 1];
     const dataSource = _rawData ? 'Données Enedis réelles' : 'Profil synthétique';
+
+    const isOffgrid = AppState.installationType === 'offgrid';
+    const labelSurplus = isOffgrid ? 'Surplus (énergie perdue)' : 'Surplus injecté';
+    const labelSurplusUnit = isOffgrid ? 'non consommé, dissipé' : 'réseau / perdu';
+    const labelDeficit = isOffgrid ? 'Déficit non couvert' : 'Soutirage réseau';
+    const labelDeficitUnit = isOffgrid ? 'batterie vide, manque' : 'déficit non couvert';
+    const labelColDeficit = isOffgrid ? 'Déficit<br>Wh' : 'Réseau<br>Wh';
 
     const chartId1 = 'hourly-chart-main-' + Date.now();
     const chartId2 = battKwh > 0 ? 'hourly-chart-soc-' + Date.now() : null;
@@ -210,11 +220,11 @@ const HourlyModule = (() => {
         </div>
         <div class="kpi-card">
           <div class="kpi-value" style="color:var(--color-accent-dark)">${Math.round(totalSurplus * 1000)} Wh</div>
-          <div class="kpi-label">Surplus injecté<br><span class="kpi-unit">réseau / perdu</span></div>
+          <div class="kpi-label">${labelSurplus}<br><span class="kpi-unit">${labelSurplusUnit}</span></div>
         </div>
         <div class="kpi-card">
           <div class="kpi-value" style="color:var(--color-danger)">${Math.round(totalGrid * 1000)} Wh</div>
-          <div class="kpi-label">Soutirage réseau<br><span class="kpi-unit">déficit non couvert</span></div>
+          <div class="kpi-label">${labelDeficit}<br><span class="kpi-unit">${labelDeficitUnit}</span></div>
         </div>
       </div>
 
@@ -242,7 +252,7 @@ const HourlyModule = (() => {
                 <th>Conso<br>Wh</th>
                 <th style="color:var(--color-success)">Autoconso<br>Wh</th>
                 <th style="color:var(--color-accent-dark)">Surplus<br>Wh</th>
-                <th style="color:var(--color-danger)">Réseau<br>Wh</th>
+                <th style="color:var(--color-danger)">${labelColDeficit}</th>
                 ${battKwh > 0 ? '<th>SoC<br>kWh</th>' : ''}
               </tr>
             </thead>
@@ -263,8 +273,9 @@ const HourlyModule = (() => {
       </div>`;
 
     // Rendre les graphiques
+    const chartGridLabel = isOffgrid ? 'Déficit non couvert (Wh)' : 'Soutirage réseau (Wh)';
     setTimeout(() => {
-      Charts.renderHourlyProfile(chartId1, sim, monthName);
+      Charts.renderHourlyProfile(chartId1, sim, monthName, chartGridLabel);
       if (battKwh > 0 && chartId2) {
         Charts.renderHourlySoc(chartId2, sim, battKwh * dod / 100);
       }
