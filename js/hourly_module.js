@@ -86,7 +86,7 @@ const HourlyModule = (() => {
   function _buildSyntheticProfile(month) {
     // Lire la consommation mensuelle depuis le formulaire
     const monthKwh = parseFloat(document.getElementById(`sz-kwh-${month}`)?.value) || 200;
-    const days = SolarMath.DAYS_IN_MONTH[month - 1];
+    const days = DAYS_IN_MONTH[month - 1];
     const dailyKwh = monthKwh / days;
 
     // Poids horaires relatifs (somme = 1)
