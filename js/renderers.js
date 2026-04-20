@@ -549,10 +549,10 @@ function calcOffgridSizing() {
     }
   }
 
-  const { recommended: rec, allCandidates, tech, annual_conso } =
-    OffgridSizing.run(input, AppState.weatherData, AppState.location.lat, hourlyConsoProfiles);
+  const { recommended: rec, allCandidates, tech, annual_conso, useHourly } =
+    OffgridSizing.run(input, AppState.weatherData, AppState.location.lat);
   AppState.lastOffgridSizingResult = rec;
-  renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, !!hourlyConsoProfiles);
+  renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, useHourly);
 }
 
 function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, hourlyMode) {

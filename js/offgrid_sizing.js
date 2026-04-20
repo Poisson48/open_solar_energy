@@ -122,8 +122,6 @@ const OffgridSizing = (() => {
     for (let i = 0; i < 12; i++) {
       const days = DAYS[i];
       let res;
-
-      let res;
       let e_prod_day, e_conso_day;
       if (useHourly) {
         res = simulateMonthHourly(i + 1, weatherData[i], Ppeak, losses, tilt, azimuth, lat, C_usable, eta, soc);
