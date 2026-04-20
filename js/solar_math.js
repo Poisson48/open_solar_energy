@@ -306,8 +306,11 @@ const SolarMath = (() => {
     // Appliquer la transposition Liu & Jordan pour l'heure
     if (tilt === 0) return ghiHour;
     const tiltR = (Math.PI / 180) * tilt;
+    // Rb : facteur beam — approximation géométrique lat/tilt pour surface sud
+    // cos(lat - tilt) / cos(lat), valide pour l'azimut ≈ 0 (plein Sud)
+    const latR = (Math.PI / 180) * lat;
     const Rb = Math.max(0, (ghiHour - dhiHour) > 0
-      ? 1 + 0.1 * tilt * Math.cos((Math.PI / 180) * azimuth)  // approximation simple
+      ? Math.max(0.1, Math.cos(latR - tiltR) / Math.cos(latR))
       : 0);
     const albedo = 0.2;
     const H_tilt = Math.max(0,

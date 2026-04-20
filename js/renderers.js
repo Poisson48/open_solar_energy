@@ -108,7 +108,7 @@ function calcGridPanels() {
 
 function calcGridSystem() {
   if (!AppState.weatherData) {
-    alert('Veuillez sélectionner un lieu avec des données météo.');
+    showToast('Sélectionnez un lieu avec des données météo.', 'error');
     return;
   }
 
@@ -408,7 +408,7 @@ function heatmapColor(pct) {
 // ══════════════════════════════════════════════════════════════
 function calcSizing() {
   if (!AppState.weatherData) {
-    alert('Veuillez sélectionner un lieu avec des données météo.');
+    showToast('Sélectionnez un lieu avec des données météo.', 'error');
     return;
   }
   const input = SizingEngine.readFormInput();
@@ -537,8 +537,13 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
 //  DIMENSIONNEMENT HORS RÉSEAU
 // ══════════════════════════════════════════════════════════════
 function calcOffgridSizing() {
-  if (!AppState.weatherData) { alert('Sélectionnez un lieu avec des données météo.'); return; }
+  if (!AppState.weatherData) { showToast('Sélectionnez un lieu avec des données météo.', 'error'); return; }
   const input = OffgridSizing.readFormInput();
+  const totalConso = input.conso.dailyWh.reduce((s, v) => s + v, 0);
+  if (totalConso === 0) {
+    showToast('⚠ Renseignez la consommation journalière (Wh/j) avant de dimensionner.', 'error');
+    return;
+  }
   const { recommended: rec, allCandidates, tech, annual_conso } =
     OffgridSizing.run(input, AppState.weatherData, AppState.location.lat);
   AppState.lastOffgridSizingResult = rec;

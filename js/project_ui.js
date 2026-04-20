@@ -171,6 +171,7 @@ function loadProject(id) {
 
   closeProjectsModal();
   closeStartupModal();
+  prefillClientInQuote();
   showToast(`✓ Projet "${project.name}" chargé`);
 
   // Relancer les calculs après restauration des formulaires
@@ -381,12 +382,12 @@ function createNewProject(event) {
 
 function prefillClientInQuote() {
   const c = AppState.currentClient;
-  const setVal = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
   setVal('dv-cli-name',    c.nom);
   setVal('dv-cli-address', c.adresse);
   setVal('dv-cli-phone',   c.tel);
   setVal('dv-cli-email',   c.email);
-  if (AppState.location?.name) setVal('dv-site-address', AppState.location.name);
+  setVal('dv-site-address', AppState.location?.name || '');
 }
 
 // ══════════════════════════════════════════════════════════════

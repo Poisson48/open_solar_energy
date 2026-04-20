@@ -174,7 +174,10 @@ const PVGISImport = (() => {
     });
 
     const raw = data.outputs;
-    const monthly = (raw.monthly ?? []).map((row, i) => ({
+    const rawMonthly = Array.isArray(raw.monthly?.fixed) ? raw.monthly.fixed
+                     : Array.isArray(raw.monthly) ? raw.monthly
+                     : [];
+    const monthly = rawMonthly.map((row, i) => ({
       month:  row.month ?? (i+1),
       name:   MONTH_NAMES[(row.month ?? i+1) - 1],
       E_m:    row['E_m']    ?? 0,
@@ -386,7 +389,10 @@ const PVGISImport = (() => {
   function parsePVCalcJSON(data) {
     const raw = data.outputs;
     if (!raw) return null;
-    const monthly = (raw.monthly ?? []).map((row, i) => ({
+    const rawMonthly = Array.isArray(raw.monthly?.fixed) ? raw.monthly.fixed
+                     : Array.isArray(raw.monthly) ? raw.monthly
+                     : [];
+    const monthly = rawMonthly.map((row, i) => ({
       month: row.month ?? (i+1),
       name:  MONTH_NAMES[(row.month ?? i+1) - 1],
       E_m:   row['E_m']    ?? 0,

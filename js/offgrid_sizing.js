@@ -276,7 +276,7 @@ const OffgridSizing = (() => {
     const getStr = id => document.getElementById(id)?.value || '';
 
     // Consommation mensuelle (Wh/j par mois, ou uniforme si non renseigné)
-    const defaultDay = getVal('og2-daily-default') || 1000;
+    const defaultDay = getVal('og2-daily-default');
     const dailyWh = Array.from({length:12}, (_, i) => {
       const v = getVal(`og2-day-${i+1}`);
       return v > 0 ? v : defaultDay;
