@@ -40,7 +40,7 @@ const EnedisImport = (() => {
     if (m) return { year: +m[1], month: +m[2] };
     // Format français JJ/MM/AAAA
     m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
-    if (m) return { year: +m[3], month: +m[2] };
+    if (m) return { year: +m[3], month: +m[2], day: +m[1] };
     // Mois seul YYYY-MM
     m = v.match(/^(\d{4})-(\d{2})$/);
     if (m) return { year: +m[1], month: +m[2] };
@@ -144,10 +144,28 @@ const EnedisImport = (() => {
     const data        = {};
     const rawSlots    = {}; // year → Float32Array(366*48) valeurs kWh par slot
 
+    // Tracker pour le format "split" : date sur une ligne, heures sur les suivantes
+    let currentDateCtx = null; // { year, month, day }
+
     for (const line of dataLines) {
       const cells = line.split(sep).map(clean);
-      const dt = parseDatetime(cells[idxDate]) || parseDate(cells[idxDate]);
-      if (!dt) continue;
+      let dt = parseDatetime(cells[idxDate]) || parseDate(cells[idxDate]);
+
+      if (!dt) {
+        // Ligne heure seule ? (ex: "00:30:00;474;Réelle")
+        const timeMatch = (cells[idxDate] || '').match(/^(\d{2}):(\d{2}):(\d{2})$/);
+        if (timeMatch && currentDateCtx) {
+          dt = { ...currentDateCtx, hour: +timeMatch[1], minute: +timeMatch[2] };
+        } else {
+          continue;
+        }
+      } else if (dt.day !== undefined) {
+        // Date complète ou date+heure → mémoriser comme contexte
+        currentDateCtx = { year: dt.year, month: dt.month, day: dt.day };
+      } else {
+        // Date sans jour (mensuelle) → reset contexte
+        currentDateCtx = null;
+      }
 
       const { year, month } = dt;
       if (!data[year]) data[year] = {};

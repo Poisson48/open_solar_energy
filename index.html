@@ -65,7 +65,7 @@
         Que souhaitez-vous faire ?
       </p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px">
-        <button onclick="showNewProjectForm()" style="background:var(--color-bg);border:2px solid var(--color-border);border-radius:10px;padding:20px 16px;cursor:pointer;text-align:center;transition:border-color .2s" onmouseover="this.style.borderColor='var(--color-accent)'" onmouseout="this.style.borderColor='var(--color-border)'">
+        <button onclick="showInstallationTypeStep()" style="background:var(--color-bg);border:2px solid var(--color-border);border-radius:10px;padding:20px 16px;cursor:pointer;text-align:center;transition:border-color .2s" onmouseover="this.style.borderColor='var(--color-accent)'" onmouseout="this.style.borderColor='var(--color-border)'">
           <div style="font-size:32px;margin-bottom:8px">＋</div>
           <div style="font-size:14px;font-weight:700;color:var(--color-primary);margin-bottom:4px">Nouveau projet</div>
           <div style="font-size:12px;color:var(--color-text-muted)">Démarrer un nouveau dimensionnement pour un client</div>
@@ -165,7 +165,7 @@
         </div>
         <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Importer un projet depuis un fichier JSON">
           📤 Importer fichier
-          <input type="file" accept=".json" style="display:none" onchange="importProjectsFile(this)">
+          <input type="file" accept=".json,.zip" style="display:none" onchange="importProjectsFile(this)">
         </label>
       </div>
       <div id="startup-projects-list" style="min-height:80px"></div>
@@ -226,7 +226,7 @@
         <button class="btn btn-outline btn-sm" onclick="ProjectManager.exportAll()" title="Exporter tous les projets en JSON">⬇ Export tout</button>
         <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Importer des projets depuis un fichier JSON">
           ⬆ Import
-          <input type="file" accept=".json" style="display:none" onchange="importProjectsFile(this)">
+          <input type="file" accept=".json,.zip" style="display:none" onchange="importProjectsFile(this)">
         </label>
         <button class="btn btn-outline btn-sm" onclick="newProjectBlank()" style="color:var(--color-success);border-color:var(--color-success)">+ Nouveau</button>
         <button onclick="closeProjectsModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--color-text-muted);line-height:1">✕</button>
@@ -385,14 +385,14 @@
 <script src="js/solar_math.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/export.js"></script>
-<script src="js/sizing.js"></script>
-<script src="js/offgrid_sizing.js"></script>
+<script src="js/sizing.js?v=2"></script>
+<script src="js/offgrid_sizing.js?v=2"></script>
 <script src="js/enedis_import.js"></script>
 <script src="js/project_manager.js"></script>
 <script src="js/quote_generator.js"></script>
 <script src="js/hourly_module.js"></script>
 <script src="js/inverter_sizing.js"></script>
-<script src="js/pvgis_import.js"></script>
+<script src="js/pvgis_import.js?v=3"></script>
 
 <!-- HTML des onglets (injectés au démarrage) -->
 <script src="js/tabs/tab_sizing.js"></script>
@@ -406,8 +406,8 @@
 
 <!-- Logique applicative -->
 <script src="js/location.js"></script>
-<script src="js/project_ui.js"></script>
-<script src="js/renderers.js"></script>
+<script src="js/project_ui.js?v=2"></script>
+<script src="js/renderers.js?v=2"></script>
 <script src="js/main.js"></script>
 
 </body>

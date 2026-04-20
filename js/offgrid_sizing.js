@@ -75,7 +75,7 @@ const OffgridSizing = (() => {
   }
 
   // ── Simulation horaire d'un mois (utilise données Enedis si dispo) ──
-  function simulateMonthHourly(month, monthData, Ppeak, losses, tilt, azimuth, lat, C_usable, eta) {
+  function simulateMonthHourly(month, monthData, Ppeak, losses, tilt, azimuth, lat, C_usable, eta, soc_init) {
     const lossF = 1 - losses / 100;
     const days  = DAYS[month - 1];
 
@@ -88,7 +88,7 @@ const OffgridSizing = (() => {
     // Profil conso horaire — données réelles Enedis si disponibles
     const consoH = HourlyModule.getHourlyConsumptionProfile(month);
 
-    let soc = C_usable * 0.5;
+    let soc = soc_init !== undefined ? Math.min(soc_init, C_usable) : C_usable * 0.5;
     let deficit_days = 0, deficit_kwh = 0, surplus_kwh = 0;
 
     for (let d = 0; d < days; d++) {
@@ -124,7 +124,7 @@ const OffgridSizing = (() => {
 
       let e_prod_day, e_conso_day;
       if (useHourly) {
-        res = simulateMonthHourly(i + 1, weatherData[i], Ppeak, losses, tilt, azimuth, lat, C_usable, eta);
+        res = simulateMonthHourly(i + 1, weatherData[i], Ppeak, losses, tilt, azimuth, lat, C_usable, eta, soc);
         const Htilt = monthlyHtilt[i];
         e_prod_day  = SolarMath.pvProduction(Htilt, Ppeak, losses, weatherData[i].T_avg, 'crystSi', i+1) / days;
         const consoH = HourlyModule.getHourlyConsumptionProfile(i + 1);
@@ -192,14 +192,27 @@ const OffgridSizing = (() => {
     const annual_conso = dailyConso.reduce((s, v, i) => s + v * DAYS[i], 0) / 1000;
 
     // Contraintes physiques
-    const nPanelsMax = Math.floor((site.maxSurfaceM2 || 30) / (site.panelSurfaceM2 || 1.96));
+    const nPanelsMax = site.nPanelsFixed > 0
+      ? site.nPanelsFixed
+      : Math.floor((site.maxSurfaceM2 || 30) / (site.panelSurfaceM2 || 1.96));
     const PpeakMax   = Math.min(15, (nPanelsMax * (site.panelWattPeak || 400)) / 1000);
 
-    // Grille de recherche : Ppeak × C_batt
-    const ppeaks  = [];
-    for (let p = 0.5; p <= PpeakMax + 0.05; p = Math.round((p + 0.5) * 10) / 10) ppeaks.push(p);
+    // Grille de recherche : Ppeak × C_batt (fixe = une seule valeur)
+    const ppeaks = [];
+    if (site.nPanelsFixed > 0) {
+      ppeaks.push(PpeakMax);
+    } else {
+      for (let p = 0.5; p <= PpeakMax + 0.05; p = Math.round((p + 0.5) * 10) / 10) ppeaks.push(p);
+    }
     // Plafond auto : 5× la conso journalière max, entre 10 et 50 kWh
-    const maxDailyKwh = Math.max(...dailyConso) / 1000;
+    // Si données Enedis dispo, utiliser la vraie conso max (évite le plafond artificiel si le formulaire est vide)
+    let maxDailyKwh = Math.max(...dailyConso) / 1000;
+    if (AppState.hourlyEnedisData) {
+      const realMax = Math.max(...Array.from({length: 12}, (_, i) =>
+        HourlyModule.getHourlyConsumptionProfile(i + 1).reduce((s, v) => s + v, 0)
+      ));
+      if (realMax > 0) maxDailyKwh = Math.max(maxDailyKwh, realMax);
+    }
     const battCeil = Math.min(50, Math.max(10, Math.ceil(maxDailyKwh * 5)));
     const batts = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50].filter(b => b <= battCeil);
 
@@ -234,25 +247,23 @@ const OffgridSizing = (() => {
       });
     });
 
-    // Sélection : panneaux en priorité (moins chers), puis batterie minimale
+    // Sélection : minimiser les jours de déficit d'abord, puis le coût
     const target = sizing.targetCoveragePct || 90;
     const candidates_ok = allCandidates.filter(c => c.coverageRate >= target);
 
     let recommended;
     if (candidates_ok.length > 0) {
-      // Parmi ceux qui atteignent la cible : max panneaux d'abord, puis min batterie
-      recommended = candidates_ok.sort((a, b) => {
-        if (Math.abs(b.Ppeak - a.Ppeak) > 0.05) return b.Ppeak - a.Ppeak;
-        return a.C_batt_gross - b.C_batt_gross;
-      })[0];
+      // Chercher le moins cher satisfaisant aussi le budget jours-déficit
+      // (nb jours déficit ≤ budget énergétique : si cible 90 % → max 37 j/an)
+      const maxDeficitDays = Math.round((1 - target / 100) * 365);
+      const candidates_comfort = candidates_ok.filter(c => c.deficit_days <= maxDeficitDays);
+      const pool = candidates_comfort.length > 0 ? candidates_comfort : candidates_ok;
+      recommended = pool.sort((a, b) => a.systemCost - b.systemCost)[0];
     } else {
-      // Fallback : max couverture, puis max panneaux, puis min batterie
+      // Fallback : max couverture, puis min coût
       const maxCov = Math.max(...allCandidates.map(c => c.coverageRate));
       recommended = allCandidates.filter(c => c.coverageRate >= maxCov - 1)
-        .sort((a, b) => {
-          if (Math.abs(b.Ppeak - a.Ppeak) > 0.05) return b.Ppeak - a.Ppeak;
-          return a.C_batt_gross - b.C_batt_gross;
-        })[0];
+        .sort((a, b) => a.systemCost - b.systemCost)[0];
     }
 
     const useHourly = !!(AppState.hourlyEnedisData);
@@ -265,20 +276,26 @@ const OffgridSizing = (() => {
     const getStr = id => document.getElementById(id)?.value || '';
 
     // Consommation mensuelle (Wh/j par mois, ou uniforme si non renseigné)
-    const defaultDay = getVal('og2-daily-default') || 1000;
+    const defaultDay = getVal('og2-daily-default');
     const dailyWh = Array.from({length:12}, (_, i) => {
       const v = getVal(`og2-day-${i+1}`);
       return v > 0 ? v : defaultDay;
     });
 
+    const fixeMode  = document.getElementById('og2-pmode-fixe')?.classList.contains('active');
+    const consoMode = document.getElementById('og2-pmode-conso')?.classList.contains('active');
+    const nPanelsFixed = fixeMode ? (parseInt(document.getElementById('og2-npanels-fixe')?.value) || 0) : 0;
+    const maxSurf = consoMode ? 9999 : (getVal('og2-surface') || 20);
+
     return {
       site: {
         tilt:          getVal('og2-tilt')      || 30,
         azimuth:       getVal('og2-azimuth')   || 0,
-        maxSurfaceM2:  getVal('og2-surface')   || 20,
+        maxSurfaceM2:  maxSurf,
         panelWattPeak: getVal('og2-panel-wp')  || 400,
         panelSurfaceM2:getVal('og2-panel-m2')  || 1.96,
-        losses:        getVal('og2-losses')    || 14
+        losses:        getVal('og2-losses')    || 14,
+        nPanelsFixed
       },
       conso: { dailyWh },
       battery: {

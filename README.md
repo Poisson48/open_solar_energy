@@ -27,9 +27,11 @@
 - Courbes ROI, flux énergétiques mensuels, bilan annuel
 
 ### Dimensionnement hors réseau (autonomie batterie)
-- Import direct de la consommation depuis l'onglet EDF (conversion kWh/mois → Wh/j)
-- Recherche optimale sur grille Ppeak × C_batterie (1 183 combinaisons)
-- Simulation journalière SOC (State of Charge) sur 365 jours
+- **Import Enedis direct** depuis l'onglet Hors réseau (ZIP ou CSV, même format que réseau)
+- Simulation **horaire** (24h) si données Enedis 30min disponibles, journalière sinon
+- SOC porté d'un mois à l'autre sur 12 mois (bilan annuel réaliste)
+- Recommandation : moins cher satisfaisant à la fois le taux de couverture cible **et** le budget jours-déficit (≤ 10 % des jours/an)
+- Recherche optimale sur grille Ppeak × C_batterie (jusqu'à 450 combinaisons)
 - **6 technologies batterie** (prix HT pro) :
 
 | Technologie | DoD | η | Cycles | Coût |
@@ -169,9 +171,9 @@ Pour un site réel, importer les données météo via **"Importer météo (Open-
 
 ### 2b — Dimensionnement hors réseau
 1. Onglet **Hors réseau**
-2. Cliquer **↓ Importer depuis la facture EDF** (si étape 2a déjà faite) **ou** saisir la conso journalière
-3. Choisir la technologie batterie
-4. Cliquer **Dimensionner hors réseau** → système optimal + heatmap PV × batterie
+2. Cliquer **📂 Importer fichier Enedis (ZIP/CSV)** directement dans l'onglet **ou** saisir la conso journalière manuellement
+3. Choisir la technologie batterie et le taux de couverture visé
+4. Cliquer **Dimensionner** → système optimal (PV + batterie, coût, jours de déficit)
 
 ### 3 — Sauvegarder / Cloner
 - `Ctrl+S` ou bouton **💾 Sauvegarder** dans le header
@@ -183,6 +185,7 @@ Pour un site réel, importer les données météo via **"Importer météo (Open-
 
 | Version | Changements |
 |---|---|
+| **1.6.0** | Hors-réseau : import Enedis direct, simulation horaire avec données 30min réelles, SOC mensuel porté, recommandation coût+jours-déficit, correction battCeil depuis conso réelle. Bugs corrigés : clé `halfHourly` (données Enedis perdues au save/load), azimut `tiltedIrradiation` (azR inutilisé → azimut⚡Auto toujours -90°), nom de lieu écrasé après géocodage, auto-inclinaison non restaurée au chargement de projet, météo rechargée depuis la ville démo la plus proche pour les anciens projets |
 | **1.5.1** | Serveur de développement local (`python -m http.server 8080`) via `.claude/launch.json` |
 | **1.5.0** | Refactoring multi-fichiers (index.html 230 lignes, main.js 90 lignes), modal démarrage avec infos client, export projet fichier local, module analyse horaire, recommandation onduleurs (catalogue 13 modèles + câblage MPPT) |
 | **1.4.0** | Module devis professionnel : client/installateur/chantier, lignes coût éditables, TVA, impression PDF |
@@ -197,12 +200,13 @@ Pour un site réel, importer les données météo via **"Importer météo (Open-
 
 ## Feuille de route
 
+Voir [TODO.md](TODO.md) pour le détail.
+
+- [ ] Rapport PDF complet (jsPDF)
 - [ ] Mode sombre
-- [ ] Suivi solaire 1 axe / 2 axes (tracker)
-- [ ] Rapport PDF (jsPDF)
-- [ ] Données météo typiques (TMY) via Open-Meteo
+- [ ] TMY Open-Meteo (année météo typique)
+- [ ] Tracker solaire 1/2 axes
 - [ ] Internationalisation EN
-- [ ] Géocodage Nominatim (recherche par adresse)
 - [ ] Tests unitaires algorithmes solaires
 
 ---

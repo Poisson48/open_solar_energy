@@ -70,6 +70,10 @@ function saveCurrentProject() {
     locationName:     AppState.location.name
   };
 
+  const enedisSerial = AppState.hourlyEnedisData?.halfHourly
+    ? { ...AppState.hourlyEnedisData, halfHourly: Array.from(AppState.hourlyEnedisData.halfHourly) }
+    : null;
+
   const project = {
     id:               AppState.currentProjectId || ProjectManager.newId(),
     name,
@@ -79,6 +83,7 @@ function saveCurrentProject() {
     updatedAt:        null,
     location:         { ...AppState.location },
     weatherData:      AppState.weatherData,
+    hourlyEnedisData: enedisSerial,
     formState:        captureFormState(),
     summary
   };
@@ -109,7 +114,36 @@ function loadProject(id) {
 
   AppState.currentProjectId = project.id;
   AppState.location = { ...project.location };
-  if (project.weatherData) AppState.weatherData = project.weatherData;
+  if (project.weatherData) {
+    AppState.weatherData = project.weatherData;
+  } else if (AppState.demoData && project.location) {
+    // Projet ancien sans météo : utiliser la ville démo la plus proche
+    const { lat, lon } = project.location;
+    let best = null, minDist = Infinity;
+    Object.values(AppState.demoData.locations).forEach(loc => {
+      const d = Math.hypot(loc.lat - lat, loc.lon - lon);
+      if (d < minDist) { minDist = d; best = loc; }
+    });
+    if (best) AppState.weatherData = best.monthly;
+  }
+  AppState.hourlyEnedisData = project.hourlyEnedisData?.halfHourly
+    ? { ...project.hourlyEnedisData, halfHourly: new Float32Array(project.hourlyEnedisData.halfHourly) }
+    : null;
+  if (AppState.hourlyEnedisData && typeof HourlyModule?.setData === 'function') {
+    HourlyModule.setData({ values: AppState.hourlyEnedisData.halfHourly, year: AppState.hourlyEnedisData.year });
+    // Repeupler les champs og2-day-* si vides (projet ancien ou import fait avant la sauvegarde)
+    const anyFilled = Array.from({length:12}, (_, i) => document.getElementById(`og2-day-${i+1}`)?.value)
+      .some(v => parseFloat(v) > 0);
+    if (!anyFilled) {
+      for (let m = 1; m <= 12; m++) {
+        const profile = HourlyModule.getHourlyConsumptionProfile(m);
+        const whPerDay = Math.round(profile.reduce((s, v) => s + v, 0) * 1000);
+        const el = document.getElementById(`og2-day-${m}`);
+        if (el) el.value = whPerDay;
+      }
+      document.getElementById('og2-day-1')?.dispatchEvent(new Event('input'));
+    }
+  }
   const installType = project.installationType || 'grid';
   AppState.installationType = installType;
   if (typeof applyInstallationType === 'function') applyInstallationType(installType);
@@ -126,6 +160,10 @@ function loadProject(id) {
 
   // Formulaires
   restoreFormState(project.formState);
+  // Synchroniser AppState.install avec les valeurs restaurées
+  if (typeof readInstallFromTab === 'function') {
+    Object.keys(INSTALL_FIELDS).forEach(readInstallFromTab);
+  }
 
   // Nom projet
   const nameEl = document.getElementById('project-name-input');
@@ -133,6 +171,7 @@ function loadProject(id) {
 
   closeProjectsModal();
   closeStartupModal();
+  prefillClientInQuote();
   showToast(`✓ Projet "${project.name}" chargé`);
 
   // Relancer les calculs après restauration des formulaires
@@ -146,12 +185,12 @@ function loadProject(id) {
 // ══════════════════════════════════════════════════════════════
 //  EXPORT D'UN PROJET (fichier local)
 // ══════════════════════════════════════════════════════════════
-function exportCurrentProject() {
+async function exportCurrentProject() {
   if (!AppState.currentProjectId) {
     showToast('⚠ Sauvegardez d\'abord le projet', 'error');
     return;
   }
-  ProjectManager.exportOne(AppState.currentProjectId);
+  await ProjectManager.exportOneZip(AppState.currentProjectId);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -226,14 +265,30 @@ function deleteProject(id) {
   renderProjectsList();
 }
 
-function importProjectsFile(input) {
+async function importProjectsFile(input) {
   const file = input.files[0];
   if (!file) return;
+  input.value = '';
+
+  if (file.name.endsWith('.zip')) {
+    try {
+      const zip = await JSZip.loadAsync(file);
+      const projectFile = zip.file('project.json');
+      if (!projectFile) { alert('ZIP invalide : project.json manquant'); return; }
+      const jsonText = await projectFile.async('string');
+      const result = ProjectManager.importOne(jsonText);
+      if (result.error) { alert('Erreur import ZIP : ' + result.error); return; }
+      showToast(`✓ Projet "${result.project.name}" importé depuis ZIP`);
+      renderProjectsList();
+      renderProjectsList('startup-projects-list');
+    } catch(e) { alert('Erreur lecture ZIP : ' + e.message); }
+    return;
+  }
+
   const reader = new FileReader();
   reader.onload = e => {
     const text = e.target.result;
     let result;
-    // Détecter si c'est un projet unique (objet) ou une liste (tableau)
     try {
       const parsed = JSON.parse(text);
       if (Array.isArray(parsed)) {
@@ -243,17 +298,13 @@ function importProjectsFile(input) {
         result = ProjectManager.importOne(text);
         if (!result.error) result._msg = `✓ Projet "${result.project.name}" importé`;
       }
-    } catch {
-      result = { error: 'Fichier JSON invalide' };
-    }
-    if (result.error) {
-      alert('Erreur import : ' + result.error);
-    } else {
+    } catch { result = { error: 'Fichier JSON invalide' }; }
+    if (result.error) { alert('Erreur import : ' + result.error); }
+    else {
       showToast(result._msg);
       renderProjectsList();
       renderProjectsList('startup-projects-list');
     }
-    input.value = '';
   };
   reader.readAsText(file, 'UTF-8');
 }
@@ -331,12 +382,12 @@ function createNewProject(event) {
 
 function prefillClientInQuote() {
   const c = AppState.currentClient;
-  const setVal = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
   setVal('dv-cli-name',    c.nom);
   setVal('dv-cli-address', c.adresse);
   setVal('dv-cli-phone',   c.tel);
   setVal('dv-cli-email',   c.email);
-  if (AppState.location?.name) setVal('dv-site-address', AppState.location.name);
+  setVal('dv-site-address', AppState.location?.name || '');
 }
 
 // ══════════════════════════════════════════════════════════════

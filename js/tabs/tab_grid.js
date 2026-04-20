@@ -45,6 +45,23 @@ function initTabGrid() {
             </div>
           </div>
 
+          <div style="margin-bottom:6px">
+            <label style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+              <span style="font-size:12px;font-weight:600">Mode panneaux</span>
+              <span style="display:inline-flex;gap:3px">
+                <button type="button" id="grid-pmode-surface" class="btn btn-outline btn-sm active" onclick="setPanelMode('grid','surface')" style="padding:2px 8px;font-size:10px" title="Depuis la surface disponible">🏠 Surface</button>
+                <button type="button" id="grid-pmode-conso"   class="btn btn-outline btn-sm"        onclick="setPanelMode('grid','conso')"   style="padding:2px 8px;font-size:10px" title="Depuis la consommation annuelle">⚡ Conso</button>
+                <button type="button" id="grid-pmode-fixe"    class="btn btn-outline btn-sm"        onclick="setPanelMode('grid','fixe')"    style="padding:2px 8px;font-size:10px" title="Valeur fixée manuellement">✏️ Fixe</button>
+              </span>
+            </label>
+            <div id="grid-npanels-fixe-wrap" style="display:none;margin-bottom:6px">
+              <div class="input-unit">
+                <input type="number" id="grid-npanels-fixe" value="8" min="1" step="1" oninput="calcGridPanels()">
+                <span class="unit-tag">panneaux</span>
+              </div>
+            </div>
+          </div>
+
           <div id="grid-panels-info" style="background:var(--color-bg-card);border:1px solid var(--color-border);border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:13px">
             <div style="display:flex;justify-content:space-between;align-items:center">
               <span style="color:var(--color-text-muted)">Panneaux installables</span>

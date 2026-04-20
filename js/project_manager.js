@@ -89,6 +89,34 @@ const ProjectManager = (() => {
     a.click();
   }
 
+  /** Exporte un projet en ZIP (project.json + enedis_30min.csv si présent) */
+  async function exportOneZip(id) {
+    const project = get(id);
+    if (!project) return;
+    const safeName = (project.name || 'projet').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const zip = new JSZip();
+
+    // Séparer les données Enedis volumineuses du JSON principal
+    let enedisCsv = null;
+    const projectClean = { ...project };
+    if (projectClean.hourlyEnedisData?.halfHourly?.length) {
+      const arr = projectClean.hourlyEnedisData.halfHourly;
+      const lines = ['slot_30min,wh'];
+      arr.forEach((v, i) => lines.push(`${i},${(+v).toFixed(1)}`));
+      enedisCsv = lines.join('\n');
+      projectClean.hourlyEnedisData = { ...projectClean.hourlyEnedisData, halfHourly: '__enedis_30min.csv__' };
+    }
+
+    zip.file('project.json', JSON.stringify(projectClean, null, 2));
+    if (enedisCsv) zip.file('enedis_30min.csv', enedisCsv);
+
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `ose_${safeName}_${new Date().toISOString().slice(0, 10)}.zip`;
+    a.click();
+  }
+
   /** Importe un projet unique depuis un texte JSON */
   function importOne(jsonText) {
     try {
@@ -128,5 +156,5 @@ const ProjectManager = (() => {
     }
   }
 
-  return { list, get, save, remove, clone, newId, exportAll, exportOne, importOne, importFromJSON };
+  return { list, get, save, remove, clone, newId, exportAll, exportOne, exportOneZip, importOne, importFromJSON };
 })();

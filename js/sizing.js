@@ -155,6 +155,7 @@ const SizingEngine = (() => {
         totalAnnualGain: Math.round(totalAnnualGain),
         newAnnualBill:  Math.round(newAnnualBill),
         ROI:            Math.round(ROI * 10) / 10,
+        co2Saved:       Math.round(annualAutoconsoKwh * 0.052),
         monthlyMetrics
       });
     }
@@ -191,7 +192,7 @@ const SizingEngine = (() => {
       site: {
         tilt:            getVal('sz-tilt')        || 30,
         azimuth:         getVal('sz-azimuth')     || 0,
-        maxSurfaceM2:    getVal('sz-surface')     || 20,
+        maxSurfaceM2:    getVal('sz-surface'),
         panelWattPeak:   getVal('sz-panel-wp')    || 400,
         panelSurfaceM2:  getVal('sz-panel-m2')    || 1.96,
         losses:          getVal('sz-losses')      || 14,
