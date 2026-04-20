@@ -38,7 +38,8 @@ const EnedisImport = (() => {
     let m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (m) return { year: +m[1], month: +m[2] };
     m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
-    if (m) return { year: +m[3], month: +m[2] };
+    if (m) return { year: +m[3], month: +m[2], day: +m[1] };
+    // Mois seul YYYY-MM
     m = v.match(/^(\d{4})-(\d{2})$/);
     if (m) return { year: +m[1], month: +m[2] };
     m = v.match(/^(\d{2})\/(\d{4})$/);
@@ -46,13 +47,41 @@ const EnedisImport = (() => {
     return null;
   }
 
+  // ── Parse datetime complet → { year, month, day, hour, minute } ou null ──
+  function parseDatetime(s) {
+    const v = clean(s);
+    // ISO : 2024-01-15T00:30:00+01:00 ou 2024-01-15 00:30:00
+    let m = v.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+    if (m) return { year: +m[1], month: +m[2], day: +m[3], hour: +m[4], minute: +m[5] };
+    // Format français JJ/MM/AAAA HH:MM
+    m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+    if (m) return { year: +m[3], month: +m[2], day: +m[1], hour: +m[4], minute: +m[5] };
+    return null;
+  }
+
+  // ── Calcule le jour de l'année (0-based) ─────────────────────
+  function dayOfYear(year, month, day) {
+    const start = new Date(year, 0, 1);
+    const date  = new Date(year, month - 1, day);
+    return Math.floor((date - start) / 86400000);
+  }
+
+  // ── Détecte l'index d'une colonne par mots-clés ──────────────
+  // exclude : index à ignorer (évite collision ex. "Période de consommation")
   function findCol(headers, keywords, exclude = -1) {
     const kw = keywords.map(k => k.toLowerCase());
     return headers.findIndex((h, i) => i !== exclude && kw.some(k => h.toLowerCase().includes(k)));
   }
 
-  function isWh(headerLine) {
-    return /\bwh\b/i.test(headerLine) && !/kwh/i.test(headerLine);
+  // ── Détecte l'unité dans l'en-tête ──────────────────────────
+  // Retourne le facteur de conversion vers kWh par slot 30min
+  function detectUnitFactor(headerLine) {
+    const h = headerLine.toLowerCase();
+    if (/kwh/i.test(h))  return 1;       // kWh direct
+    if (/\bwh\b/i.test(h)) return 0.001; // Wh → kWh
+    // Puissance en W (ex: "Puissance atteinte (W)") → W × 0.5h / 1000 = kWh/slot
+    if (/\bw\b(?!h)/i.test(h) || /puissance/i.test(h)) return 0.5 / 1000;
+    return 0.001; // défaut Wh
   }
 
   // ── Décode un ArrayBuffer en texte (UTF-8 puis ISO-8859-1) ──
@@ -87,21 +116,47 @@ const EnedisImport = (() => {
     const dataLines   = lines.slice(headerIdx + 1).filter(l => l.split(sep).length >= 2);
     if (dataLines.length === 0) return { error: 'Aucune ligne de données.' };
 
-    const idxDate = findCol(headerCells, ['horodate', 'date', 'mois', 'période', 'periode']);
-    const idxVal  = findCol(headerCells, ['valeur', 'energie active totale', 'consommation', 'total'], idxDate);
+    // ── Identifier les colonnes ────────────────────────────────
+    const idxDate = findCol(headerCells, ['horodate', 'date', 'mois', 'période', 'periode', 'heure de relève', 'releve']);
+    const idxVal  = findCol(headerCells, ['valeur', 'energie active totale', 'consommation', 'total', 'puissance atteinte', 'puissance'], idxDate);
     const idxHp   = findCol(headerCells, ['heures pleines', 'heure pleine', 'hp'], idxDate);
     const idxHc   = findCol(headerCells, ['heures creuses', 'heure creuse', 'hc'], idxDate);
 
     if (idxDate === -1) return { error: 'Colonne date introuvable.' };
     if (idxVal === -1 && idxHp === -1) return { error: 'Colonne consommation introuvable. Colonnes : ' + headerCells.join(', ') };
 
-    const unitFactor = isWh(lines[headerIdx]) ? 0.001 : 1;
-    const data = {};
+    // ── Détection unité ────────────────────────────────────────
+    const headerStr  = lines[headerIdx];
+    const unitFactor = detectUnitFactor(headerStr);
+
+    // ── Agrégation par année → mois + collecte brute 30min ───────
+    // Structure : data[year][month] = { kwh, khp, khc, count }
+    const data        = {};
+    const rawSlots    = {}; // year → Float32Array(366*48) valeurs kWh par slot
+
+    // Tracker pour le format "split" : date sur une ligne, heures sur les suivantes
+    let currentDateCtx = null; // { year, month, day }
 
     for (const line of dataLines) {
       const cells = line.split(sep).map(clean);
-      const dt = parseDate(cells[idxDate]);
-      if (!dt) continue;
+      let dt = parseDatetime(cells[idxDate]) || parseDate(cells[idxDate]);
+
+      if (!dt) {
+        // Ligne heure seule ? (ex: "00:30:00;474;Réelle")
+        const timeMatch = (cells[idxDate] || '').match(/^(\d{2}):(\d{2}):(\d{2})$/);
+        if (timeMatch && currentDateCtx) {
+          dt = { ...currentDateCtx, hour: +timeMatch[1], minute: +timeMatch[2] };
+        } else {
+          continue;
+        }
+      } else if (dt.day !== undefined) {
+        // Date complète ou date+heure → mémoriser comme contexte
+        currentDateCtx = { year: dt.year, month: dt.month, day: dt.day };
+      } else {
+        // Date sans jour (mensuelle) → reset contexte
+        currentDateCtx = null;
+      }
+
       const { year, month } = dt;
       if (!data[year]) data[year] = {};
       if (!data[year][month]) data[year][month] = { kwh: 0, khp: 0, khc: 0, count: 0 };
@@ -111,14 +166,24 @@ const EnedisImport = (() => {
         return isNaN(v) ? 0 : v * unitFactor;
       };
       if (idxHp !== -1 && idxHc !== -1) {
-        const hp = parseVal(idxHp), hc = parseVal(idxHc);
-        data[year][month].khp += hp;
-        data[year][month].khc += hc;
-        data[year][month].kwh += hp + hc;
+        const hp = parseVal(idxHp);
+        const hc = parseVal(idxHc);
+        data[year][month].khp   += hp;
+        data[year][month].khc   += hc;
+        data[year][month].kwh   += hp + hc;
       } else {
         data[year][month].kwh += parseVal(idxVal);
       }
       data[year][month].count++;
+
+      // Collecte des valeurs brutes 30min si heure disponible
+      if (dt.day !== undefined && dt.hour !== undefined) {
+        const doy  = dayOfYear(year, month, dt.day);
+        const slot = Math.min(47, dt.hour * 2 + (dt.minute >= 30 ? 1 : 0));
+        const idx  = doy * 48 + slot;
+        if (!rawSlots[year]) rawSlots[year] = new Float32Array(366 * 48);
+        rawSlots[year][idx] = parseVal(idxVal) || (parseVal(idxHp) + parseVal(idxHc));
+      }
     }
 
     if (Object.keys(data).length === 0) return { error: 'Aucune donnée valide.' };
@@ -159,10 +224,31 @@ const EnedisImport = (() => {
       ? (totalRows > 400 ? 'Données 30 min' : 'Données journalières')
       : 'Données mensuelles';
 
+    // ── Données brutes 30min si disponibles ────────────────────
+    let halfHourlyData = null;
+    const raw = rawSlots[chosenYear];
+    if (raw) {
+      const nonZero = raw.filter(v => v > 0).length;
+      if (nonZero >= 48 * 30) {
+        halfHourlyData = { values: raw, year: chosenYear };
+        // Recalculer les kWh mensuels depuis les slots bruts (plus fiable que l'agrégation directe)
+        for (let m = 0; m < 12; m++) {
+          let startDay = 0;
+          for (let mm = 0; mm < m; mm++) startDay += DAYS_IN_MONTH[mm];
+          const endDay = startDay + DAYS_IN_MONTH[m];
+          let sum = 0;
+          for (let d = startDay; d < endDay; d++)
+            for (let s = 0; s < 48; s++) sum += raw[d * 48 + s];
+          if (sum > 0) monthlyKwh[m] = Math.round(sum);
+        }
+      }
+    }
+
     return {
       monthlyKwh, monthlyKwhHp, monthlyKwhHc,
       year: chosenYear, format: formatName,
       totalAnnual: Math.round(monthlyKwh.reduce((s, v) => s + v, 0)),
+      halfHourlyData,
       warnings
     };
   }
@@ -255,26 +341,11 @@ const EnedisImport = (() => {
     };
   }
 
-  // ── Priorité des CSV consommation dans le ZIP ─────────────────
-  // Le fichier 30min est traité séparément — on cherche ici le meilleur
-  // fichier de consommation agrégée (mensuel ou journalier)
-  const CONSO_PRIORITY = [
-    'ma-conso-mensuelle',
-    'ma-conso-quotidienne',
-    'mes-index-elec',
-  ];
+  // ── Priorité pour les kWh mensuels (fichier dédié plus fiable) ─
+  const MONTHLY_KEYS    = ['ma-conso-mensuelle', 'ma-conso-quotidienne', 'mes-index-elec'];
+  const HALFHOURLY_KEYS = ['mes-puissances-atteintes-30min', 'courbe_de_charge', 'courbe-de-charge', 'conso_heure', '30min'];
 
-  function pickConsoCsv(names) {
-    for (const key of CONSO_PRIORITY) {
-      const match = names.find(n => n.toLowerCase().includes(key));
-      if (match) return match;
-    }
-    return names.find(n => n.toLowerCase().endsWith('.csv') &&
-                           !n.toLowerCase().includes('30min') &&
-                           !n.toLowerCase().includes('puissance')) || null;
-  }
-
-  // ── Gestionnaire ZIP ─────────────────────────────────────────
+  // ── Gestionnaire ZIP : parse TOUS les CSV, merge le meilleur ──
   function handleZip(file, onResult) {
     if (typeof JSZip === 'undefined') {
       onResult({ error: 'JSZip non chargé — rechargez la page.' });
@@ -282,62 +353,51 @@ const EnedisImport = (() => {
     }
 
     JSZip.loadAsync(file).then(zip => {
-      const names = Object.keys(zip.files).filter(n => !zip.files[n].dir);
+      const csvNames = Object.keys(zip.files)
+        .filter(n => !zip.files[n].dir && n.toLowerCase().endsWith('.csv'));
+      if (!csvNames.length) { onResult({ error: 'Aucun CSV trouvé dans le ZIP.' }); return; }
 
-      // Identifier les fichiers d'intérêt
-      const consoName = pickConsoCsv(names);
-      const file30mName = names.find(n => n.toLowerCase().includes('puissances-atteintes-30min'));
+      Promise.all(csvNames.map(name =>
+        zip.files[name].async('arraybuffer')
+          .then(buf => ({ name: name.toLowerCase(), result: parse(decodeText(buf)) }))
+      )).then(parsed => {
+        const ok = parsed.filter(p => !p.result.error);
+        if (!ok.length) { onResult({ error: 'Aucun fichier CSV valide dans le ZIP.' }); return; }
 
-      if (!consoName && !file30mName) {
-        onResult({ error: 'Aucun CSV reconnu dans le ZIP.' });
-        return;
-      }
-
-      // Charger les deux fichiers en parallèle
-      const promises = [];
-      if (consoName)    promises.push(zip.files[consoName].async('arraybuffer').then(b => ({ type: 'conso', buf: b })));
-      if (file30mName)  promises.push(zip.files[file30mName].async('arraybuffer').then(b => ({ type: '30min', buf: b })));
-
-      Promise.all(promises).then(results => {
-        const r_conso = results.find(r => r.type === 'conso');
-        const r_30m   = results.find(r => r.type === '30min');
-
-        let parsed         = null;
-        let halfHourlyData = null;
-
-        // Parser le fichier consommation agrégée
-        if (r_conso) {
-          parsed = parse(decodeText(r_conso.buf));
-        }
-
-        // Parser le fichier 30min → halfHourlyData
-        if (r_30m) {
-          const h = parsePuissances30min(decodeText(r_30m.buf));
-          if (h && h.nDays > 0) {
-            halfHourlyData = { values: h.values, year: h.year, format: h.format };
-            // Si pas de fichier conso agrégé, dériver les kWh mensuels des 30min
-            if (!parsed || parsed.error) {
-              parsed = {
-                monthlyKwh:   h.monthlyKwh,
-                monthlyKwhHp: null,
-                year:         h.year,
-                format:       'Données 30 min',
-                totalAnnual:  h.monthlyKwh.reduce((s, v) => s + v, 0),
-                warnings:     [`Consommation mensuelle calculée depuis les données 30min (${h.nDays} jours).`]
-              };
-            }
+        // Meilleur fichier mensuel (kWh non nuls)
+        const pickByKeys = (keys) => {
+          for (const key of keys) {
+            const m = ok.find(p => p.name.includes(key) && p.result.monthlyKwh.some(v => v > 0));
+            if (m) return m.result;
           }
+          return null;
+        };
+        const pickHalfhourly = () => {
+          for (const key of HALFHOURLY_KEYS) {
+            const m = ok.find(p => p.name.includes(key) && p.result.halfHourlyData);
+            if (m) return m.result;
+          }
+          return ok.find(p => p.result.halfHourlyData)?.result || null;
+        };
+
+        const bestMonthly    = pickByKeys(MONTHLY_KEYS)
+                            || ok.find(p => p.result.monthlyKwh.some(v => v > 0))?.result
+                            || ok[0].result;
+        const bestHalfhourly = pickHalfhourly();
+
+        // Merger : kWh mensuels + données 30min si fichiers séparés
+        const merged = { ...bestMonthly };
+        if (bestHalfhourly && bestHalfhourly !== bestMonthly) {
+          merged.halfHourlyData = bestHalfhourly.halfHourlyData;
         }
+        merged.warnings = [
+          ...bestMonthly.warnings,
+          ...(bestHalfhourly && bestHalfhourly !== bestMonthly ? bestHalfhourly.warnings : [])
+        ];
 
-        if (!parsed || parsed.error) {
-          onResult(parsed || { error: 'Impossible de parser les données du ZIP.' });
-          return;
-        }
-
-        onResult({ ...parsed, halfHourlyData });
-      }).catch(err => onResult({ error: 'Erreur lecture ZIP : ' + err.message }));
-
-    }).catch(err => onResult({ error: 'Impossible d\'ouvrir le ZIP : ' + err.message }));
+        onResult(merged);
+      });
+    }).catch(err => onResult({ error: 'Impossible de lire le ZIP : ' + err.message }));
   }
 
   // ── Gestionnaire de fichier ──────────────────────────────────

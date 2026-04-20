@@ -59,7 +59,7 @@ const HourlyModule = (() => {
 
     // Profil 24h initialisé à 0
     const profile = new Array(24).fill(0);
-    const counts  = new Array(24).fill(0);
+    const nDays = endDay - startDay;
 
     for (let day = startDay; day < endDay; day++) {
       for (let slot = 0; slot < 48; slot++) {
@@ -67,13 +67,11 @@ const HourlyModule = (() => {
         if (idx >= _rawData.length) break;
         const hour = Math.floor(slot / 2);
         profile[hour] += _rawData[idx] || 0;
-        counts[hour]++;
       }
     }
 
-    // Somme des 2 créneaux 30min par heure, divisée par le nombre de jours
-    // → kWh/heure (cohérent avec le profil synthétique)
-    return profile.map((v, h) => counts[h] > 0 ? v / (counts[h] / 2) : 0);
+    // Moyenne par heure (somme des 2 slots 30min / nombre de jours)
+    return profile.map(v => nDays > 0 ? v / nDays : 0);
   }
 
   /**
@@ -87,7 +85,7 @@ const HourlyModule = (() => {
   function _buildSyntheticProfile(month) {
     // Lire la consommation mensuelle depuis le formulaire
     const monthKwh = parseFloat(document.getElementById(`sz-kwh-${month}`)?.value) || 200;
-    const days = SolarMath.DAYS_IN_MONTH[month - 1];
+    const days = DAYS_IN_MONTH[month - 1];
     const dailyKwh = monthKwh / days;
 
     // Poids horaires relatifs (somme = 1)

@@ -70,15 +70,21 @@ function saveCurrentProject() {
     locationName:     AppState.location.name
   };
 
+  const enedisSerial = AppState.hourlyEnedisData?.halfHourly
+    ? { ...AppState.hourlyEnedisData, halfHourly: Array.from(AppState.hourlyEnedisData.halfHourly) }
+    : null;
+
   const project = {
-    id:          AppState.currentProjectId || ProjectManager.newId(),
+    id:               AppState.currentProjectId || ProjectManager.newId(),
     name,
-    client:      { ...AppState.currentClient },
-    createdAt:   null,
-    updatedAt:   null,
-    location:    { ...AppState.location },
-    weatherData: AppState.weatherData,
-    formState:   captureFormState(),
+    installationType: AppState.installationType || 'grid',
+    client:           { ...AppState.currentClient },
+    createdAt:        null,
+    updatedAt:        null,
+    location:         { ...AppState.location },
+    weatherData:      AppState.weatherData,
+    hourlyEnedisData: enedisSerial,
+    formState:        captureFormState(),
     summary
   };
 
@@ -108,7 +114,39 @@ function loadProject(id) {
 
   AppState.currentProjectId = project.id;
   AppState.location = { ...project.location };
-  if (project.weatherData) AppState.weatherData = project.weatherData;
+  if (project.weatherData) {
+    AppState.weatherData = project.weatherData;
+  } else if (AppState.demoData && project.location) {
+    // Projet ancien sans météo : utiliser la ville démo la plus proche
+    const { lat, lon } = project.location;
+    let best = null, minDist = Infinity;
+    Object.values(AppState.demoData.locations).forEach(loc => {
+      const d = Math.hypot(loc.lat - lat, loc.lon - lon);
+      if (d < minDist) { minDist = d; best = loc; }
+    });
+    if (best) AppState.weatherData = best.monthly;
+  }
+  AppState.hourlyEnedisData = project.hourlyEnedisData?.halfHourly
+    ? { ...project.hourlyEnedisData, halfHourly: new Float32Array(project.hourlyEnedisData.halfHourly) }
+    : null;
+  if (AppState.hourlyEnedisData && typeof HourlyModule?.setData === 'function') {
+    HourlyModule.setData({ values: AppState.hourlyEnedisData.halfHourly, year: AppState.hourlyEnedisData.year });
+    // Repeupler les champs og2-day-* si vides (projet ancien ou import fait avant la sauvegarde)
+    const anyFilled = Array.from({length:12}, (_, i) => document.getElementById(`og2-day-${i+1}`)?.value)
+      .some(v => parseFloat(v) > 0);
+    if (!anyFilled) {
+      for (let m = 1; m <= 12; m++) {
+        const profile = HourlyModule.getHourlyConsumptionProfile(m);
+        const whPerDay = Math.round(profile.reduce((s, v) => s + v, 0) * 1000);
+        const el = document.getElementById(`og2-day-${m}`);
+        if (el) el.value = whPerDay;
+      }
+      document.getElementById('og2-day-1')?.dispatchEvent(new Event('input'));
+    }
+  }
+  const installType = project.installationType || 'grid';
+  AppState.installationType = installType;
+  if (typeof applyInstallationType === 'function') applyInstallationType(installType);
 
   // Infos client
   AppState.currentClient = project.client
@@ -122,6 +160,10 @@ function loadProject(id) {
 
   // Formulaires
   restoreFormState(project.formState);
+  // Synchroniser AppState.install avec les valeurs restaurées
+  if (typeof readInstallFromTab === 'function') {
+    Object.keys(INSTALL_FIELDS).forEach(readInstallFromTab);
+  }
 
   // Nom projet
   const nameEl = document.getElementById('project-name-input');
@@ -142,12 +184,12 @@ function loadProject(id) {
 // ══════════════════════════════════════════════════════════════
 //  EXPORT D'UN PROJET (fichier local)
 // ══════════════════════════════════════════════════════════════
-function exportCurrentProject() {
+async function exportCurrentProject() {
   if (!AppState.currentProjectId) {
     showToast('⚠ Sauvegardez d\'abord le projet', 'error');
     return;
   }
-  ProjectManager.exportOne(AppState.currentProjectId);
+  await ProjectManager.exportOneZip(AppState.currentProjectId);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -222,14 +264,30 @@ function deleteProject(id) {
   renderProjectsList();
 }
 
-function importProjectsFile(input) {
+async function importProjectsFile(input) {
   const file = input.files[0];
   if (!file) return;
+  input.value = '';
+
+  if (file.name.endsWith('.zip')) {
+    try {
+      const zip = await JSZip.loadAsync(file);
+      const projectFile = zip.file('project.json');
+      if (!projectFile) { alert('ZIP invalide : project.json manquant'); return; }
+      const jsonText = await projectFile.async('string');
+      const result = ProjectManager.importOne(jsonText);
+      if (result.error) { alert('Erreur import ZIP : ' + result.error); return; }
+      showToast(`✓ Projet "${result.project.name}" importé depuis ZIP`);
+      renderProjectsList();
+      renderProjectsList('startup-projects-list');
+    } catch(e) { alert('Erreur lecture ZIP : ' + e.message); }
+    return;
+  }
+
   const reader = new FileReader();
   reader.onload = e => {
     const text = e.target.result;
     let result;
-    // Détecter si c'est un projet unique (objet) ou une liste (tableau)
     try {
       const parsed = JSON.parse(text);
       if (Array.isArray(parsed)) {
@@ -239,17 +297,13 @@ function importProjectsFile(input) {
         result = ProjectManager.importOne(text);
         if (!result.error) result._msg = `✓ Projet "${result.project.name}" importé`;
       }
-    } catch {
-      result = { error: 'Fichier JSON invalide' };
-    }
-    if (result.error) {
-      alert('Erreur import : ' + result.error);
-    } else {
+    } catch { result = { error: 'Fichier JSON invalide' }; }
+    if (result.error) { alert('Erreur import : ' + result.error); }
+    else {
       showToast(result._msg);
       renderProjectsList();
       renderProjectsList('startup-projects-list');
     }
-    input.value = '';
   };
   reader.readAsText(file, 'UTF-8');
 }
@@ -267,13 +321,28 @@ function closeStartupModal() {
 }
 
 function showStartupStep1() {
-  document.getElementById('startup-step-1').style.display  = 'block';
+  document.getElementById('startup-step-1').style.display    = 'block';
+  document.getElementById('startup-step-type').style.display = 'none';
   document.getElementById('startup-step-new').style.display  = 'none';
   document.getElementById('startup-step-load').style.display = 'none';
 }
 
+function showInstallationTypeStep() {
+  document.getElementById('startup-step-1').style.display    = 'none';
+  document.getElementById('startup-step-type').style.display = 'block';
+  document.getElementById('startup-step-new').style.display  = 'none';
+  document.getElementById('startup-step-load').style.display = 'none';
+}
+
+function selectInstallationType(type) {
+  AppState.installationType = type;
+  if (typeof applyInstallationType === 'function') applyInstallationType(type);
+  showNewProjectForm();
+}
+
 function showNewProjectForm() {
-  document.getElementById('startup-step-1').style.display  = 'none';
+  document.getElementById('startup-step-1').style.display    = 'none';
+  document.getElementById('startup-step-type').style.display = 'none';
   document.getElementById('startup-step-new').style.display  = 'block';
   document.getElementById('startup-step-load').style.display = 'none';
   document.getElementById('startup-project-name').focus();

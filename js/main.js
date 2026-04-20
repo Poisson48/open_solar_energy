@@ -5,6 +5,91 @@
  *   location.js, project_ui.js, renderers.js, hourly_module.js, inverter_sizing.js
  */
 
+// ── Type d'installation : masque les onglets irrelevants ─────
+const TABS_GRID_ONLY    = ['sizing', 'grid', 'tracker', 'optimizer'];
+const TABS_OFFGRID_ONLY = ['offgrid'];
+
+function applyInstallationType(type) {
+  AppState.installationType = type;
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    const tab  = btn.dataset.tab;
+    const hide = (type === 'grid' && TABS_OFFGRID_ONLY.includes(tab))
+              || (type === 'offgrid' && TABS_GRID_ONLY.includes(tab));
+    btn.style.display = hide ? 'none' : '';
+  });
+
+  // Si l'onglet actif est masqué, aller au premier onglet visible
+  const activeBtn = document.querySelector('.tab-btn.active');
+  if (activeBtn && activeBtn.style.display === 'none') {
+    const first = document.querySelector('.tab-btn:not([style*="display: none"])');
+    if (first) first.click();
+  }
+
+  // Badge dans la barre projet
+  const badge = document.getElementById('install-type-badge');
+  if (badge) {
+    if (type === 'grid') {
+      badge.textContent = '⚡ Réseau';
+      badge.style.color = 'var(--color-accent)';
+      badge.style.borderColor = 'var(--color-accent)';
+      badge.style.background = 'rgba(245,166,35,0.08)';
+    } else {
+      badge.textContent = '🔋 Autonome';
+      badge.style.color = 'var(--color-primary)';
+      badge.style.borderColor = 'var(--color-primary)';
+      badge.style.background = 'rgba(30,90,200,0.08)';
+    }
+  }
+}
+
+function toggleInstallationType() {
+  const newType = AppState.installationType === 'grid' ? 'offgrid' : 'grid';
+  applyInstallationType(newType);
+}
+
+// ── Synchronisation des paramètres d'installation partagés ──
+const INSTALL_FIELDS = {
+  sizing:  { tilt:'sz-tilt',    azimuth:'sz-azimuth',    surface:'sz-surface',    panelWp:'sz-panel-wp',    panelM2:'sz-panel-m2',    losses:'sz-losses'    },
+  grid:    { tilt:'inp-tilt',   azimuth:'inp-azimuth',   surface:'inp-surface',   panelWp:'inp-panel-wp',   panelM2:'inp-panel-m2',   losses:'inp-losses'   },
+  offgrid: { tilt:'og2-tilt',   azimuth:'og2-azimuth',   surface:'og2-surface',   panelWp:'og2-panel-wp',   panelM2:'og2-panel-m2',   losses:'og2-losses'   },
+  daily:   { tilt:'hourly-tilt',azimuth:'hourly-azimuth' },
+};
+
+function readInstallFromTab(tab) {
+  const map = INSTALL_FIELDS[tab];
+  if (!map) return;
+  for (const [key, id] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    const v = el.value !== '' ? parseFloat(el.value) : null;
+    if (v !== null && !isNaN(v)) AppState.install[key] = v;
+  }
+}
+
+function writeInstallToTab(tab) {
+  const map = INSTALL_FIELDS[tab];
+  if (!map) return;
+  for (const [key, id] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    if (!el || AppState.install[key] == null) continue;
+    if (parseFloat(el.value) !== AppState.install[key]) el.value = AppState.install[key];
+  }
+}
+
+function bindInstallSync(tab) {
+  const map = INSTALL_FIELDS[tab];
+  if (!map) return;
+  for (const [key, id] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.addEventListener('input', () => {
+      const v = parseFloat(el.value);
+      if (!isNaN(v)) AppState.install[key] = v;
+    });
+  }
+}
+
 // ── Gestion des onglets ──────────────────────────────────────
 function activateTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(b => {
@@ -29,7 +114,12 @@ function initTabs() {
   const btns = [...document.querySelectorAll('.tab-btn')];
   btns.forEach((btn, idx) => {
     btn.setAttribute('tabindex', btn.classList.contains('active') ? '0' : '-1');
-    btn.addEventListener('click', () => activateTab(btn.dataset.tab));
+    btn.addEventListener('click', () => {
+      const prev = AppState.activeTab;
+      readInstallFromTab(prev);
+      activateTab(btn.dataset.tab);
+      writeInstallToTab(btn.dataset.tab);
+    });
     btn.addEventListener('keydown', (e) => {
       let next = -1;
       if (e.key === 'ArrowRight') next = (idx + 1) % btns.length;
@@ -39,72 +129,11 @@ function initTabs() {
       if (next >= 0) {
         e.preventDefault();
         btns[next].focus();
+        const prev = AppState.activeTab;
+        readInstallFromTab(prev);
         activateTab(btns[next].dataset.tab);
+        writeInstallToTab(btns[next].dataset.tab);
       }
-    });
-  });
-}
-
-// ── Fermeture des modales avec Échap ─────────────────────────
-document.addEventListener('keydown', (e) => {
-  if (e.key !== 'Escape') return;
-  const startup = document.getElementById('startup-modal');
-  if (startup && startup.style.display !== 'none') { closeStartupModal(); return; }
-  const enedis = document.getElementById('enedis-modal');
-  if (enedis && enedis.style.display !== 'none') { closeEnedisModal(); return; }
-  const projects = document.getElementById('projects-modal');
-  if (projects && projects.style.display !== 'none') { closeProjectsModal(); return; }
-});
-
-// ── État de chargement sur les boutons de calcul ──────────────
-function withLoading(btnId, fn) {
-  const btn = document.getElementById(btnId);
-  if (!btn) { fn(); return; }
-  btn.disabled = true;
-  btn.classList.add('btn-loading');
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    try { fn(); } finally {
-      btn.disabled = false;
-      btn.classList.remove('btn-loading');
-    }
-  }));
-}
-
-// ── Synchronisation des paramètres partagés entre onglets ────
-/**
- * Les onglets Simulation, Dimensionnement et Hors-réseau partagent
- * des paramètres physiques identiques (surface, panneau, pertes, etc.).
- * Quand l'utilisateur modifie un champ dans un onglet, les champs
- * équivalents des autres onglets sont mis à jour automatiquement.
- */
-function bindSharedParamSync() {
-  // Groupes de champs partageant la même valeur physique
-  const SHARED = [
-    ['inp-surface',  'sz-surface',  'og2-surface'],
-    ['inp-panel-wp', 'sz-panel-wp', 'og2-panel-wp'],
-    ['inp-panel-m2', 'sz-panel-m2', 'og2-panel-m2'],
-    ['inp-losses',   'sz-losses',   'og2-losses'],
-    ['inp-tilt',     'sz-tilt',     'og2-tilt'],
-    ['inp-azimuth',  'sz-azimuth',  'og2-azimuth'],
-    ['sel-tech',     'sz-tech'],
-  ];
-
-  SHARED.forEach(group => {
-    group.forEach(sourceId => {
-      const el = document.getElementById(sourceId);
-      if (!el) return;
-      el.addEventListener('input', () => {
-        const val = el.value;
-        group.forEach(targetId => {
-          if (targetId === sourceId) return;
-          const target = document.getElementById(targetId);
-          if (target && target.value !== val) target.value = val;
-        });
-        // Re-calculer l'affichage panneau/kWc si un champ grille change
-        if (['inp-surface', 'inp-panel-m2', 'inp-panel-wp'].includes(sourceId)) {
-          calcGridPanels();
-        }
-      });
     });
   });
 }
@@ -127,6 +156,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   seedDemoProject();
   initMap();
   initTabs();
+  Object.keys(INSTALL_FIELDS).forEach(bindInstallSync);
+  writeInstallToTab('sizing');
+  applyInstallationType(AppState.installationType);
   initLocationInputs();
 
   // 3. Bind les interactions des formulaires

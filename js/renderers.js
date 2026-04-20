@@ -8,22 +8,102 @@
 //  SYSTÈME PV RÉSEAU
 // ══════════════════════════════════════════════════════════════
 
-/** Calcule et affiche en temps réel le nombre de panneaux + Ppeak depuis surface */
+// ── Mode automatique panneaux (Surface / Conso / Fixe) ───────
+const _panelMode = {}; // { grid: 'surface', og2: 'surface', dv: 'fixe' }
+
+function setPanelMode(prefix, mode) {
+  _panelMode[prefix] = mode;
+  ['surface', 'conso', 'fixe'].forEach(m => {
+    const btn = document.getElementById(`${prefix}-pmode-${m}`);
+    if (btn) btn.classList.toggle('active', m === mode);
+  });
+  const fixeWrap = document.getElementById(`${prefix}-npanels-fixe-wrap`);
+  if (fixeWrap) fixeWrap.style.display = mode === 'fixe' ? '' : 'none';
+  const dvPanel = document.getElementById('dv-sys-panels');
+  if (prefix === 'dv' && dvPanel) dvPanel.readOnly = (mode !== 'fixe');
+  calcPanelsForMode(prefix);
+}
+
+function calcPanelsForMode(prefix) {
+  const mode = _panelMode[prefix] || (prefix === 'dv' ? 'fixe' : 'surface');
+  const wpId = prefix === 'grid' ? 'inp-panel-wp' : `${prefix}-panel-wp`;
+  const m2Id = prefix === 'grid' ? 'inp-panel-m2' : `${prefix}-panel-m2`;
+  const panelWp = parseFloat(document.getElementById(wpId)?.value) || 400;
+  const panelM2 = parseFloat(document.getElementById(m2Id)?.value) || 1.96;
+
+  let nPanels = 0;
+  if (mode === 'surface') {
+    const surfId = prefix === 'grid' ? 'inp-surface' : (prefix === 'og2' ? 'og2-surface' : 'dv-site-surface');
+    const surface = parseFloat(document.getElementById(surfId)?.value) || 0;
+    nPanels = Math.floor(surface / panelM2);
+  } else if (mode === 'conso') {
+    // Pour le devis : utilise le résultat du dimensionnement si disponible
+    if (prefix === 'dv' && AppState.lastSizingResult?.Ppeak) {
+      nPanels = Math.ceil(AppState.lastSizingResult.Ppeak * 1000 / panelWp);
+    } else {
+      const annualKwh = _getPanelConsoKwh(prefix);
+      const yieldKwhPerKwp = _estimateSpecificYield();
+      if (annualKwh > 0 && yieldKwhPerKwp > 0) {
+        nPanels = Math.ceil((annualKwh / yieldKwhPerKwp) * 1000 / panelWp);
+      }
+    }
+  } else {
+    nPanels = parseInt(document.getElementById(`${prefix}-npanels-fixe`)?.value) || 0;
+  }
+
+  const Ppeak = (nPanels * panelWp) / 1000;
+
+  if (prefix === 'grid') {
+    const nEl = document.getElementById('grid-npanels');
+    const pEl = document.getElementById('grid-ppeak-display');
+    const hidden = document.getElementById('inp-ppeak');
+    if (nEl) nEl.textContent = nPanels > 0 ? `${nPanels} panneaux` : '—';
+    if (pEl) pEl.textContent = Ppeak   > 0 ? `${Ppeak.toFixed(2)} kWc` : '—';
+    if (hidden) hidden.value = Ppeak   > 0 ? Ppeak : 3;
+  } else if (prefix === 'og2') {
+    const el = document.getElementById('og2-npanels-display');
+    if (el) {
+      if (mode === 'conso') {
+        el.textContent = 'Auto (dimensionnement libre)';
+      } else {
+        el.textContent = nPanels > 0 ? `${nPanels} panneaux · ${Ppeak.toFixed(2)} kWc` : '—';
+      }
+    }
+  } else if (prefix === 'dv') {
+    if (mode !== 'fixe') {
+      const panelsEl = document.getElementById('dv-sys-panels');
+      const ppeakEl  = document.getElementById('dv-sys-ppeak');
+      if (panelsEl && nPanels > 0) panelsEl.value = nPanels;
+      if (ppeakEl  && Ppeak   > 0) ppeakEl.value  = Ppeak.toFixed(1);
+    }
+  }
+}
+
+function _getPanelConsoKwh(prefix) {
+  if (prefix === 'og2') {
+    const def = parseFloat(document.getElementById('og2-daily-default')?.value) || 1000;
+    return DAYS_IN_MONTH.reduce((sum, days, i) => {
+      const v = parseFloat(document.getElementById(`og2-day-${i+1}`)?.value) || 0;
+      return sum + (v > 0 ? v : def) * days / 1000;
+    }, 0);
+  }
+  // grid ou dv : lecture de l'onglet Dimensionnement
+  let total = 0;
+  for (let i = 1; i <= 12; i++) total += parseFloat(document.getElementById(`sz-kwh-${i}`)?.value) || 0;
+  return total;
+}
+
+function _estimateSpecificYield() {
+  if (AppState.weatherData) {
+    const annualGHI = AppState.weatherData.reduce((s, m) => s + (m.GHI || 0), 0);
+    return annualGHI * 0.78; // PR ≈ 0.78 résidentiel
+  }
+  return 1000; // kWh/kWc par défaut (moyenne France)
+}
+
+/** Calcule et affiche en temps réel le nombre de panneaux + Ppeak */
 function calcGridPanels() {
-  const surface  = parseFloat(document.getElementById('inp-surface')?.value)   || 0;
-  const panelM2  = parseFloat(document.getElementById('inp-panel-m2')?.value)  || 1.96;
-  const panelWp  = parseFloat(document.getElementById('inp-panel-wp')?.value)  || 400;
-
-  const nPanels = Math.floor(surface / panelM2);
-  const Ppeak   = (nPanels * panelWp) / 1000;
-
-  const nEl    = document.getElementById('grid-npanels');
-  const pEl    = document.getElementById('grid-ppeak-display');
-  const hidden = document.getElementById('inp-ppeak');
-
-  if (nEl)    nEl.textContent    = nPanels > 0 ? `${nPanels} panneaux` : '—';
-  if (pEl)    pEl.textContent    = Ppeak   > 0 ? `${Ppeak.toFixed(2)} kWc` : '—';
-  if (hidden) hidden.value       = Ppeak   > 0 ? Ppeak : 3;
+  calcPanelsForMode('grid');
 }
 
 function calcGridSystem() {
@@ -32,21 +112,21 @@ function calcGridSystem() {
     return;
   }
 
-  // Recalculer Ppeak depuis les inputs surface/panneau au moment du clic
+  // Recalculer nb panneaux / Ppeak selon le mode actif
   calcGridPanels();
 
-  const surface  = parseFloat(document.getElementById('inp-surface')?.value)  || 0;
-  if (!surface) {
+  const panelWp = parseFloat(document.getElementById('inp-panel-wp')?.value) || 400;
+  const panelM2 = parseFloat(document.getElementById('inp-panel-m2')?.value) || 1.96;
+  const Ppeak   = parseFloat(document.getElementById('inp-ppeak')?.value) || 0;
+  if (!Ppeak) {
     document.getElementById('grid-results').innerHTML = `<div class="result-placeholder">
       <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-      <p>Renseignez la surface disponible en toiture<br>puis cliquez sur <strong>Calculer</strong></p>
+      <p>Renseignez les paramètres de l'installation<br>puis cliquez sur <strong>Calculer</strong></p>
     </div>`;
     return;
   }
-  const panelM2  = parseFloat(document.getElementById('inp-panel-m2')?.value) || 1.96;
-  const panelWp  = parseFloat(document.getElementById('inp-panel-wp')?.value) || 400;
-  const nPanels  = Math.floor(surface / panelM2);
-  const Ppeak    = nPanels > 0 ? (nPanels * panelWp) / 1000 : 3;
+  const nPanels = Math.round(Ppeak * 1000 / panelWp);
+  const surface = parseFloat(document.getElementById('inp-surface')?.value) || nPanels * panelM2;
 
   const params = {
     lat:        AppState.location.lat,
@@ -791,9 +871,9 @@ function closeEnedisModal() {
   document.getElementById('enedis-modal').style.display = 'none';
 }
 
-function handleEnedisCSV(input) {
+function handleEnedisCSV(input, statusId = 'sz-csv-status') {
   const file = input.files[0];
-  const statusEl = document.getElementById('sz-csv-status');
+  const statusEl = document.getElementById(statusId);
   if (!file) return;
 
   statusEl.style.display = 'block';
@@ -807,6 +887,7 @@ function handleEnedisCSV(input) {
       statusEl.textContent = '✗ ' + result.error;
       return;
     }
+    // ── Onglet dimensionnement ──────────────────────────────────
     result.monthlyKwh.forEach((kwh, i) => {
       const el = document.getElementById(`sz-kwh-${i + 1}`);
       if (el) el.value = kwh;
@@ -815,18 +896,37 @@ function handleEnedisCSV(input) {
       const tariffEl = document.getElementById('sz-tariff');
       if (tariffEl) tariffEl.value = 'hphc';
     }
-    // Stocker les données horaires si disponibles
+
+    // ── Onglet hors-réseau : conso journalière (Wh/j) ──────────
+    result.monthlyKwh.forEach((kwh, i) => {
+      const whPerDay = Math.round(kwh * 1000 / DAYS_IN_MONTH[i]);
+      const el = document.getElementById(`og2-day-${i + 1}`);
+      if (el) el.value = whPerDay;
+    });
+    const avgWhPerDay = Math.round(result.monthlyKwh.reduce((s, k, i) => s + k * 1000 / DAYS_IN_MONTH[i], 0) / 12);
+    const defEl = document.getElementById('og2-daily-default');
+    if (defEl) defEl.value = avgWhPerDay;
+    document.getElementById('og2-day-1')?.dispatchEvent(new Event('input'));
+
+    // ── Données 30min → module horaire ─────────────────────────
     if (result.halfHourlyData) {
-      AppState.hourlyEnedisData = result.halfHourlyData;
+      // Normaliser la clé : save/load attend 'halfHourly', enedis_import produit 'values'
+      AppState.hourlyEnedisData = {
+        halfHourly: result.halfHourlyData.values,
+        year: result.halfHourlyData.year,
+        format: result.halfHourlyData.format
+      };
       if (typeof HourlyModule !== 'undefined') {
-        HourlyModule.setData(result.halfHourlyData);
-        // Notifier l'onglet horaire
-        document.getElementById('hourly-data-status')?.style && (
-          document.getElementById('hourly-data-status').textContent =
-            '✓ Données 30min disponibles pour l\'analyse horaire'
-        );
+        HourlyModule.setData({ values: AppState.hourlyEnedisData.halfHourly, year: AppState.hourlyEnedisData.year });
+        document.getElementById('hourly-data-status') &&
+          (document.getElementById('hourly-data-status').textContent =
+            '✓ Données 30min disponibles pour l\'analyse horaire');
       }
     }
+
+    // ── Stocker kWh mensuels dans AppState ──────────────────────
+    AppState.monthlyKwh = result.monthlyKwh.slice();
+
     document.getElementById('sz-kwh-1')?.dispatchEvent(new Event('input'));
     const warns = result.warnings.length ? ` — ⚠ ${result.warnings[0]}` : '';
     statusEl.style.color = 'var(--color-success)';

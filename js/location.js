@@ -93,9 +93,11 @@ function updateMapMarker() {
 function updateLocationUI() {
   const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
   const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  const cleanName = (AppState.location.name || '').replace(/ \(Open-Meteo\)| \(PVGIS\)| \(approx\.\)/g, '').trim();
   setEl('inp-lat', AppState.location.lat.toFixed(4));
   setEl('inp-lon', AppState.location.lon.toFixed(4));
   setEl('inp-alt', AppState.location.alt);
+  setEl('inp-address', cleanName);
   setTxt('loc-name', AppState.location.name);
   setTxt('coord-lat', AppState.location.lat.toFixed(4) + '°');
   setTxt('coord-lon', AppState.location.lon.toFixed(4) + '°');
@@ -132,9 +134,12 @@ async function geocodeAddress() {
     const data = await r.json();
     if (data.length > 0) {
       const { lat, lon, display_name } = data[0];
-      AppState.location.name = display_name.split(',').slice(0, 2).join(',');
+      const geocodedName = display_name.split(',').slice(0, 2).join(',');
       setLocationCoords(parseFloat(lat), parseFloat(lon));
       AppState.map.setView([lat, lon], 10);
+      // Restore geocoded name (setLocationCoords snaps to nearest demo city)
+      AppState.location.name = geocodedName;
+      updateLocationUI();
     }
   } catch (e) {
     console.warn('Géocodage échoué', e);
