@@ -91,20 +91,49 @@ function bindInstallSync(tab) {
 }
 
 // ── Gestion des onglets ──────────────────────────────────────
+function activateTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-selected', 'false');
+    b.setAttribute('tabindex', '-1');
+  });
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  const btn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+  if (btn) {
+    btn.classList.add('active');
+    btn.setAttribute('aria-selected', 'true');
+    btn.setAttribute('tabindex', '0');
+  }
+  const pane = document.getElementById('tab-' + tab);
+  if (pane) pane.classList.add('active');
+  AppState.activeTab = tab;
+  if (tab === 'irradiation') renderIrradiationData();
+}
+
 function initTabs() {
-  document.querySelectorAll('.tab-btn').forEach(btn => {
+  const btns = [...document.querySelectorAll('.tab-btn')];
+  btns.forEach((btn, idx) => {
+    btn.setAttribute('tabindex', btn.classList.contains('active') ? '0' : '-1');
     btn.addEventListener('click', () => {
       const prev = AppState.activeTab;
-      const tab  = btn.dataset.tab;
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('tab-' + tab).classList.add('active');
       readInstallFromTab(prev);
-      AppState.activeTab = tab;
-      writeInstallToTab(tab);
-      // Rafraîchir automatiquement certains onglets
-      if (tab === 'irradiation') renderIrradiationData();
+      activateTab(btn.dataset.tab);
+      writeInstallToTab(btn.dataset.tab);
+    });
+    btn.addEventListener('keydown', (e) => {
+      let next = -1;
+      if (e.key === 'ArrowRight') next = (idx + 1) % btns.length;
+      if (e.key === 'ArrowLeft')  next = (idx - 1 + btns.length) % btns.length;
+      if (e.key === 'Home') next = 0;
+      if (e.key === 'End')  next = btns.length - 1;
+      if (next >= 0) {
+        e.preventDefault();
+        btns[next].focus();
+        const prev = AppState.activeTab;
+        readInstallFromTab(prev);
+        activateTab(btns[next].dataset.tab);
+        writeInstallToTab(btns[next].dataset.tab);
+      }
     });
   });
 }
@@ -137,16 +166,17 @@ window.addEventListener('DOMContentLoaded', async () => {
   bindSizingLiveTotal();
   bindBatteryInfo();
   bindOffgridLiveTotal();
+  bindSharedParamSync();
   initQuoteTab();
   calcGridPanels(); // initialise l'affichage panneaux/kWc
 
-  // 4. Brancher les boutons de calcul
-  document.getElementById('btn-calc-sizing')?.addEventListener('click', calcSizing);
-  document.getElementById('btn-calc-offgrid2')?.addEventListener('click', calcOffgridSizing);
-  document.getElementById('btn-calc-grid')?.addEventListener('click', calcGridSystem);
-  document.getElementById('btn-calc-irr')?.addEventListener('click', renderIrradiationData);
-  document.getElementById('btn-calc-opt')?.addEventListener('click', calcOptimization);
-  document.getElementById('btn-calc-hourly')?.addEventListener('click', () => HourlyModule.compute());
+  // 4. Brancher les boutons de calcul (avec état de chargement)
+  document.getElementById('btn-calc-sizing')?.addEventListener('click',   () => withLoading('btn-calc-sizing',   calcSizing));
+  document.getElementById('btn-calc-offgrid2')?.addEventListener('click', () => withLoading('btn-calc-offgrid2', calcOffgridSizing));
+  document.getElementById('btn-calc-grid')?.addEventListener('click',     () => withLoading('btn-calc-grid',     calcGridSystem));
+  document.getElementById('btn-calc-irr')?.addEventListener('click',      () => withLoading('btn-calc-irr',      renderIrradiationData));
+  document.getElementById('btn-calc-opt')?.addEventListener('click',      () => withLoading('btn-calc-opt',      calcOptimization));
+  document.getElementById('btn-calc-hourly')?.addEventListener('click',   () => withLoading('btn-calc-hourly',   () => HourlyModule.compute()));
 
   // 5. Initialiser l'UI projets (modal démarrage, Ctrl+S, etc.)
   initProjectUI();

@@ -205,6 +205,7 @@ const OffgridSizing = (() => {
 
     let soc = C_usable * 0.5;
     const monthly = [];
+    const lossF   = 1 - (losses || 14) / 100;
 
     for (let i = 0; i < 12; i++) {
       const days = DAYS[i];
@@ -272,7 +273,7 @@ const OffgridSizing = (() => {
    * @param {array}  weatherData 12 mois {GHI, DHI, T_avg}
    * @param {number} lat        latitude
    */
-  function run(input, weatherData, lat) {
+  function run(input, weatherData, lat, hourlyConsoProfiles) {
     const { site, conso, battery, sizing } = input;
     const tech   = BATTERY_TECH[battery.type] || BATTERY_TECH.lfp;
     const losses = site.losses || 14;

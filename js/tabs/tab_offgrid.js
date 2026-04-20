@@ -3,7 +3,7 @@
  */
 function initTabOffgrid() {
   document.getElementById('tab-offgrid').innerHTML = `
-    <div style="display:grid;grid-template-columns:320px 1fr;gap:16px">
+    <div class="tab-form-col">
 
       <!-- Formulaire -->
       <div>
@@ -16,7 +16,7 @@ function initTabOffgrid() {
           </summary>
           <div style="margin-top:10px">
             <div class="form-group" style="margin-bottom:10px">
-              <label>Consommation par défaut (tous les mois)</label>
+              <label for="og2-daily-default">Consommation par défaut (tous les mois)</label>
               <div class="input-unit">
                 <input type="number" id="og2-daily-default" value="" step="50" min="0" placeholder="ex: 1000">
                 <span class="unit-tag">Wh/j</span>
@@ -34,18 +34,18 @@ function initTabOffgrid() {
               Profil mensuel détaillé (optionnel)
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
-              <div class="form-group"><label>Jan</label><input type="number" id="og2-day-1"  value="0" min="0" step="50"></div>
-              <div class="form-group"><label>Fév</label><input type="number" id="og2-day-2"  value="0" min="0" step="50"></div>
-              <div class="form-group"><label>Mar</label><input type="number" id="og2-day-3"  value="0" min="0" step="50"></div>
-              <div class="form-group"><label>Avr</label><input type="number" id="og2-day-4"  value="0" min="0" step="50"></div>
-              <div class="form-group"><label>Mai</label><input type="number" id="og2-day-5"  value="0" min="0" step="50"></div>
-              <div class="form-group"><label>Jun</label><input type="number" id="og2-day-6"  value="0" min="0" step="50"></div>
-              <div class="form-group"><label>Jul</label><input type="number" id="og2-day-7"  value="0" min="0" step="50"></div>
-              <div class="form-group"><label>Aoû</label><input type="number" id="og2-day-8"  value="0" min="0" step="50"></div>
-              <div class="form-group"><label>Sep</label><input type="number" id="og2-day-9"  value="0" min="0" step="50"></div>
-              <div class="form-group"><label>Oct</label><input type="number" id="og2-day-10" value="0" min="0" step="50"></div>
-              <div class="form-group"><label>Nov</label><input type="number" id="og2-day-11" value="0" min="0" step="50"></div>
-              <div class="form-group"><label>Déc</label><input type="number" id="og2-day-12" value="0" min="0" step="50"></div>
+              <div class="form-group"><label for="og2-day-1">Jan</label><input type="number" id="og2-day-1"  value="0" min="0" step="50"></div>
+              <div class="form-group"><label for="og2-day-2">Fév</label><input type="number" id="og2-day-2"  value="0" min="0" step="50"></div>
+              <div class="form-group"><label for="og2-day-3">Mar</label><input type="number" id="og2-day-3"  value="0" min="0" step="50"></div>
+              <div class="form-group"><label for="og2-day-4">Avr</label><input type="number" id="og2-day-4"  value="0" min="0" step="50"></div>
+              <div class="form-group"><label for="og2-day-5">Mai</label><input type="number" id="og2-day-5"  value="0" min="0" step="50"></div>
+              <div class="form-group"><label for="og2-day-6">Jun</label><input type="number" id="og2-day-6"  value="0" min="0" step="50"></div>
+              <div class="form-group"><label for="og2-day-7">Jul</label><input type="number" id="og2-day-7"  value="0" min="0" step="50"></div>
+              <div class="form-group"><label for="og2-day-8">Aoû</label><input type="number" id="og2-day-8"  value="0" min="0" step="50"></div>
+              <div class="form-group"><label for="og2-day-9">Sep</label><input type="number" id="og2-day-9"  value="0" min="0" step="50"></div>
+              <div class="form-group"><label for="og2-day-10">Oct</label><input type="number" id="og2-day-10" value="0" min="0" step="50"></div>
+              <div class="form-group"><label for="og2-day-11">Nov</label><input type="number" id="og2-day-11" value="0" min="0" step="50"></div>
+              <div class="form-group"><label for="og2-day-12">Déc</label><input type="number" id="og2-day-12" value="0" min="0" step="50"></div>
             </div>
             <p id="og2-annual-total" style="font-size:12px;font-weight:700;color:var(--color-primary);margin-top:6px;text-align:right"></p>
           </div>
@@ -59,7 +59,7 @@ function initTabOffgrid() {
           </summary>
           <div style="margin-top:10px">
             <div class="form-group" style="margin-bottom:10px">
-              <label>Type de batterie</label>
+              <label for="og2-batt-tech">Type de batterie</label>
               <select id="og2-batt-tech">
                 <option value="lfp">LFP standard — Lithium Fer Phosphate (neuf, recommandé)</option>
                 <option value="lfp_diy">LFP DIY — Cellules CATL/EVE 280Ah (meilleur rapport qualité/prix)</option>
@@ -85,27 +85,27 @@ function initTabOffgrid() {
           <div style="margin-top:10px">
             <div class="params-grid">
               <div class="form-group">
-                <label>Inclinaison <button type="button" class="btn btn-outline btn-sm" onclick="optimizeTiltFor('og2')" style="padding:1px 7px;font-size:10px;margin-left:4px">⚡ Auto</button></label>
+                <label for="og2-tilt">Inclinaison <button type="button" class="btn btn-outline btn-sm" onclick="optimizeTiltFor('og2')" style="padding:1px 7px;font-size:10px;margin-left:4px">⚡ Auto</button></label>
                 <div class="input-unit"><input type="number" id="og2-tilt" value="30" min="0" max="90"><span class="unit-tag">°</span></div>
               </div>
               <div class="form-group">
-                <label>Azimut <button type="button" class="btn btn-outline btn-sm" onclick="optimizeTiltFor('og2', true)" style="padding:1px 7px;font-size:10px;margin-left:4px">⚡ Auto</button></label>
+                <label for="og2-azimuth">Azimut <button type="button" class="btn btn-outline btn-sm" onclick="optimizeTiltFor('og2', true)" style="padding:1px 7px;font-size:10px;margin-left:4px">⚡ Auto</button></label>
                 <div class="input-unit"><input type="number" id="og2-azimuth" value="0" min="-180" max="180"><span class="unit-tag">°</span></div>
               </div>
               <div class="form-group">
-                <label>Surface dispo</label>
+                <label for="og2-surface">Surface dispo</label>
                 <div class="input-unit"><input type="number" id="og2-surface" value="" placeholder="m²"><span class="unit-tag">m²</span></div>
               </div>
               <div class="form-group">
-                <label>Panneaux (Wc)</label>
+                <label for="og2-panel-wp">Panneaux (Wc) <button type="button" class="btn btn-outline btn-sm" onclick="autoCalcOffgridPanelWp()" style="padding:1px 7px;font-size:10px;margin-left:4px">⚡ Auto</button></label>
                 <div class="input-unit"><input type="number" id="og2-panel-wp" value="400" step="10"><span class="unit-tag">Wc</span></div>
               </div>
               <div class="form-group">
-                <label>Surface panneau</label>
+                <label for="og2-panel-m2">Surface panneau</label>
                 <div class="input-unit"><input type="number" id="og2-panel-m2" value="1.96" step="0.01"><span class="unit-tag">m²</span></div>
               </div>
               <div class="form-group">
-                <label>Pertes système</label>
+                <label for="og2-losses">Pertes système</label>
                 <div class="input-unit"><input type="number" id="og2-losses" value="14" min="0"><span class="unit-tag">%</span></div>
               </div>
             </div>
@@ -128,7 +128,7 @@ function initTabOffgrid() {
               <div id="og2-npanels-display" style="font-size:12px;color:var(--color-text-muted)">Auto depuis surface</div>
             </div>
             <div class="form-group" style="margin-top:4px">
-              <label>Taux de couverture visé</label>
+              <label for="og2-target-coverage">Taux de couverture visé</label>
               <div class="input-unit"><input type="number" id="og2-target-coverage" value="90" min="50" max="100"><span class="unit-tag">%</span></div>
             </div>
           </div>
@@ -138,11 +138,11 @@ function initTabOffgrid() {
           <summary class="card-title" style="cursor:pointer;user-select:none">💶 Coûts réels (optionnel)</summary>
           <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <div class="form-group">
-              <label>Coût PV</label>
+              <label for="og2-pv-cost-kwp">Coût PV</label>
               <div class="input-unit"><input type="number" id="og2-pv-cost-kwp" value="650" step="50" min="0"><span class="unit-tag">€/kWc</span></div>
             </div>
             <div class="form-group">
-              <label>BOS + câblage</label>
+              <label for="og2-bos-cost">BOS + câblage</label>
               <div class="input-unit"><input type="number" id="og2-bos-cost" value="500" step="50" min="0"><span class="unit-tag">€</span></div>
             </div>
           </div>

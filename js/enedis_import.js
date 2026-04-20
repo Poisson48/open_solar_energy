@@ -1,20 +1,20 @@
 /**
  * enedis_import.js — Parser CSV export Enedis (espace client)
  *
- * Formats supportés :
- *   A) Consommation journalière  — colonnes Horodate + Valeur (Wh)
- *   B) Consommation mensuelle    — colonnes Mois/Date + Valeur (kWh ou Wh)
- *   C) HP/HC journalier          — colonnes Horodate + HP (Wh) + HC (Wh)
- *   D) ISO 30 min                — Horodate_Fin + Valeur (Wh), agrégé par jour puis mois
+ * Formats supportés dans le ZIP :
+ *   - ma-conso-mensuelle       : MM/YYYY;kWh   → monthlyKwh
+ *   - ma-conso-quotidienne     : DD/MM/YYYY;Wh → agrégé par mois
+ *   - mes-puissances-atteintes-30min : format propriétaire Enedis
+ *       date sur une ligne (DD/MM/YYYY;;), puis créneaux HH:MM:SS;Watts;
+ *       en ordre décroissant → halfHourlyData (kWh/créneau)
  *
- * Dans tous les cas :
- *   - Séparateur auto-détecté (; ou ,)
- *   - Encodage UTF-8 ou ISO-8859-1 (accents)
- *   - Les lignes de métadonnées en tête sont ignorées
- *   - Si plusieurs années : on prend la plus récente complète (≥ 11 mois)
- *   - Unité auto-détectée (Wh → ÷1000, kWh → ×1)
+ * Le ZIP est toujours traité en chargeant les deux fichiers en parallèle :
+ *   1. Fichier consommation (mensuelle ou quotidienne) → monthlyKwh
+ *   2. Fichier 30min → halfHourlyData (optionnel)
  *
- * Sortie : { monthlyKwh[12], monthlyKwhHp[12]|null, year, format, warnings[] }
+ * Sortie : { monthlyKwh[12], monthlyKwhHp|null, year, format,
+ *            totalAnnual, warnings[], halfHourlyData? }
+ *   halfHourlyData = { values: Float32Array(n×48), year, format:'30min' }
  */
 
 const EnedisImport = (() => {
@@ -35,16 +35,13 @@ const EnedisImport = (() => {
   // ── Parse date → { year, month } ou null ────────────────────
   function parseDate(s) {
     const v = clean(s);
-    // ISO avec heure : 2024-01-15T00:30:00+01:00 ou 2024-01-15 00:00:00
     let m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (m) return { year: +m[1], month: +m[2] };
-    // Format français JJ/MM/AAAA
     m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
     if (m) return { year: +m[3], month: +m[2], day: +m[1] };
     // Mois seul YYYY-MM
     m = v.match(/^(\d{4})-(\d{2})$/);
     if (m) return { year: +m[1], month: +m[2] };
-    // MM/YYYY
     m = v.match(/^(\d{2})\/(\d{4})$/);
     if (m) return { year: +m[2], month: +m[1] };
     return null;
@@ -87,21 +84,23 @@ const EnedisImport = (() => {
     return 0.001; // défaut Wh
   }
 
-  // ── Corps principal ──────────────────────────────────────────
+  // ── Décode un ArrayBuffer en texte (UTF-8 puis ISO-8859-1) ──
+  function decodeText(buffer) {
+    let text = new TextDecoder('utf-8').decode(buffer);
+    if (text.includes('�')) text = new TextDecoder('iso-8859-1').decode(buffer);
+    return text;
+  }
+
+  // ── Parser générique mensuel/journalier ──────────────────────
   function parse(csvText) {
     const warnings = [];
-    // Normaliser les sauts de ligne
     const lines = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
       .map(l => l.trim()).filter(l => l.length > 0);
 
-    if (lines.length < 3) {
-      return { error: 'Fichier trop court ou vide.' };
-    }
+    if (lines.length < 3) return { error: 'Fichier trop court ou vide.' };
 
     const sep = detectSep(lines);
 
-    // ── Trouver la ligne d'en-tête des données ─────────────────
-    // On cherche la première ligne qui contient "horodate" ou "date" ou "mois"
     let headerIdx = -1;
     for (let i = 0; i < Math.min(lines.length, 30); i++) {
       const low = lines[i].toLowerCase();
@@ -111,16 +110,11 @@ const EnedisImport = (() => {
         break;
       }
     }
-    if (headerIdx === -1) {
-      return { error: 'En-tête introuvable — vérifiez que le fichier est bien un export Enedis.' };
-    }
+    if (headerIdx === -1) return { error: 'En-tête introuvable.' };
 
     const headerCells = lines[headerIdx].split(sep).map(clean);
     const dataLines   = lines.slice(headerIdx + 1).filter(l => l.split(sep).length >= 2);
-
-    if (dataLines.length === 0) {
-      return { error: 'Aucune ligne de données après l\'en-tête.' };
-    }
+    if (dataLines.length === 0) return { error: 'Aucune ligne de données.' };
 
     // ── Identifier les colonnes ────────────────────────────────
     const idxDate = findCol(headerCells, ['horodate', 'date', 'mois', 'période', 'periode', 'heure de relève', 'releve']);
@@ -128,12 +122,8 @@ const EnedisImport = (() => {
     const idxHp   = findCol(headerCells, ['heures pleines', 'heure pleine', 'hp'], idxDate);
     const idxHc   = findCol(headerCells, ['heures creuses', 'heure creuse', 'hc'], idxDate);
 
-    if (idxDate === -1) {
-      return { error: 'Colonne date/horodate introuvable dans l\'en-tête.' };
-    }
-    if (idxVal === -1 && idxHp === -1) {
-      return { error: 'Colonne de consommation introuvable. Colonnes détectées : ' + headerCells.join(', ') };
-    }
+    if (idxDate === -1) return { error: 'Colonne date introuvable.' };
+    if (idxVal === -1 && idxHp === -1) return { error: 'Colonne consommation introuvable. Colonnes : ' + headerCells.join(', ') };
 
     // ── Détection unité ────────────────────────────────────────
     const headerStr  = lines[headerIdx];
@@ -170,13 +160,11 @@ const EnedisImport = (() => {
       const { year, month } = dt;
       if (!data[year]) data[year] = {};
       if (!data[year][month]) data[year][month] = { kwh: 0, khp: 0, khc: 0, count: 0 };
-
       const parseVal = idx => {
         if (idx === -1) return 0;
-        const v = parseFloat((cells[idx] || '0').replace(',', '.'));
+        const v = parseFloat((cells[idx] || '0').replace(',', '.').replace(/\s/g, ''));
         return isNaN(v) ? 0 : v * unitFactor;
       };
-
       if (idxHp !== -1 && idxHc !== -1) {
         const hp = parseVal(idxHp);
         const hc = parseVal(idxHc);
@@ -184,7 +172,7 @@ const EnedisImport = (() => {
         data[year][month].khc   += hc;
         data[year][month].kwh   += hp + hc;
       } else {
-        data[year][month].kwh   += parseVal(idxVal);
+        data[year][month].kwh += parseVal(idxVal);
       }
       data[year][month].count++;
 
@@ -198,24 +186,18 @@ const EnedisImport = (() => {
       }
     }
 
-    if (Object.keys(data).length === 0) {
-      return { error: 'Aucune donnée valide parsée (dates non reconnues ?).' };
-    }
+    if (Object.keys(data).length === 0) return { error: 'Aucune donnée valide.' };
 
-    // ── Choisir l'année la plus récente avec ≥ 11 mois ────────
     const years = Object.keys(data).map(Number).sort((a, b) => b - a);
     let chosenYear = years[0];
     for (const y of years) {
       if (Object.keys(data[y]).length >= 11) { chosenYear = y; break; }
     }
     const yearData = data[chosenYear];
-    const monthsFound = Object.keys(yearData).length;
-    if (monthsFound < 12) {
-      warnings.push(`Année ${chosenYear} incomplète (${monthsFound}/12 mois) — les mois manquants sont estimés par interpolation.`);
+    if (Object.keys(yearData).length < 12) {
+      warnings.push(`Année ${chosenYear} incomplète (${Object.keys(yearData).length}/12 mois).`);
     }
 
-    // ── Construire les tableaux mensuels ───────────────────────
-    // Interpoler les mois manquants par moyenne des voisins
     const monthlyKwh   = new Array(12).fill(0);
     const monthlyKwhHp = idxHp !== -1 ? new Array(12).fill(0) : null;
     const monthlyKwhHc = idxHc !== -1 ? new Array(12).fill(0) : null;
@@ -228,22 +210,15 @@ const EnedisImport = (() => {
       }
     }
 
-    // Interpolation des mois manquants (moyenne glissante des voisins connus)
+    // Interpolation des mois manquants
     for (let m = 0; m < 12; m++) {
       if (monthlyKwh[m] === 0) {
         const prev = monthlyKwh[(m + 11) % 12];
-        const next = monthlyKwh[(m + 1) % 12];
-        if (prev > 0 && next > 0) {
-          monthlyKwh[m] = Math.round((prev + next) / 2);
-        } else if (prev > 0) {
-          monthlyKwh[m] = prev;
-        } else if (next > 0) {
-          monthlyKwh[m] = next;
-        }
+        const next = monthlyKwh[(m + 1)  % 12];
+        monthlyKwh[m] = prev > 0 && next > 0 ? Math.round((prev + next) / 2) : prev || next;
       }
     }
 
-    // ── Détecter le format ─────────────────────────────────────
     const totalRows  = dataLines.length;
     const formatName = totalRows > 60
       ? (totalRows > 400 ? 'Données 30 min' : 'Données journalières')
@@ -270,22 +245,100 @@ const EnedisImport = (() => {
     }
 
     return {
-      monthlyKwh,
-      monthlyKwhHp,
-      monthlyKwhHc,
-      year: chosenYear,
-      format: formatName,
+      monthlyKwh, monthlyKwhHp, monthlyKwhHc,
+      year: chosenYear, format: formatName,
       totalAnnual: Math.round(monthlyKwh.reduce((s, v) => s + v, 0)),
       halfHourlyData,
       warnings
     };
   }
 
-  // ── Décode un ArrayBuffer en texte (UTF-8 puis ISO-8859-1) ──
-  function decodeText(buffer) {
-    let text = new TextDecoder('utf-8').decode(buffer);
-    if (text.includes('�')) text = new TextDecoder('iso-8859-1').decode(buffer);
-    return text;
+  // ── Parser dédié : mes-puissances-atteintes-30min ────────────
+  /**
+   * Format Enedis "puissances atteintes" :
+   *   DD/MM/YYYY;;          ← ligne de date
+   *   00:00:00;WATTS;Réelle ← créneau minuit (début de journée)
+   *   23:30:00;WATTS;Réelle ← créneaux en ordre décroissant
+   *   ...
+   *   00:30:00;WATTS;Réelle
+   *                         ← ligne vide
+   *
+   * Valeurs en Watts → conversion en kWh/créneau : W × 0.5h / 1000
+   * Retourne { values: Float32Array(jours×48), year, format, monthlyKwh, nDays }
+   */
+  function parsePuissances30min(csvText) {
+    const lines = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+
+    // Structure : date → slots[48] en Watts
+    const dayMap = {};  // 'YYYY-MM-DD' → Float32Array(48) en W
+
+    let currentDate = null;
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) { currentDate = null; continue; }
+
+      // Ligne de date : DD/MM/YYYY;;
+      const dateMatch = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})\s*;/);
+      if (dateMatch) {
+        currentDate = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+        if (!dayMap[currentDate]) dayMap[currentDate] = new Float32Array(48);
+        continue;
+      }
+
+      // Ligne créneau : HH:MM:SS;WATTS;...
+      if (!currentDate) continue;
+      const timeMatch = trimmed.match(/^(\d{2}):(\d{2}):\d{2};(\d+)/);
+      if (!timeMatch) continue;
+
+      const hour  = parseInt(timeMatch[1]);
+      const min   = parseInt(timeMatch[2]);
+      const watts = parseInt(timeMatch[3]);
+      const slot  = hour * 2 + (min >= 30 ? 1 : 0);  // 0 = 00:00, 47 = 23:30
+      if (slot >= 0 && slot < 48) {
+        dayMap[currentDate][slot] = watts;
+      }
+    }
+
+    const dates = Object.keys(dayMap).sort();
+    if (dates.length === 0) return null;
+
+    // Choisir l'année la plus récente et complète (≥ 300 jours)
+    const yearCounts = {};
+    for (const d of dates) {
+      const y = d.substring(0, 4);
+      yearCounts[y] = (yearCounts[y] || 0) + 1;
+    }
+    const sortedYears = Object.keys(yearCounts).sort((a, b) => b - a);
+    const chosenYear  = parseInt(
+      sortedYears.find(y => yearCounts[y] >= 300) || sortedYears[0]
+    );
+
+    const yearStr   = String(chosenYear);
+    const yearDates = dates.filter(d => d.startsWith(yearStr)).sort();
+    const nDays     = yearDates.length;
+
+    // Float32Array : index = jour × 48 + slot, valeur = kWh/créneau
+    const values = new Float32Array(nDays * 48);
+    const monthlyKwh = new Array(12).fill(0);
+
+    for (let i = 0; i < nDays; i++) {
+      const slots = dayMap[yearDates[i]];
+      const month = parseInt(yearDates[i].substring(5, 7)) - 1; // 0-indexed
+      for (let s = 0; s < 48; s++) {
+        const kwh = (slots[s] || 0) * 0.5 / 1000;  // W × 0.5h / 1000
+        values[i * 48 + s] = kwh;
+        monthlyKwh[month] += kwh;
+      }
+    }
+
+    return {
+      values,
+      year:       chosenYear,
+      format:     '30min',
+      monthlyKwh: monthlyKwh.map(v => Math.round(v)),
+      nDays
+    };
   }
 
   // ── Priorité pour les kWh mensuels (fichier dédié plus fiable) ─
@@ -298,6 +351,7 @@ const EnedisImport = (() => {
       onResult({ error: 'JSZip non chargé — rechargez la page.' });
       return;
     }
+
     JSZip.loadAsync(file).then(zip => {
       const csvNames = Object.keys(zip.files)
         .filter(n => !zip.files[n].dir && n.toLowerCase().endsWith('.csv'));
@@ -349,12 +403,10 @@ const EnedisImport = (() => {
   // ── Gestionnaire de fichier ──────────────────────────────────
   function handleFile(file, onResult) {
     if (!file) return;
-    // ZIP EDF (suiviconso.edf.fr)
     if (file.name.toLowerCase().endsWith('.zip') || file.type === 'application/zip') {
       handleZip(file, onResult);
       return;
     }
-    // CSV direct
     const reader = new FileReader();
     reader.onload = e => {
       let text = e.target.result;
@@ -369,5 +421,5 @@ const EnedisImport = (() => {
     reader.readAsText(file, 'UTF-8');
   }
 
-  return { parse, handleFile };
+  return { parse, parsePuissances30min, handleFile };
 })();

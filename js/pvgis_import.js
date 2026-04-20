@@ -230,8 +230,12 @@ const PVGISImport = (() => {
 
   async function doImportWeather() {
     const { lat, lon } = AppState.location;
+    const btn = document.getElementById('btn-pvgis-weather');
+    if (btn) { btn.disabled = true; btn.classList.add('btn-loading'); }
+
+    let weather = null;
     try {
-      const weather = await importWeatherOpenMeteo(lat, lon);
+      weather = await importWeatherOpenMeteo(lat, lon);
       AppState.weatherData = weather;
       AppState.location.name = AppState.location.name.replace(' (PVGIS)', '').replace(' (Open-Meteo)', '') + ' (Open-Meteo)';
       document.getElementById('loc-name').textContent = AppState.location.name;
@@ -239,11 +243,17 @@ const PVGISImport = (() => {
       const totalGHI = weather.reduce((s, m) => s + m.GHI, 0);
       setStatus(`✓ Données importées — GHI annuel : ${Math.round(totalGHI)} kWh/m²/an`, 'success');
       showWeatherPreview(weather);
-      renderIrradiationData();
+      if (typeof showToast === 'function') showToast(`☀️ Météo importée — ${Math.round(totalGHI)} kWh/m²/an`);
     } catch (err) {
       console.error(err);
       setStatus(`✗ Open-Meteo inaccessible : ${err.message}`, 'error');
+      if (typeof showToast === 'function') showToast('✗ Import météo échoué', 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.classList.remove('btn-loading'); }
     }
+
+    // Hors du try-catch : une erreur de rendu ne doit pas masquer le statut d'import
+    if (weather) renderIrradiationData();
   }
 
   async function doImportPVCalc() {

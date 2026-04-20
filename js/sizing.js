@@ -58,7 +58,7 @@ const SizingEngine = (() => {
     switch (strategy) {
       case 'autoconso_max':
         // Max autoconso en évitant les installations où > 40% part au réseau
-        const goodRatio = results.filter(r => r.selfSufficiencyRate >= 0.60);
+        const goodRatio = results.filter(r => r.selfSufficiencyRate >= 60);
         if (goodRatio.length)
           return goodRatio.sort((a, b) => b.annualAutoconsoKwh - a.annualAutoconsoKwh)[0];
         return results.sort((a, b) => b.annualAutoconsoKwh - a.annualAutoconsoKwh)[0];
@@ -68,7 +68,7 @@ const SizingEngine = (() => {
           || results[0];
 
       case 'bill_coverage_pct':
-        const target = (targetCoveragePct || 60) / 100;
+        const target = targetCoveragePct || 60;
         return results.find(r => r.coverageRate >= target) || results[results.length - 1];
 
       default:

@@ -540,17 +540,18 @@ function calcOffgridSizing() {
   if (!AppState.weatherData) { showToast('Sélectionnez un lieu avec des données météo.', 'error'); return; }
   const input = OffgridSizing.readFormInput();
   const totalConso = input.conso.dailyWh.reduce((s, v) => s + v, 0);
-  if (totalConso === 0) {
-    showToast('⚠ Renseignez la consommation journalière (Wh/j) avant de dimensionner.', 'error');
+  const hasEnedis  = !!(AppState.hourlyEnedisData?.halfHourly?.length);
+  if (totalConso === 0 && !hasEnedis) {
+    showToast('⚠ Renseignez la consommation journalière (Wh/j) ou importez un fichier Enedis avant de dimensionner.', 'error');
     return;
   }
-  const { recommended: rec, allCandidates, tech, annual_conso } =
+  const { recommended: rec, allCandidates, tech, annual_conso, useHourly } =
     OffgridSizing.run(input, AppState.weatherData, AppState.location.lat);
   AppState.lastOffgridSizingResult = rec;
-  renderOffgridSizingResults(rec, allCandidates, tech, annual_conso);
+  renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, useHourly);
 }
 
-function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso) {
+function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, hourlyMode) {
   const el = document.getElementById('offgrid2-results');
   if (!rec) {
     el.innerHTML = '<div class="alert alert-warning">Aucune configuration trouvée — réduisez la cible ou augmentez la surface.</div>';
@@ -560,6 +561,9 @@ function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso) {
   const c1 = 'chart-og1-' + Date.now();
   const c2 = 'chart-og2-' + Date.now();
   const hmId = 'hm-og-' + Date.now();
+  const hourlyBadge = hourlyMode
+    ? `<span style="font-size:11px;background:#e8f5e9;color:var(--color-success);padding:2px 8px;border-radius:10px;margin-left:8px">Simulation heure/heure (données Enedis)</span>`
+    : `<span style="font-size:11px;background:var(--color-bg);color:var(--color-text-muted);padding:2px 8px;border-radius:10px;margin-left:8px">Profil journalier moyen</span>`;
 
   const tableRows = rec.monthly.map(m => {
     const cls = m.deficit_days === 0 ? 'color:var(--color-success)' : m.deficit_days <= 3 ? 'color:var(--color-accent-dark)' : 'color:var(--color-danger)';
@@ -573,9 +577,20 @@ function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso) {
     </tr>`;
   }).join('');
 
+  const tilt    = parseFloat(document.getElementById('og2-tilt')?.value)    || 30;
+  const azimuth = parseFloat(document.getElementById('og2-azimuth')?.value) || 0;
+  const dodPct  = Math.round((tech.dod || 0.8) * 100);
+
   el.innerHTML = `
     <div class="card" style="border-left:4px solid var(--color-accent);margin-bottom:16px">
-      <div class="card-title">Système autonome recommandé — ${tech.label}</div>
+      <div class="section-header">
+        <div class="card-title">Système autonome recommandé — ${tech.label}${hourlyBadge}</div>
+        <button class="btn btn-accent btn-sm"
+          onclick="applyOffgridToHourly(${rec.Ppeak}, ${rec.C_batt_gross}, ${dodPct}, ${tilt}, ${azimuth})"
+          title="Reporter ces valeurs dans l'onglet Analyse horaire">
+          ↗ Utiliser pour la simulation horaire
+        </button>
+      </div>
       <div class="kpi-grid">
         <div class="kpi-card" style="border-left:3px solid var(--color-accent)">
           <div class="kpi-value accent">${rec.Ppeak}</div>
@@ -646,6 +661,25 @@ function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso) {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  REPORTER LA CONFIG HORS-RÉSEAU → ONGLET ANALYSE HORAIRE
+// ══════════════════════════════════════════════════════════════
+function applyOffgridToHourly(Ppeak, battKwh, dodPct, tilt, azimuth) {
+  const set = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  };
+  set('hourly-ppeak',   Ppeak);
+  set('hourly-batt',    battKwh);
+  set('hourly-dod',     dodPct);
+  set('hourly-tilt',    tilt);
+  set('hourly-azimuth', azimuth);
+
+  // Basculer vers l'onglet Analyse horaire
+  if (typeof activateTab === 'function') activateTab('daily');
+  showToast(`✓ ${Ppeak} kWc · ${battKwh} kWh (DoD ${dodPct}%) reportés dans l'analyse horaire`);
+}
+
+// ══════════════════════════════════════════════════════════════
 //  BIND FONCTIONS AUXILIAIRES
 // ══════════════════════════════════════════════════════════════
 function bindOptimizeCheckboxes() {
@@ -694,6 +728,7 @@ function bindSizingLiveTotal() {
 }
 
 function bindOffgridLiveTotal() {
+  const DAYS = DAYS_IN_MONTH;
   const defInput = document.getElementById('og2-daily-default');
   const monthInputs = Array.from({length:12}, (_, i) => document.getElementById(`og2-day-${i+1}`));
   function update() {
@@ -722,7 +757,88 @@ function optimizeTiltFor(prefix, withAz = false) {
   if (withAz && azEl) azEl.value = opt.azimuth;
 }
 
+function autoCalcOffgridPanelWp() {
+  if (!AppState.weatherData) {
+    showToast('⚠ Sélectionnez d\'abord un lieu avec des données météo.', 'error');
+    return;
+  }
+  const getVal = id => parseFloat(document.getElementById(id)?.value) || 0;
+
+  const surface   = getVal('og2-surface');
+  const panelM2   = getVal('og2-panel-m2')   || 1.96;
+  const losses    = getVal('og2-losses')      || 14;
+  const tilt      = getVal('og2-tilt')        || 30;
+  const azimuth   = getVal('og2-azimuth')     || 0;
+  const targetPct = getVal('og2-target-coverage') || 90;
+
+  if (!surface) { showToast('⚠ Renseignez d\'abord la surface disponible.', 'error'); return; }
+
+  // Consommation annuelle (Wh/j → kWh/an)
+  const DAYS = DAYS_IN_MONTH;
+  const defaultDay = getVal('og2-daily-default') || 1000;
+  const dailyWh = Array.from({length:12}, (_, i) => {
+    const v = getVal(`og2-day-${i+1}`);
+    return v > 0 ? v : defaultDay;
+  });
+  const annualConso = dailyWh.reduce((s, v, i) => s + v * DAYS[i], 0) / 1000;
+
+  if (annualConso < 10) { showToast('⚠ Renseignez d\'abord la consommation.', 'error'); return; }
+
+  // Production annuelle pour 1 kWc sur ce site
+  const annualProdPerKwc = AppState.weatherData.reduce((sum, m, i) => {
+    const Htilt = SolarMath.tiltedIrradiation(m.GHI, m.DHI, AppState.location.lat, tilt, azimuth, i + 1);
+    return sum + SolarMath.pvProduction(Htilt, 1.0, losses, m.T_avg, 'crystSi', i + 1);
+  }, 0);
+
+  if (annualProdPerKwc < 100) { showToast('⚠ Données météo insuffisantes.', 'error'); return; }
+
+  // Ppeak nécessaire (kWc) pour atteindre le taux de couverture annuel cible
+  const neededPpeak = (annualConso * targetPct / 100) / annualProdPerKwc;
+
+  // Puissances standard du marché (Wc)
+  const STANDARD_WP = [300, 320, 350, 375, 400, 420, 450, 480, 500, 550, 600, 650, 700];
+
+  // Nombre max de panneaux sur la surface
+  const nPanelsMax = Math.floor(surface / panelM2);
+  if (nPanelsMax < 1) { showToast('⚠ Surface insuffisante pour un panneau.', 'error'); return; }
+
+  // Choisir le wattage standard qui donne le Ppeak le plus proche du besoin
+  // sans dépasser la surface disponible
+  let chosen = null;
+  for (const wp of STANDARD_WP) {
+    const nNeeded = Math.ceil(neededPpeak * 1000 / wp);
+    if (nNeeded <= nPanelsMax) {
+      chosen = { wp, nPanels: nNeeded, ppeak: +(nNeeded * wp / 1000).toFixed(2) };
+      break; // Premier (plus petit) wattage standard qui tient sur le toit
+    }
+  }
+
+  if (!chosen) {
+    // Même avec les plus grands panneaux on ne couvre pas la cible — prendre le max possible
+    const wpMax = STANDARD_WP[STANDARD_WP.length - 1];
+    const ppeak = +(nPanelsMax * wpMax / 1000).toFixed(2);
+    chosen = { wp: wpMax, nPanels: nPanelsMax, ppeak };
+    showToast(`⚠ Surface insuffisante pour ${neededPpeak.toFixed(1)} kWc — max possible : ${ppeak} kWc avec ${nPanelsMax}× ${wpMax} Wc`, 'error');
+  } else {
+    showToast(`✓ ${chosen.wp} Wc × ${chosen.nPanels} panneaux = ${chosen.ppeak} kWc pour ${targetPct}% de couverture annuelle`);
+  }
+
+  const wpEl  = document.getElementById('og2-panel-wp');
+  if (wpEl) wpEl.value = chosen.wp;
+
+  // Ajuster la surface au strict nécessaire pour ces panneaux
+  // (évite que le dimensionnement scanne des systèmes surdimensionnés)
+  const surfaceNeeded = Math.ceil(chosen.nPanels * panelM2 * 10) / 10;
+  const surfEl = document.getElementById('og2-surface');
+  if (surfEl && surfaceNeeded < surface) {
+    surfEl.value = surfaceNeeded;
+    // Propager la sync inter-onglets
+    surfEl.dispatchEvent(new Event('input'));
+  }
+}
+
 function importEDFToOffgrid() {
+  const DAYS = DAYS_IN_MONTH;
   const input = AppState.lastSizingInput;
   const statusEl = document.getElementById('og2-edf-import-status');
   if (!input?.bill?.monthlyKwh) {

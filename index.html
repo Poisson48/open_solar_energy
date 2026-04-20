@@ -14,7 +14,7 @@
 <!-- ═══ HEADER ═══════════════════════════════════════════════ -->
 <header>
   <div class="logo">
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <circle cx="12" cy="12" r="5" fill="#f5a623"/>
       <g stroke="#fff" stroke-width="1.8" stroke-linecap="round">
         <line x1="12" y1="2" x2="12" y2="4.5"/><line x1="12" y1="19.5" x2="12" y2="22"/>
@@ -44,19 +44,19 @@
 </div>
 
 <!-- ═══ MODAL DÉMARRAGE ═══════════════════════════════════════ -->
-<div id="startup-modal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.72);align-items:center;justify-content:center">
+<div id="startup-modal" role="dialog" aria-modal="true" aria-labelledby="startup-modal-title" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.72);align-items:center;justify-content:center" onclick="if(event.target===this)closeStartupModal()">
   <div style="width:min(680px,95vw);background:var(--color-surface);border-radius:14px;box-shadow:0 12px 48px rgba(0,0,0,0.4);overflow:hidden;max-height:90vh;overflow-y:auto">
 
     <!-- En-tête modal -->
     <div style="background:var(--color-primary);padding:22px 28px 18px;color:#fff;display:flex;align-items:center;justify-content:space-between">
       <div>
-        <div style="font-size:20px;font-weight:700;margin-bottom:2px">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:8px"><circle cx="12" cy="12" r="5" fill="#f5a623"/><g stroke="#fff" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="4.5"/><line x1="12" y1="19.5" x2="12" y2="22"/><line x1="2" y1="12" x2="4.5" y2="12"/><line x1="19.5" y1="12" x2="22" y2="12"/></g></svg>
+        <div style="font-size:20px;font-weight:700;margin-bottom:2px" id="startup-modal-title">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="vertical-align:middle;margin-right:8px"><circle cx="12" cy="12" r="5" fill="#f5a623"/><g stroke="#fff" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="4.5"/><line x1="12" y1="19.5" x2="12" y2="22"/><line x1="2" y1="12" x2="4.5" y2="12"/><line x1="19.5" y1="12" x2="22" y2="12"/></g></svg>
           Open Solar Energy
         </div>
         <div style="font-size:12px;opacity:0.75">Dimensionnement photovoltaïque — outil libre et gratuit</div>
       </div>
-      <button onclick="closeStartupModal()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:18px;width:32px;height:32px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+      <button onclick="closeStartupModal()" aria-label="Fermer" style="background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:18px;width:32px;height:32px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
     </div>
 
     <!-- Étape 1 : choisir -->
@@ -122,7 +122,7 @@
         <div style="margin-bottom:16px">
           <div style="font-size:12px;font-weight:700;color:var(--color-primary);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Projet</div>
           <div class="form-group">
-            <label>Nom du projet <span style="color:var(--color-danger)">*</span></label>
+            <label for="startup-project-name">Nom du projet <span style="color:var(--color-danger)">*</span></label>
             <input type="text" id="startup-project-name" placeholder="Ex : Maison Dupont - Toulouse" required style="font-size:14px">
           </div>
         </div>
@@ -130,19 +130,19 @@
           <div style="font-size:12px;font-weight:700;color:var(--color-primary);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Informations client (optionnel)</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             <div class="form-group">
-              <label>Nom du client</label>
+              <label for="startup-client-nom">Nom du client</label>
               <input type="text" id="startup-client-nom" placeholder="Jean Dupont">
             </div>
             <div class="form-group">
-              <label>Téléphone</label>
+              <label for="startup-client-tel">Téléphone</label>
               <input type="tel" id="startup-client-tel" placeholder="06 12 34 56 78">
             </div>
             <div class="form-group" style="grid-column:1/-1">
-              <label>Adresse du chantier</label>
+              <label for="startup-client-adresse">Adresse du chantier</label>
               <input type="text" id="startup-client-adresse" placeholder="5 rue des Roses, 31000 Toulouse">
             </div>
             <div class="form-group" style="grid-column:1/-1">
-              <label>Email</label>
+              <label for="startup-client-email">Email</label>
               <input type="email" id="startup-client-email" placeholder="client@mail.fr">
             </div>
           </div>
@@ -180,11 +180,11 @@
 </div>
 
 <!-- ═══ MODAL IMPORT ENEDIS ═══════════════════════════════════ -->
-<div id="enedis-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);overflow-y:auto" onclick="if(event.target===this)closeEnedisModal()">
+<div id="enedis-modal" role="dialog" aria-modal="true" aria-labelledby="enedis-modal-title" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);overflow-y:auto" onclick="if(event.target===this)closeEnedisModal()">
   <div style="max-width:520px;margin:60px auto;background:var(--color-surface);border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.35);overflow:hidden">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--color-border)">
-      <div style="font-weight:700;font-size:16px">📂 Importer depuis Enedis</div>
-      <button onclick="closeEnedisModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--color-text-muted);line-height:1">✕</button>
+      <div id="enedis-modal-title" style="font-weight:700;font-size:16px">📂 Importer depuis Enedis</div>
+      <button onclick="closeEnedisModal()" aria-label="Fermer" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--color-text-muted);line-height:1">✕</button>
     </div>
     <div style="padding:22px">
       <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:18px">
@@ -218,10 +218,10 @@
 </div>
 
 <!-- ═══ MODAL PROJETS ═════════════════════════════════════════ -->
-<div id="projects-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);overflow-y:auto">
+<div id="projects-modal" role="dialog" aria-modal="true" aria-labelledby="projects-modal-title" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);overflow-y:auto" onclick="if(event.target===this)closeProjectsModal()">
   <div style="max-width:760px;margin:40px auto;background:var(--color-surface);border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.35);overflow:hidden">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--color-border)">
-      <div style="font-weight:700;font-size:16px">📁 Mes projets</div>
+      <div id="projects-modal-title" style="font-weight:700;font-size:16px">📁 Mes projets</div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-outline btn-sm" onclick="ProjectManager.exportAll()" title="Exporter tous les projets en JSON">⬇ Export tout</button>
         <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Importer des projets depuis un fichier JSON">
@@ -229,7 +229,7 @@
           <input type="file" accept=".json,.zip" style="display:none" onchange="importProjectsFile(this)">
         </label>
         <button class="btn btn-outline btn-sm" onclick="newProjectBlank()" style="color:var(--color-success);border-color:var(--color-success)">+ Nouveau</button>
-        <button onclick="closeProjectsModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--color-text-muted);line-height:1">✕</button>
+        <button onclick="closeProjectsModal()" aria-label="Fermer" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--color-text-muted);line-height:1">✕</button>
       </div>
     </div>
     <div id="projects-list-container" style="padding:16px 22px;min-height:120px"></div>
@@ -247,26 +247,26 @@
       <h3>Localisation</h3>
       <div class="form-row">
         <div class="form-group" style="flex:1">
-          <label>Adresse</label>
+          <label for="inp-address">Adresse</label>
           <input type="text" id="inp-address" placeholder="Ex: Toulouse, France">
         </div>
         <button class="btn btn-primary btn-sm" id="btn-geocode" style="margin-bottom:1px">Aller !</button>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Latitude</label>
-          <input type="number" id="inp-lat" step="0.0001" value="48.8566">
+          <label for="inp-lat">Latitude</label>
+          <input type="number" id="inp-lat" step="0.0001" value="48.8566" min="-90" max="90">
         </div>
         <div class="form-group">
-          <label>Longitude</label>
-          <input type="number" id="inp-lon" step="0.0001" value="2.3522">
+          <label for="inp-lon">Longitude</label>
+          <input type="number" id="inp-lon" step="0.0001" value="2.3522" min="-180" max="180">
         </div>
         <button class="btn btn-primary btn-sm" id="btn-go-coords" style="margin-bottom:1px">OK</button>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Altitude (m)</label>
-          <input type="number" id="inp-alt" value="35" style="max-width:80px">
+          <label for="inp-alt">Altitude (m)</label>
+          <input type="number" id="inp-alt" value="35" min="0" max="5000" style="max-width:80px">
         </div>
       </div>
       <div class="coord-display">
@@ -326,43 +326,43 @@
   <main class="main-panel">
 
     <!-- Barre d'onglets -->
-    <nav class="tabs-bar">
-      <button class="tab-btn active" data-tab="sizing">
-        <span class="tab-number" style="background:#f5a623;color:#fff">⚡</span>Dimensionnement
+    <nav class="tabs-bar" role="tablist" aria-label="Modules de calcul">
+      <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-sizing" data-tab="sizing">
+        <span class="tab-number" style="background:#f5a623;color:#fff" aria-hidden="true">⚡</span>Dimensionnement
       </button>
-      <button class="tab-btn" data-tab="grid">
-        <span class="tab-number">1</span>Système PV réseau
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-grid" data-tab="grid">
+        <span class="tab-number" aria-hidden="true">1</span>Système PV réseau
       </button>
-      <button class="tab-btn" data-tab="tracker">
-        <span class="tab-number">2</span>Suiveur PV
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-tracker" data-tab="tracker">
+        <span class="tab-number" aria-hidden="true">2</span>Suiveur PV
       </button>
-      <button class="tab-btn" data-tab="offgrid">
-        <span class="tab-number">3</span>Hors réseau
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-offgrid" data-tab="offgrid">
+        <span class="tab-number" aria-hidden="true">3</span>Hors réseau
       </button>
-      <button class="tab-btn" data-tab="irradiation">
-        <span class="tab-number">4</span>Données mensuelles
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-irradiation" data-tab="irradiation">
+        <span class="tab-number" aria-hidden="true">4</span>Données mensuelles
       </button>
-      <button class="tab-btn" data-tab="daily">
-        <span class="tab-number">5</span>Données horaires
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-daily" data-tab="daily">
+        <span class="tab-number" aria-hidden="true">5</span>Données horaires
       </button>
-      <button class="tab-btn" data-tab="optimizer">
-        <span class="tab-number">6</span>Optimisation
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-optimizer" data-tab="optimizer">
+        <span class="tab-number" aria-hidden="true">6</span>Optimisation
       </button>
-      <button class="tab-btn" data-tab="quote">
-        <span class="tab-number">📄</span>Devis
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-quote" data-tab="quote">
+        <span class="tab-number" aria-hidden="true">📄</span>Devis
       </button>
     </nav>
 
     <!-- Contenu onglets — rempli dynamiquement par les fichiers js/tabs/*.js -->
     <div class="tabs-content">
-      <div class="tab-pane active" id="tab-sizing"></div>
-      <div class="tab-pane" id="tab-grid"></div>
-      <div class="tab-pane" id="tab-tracker"></div>
-      <div class="tab-pane" id="tab-offgrid"></div>
-      <div class="tab-pane" id="tab-irradiation"></div>
-      <div class="tab-pane" id="tab-daily"></div>
-      <div class="tab-pane" id="tab-optimizer"></div>
-      <div class="tab-pane" id="tab-quote"></div>
+      <div class="tab-pane active" id="tab-sizing" role="tabpanel" aria-label="Dimensionnement"></div>
+      <div class="tab-pane" id="tab-grid" role="tabpanel" aria-label="Système PV réseau"></div>
+      <div class="tab-pane" id="tab-tracker" role="tabpanel" aria-label="Suiveur PV"></div>
+      <div class="tab-pane" id="tab-offgrid" role="tabpanel" aria-label="Hors réseau"></div>
+      <div class="tab-pane" id="tab-irradiation" role="tabpanel" aria-label="Données mensuelles"></div>
+      <div class="tab-pane" id="tab-daily" role="tabpanel" aria-label="Données horaires"></div>
+      <div class="tab-pane" id="tab-optimizer" role="tabpanel" aria-label="Optimisation"></div>
+      <div class="tab-pane" id="tab-quote" role="tabpanel" aria-label="Devis"></div>
     </div>
 
   </main>
