@@ -52,6 +52,76 @@ const SizingEngine = (() => {
     return total;
   }
 
+  // ── Helpers financiers ────────────────────────────────────────
+  // Constantes définies dans constants.js : PANEL_DEGRADATION, ELEC_ESCALATION,
+  // DISCOUNT_RATE, SYSTEM_LIFETIME
+
+  /**
+   * Payback actualisé (années) avec dégradation panneaux + hausse prix électricité.
+   * Résultat < ROI simple car les gains augmentent avec l'électricité.
+   */
+  function calcPayback(systemCost, firstYearGain) {
+    if (firstYearGain <= 0 || systemCost <= 0) return null;
+    let cum = 0;
+    for (let y = 1; y <= 40; y++) {
+      cum += firstYearGain
+           * Math.pow(1 + ELEC_ESCALATION,   y - 1)
+           * Math.pow(1 - PANEL_DEGRADATION, y - 1);
+      if (cum >= systemCost) return y;
+    }
+    return null;
+  }
+
+  /**
+   * Valeur Actuelle Nette (€) sur SYSTEM_LIFETIME ans.
+   * VAN > 0 → investissement rentable au taux d'actualisation DISCOUNT_RATE.
+   */
+  function calcNPV(systemCost, firstYearGain) {
+    if (systemCost <= 0) return 0;
+    if (firstYearGain <= 0) return -systemCost;
+    let npv = -systemCost;
+    for (let y = 1; y <= SYSTEM_LIFETIME; y++) {
+      const gain = firstYearGain
+                 * Math.pow(1 + ELEC_ESCALATION,   y - 1)
+                 * Math.pow(1 - PANEL_DEGRADATION, y - 1);
+      npv += gain / Math.pow(1 + DISCOUNT_RATE, y);
+    }
+    return npv;
+  }
+
+  /**
+   * LCOE (€/kWh) avec dégradation + maintenance annuelle + remplacement onduleur.
+   * O&M ≈ 0.5 %/an du coût install, onduleur remplacé à 15 ans (~300 €/kWc).
+   */
+  function calcLCOE(systemCost, annualProd) {
+    if (annualProd <= 0 || systemCost <= 0) return 0;
+    const omRate       = 0.005; // 0.5 %/an
+    const inverterRepl = systemCost * 0.12; // ~12 % du coût (onduleur) remplacé à 15 ans
+    let cumProd = 0, cumCost = systemCost;
+    for (let y = 1; y <= SYSTEM_LIFETIME; y++) {
+      cumProd += annualProd * Math.pow(1 - PANEL_DEGRADATION, y - 1);
+      cumCost += systemCost * omRate;
+      if (y === 15) cumCost += inverterRepl;
+    }
+    return cumCost / cumProd;
+  }
+
+  /**
+   * Prime à l'autoconsommation solaire (France — décret 2021-1444).
+   * Varie chaque trimestre — vérifier l'arrêté en vigueur sur energie.gouv.fr
+   * Valeurs indicatives 2024 (S2) :
+   *   ≤ 3 kWc  : 370 €/kWc  |  ≤ 9 kWc : 280 €/kWc
+   *   ≤ 36 kWc : 130 €/kWc  |  ≤ 100 kWc : 70 €/kWc
+   */
+  function calcFrenchIncentive(Ppeak) {
+    if (Ppeak <= 0)   return 0;
+    if (Ppeak <= 3)   return Math.round(Ppeak * 370);
+    if (Ppeak <= 9)   return Math.round(Ppeak * 280);
+    if (Ppeak <= 36)  return Math.round(Ppeak * 130);
+    if (Ppeak <= 100) return Math.round(Ppeak * 70);
+    return 0;
+  }
+
   // ── Sélection de l'optimal selon la stratégie ─────────────────
   function selectOptimal(results, strategy, targetCoveragePct) {
     if (!results.length) return null;
@@ -103,9 +173,9 @@ const SizingEngine = (() => {
     const allCandidates = [];
     for (let Ppeak = 0.5; Ppeak <= PpeakMax + 0.05; Ppeak = Math.round((Ppeak + 0.1) * 10) / 10) {
 
-      // Production mensuelle
+      // Production mensuelle (lat transmis pour correction thermique exacte)
       const monthlyProd = monthlyHtilt.map((Htilt, i) =>
-        SolarMath.pvProduction(Htilt, Ppeak, site.losses, weatherData[i].T_avg, site.tech, i + 1)
+        SolarMath.pvProduction(Htilt, Ppeak, site.losses, weatherData[i].T_avg, site.tech, i + 1, lat)
       );
 
       // Métriques mensuelles
@@ -130,18 +200,28 @@ const SizingEngine = (() => {
       const savedOnBill    = calcSavingsOnBill(monthlyMetrics, bill);
       const feedinRevenue  = annualSurplus * (sizing.feedinTariff || 0);
       const totalAnnualGain = savedOnBill + feedinRevenue;
-      const systemCost     = sizing.realTotalCost > 0
+      const systemCostBrut = sizing.realTotalCost > 0
         ? sizing.realTotalCost
         : Ppeak * (sizing.systemCostPerKwp || 900);
+      // Prime autoconso France (réduit le coût net pour rentabilité)
+      const incentive      = sizing.includeIncentive !== false ? calcFrenchIncentive(Ppeak) : 0;
+      const systemCost     = Math.max(0, systemCostBrut - incentive);
       const ROI            = totalAnnualGain > 0 ? systemCost / totalAnnualGain : 99;
       const nPanels        = Math.ceil((Ppeak * 1000) / (site.panelWattPeak || 400));
       const surfaceNeeded  = nPanels * (site.panelSurfaceM2 || 1.96);
       const newAnnualBill  = currentBill - savedOnBill;
 
+      // Métriques financières avancées (sur coût net après prime)
+      const paybackYears   = calcPayback(systemCost, totalAnnualGain);
+      const npv25          = Math.round(calcNPV(systemCost, totalAnnualGain));
+      const lcoe           = Math.round(calcLCOE(systemCostBrut, annualProd) * 10000) / 10000;
+
       allCandidates.push({
         Ppeak: Math.round(Ppeak * 10) / 10,
         nPanels,
         surfaceNeeded: Math.round(surfaceNeeded * 10) / 10,
+        systemCostBrut: Math.round(systemCostBrut),
+        incentive:   Math.round(incentive),
         systemCost: Math.round(systemCost),
         annualProd:  Math.round(annualProd),
         annualConso,
@@ -155,6 +235,9 @@ const SizingEngine = (() => {
         totalAnnualGain: Math.round(totalAnnualGain),
         newAnnualBill:  Math.round(newAnnualBill),
         ROI:            Math.round(ROI * 10) / 10,
+        paybackYears,
+        npv25,
+        lcoe,
         co2Saved:       Math.round(annualAutoconsoKwh * 0.052),
         monthlyMetrics
       });

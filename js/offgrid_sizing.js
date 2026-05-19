@@ -51,8 +51,8 @@ const OffgridSizing = (() => {
     let surplus_kwh  = 0;
 
     for (let d = 0; d < days; d++) {
-      // Énergie nette après production et consommation directe
-      const balance = e_prod_day * CONTROLLER_EFF * INVERTER_EFF - e_conso_day;
+      // e_prod_day vient de pvProduction() qui inclut déjà (1-losses/100) → pas de double-comptage
+      const balance = e_prod_day - e_conso_day;
 
       if (balance >= 0) {
         // Surplus → charge batterie
@@ -93,7 +93,7 @@ const OffgridSizing = (() => {
         shapeSum += irr;
       }
       // Énergie mensuelle par kWc (kWh) avec correction thermique, inclut (1-losses/100)
-      const monthlyPerKwc = SolarMath.pvProduction(monthlyHtilt[m - 1], 1, losses, md.T_avg, 'crystSi', m);
+      const monthlyPerKwc = SolarMath.pvProduction(monthlyHtilt[m - 1], 1, losses, md.T_avg, 'crystSi', m, lat);
       const perDayPerKwc  = days > 0 ? monthlyPerKwc / days : 0;
       // Normaliser la forme pour que la somme sur 24h = perDayPerKwc
       const slots = new Float32Array(48);
@@ -224,7 +224,7 @@ const OffgridSizing = (() => {
         };
       } else {
         const Htilt = monthlyHtilt[i];
-        e_prod_day  = SolarMath.pvProduction(Htilt, Ppeak, losses, weatherData[i].T_avg, 'crystSi', i+1) / days;
+        e_prod_day  = SolarMath.pvProduction(Htilt, Ppeak, losses, weatherData[i].T_avg, 'crystSi', i+1, lat) / days;
         e_conso_day = dailyConso[i] / 1000;
         res = simulateMonth(e_prod_day, e_conso_day, C_usable, days, soc, eta);
       }

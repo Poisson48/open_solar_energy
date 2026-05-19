@@ -144,6 +144,51 @@ const PVGISImport = (() => {
   }
 
   // ─────────────────────────────────────────────────────────────
+  // 1b. PVGIS MRcalc — GHI + DHI + T° depuis satellite SARAH3
+  //     Meilleur que Open-Meteo + Erbs : DHI mesuré, pas estimé.
+  //     CORS bloqué en file:// → tentative proxy.
+  // ─────────────────────────────────────────────────────────────
+  async function fetchPVGIS_MRcalc(lat, lon) {
+    const pvgisUrl = new URL(`${PVGIS_BASE}/MRcalc`);
+    pvgisUrl.searchParams.set('lat', lat);
+    pvgisUrl.searchParams.set('lon', lon);
+    pvgisUrl.searchParams.set('raddatabase', 'PVGIS-SARAH3');
+    pvgisUrl.searchParams.set('mr_dni', '1');
+    pvgisUrl.searchParams.set('outputformat', 'json');
+
+    // Essai direct puis proxy CORS
+    for (const url of [pvgisUrl.toString(), CORS_PROXY + encodeURIComponent(pvgisUrl.toString())]) {
+      try {
+        const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+        if (r.ok) return r.json();
+      } catch (_) {}
+    }
+    throw new Error('MRcalc inaccessible (CORS)');
+  }
+
+  async function importWeatherPVGIS_MRcalc(lat, lon) {
+    setStatus('⏳ Import PVGIS MRcalc (SARAH3)...', 'loading');
+    const data = await fetchPVGIS_MRcalc(lat, lon);
+    // Format PVGIS MRcalc : outputs.monthly[{month, H_h_m, Hd_h_m, T2m, ...}]
+    const rawMonthly = data.outputs?.monthly;
+    if (!Array.isArray(rawMonthly) || rawMonthly.length < 12)
+      throw new Error('Format MRcalc inattendu');
+
+    return rawMonthly.map((row, i) => {
+      const GHI = Math.round((row['H(h)_m'] ?? row['Gh_m'] ?? row['G_m'] ?? 0) * 10) / 10;
+      const DHI = Math.round((row['Dh_m']  ?? row['Hd_h_m'] ?? 0) * 10) / 10;
+      const T   = Math.round((row['T2m']   ?? 10) * 10) / 10;
+      const GHIb = Math.max(0, GHI - DHI);
+      const DNI  = Math.round(GHIb > 0 ? GHIb / Math.max(0.1, Math.cos((Math.PI / 180) * solarZenithApprox(lat, i + 1))) * 10 / 10 : 0);
+      return {
+        month: i + 1, name: MONTH_NAMES[i],
+        GHI, DHI, DNI: Math.round(DNI), T_avg: T,
+        source: 'PVGIS-SARAH3'
+      };
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────────
   // 2. PVGIS via proxy CORS → PVcalc pour comparaison
   // ─────────────────────────────────────────────────────────────
   async function fetchPVGIS(endpoint, params) {
@@ -234,25 +279,35 @@ const PVGISImport = (() => {
     if (btn) { btn.disabled = true; btn.classList.add('btn-loading'); }
 
     let weather = null;
+    let source  = '';
     try {
-      weather = await importWeatherOpenMeteo(lat, lon);
+      // Priorité 1 : PVGIS MRcalc (SARAH3) — GHI + DHI mesurés par satellite
+      try {
+        weather = await importWeatherPVGIS_MRcalc(lat, lon);
+        source  = 'PVGIS-SARAH3';
+      } catch (e1) {
+        // Fallback : Open-Meteo + estimation DHI via Erbs
+        weather = await importWeatherOpenMeteo(lat, lon);
+        source  = 'Open-Meteo';
+      }
       AppState.weatherData = weather;
-      AppState.location.name = AppState.location.name.replace(' (PVGIS)', '').replace(' (Open-Meteo)', '') + ' (Open-Meteo)';
+      const tag = ` (${source})`;
+      AppState.location.name = AppState.location.name
+        .replace(/ \(PVGIS[^)]*\)/, '').replace(/ \(Open-Meteo\)/, '') + tag;
       document.getElementById('loc-name').textContent = AppState.location.name;
 
       const totalGHI = weather.reduce((s, m) => s + m.GHI, 0);
-      setStatus(`✓ Données importées — GHI annuel : ${Math.round(totalGHI)} kWh/m²/an`, 'success');
-      showWeatherPreview(weather);
-      if (typeof showToast === 'function') showToast(`☀️ Météo importée — ${Math.round(totalGHI)} kWh/m²/an`);
+      setStatus(`✓ ${source} — GHI annuel : ${Math.round(totalGHI)} kWh/m²/an`, 'success');
+      showWeatherPreview(weather, source);
+      if (typeof showToast === 'function') showToast(`☀️ Météo ${source} — ${Math.round(totalGHI)} kWh/m²/an`);
     } catch (err) {
       console.error(err);
-      setStatus(`✗ Open-Meteo inaccessible : ${err.message}`, 'error');
+      setStatus(`✗ Import météo échoué : ${err.message}`, 'error');
       if (typeof showToast === 'function') showToast('✗ Import météo échoué', 'error');
     } finally {
       if (btn) { btn.disabled = false; btn.classList.remove('btn-loading'); }
     }
 
-    // Hors du try-catch : une erreur de rendu ne doit pas masquer le statut d'import
     if (weather) renderIrradiationData();
   }
 
@@ -278,16 +333,19 @@ const PVGISImport = (() => {
     }
   }
 
-  function showWeatherPreview(weather) {
+  function showWeatherPreview(weather, source) {
     const container = document.getElementById('pvgis-import-preview');
     if (!container) return;
     const totalGHI = Math.round(weather.reduce((s, m) => s + m.GHI, 0));
     const avgT     = Math.round(weather.reduce((s, m) => s + m.T_avg, 0) / 12 * 10) / 10;
+    const dhiNote  = source === 'PVGIS-SARAH3'
+      ? 'DHI satellite (mesure directe)' : 'DHI estimé via modèle Erbs';
     container.innerHTML = `
       <div class="alert alert-success" style="margin-top:8px">
         <div style="font-size:11px">
-          <strong>Open-Meteo (2020-2023)</strong><br>
-          GHI : <strong>${totalGHI} kWh/m²/an</strong> — T°moy : <strong>${avgT}°C</strong>
+          <strong>${source || 'Données météo'}</strong><br>
+          GHI : <strong>${totalGHI} kWh/m²/an</strong> — T°moy : <strong>${avgT}°C</strong><br>
+          <span style="color:var(--color-text-muted)">${dhiNote}</span>
         </div>
       </div>`;
     container.style.display = 'block';
