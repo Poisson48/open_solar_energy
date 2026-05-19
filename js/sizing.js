@@ -24,16 +24,9 @@ const SizingEngine = (() => {
     if (bill.tariff === 'base') {
       return monthlyMetrics.reduce((sum, m) => sum + m.autoconsoKwh * bill.priceBase, 0);
     }
-    // HP/HC : les panneaux produisent surtout en heures pleines (journée)
-    return monthlyMetrics.reduce((sum, m, i) => {
-      const total = bill.monthlyKwh[i] || 1;
-      const hpRatio = bill.monthlyKwh_hp ? (bill.monthlyKwh_hp[i] / total) : 0.65;
-      const autoHp = m.autoconsoKwh * hpRatio;
-      const autoHc = m.autoconsoKwh * (1 - hpRatio);
-      const hp = bill.priceHpHc?.hp ?? TARIFS.hphc.hp;
-      const hc = bill.priceHpHc?.hc ?? TARIFS.hphc.hc;
-      return sum + autoHp * hp + autoHc * hc;
-    }, 0);
+    // HP/HC : PV produit pendant la journée (heures pleines) → économies au tarif HP
+    const hp = bill.priceHpHc?.hp ?? TARIFS.hphc.hp;
+    return monthlyMetrics.reduce((sum, m) => sum + m.autoconsoKwh * hp, 0);
   }
 
   // ── Calcul de la facture annuelle actuelle ─────────────────────
@@ -43,7 +36,10 @@ const SizingEngine = (() => {
       total += bill.monthlyKwh.reduce((s, k) => s + k * bill.priceBase, 0);
     } else {
       bill.monthlyKwh.forEach((kwh, i) => {
-        const hpRatio = bill.monthlyKwh_hp ? (bill.monthlyKwh_hp[i] / kwh) : 0.65;
+        if (kwh <= 0) return;
+        const hpRatio = (bill.monthlyKwh_hp && kwh > 0)
+          ? Math.min(1, Math.max(0, bill.monthlyKwh_hp[i] / kwh))
+          : 0.65;
         const hp = bill.priceHpHc?.hp ?? TARIFS.hphc.hp;
         const hc = bill.priceHpHc?.hc ?? TARIFS.hphc.hc;
         total += kwh * hpRatio * hp + kwh * (1 - hpRatio) * hc;
@@ -109,16 +105,16 @@ const SizingEngine = (() => {
   /**
    * Prime à l'autoconsommation solaire (France — décret 2021-1444).
    * Varie chaque trimestre — vérifier l'arrêté en vigueur sur energie.gouv.fr
-   * Valeurs indicatives 2024 (S2) :
-   *   ≤ 3 kWc  : 370 €/kWc  |  ≤ 9 kWc : 280 €/kWc
-   *   ≤ 36 kWc : 130 €/kWc  |  ≤ 100 kWc : 70 €/kWc
+   * Valeurs indicatives 2025 (à vérifier sur energie.gouv.fr chaque trimestre) :
+   *   ≤ 3 kWc  : 300 €/kWc  |  ≤ 9 kWc : 230 €/kWc
+   *   ≤ 36 kWc : 100 €/kWc  |  ≤ 100 kWc : 60 €/kWc
    */
   function calcFrenchIncentive(Ppeak) {
     if (Ppeak <= 0)   return 0;
-    if (Ppeak <= 3)   return Math.round(Ppeak * 370);
-    if (Ppeak <= 9)   return Math.round(Ppeak * 280);
-    if (Ppeak <= 36)  return Math.round(Ppeak * 130);
-    if (Ppeak <= 100) return Math.round(Ppeak * 70);
+    if (Ppeak <= 3)   return Math.round(Ppeak * 300);
+    if (Ppeak <= 9)   return Math.round(Ppeak * 230);
+    if (Ppeak <= 36)  return Math.round(Ppeak * 100);
+    if (Ppeak <= 100) return Math.round(Ppeak * 60);
     return 0;
   }
 
@@ -126,20 +122,25 @@ const SizingEngine = (() => {
   function selectOptimal(results, strategy, targetCoveragePct) {
     if (!results.length) return null;
     switch (strategy) {
-      case 'autoconso_max':
+      case 'autoconso_max': {
         // Max autoconso en évitant les installations où > 40% part au réseau
         const goodRatio = results.filter(r => r.selfSufficiencyRate >= 60);
-        if (goodRatio.length)
-          return goodRatio.sort((a, b) => b.annualAutoconsoKwh - a.annualAutoconsoKwh)[0];
-        return results.sort((a, b) => b.annualAutoconsoKwh - a.annualAutoconsoKwh)[0];
+        const pool = goodRatio.length ? goodRatio : results;
+        return pool.sort((a, b) =>
+          b.annualAutoconsoKwh !== a.annualAutoconsoKwh
+            ? b.annualAutoconsoKwh - a.annualAutoconsoKwh
+            : a.Ppeak - b.Ppeak  // à égalité d'autoconso, préférer le plus petit système
+        )[0];
+      }
 
       case 'roi_optimal':
         return results.filter(r => r.ROI < 30).sort((a, b) => a.ROI - b.ROI)[0]
           || results[0];
 
-      case 'bill_coverage_pct':
+      case 'bill_coverage_pct': {
         const target = targetCoveragePct || 60;
         return results.find(r => r.coverageRate >= target) || results[results.length - 1];
+      }
 
       default:
         return results.sort((a, b) => a.ROI - b.ROI)[0];
@@ -209,7 +210,7 @@ const SizingEngine = (() => {
       const ROI            = totalAnnualGain > 0 ? systemCost / totalAnnualGain : 99;
       const nPanels        = Math.ceil((Ppeak * 1000) / (site.panelWattPeak || 400));
       const surfaceNeeded  = nPanels * (site.panelSurfaceM2 || 1.96);
-      const newAnnualBill  = currentBill - savedOnBill;
+      const newAnnualBill  = Math.max(0, currentBill - savedOnBill - feedinRevenue);
 
       // Métriques financières avancées (sur coût net après prime)
       const paybackYears   = calcPayback(systemCost, totalAnnualGain);
@@ -265,6 +266,7 @@ const SizingEngine = (() => {
       bill: {
         tariff:             getStr('sz-tariff'),
         monthlyKwh,
+        monthlyKwh_hp:      (typeof AppState !== 'undefined' && AppState.monthlyKwhHp) || null,
         priceBase:          getVal('sz-price-base') || TARIFS.base.price,
         priceHpHc: {
           hp:               getVal('sz-price-hp')   || TARIFS.hphc.hp,

@@ -113,6 +113,8 @@ const OffgridSizing = (() => {
     if (!data || data.length < 48 * 365) return null;
 
     const pvProfiles = pvProfilesPerKwc || buildHalfHourPvProfile(weatherData, monthlyHtilt, losses, tilt, azimuth, lat);
+    const dataYear = AppState.hourlyEnedisData?.year;
+    const daysOfYear = dataYear ? getMonthlyDays(dataYear) : DAYS;
 
     let soc = C_usable * 0.5;
     const monthly = Array.from({length: 12}, () => ({
@@ -123,7 +125,7 @@ const OffgridSizing = (() => {
     let dayIdx = 0;
     for (let m = 0; m < 12; m++) {
       const pvSlots = pvProfiles[m];
-      const nDays   = DAYS[m];
+      const nDays   = daysOfYear[m];
       for (let d = 0; d < nDays; d++) {
         let dayDeficit = 0;
         for (let s = 0; s < 48; s++) {
@@ -226,7 +228,12 @@ const OffgridSizing = (() => {
         const Htilt = monthlyHtilt[i];
         e_prod_day  = SolarMath.pvProduction(Htilt, Ppeak, losses, weatherData[i].T_avg, 'crystSi', i+1, lat) / days;
         e_conso_day = dailyConso[i] / 1000;
-        res = simulateMonth(e_prod_day, e_conso_day, C_usable, days, soc, eta);
+        // Simulation horaire si tilt/azimuth/lat disponibles (meilleure précision batterie)
+        if (tilt !== undefined && azimuth !== undefined && lat !== undefined) {
+          res = simulateMonthHourly(i+1, weatherData[i], Ppeak, losses, tilt, azimuth, lat, C_usable, eta, soc);
+        } else {
+          res = simulateMonth(e_prod_day, e_conso_day, C_usable, days, soc, eta);
+        }
       }
       soc = res.soc_end;
 
@@ -241,15 +248,16 @@ const OffgridSizing = (() => {
       });
     }
 
-    const total_days   = DAYS.reduce((s, d) => s + d, 0);
+    const dataYear     = slotMonthly ? AppState.hourlyEnedisData?.year : null;
+    const total_days   = dataYear ? getMonthlyDays(dataYear).reduce((s, d) => s + d, 0) : DAYS.reduce((s, d) => s + d, 0);
     const deficit_days = monthly.reduce((s, m) => s + m.deficit_days, 0);
     // Si slot-par-slot : conso = somme réelle Enedis ; sinon : dailyConso formulaire
     const total_conso  = slotMonthly
-      ? monthly.reduce((s, m, i) => s + m.e_conso_day * DAYS[i], 0)
+      ? slotMonthly.reduce((s, m) => s + m.conso_kwh, 0)
       : dailyConso.reduce((s, v, i) => s + v * DAYS[i], 0) / 1000;
     const total_deficit = monthly.reduce((s, m) => s + m.deficit_kwh, 0);
     const coverageRate  = total_conso > 0 ? Math.max(0, (total_conso - total_deficit) / total_conso * 100) : 0;
-    const autonomyDays  = total_deficit > 0 ? Math.round((deficit_days / total_days) * 365) : 0;
+    const autonomyDays  = total_days - deficit_days;
 
     return {
       monthly,
@@ -428,9 +436,9 @@ const OffgridSizing = (() => {
 
   // ── Export CSV ────────────────────────────────────────────────
   function exportCSV(result) {
-    const lines = ['Mois;Prod_kWh_j;Conso_Wh_j;Déficit_jours;Déficit_kWh;Surplus_kWh;SOC_fin_%'];
+    const lines = ['Mois;Prod_Wh_j;Conso_Wh_j;Déficit_jours;Déficit_kWh;Surplus_kWh;SOC_fin_%'];
     result.monthly.forEach(m => {
-      lines.push([m.name, m.e_prod_day, m.e_conso_day*1000, m.deficit_days, m.deficit_kwh, m.surplus_kwh, m.soc_end_pct].join(';'));
+      lines.push([m.name, Math.round(m.e_prod_day * 1000), Math.round(m.e_conso_day * 1000), m.deficit_days, m.deficit_kwh, m.surplus_kwh, m.soc_end_pct].join(';'));
     });
     const blob = new Blob([lines.join('\n')], {type:'text/csv'});
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);

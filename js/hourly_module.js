@@ -49,9 +49,59 @@ const HourlyModule = (() => {
     return _buildSyntheticProfile(month);
   }
 
+  /**
+   * Construit le profil synthétique depuis les données disponibles.
+   * Priorité : onglet dimensionnement (sz-kwh-*) → onglet hors-réseau (og2-day-*)
+   * → valeur par défaut 200 kWh/mois.
+   */
+  function _buildSyntheticProfile(month) {
+    const days = DAYS_IN_MONTH[month - 1];
+
+    // 1. Onglet dimensionnement (kWh/mois)
+    const szKwh = parseFloat(document.getElementById(`sz-kwh-${month}`)?.value) || 0;
+    if (szKwh > 0) {
+      const dailyKwh = szKwh / days;
+      const weights = [
+        0.020, 0.015, 0.012, 0.010, 0.012, 0.020,
+        0.030, 0.065, 0.075, 0.060, 0.040, 0.035,
+        0.040, 0.038, 0.035, 0.035, 0.040, 0.055,
+        0.080, 0.090, 0.085, 0.070, 0.055, 0.038
+      ];
+      const sum = weights.reduce((a, b) => a + b, 0);
+      return weights.map(w => (w / sum) * dailyKwh);
+    }
+
+    // 2. Onglet hors-réseau (Wh/j) — rempli manuellement ou via import Enedis
+    const ogWhDay = parseFloat(document.getElementById(`og2-day-${month}`)?.value) || 0;
+    const ogDef   = parseFloat(document.getElementById('og2-daily-default')?.value) || 0;
+    const whDay   = ogWhDay > 0 ? ogWhDay : ogDef;
+    if (whDay > 0) {
+      const dailyKwh = whDay / 1000;
+      const weights = [
+        0.020, 0.015, 0.012, 0.010, 0.012, 0.020,
+        0.030, 0.065, 0.075, 0.060, 0.040, 0.035,
+        0.040, 0.038, 0.035, 0.035, 0.040, 0.055,
+        0.080, 0.090, 0.085, 0.070, 0.055, 0.038
+      ];
+      const sum = weights.reduce((a, b) => a + b, 0);
+      return weights.map(w => (w / sum) * dailyKwh);
+    }
+
+    // 3. Fallback
+    const dailyKwh = 200 / days;
+    const weights = [
+      0.020, 0.015, 0.012, 0.010, 0.012, 0.020,
+      0.030, 0.065, 0.075, 0.060, 0.040, 0.035,
+      0.040, 0.038, 0.035, 0.035, 0.040, 0.055,
+      0.080, 0.090, 0.085, 0.070, 0.055, 0.038
+    ];
+    const sum = weights.reduce((a, b) => a + b, 0);
+    return weights.map(w => (w / sum) * dailyKwh);
+  }
+
   /** Construit le profil réel depuis les données 30min Enedis */
   function _buildRealProfile(month) {
-    const DAYS = DAYS_IN_MONTH;
+    const DAYS = _rawYear ? getMonthlyDays(_rawYear) : DAYS_IN_MONTH;
     // Calculer le jour de début du mois dans l'année
     let startDay = 0;
     for (let m = 0; m < month - 1; m++) startDay += DAYS[m];
@@ -74,31 +124,6 @@ const HourlyModule = (() => {
     return profile.map(v => nDays > 0 ? v / nDays : 0);
   }
 
-  /**
-   * Profil synthétique basé sur les kWh mensuels saisis dans le formulaire
-   * Répartition : résidentiel typique français
-   *   - Matin : pic 7h-9h (petit-déjeuner, départ)
-   *   - Midi : creux relatif
-   *   - Soir : pic 18h-22h (retour, cuisine, TV)
-   *   - Nuit : faible
-   */
-  function _buildSyntheticProfile(month) {
-    // Lire la consommation mensuelle depuis le formulaire
-    const monthKwh = parseFloat(document.getElementById(`sz-kwh-${month}`)?.value) || 200;
-    const days = DAYS_IN_MONTH[month - 1];
-    const dailyKwh = monthKwh / days;
-
-    // Poids horaires relatifs (somme = 1)
-    const weights = [
-      0.020, 0.015, 0.012, 0.010, 0.012, 0.020,  // 0h-5h (nuit)
-      0.030, 0.065, 0.075, 0.060, 0.040, 0.035,  // 6h-11h (matin)
-      0.040, 0.038, 0.035, 0.035, 0.040, 0.055,  // 12h-17h (journée)
-      0.080, 0.090, 0.085, 0.070, 0.055, 0.038   // 18h-23h (soir)
-    ];
-    // Normaliser (au cas où)
-    const sum = weights.reduce((a, b) => a + b, 0);
-    return weights.map(w => (w / sum) * dailyKwh);
-  }
 
   /**
    * Calcule la production PV horaire (kWh) pour un mois donné
@@ -115,31 +140,36 @@ const HourlyModule = (() => {
   }
 
   /**
-   * Simulation batterie sur une journée typique
-   * @returns {Array} 24 objets { hour, pv, conso, balance, soc, autoconso, surplus, grid }
+   * Simulation batterie sur une journée typique.
+   *
+   * Convention rendement (cohérente avec offgrid_sizing.js/simulateMonth) :
+   *   - eta = rendement aller-retour (ex: 0.97 pour LFP)
+   *   - Pertes appliquées uniquement en CHARGE : stocké = surplus × eta
+   *   - Décharge sans perte supplémentaire → round-trip = eta (et non eta²)
+   *
+   * @returns {Array} 24 objets { hour, pv, conso, soc, autoconso, surplus, grid }
    */
-  function simulateDailyBattery(pvHours, consoHours, battKwh, dod, eta = 0.95) {
+  function simulateDailyBattery(pvHours, consoHours, battKwh, dod, eta = 0.97) {
     const usable = battKwh * (dod / 100);
-    let soc = usable * 0.5;  // SoC initial : 50%
+    let soc = usable * 0.5;
     return pvHours.map((pv, h) => {
       const conso   = consoHours[h];
       const balance = pv - conso;
       let autoconso, surplus, grid;
 
       if (balance >= 0) {
-        // Surplus → charger la batterie
         autoconso = conso;
         const charge = Math.min(balance * eta, usable - soc);
         soc += charge;
         surplus = balance - charge / eta;
-        grid = 0;
+        grid    = 0;
       } else {
-        // Déficit → décharger la batterie
         autoconso = pv;
-        const discharge = Math.min(-balance / eta, soc);
-        soc = Math.max(0, soc - discharge);
-        const fromBatt = discharge * eta;
-        grid = Math.max(0, -balance - fromBatt);
+        const needed   = -balance;
+        const fromBatt = Math.min(needed, soc);
+        soc -= fromBatt;
+        surplus  = 0;
+        grid     = needed - fromBatt;
         autoconso += fromBatt;
       }
 
@@ -163,8 +193,9 @@ const HourlyModule = (() => {
     const tilt    = parseFloat(document.getElementById('hourly-tilt')?.value)  || 30;
     const azimuth = parseFloat(document.getElementById('hourly-azimuth')?.value) || 0;
 
+    const losses = AppState.install?.losses ?? 14;
     const consoH = getHourlyConsumptionProfile(month);
-    const pvH    = getHourlyPvProduction(month, Ppeak, tilt, azimuth, 14);
+    const pvH    = getHourlyPvProduction(month, Ppeak, tilt, azimuth, losses);
     const sim    = battKwh > 0
       ? simulateDailyBattery(pvH, consoH, battKwh, dod)
       : pvH.map((pv, h) => {

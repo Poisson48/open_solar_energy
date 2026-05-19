@@ -179,10 +179,10 @@ const PVGISImport = (() => {
       const DHI = Math.round((row['Dh_m']  ?? row['Hd_h_m'] ?? 0) * 10) / 10;
       const T   = Math.round((row['T2m']   ?? 10) * 10) / 10;
       const GHIb = Math.max(0, GHI - DHI);
-      const DNI  = Math.round(GHIb > 0 ? GHIb / Math.max(0.1, Math.cos((Math.PI / 180) * solarZenithApprox(lat, i + 1))) * 10 / 10 : 0);
+      const DNI  = GHIb > 0 ? Math.round(GHIb / Math.max(0.1, Math.cos((Math.PI / 180) * solarZenithApprox(lat, i + 1))) * 10) / 10 : 0;
       return {
         month: i + 1, name: MONTH_NAMES[i],
-        GHI, DHI, DNI: Math.round(DNI), T_avg: T,
+        GHI, DHI, DNI, T_avg: T,
         source: 'PVGIS-SARAH3'
       };
     });

@@ -22,7 +22,7 @@ function initTabSizing() {
                 <option value="hphc">Heures Pleines / Heures Creuses</option>
               </select>
             </div>
-            <div class="form-row" style="gap:6px;margin-bottom:8px">
+            <div id="sz-price-base-row" class="form-row" style="gap:6px;margin-bottom:8px">
               <div class="form-group">
                 <label for="sz-price-base">Prix kWh Base</label>
                 <div class="input-unit"><input type="number" id="sz-price-base" value="0.2516" step="0.001"><span class="unit-tag">€</span></div>
@@ -30,6 +30,16 @@ function initTabSizing() {
               <div class="form-group">
                 <label for="sz-subscription">Abonnement</label>
                 <div class="input-unit"><input type="number" id="sz-subscription" value="147" step="1"><span class="unit-tag">€/an</span></div>
+              </div>
+            </div>
+            <div id="sz-price-hphc-row" class="form-row" style="gap:6px;margin-bottom:8px;display:none">
+              <div class="form-group">
+                <label for="sz-price-hp">Prix kWh HP</label>
+                <div class="input-unit"><input type="number" id="sz-price-hp" value="0.2460" step="0.001"><span class="unit-tag">€</span></div>
+              </div>
+              <div class="form-group">
+                <label for="sz-price-hc">Prix kWh HC</label>
+                <div class="input-unit"><input type="number" id="sz-price-hc" value="0.1860" step="0.001"><span class="unit-tag">€</span></div>
               </div>
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">

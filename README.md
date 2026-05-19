@@ -94,7 +94,21 @@ git clone https://github.com/Poisson48/open_solar_energy.git
 cd open_solar_energy
 ```
 
-Ouvrir `index.html` dans un navigateur, **ou** servir localement :
+**Linux / macOS** — lancer le serveur local en une commande :
+
+```bash
+./serve.sh
+```
+
+Le script démarre Python HTTP server sur le port 8080 et ouvre automatiquement le navigateur.
+
+**Windows** — double-cliquer sur `serve.bat` ou :
+
+```bat
+serve.bat
+```
+
+**Manuel** (tout OS) :
 
 ```bash
 python3 -m http.server 8080
@@ -185,6 +199,8 @@ Pour un site réel, importer les données météo via **"Importer météo (Open-
 
 | Version | Changements |
 |---|---|
+| **1.7.0** | Repasse physique et financière complète : (1) Rb par intégration numérique (Braun & Mitchell) valide pour tout azimut — remplace la correction ad hoc `azCorr` ; (2) Modèle de transposition HDKR (Hay-Davies-Klucher-Reindl 1990) anisotrope remplace Liu & Jordan isotrope (+5-15 % précision diffuse) ; (3) Correction thermique NOCT avec durée d'ensoleillement réelle au lieu de 6 h fixe ; (4) `hourlyIrradiance` avec cos(θ) exact et HDKR horaire (Rb variait plus selon azimut) ; (5) Payback actualisé +3 %/an hausse électricité, dégradation 0,5 %/an ; (6) VAN 25 ans (NPV) à 4 % et LCOE avec dégradation |
+| **1.6.1** | Script de lancement Linux `serve.sh` : détection Python, vérification port libre, ouverture navigateur auto (`xdg-open`), nettoyage propre sur Ctrl+C |
 | **1.6.0** | Hors-réseau : import Enedis direct, simulation horaire avec données 30min réelles, SOC mensuel porté, recommandation coût+jours-déficit, correction battCeil depuis conso réelle. Bugs corrigés : clé `halfHourly` (données Enedis perdues au save/load), azimut `tiltedIrradiation` (azR inutilisé → azimut⚡Auto toujours -90°), nom de lieu écrasé après géocodage, auto-inclinaison non restaurée au chargement de projet, météo rechargée depuis la ville démo la plus proche pour les anciens projets |
 | **1.5.1** | Serveur de développement local (`python -m http.server 8080`) via `.claude/launch.json` |
 | **1.5.0** | Refactoring multi-fichiers (index.html 230 lignes, main.js 90 lignes), modal démarrage avec infos client, export projet fichier local, module analyse horaire, recommandation onduleurs (catalogue 13 modèles + câblage MPPT) |

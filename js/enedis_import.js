@@ -232,10 +232,11 @@ const EnedisImport = (() => {
       if (nonZero >= 48 * 30) {
         halfHourlyData = { values: raw, year: chosenYear };
         // Recalculer les kWh mensuels depuis les slots bruts (plus fiable que l'agrégation directe)
+        const yearDays = getMonthlyDays(chosenYear);
         for (let m = 0; m < 12; m++) {
           let startDay = 0;
-          for (let mm = 0; mm < m; mm++) startDay += DAYS_IN_MONTH[mm];
-          const endDay = startDay + DAYS_IN_MONTH[m];
+          for (let mm = 0; mm < m; mm++) startDay += yearDays[mm];
+          const endDay = startDay + yearDays[m];
           let sum = 0;
           for (let d = startDay; d < endDay; d++)
             for (let s = 0; s < 48; s++) sum += raw[d * 48 + s];

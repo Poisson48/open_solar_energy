@@ -52,7 +52,7 @@ function bindOffgridLiveTotal() {
   const defInput    = document.getElementById('og2-daily-default');
   const monthInputs = Array.from({length: 12}, (_, i) => document.getElementById(`og2-day-${i + 1}`));
   function update() {
-    const def   = parseFloat(defInput?.value) || 1000;
+    const def   = parseFloat(defInput?.value) || 0;
     const total = monthInputs.reduce((s, el, i) => {
       const v = parseFloat(el?.value) || 0;
       return s + (v > 0 ? v : def) * DAYS_IN_MONTH[i];
@@ -110,7 +110,10 @@ function handleEnedisCSV(input, statusId = 'sz-csv-status') {
     });
     if (result.monthlyKwhHp) {
       const tariffEl = document.getElementById('sz-tariff');
-      if (tariffEl) tariffEl.value = 'hphc';
+      if (tariffEl) {
+        tariffEl.value = 'hphc';
+        tariffEl.dispatchEvent(new Event('change'));
+      }
     }
 
     // Onglet hors-réseau : conso journalière (Wh/j)
@@ -141,6 +144,7 @@ function handleEnedisCSV(input, statusId = 'sz-csv-status') {
     }
 
     AppState.monthlyKwh = result.monthlyKwh.slice();
+    AppState.monthlyKwhHp = result.monthlyKwhHp ? result.monthlyKwhHp.slice() : null;
     document.getElementById('sz-kwh-1')?.dispatchEvent(new Event('input'));
 
     const warns = result.warnings.length ? ` — ⚠ ${result.warnings[0]}` : '';
@@ -148,4 +152,52 @@ function handleEnedisCSV(input, statusId = 'sz-csv-status') {
     statusEl.textContent =
       `✓ ${result.format} ${result.year} importé — ${result.totalAnnual.toLocaleString('fr')} kWh/an${warns}`;
   });
+}
+
+// ── Wrapper bouton : état chargement ────────────────────────────
+/**
+ * Désactive le bouton, déclenche fn() dans un setTimeout pour laisser
+ * le navigateur repeindre avant le calcul lourd, puis réactive.
+ */
+function withLoading(btnId, fn) {
+  const btn = document.getElementById(btnId);
+  const origHtml = btn?.innerHTML;
+  if (btn) {
+    btn.disabled    = true;
+    btn.style.opacity = '0.65';
+  }
+  setTimeout(() => {
+    try { fn(); } catch (e) { console.error('[withLoading]', e); }
+    if (btn) {
+      btn.disabled    = false;
+      btn.style.opacity = '';
+      if (origHtml) btn.innerHTML = origHtml;
+    }
+  }, 20);
+}
+
+// ── Sync paramètres partagés (appel unique au démarrage) ────────
+/**
+ * Lie les champs qui ne sont pas déjà synchronisés par bindInstallSync
+ * ni par les attributs oninput inline des formulaires.
+ */
+function bindSharedParamSync() {
+  // Offgrid tab : surface/panelWp/panelM2 → mise à jour affichage panneaux
+  ['og2-surface', 'og2-panel-wp', 'og2-panel-m2'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', () => calcPanelsForMode('og2'));
+  });
+
+  // Sizing tab : changement de tarif → affichage/masquage des prix HP/HC
+  const tariffSel    = document.getElementById('sz-tariff');
+  if (tariffSel) {
+    const updateTariff = () => {
+      const isHpHc = tariffSel.value === 'hphc';
+      const baseRow = document.getElementById('sz-price-base-row');
+      const hphcRow = document.getElementById('sz-price-hphc-row');
+      if (baseRow) baseRow.style.display = isHpHc ? 'none' : '';
+      if (hphcRow) hphcRow.style.display = isHpHc ? '' : 'none';
+    };
+    tariffSel.addEventListener('change', updateTariff);
+    updateTariff();
+  }
 }
