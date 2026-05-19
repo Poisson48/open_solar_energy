@@ -84,6 +84,8 @@ function saveCurrentProject() {
     location:         { ...AppState.location },
     weatherData:      AppState.weatherData,
     hourlyEnedisData: enedisSerial,
+    monthlyKwhHp:     AppState.monthlyKwhHp ? AppState.monthlyKwhHp.slice() : null,
+    enedisYear:       AppState.enedisYear || null,
     formState:        captureFormState(),
     summary
   };
@@ -129,6 +131,8 @@ function loadProject(id) {
   AppState.hourlyEnedisData = project.hourlyEnedisData?.halfHourly
     ? { ...project.hourlyEnedisData, halfHourly: new Float32Array(project.hourlyEnedisData.halfHourly) }
     : null;
+  AppState.monthlyKwhHp = project.monthlyKwhHp ? project.monthlyKwhHp.slice() : null;
+  AppState.enedisYear   = project.enedisYear || null;
   if (AppState.hourlyEnedisData && typeof HourlyModule?.setData === 'function') {
     HourlyModule.setData({ values: AppState.hourlyEnedisData.halfHourly, year: AppState.hourlyEnedisData.year });
     // Repeupler les champs og2-day-* si vides (projet ancien ou import fait avant la sauvegarde)
@@ -423,6 +427,8 @@ function resetForNewProject() {
   AppState.lastOffgridResult       = null;
   AppState.lastOffgridSizingResult = null;
   AppState.hourlyEnedisData        = null;
+  AppState.monthlyKwhHp            = null;
+  AppState.enedisYear              = null;
 
   // 4. Remettre à zéro les labels et statuts secondaires
   const szTotal = document.getElementById('sz-annual-total');

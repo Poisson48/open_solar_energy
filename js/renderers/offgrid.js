@@ -212,11 +212,12 @@ function importEDFToOffgrid() {
     return;
   }
   const kwh = input.bill.monthlyKwh;
+  const daysArr = AppState.enedisYear ? getMonthlyDays(AppState.enedisYear) : DAYS_IN_MONTH;
   kwh.forEach((k, i) => {
     const el = document.getElementById(`og2-day-${i + 1}`);
-    if (el) el.value = Math.round(k * 1000 / DAYS_IN_MONTH[i]);
+    if (el) el.value = Math.round(k * 1000 / daysArr[i]);
   });
-  const avg   = Math.round(kwh.reduce((s, k, i) => s + k * 1000 / DAYS_IN_MONTH[i], 0) / 12);
+  const avg = Math.round(kwh.reduce((s, k, i) => s + k * 1000 / daysArr[i], 0) / 12);
   const defEl = document.getElementById('og2-daily-default');
   if (defEl) defEl.value = avg;
   if (statusEl) statusEl.textContent = `✓ Consommation importée (${Math.round(kwh.reduce((s, k) => s + k, 0))} kWh/an)`;

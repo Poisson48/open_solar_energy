@@ -124,7 +124,7 @@ const SizingEngine = (() => {
     switch (strategy) {
       case 'autoconso_max': {
         // Max autoconso en évitant les installations où > 40% part au réseau
-        const goodRatio = results.filter(r => r.selfSufficiencyRate >= 60);
+        const goodRatio = results.filter(r => r.autoconsoRate >= 60);
         const pool = goodRatio.length ? goodRatio : results;
         return pool.sort((a, b) =>
           b.annualAutoconsoKwh !== a.annualAutoconsoKwh
@@ -195,7 +195,7 @@ const SizingEngine = (() => {
       const annualDeficit       = monthlyMetrics.reduce((s, m) => s + m.deficit, 0);
 
       const coverageRate        = annualConso  > 0 ? annualAutoconsoKwh / annualConso  : 0;
-      const selfSufficiencyRate = annualProd   > 0 ? annualAutoconsoKwh / annualProd   : 0;
+      const autoconsoRate = annualProd   > 0 ? annualAutoconsoKwh / annualProd   : 0;
 
       // Finance
       const savedOnBill    = calcSavingsOnBill(monthlyMetrics, bill);
@@ -210,7 +210,7 @@ const SizingEngine = (() => {
       const ROI            = totalAnnualGain > 0 ? systemCost / totalAnnualGain : 99;
       const nPanels        = Math.ceil((Ppeak * 1000) / (site.panelWattPeak || 400));
       const surfaceNeeded  = nPanels * (site.panelSurfaceM2 || 1.96);
-      const newAnnualBill  = Math.max(0, currentBill - savedOnBill - feedinRevenue);
+      const newAnnualBill  = Math.max(0, currentBill - savedOnBill);
 
       // Métriques financières avancées (sur coût net après prime)
       const paybackYears   = calcPayback(systemCost, totalAnnualGain);
@@ -230,7 +230,7 @@ const SizingEngine = (() => {
         annualSurplus:  Math.round(annualSurplus),
         annualDeficit:  Math.round(annualDeficit),
         coverageRate:   Math.round(coverageRate   * 1000) / 10,  // %
-        selfSufficiencyRate: Math.round(selfSufficiencyRate * 1000) / 10,  // %
+        autoconsoRate: Math.round(autoconsoRate * 1000) / 10,  // %
         savedOnBill:    Math.round(savedOnBill),
         feedinRevenue:  Math.round(feedinRevenue),
         totalAnnualGain: Math.round(totalAnnualGain),

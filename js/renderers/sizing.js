@@ -70,10 +70,10 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
         </div>
         <div class="kpi-card">
           <div class="kpi-value" style="color:var(--color-success)">${rec.coverageRate} %</div>
-          <div class="kpi-label">Taux de couverture<br><span class="kpi-unit">production/conso</span></div>
+          <div class="kpi-label">Taux de couverture<br><span class="kpi-unit">autoconso / conso totale</span></div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-value">${rec.selfSufficiencyRate} %</div>
+          <div class="kpi-value">${rec.autoconsoRate} %</div>
           <div class="kpi-label">Autoconsommation<br><span class="kpi-unit">% produit consommé</span></div>
         </div>
         <div class="kpi-card">

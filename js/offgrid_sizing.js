@@ -26,8 +26,6 @@ const OffgridSizing = (() => {
     nmc_tesla: { label:'NMC recondit. Tesla',              dod:0.85, eta:0.97, cycles:1000, costPerKwh:65,  bmsFixed:200, color:'#d32f2f' }
   };
 
-  const INVERTER_EFF  = 0.93;
-  const CONTROLLER_EFF= 0.96;
   const PV_COST_PER_KWP = 650; // €HT pro/kWc (panneau + pose)
   const BOS_COST = 500;         // €HT (câblage, support, régulateur...)
 
@@ -160,18 +158,30 @@ const OffgridSizing = (() => {
   }
 
   // ── Simulation horaire d'un mois (utilise données Enedis si dispo) ──
-  function simulateMonthHourly(month, monthData, Ppeak, losses, tilt, azimuth, lat, C_usable, eta, soc_init) {
-    const lossF = 1 - losses / 100;
-    const days  = DAYS[month - 1];
+  function simulateMonthHourly(month, monthData, Ppeak, losses, tilt, azimuth, lat, C_usable, eta, soc_init, dailyKwhTarget) {
+    const days = DAYS[month - 1];
 
-    // Profil PV horaire (24h)
-    const pvH = Array.from({length: 24}, (_, h) => {
+    // Profil PV horaire (24h) avec correction thermique NOCT (même logique que pvProduction)
+    let dailyIrrSum = 0;
+    const hourlyIrr = Array.from({length: 24}, (_, h) => {
       const irr = SolarMath.hourlyIrradiance(lat, month, h, monthData, tilt, azimuth);
-      return irr * Ppeak * lossF / 1000;
+      dailyIrrSum += irr;
+      return irr;
     });
+    const daylightH = Math.max(3, SolarMath.daylightHours(lat, month));
+    const G_eff     = dailyIrrSum / daylightH;                        // W/m² moyen pendant l'ensoleillement
+    const Tcell     = (monthData.T_avg || 15) + 25 * G_eff / 800;    // NOCT=45°C, 45-20=25
+    const PR_temp   = 1 + (-0.0045) * Math.max(0, Tcell - 25);       // coeff CrystalSi
+    const lossF     = Math.max(0.5, (1 - losses / 100) * Math.min(1, PR_temp));
+    const pvH = hourlyIrr.map(irr => irr * Ppeak * lossF / 1000);
 
-    // Profil conso horaire — données réelles Enedis si disponibles
-    const consoH = HourlyModule.getHourlyConsumptionProfile(month);
+    // Profil conso horaire — forme issue du module horaire, total calé sur dailyKwhTarget
+    const rawConsoH = HourlyModule.getHourlyConsumptionProfile(month);
+    let consoH = rawConsoH;
+    if (dailyKwhTarget != null) {
+      const rawSum = rawConsoH.reduce((s, v) => s + v, 0);
+      if (rawSum > 0) consoH = rawConsoH.map(v => v * dailyKwhTarget / rawSum);
+    }
 
     let soc = soc_init !== undefined ? Math.min(soc_init, C_usable) : C_usable * 0.5;
     let deficit_days = 0, deficit_kwh = 0, surplus_kwh = 0;
@@ -207,7 +217,6 @@ const OffgridSizing = (() => {
 
     let soc = C_usable * 0.5;
     const monthly = [];
-    const lossF   = 1 - (losses || 14) / 100;
 
     for (let i = 0; i < 12; i++) {
       const days = DAYS[i];
@@ -230,7 +239,7 @@ const OffgridSizing = (() => {
         e_conso_day = dailyConso[i] / 1000;
         // Simulation horaire si tilt/azimuth/lat disponibles (meilleure précision batterie)
         if (tilt !== undefined && azimuth !== undefined && lat !== undefined) {
-          res = simulateMonthHourly(i+1, weatherData[i], Ppeak, losses, tilt, azimuth, lat, C_usable, eta, soc);
+          res = simulateMonthHourly(i+1, weatherData[i], Ppeak, losses, tilt, azimuth, lat, C_usable, eta, soc, e_conso_day);
         } else {
           res = simulateMonth(e_prod_day, e_conso_day, C_usable, days, soc, eta);
         }
@@ -392,7 +401,9 @@ const OffgridSizing = (() => {
     }
 
     const useHourly = !!(AppState.hourlyEnedisData);
-    return { recommended, allCandidates, monthlyHtilt, tech, annual_conso: Math.round(annual_conso), useHourly };
+    // Préférer la conso réelle Enedis (slot-par-slot) à la conso formulaire
+    const real_annual_conso = recommended?.total_conso ?? Math.round(annual_conso);
+    return { recommended, allCandidates, monthlyHtilt, tech, annual_conso: real_annual_conso, useHourly };
   }
 
   // ── Lecture du formulaire ─────────────────────────────────────
@@ -429,7 +440,7 @@ const OffgridSizing = (() => {
       sizing: {
         targetCoveragePct: getVal('og2-target-coverage') || 90,
         pvCostPerKwp:      getVal('og2-pv-cost-kwp')     || PV_COST_PER_KWP,
-        bosCost:           getVal('og2-bos-cost')
+        bosCost:           getVal('og2-bos-cost') || null
       }
     };
   }

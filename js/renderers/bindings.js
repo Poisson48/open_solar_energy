@@ -116,14 +116,15 @@ function handleEnedisCSV(input, statusId = 'sz-csv-status') {
       }
     }
 
-    // Onglet hors-réseau : conso journalière (Wh/j)
+    // Onglet hors-réseau : conso journalière (Wh/j) — jours corrects pour années bissextiles
+    const daysArr = result.year ? getMonthlyDays(result.year) : DAYS_IN_MONTH;
     result.monthlyKwh.forEach((kwh, i) => {
-      const whPerDay = Math.round(kwh * 1000 / DAYS_IN_MONTH[i]);
+      const whPerDay = Math.round(kwh * 1000 / daysArr[i]);
       const el = document.getElementById(`og2-day-${i + 1}`);
       if (el) el.value = whPerDay;
     });
     const avgWhPerDay = Math.round(
-      result.monthlyKwh.reduce((s, k, i) => s + k * 1000 / DAYS_IN_MONTH[i], 0) / 12
+      result.monthlyKwh.reduce((s, k, i) => s + k * 1000 / daysArr[i], 0) / 12
     );
     const defEl = document.getElementById('og2-daily-default');
     if (defEl) defEl.value = avgWhPerDay;
@@ -143,8 +144,9 @@ function handleEnedisCSV(input, statusId = 'sz-csv-status') {
       }
     }
 
-    AppState.monthlyKwh = result.monthlyKwh.slice();
+    AppState.monthlyKwh   = result.monthlyKwh.slice();
     AppState.monthlyKwhHp = result.monthlyKwhHp ? result.monthlyKwhHp.slice() : null;
+    AppState.enedisYear   = result.year || null;
     document.getElementById('sz-kwh-1')?.dispatchEvent(new Event('input'));
 
     const warns = result.warnings.length ? ` — ⚠ ${result.warnings[0]}` : '';
