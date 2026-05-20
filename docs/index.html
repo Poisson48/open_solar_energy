@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Open Solar Energy — Simulateur PV gratuit</title>
+  <style>
+    :root {
+      --sun: #f59e0b;
+      --sun-light: #fef3c7;
+      --green: #10b981;
+      --dark: #1e293b;
+      --muted: #64748b;
+      --bg: #f8fafc;
+      --card: #ffffff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--dark); }
+
+    header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      color: white;
+      text-align: center;
+      padding: 4rem 2rem 3rem;
+    }
+    .badge {
+      display: inline-block;
+      background: var(--sun);
+      color: #1e293b;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+    }
+    header h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 800; margin-bottom: 1rem; }
+    header p { font-size: 1.2rem; color: #94a3b8; max-width: 600px; margin: 0 auto 2rem; }
+
+    .download-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--sun);
+      color: #1e293b;
+      font-size: 1.1rem;
+      font-weight: 700;
+      padding: 0.9rem 2rem;
+      border-radius: 0.75rem;
+      text-decoration: none;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 4px 14px rgba(245,158,11,0.4);
+    }
+    .download-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(245,158,11,0.5); }
+    .download-btn svg { width: 1.25rem; height: 1.25rem; }
+
+    .meta { margin-top: 1.5rem; color: #64748b; font-size: 0.9rem; }
+    .meta a { color: #94a3b8; }
+
+    main { max-width: 1000px; margin: 0 auto; padding: 3rem 1.5rem; }
+
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      color: var(--dark);
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 3rem;
+    }
+    .feature-card {
+      background: var(--card);
+      border: 1px solid #e2e8f0;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    .feature-card .icon {
+      font-size: 2rem;
+      margin-bottom: 0.75rem;
+    }
+    .feature-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .feature-card p { font-size: 0.9rem; color: var(--muted); line-height: 1.5; }
+
+    .install-block {
+      background: var(--dark);
+      color: #e2e8f0;
+      border-radius: 1rem;
+      padding: 2rem;
+      margin-bottom: 3rem;
+    }
+    .install-block h2 { color: white; margin-bottom: 1.5rem; font-size: 1.3rem; }
+    .step { display: flex; gap: 1rem; margin-bottom: 1.25rem; align-items: flex-start; }
+    .step-num {
+      background: var(--sun);
+      color: #1e293b;
+      font-weight: 800;
+      width: 2rem; height: 2rem;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      font-size: 0.9rem;
+    }
+    .step-content { padding-top: 0.2rem; }
+    .step-content strong { color: white; }
+    .step-content p { color: #94a3b8; font-size: 0.9rem; margin-top: 0.25rem; }
+    code {
+      background: #0f172a;
+      color: var(--sun);
+      padding: 0.15rem 0.4rem;
+      border-radius: 0.3rem;
+      font-family: monospace;
+      font-size: 0.85rem;
+    }
+
+    .cta-bottom {
+      text-align: center;
+      padding: 2rem;
+      background: var(--sun-light);
+      border-radius: 1rem;
+      margin-bottom: 2rem;
+    }
+    .cta-bottom h2 { margin-bottom: 0.75rem; }
+    .cta-bottom p { color: var(--muted); margin-bottom: 1.5rem; }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+      border-top: 1px solid #e2e8f0;
+    }
+    footer a { color: var(--muted); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="badge">Gratuit &amp; Open Source</div>
+  <h1>Open Solar Energy</h1>
+  <p>Dimensionnement et simulation de systèmes photovoltaïques — 100 % local, sans serveur, sans inscription.</p>
+  <a class="download-btn" href="https://github.com/Poisson48/open_solar_energy/releases/latest">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/>
+    </svg>
+    Télécharger pour Linux (.AppImage)
+  </a>
+  <div class="meta">
+    Linux x64 &nbsp;·&nbsp; Mises à jour automatiques &nbsp;·&nbsp;
+    <a href="https://github.com/Poisson48/open_solar_energy">Code source sur GitHub</a>
+  </div>
+</header>
+
+<main>
+
+  <h2 class="section-title">Ce que fait l'application</h2>
+  <div class="features">
+    <div class="feature-card">
+      <div class="icon">☀️</div>
+      <h3>Simulation solaire physique</h3>
+      <p>Transposition HDKR (Hay-Davies-Klucher-Reindl), correction thermique NOCT, optimisation automatique inclinaison + azimut.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">🏠</div>
+      <h3>Dimensionnement réseau</h3>
+      <p>Import CSV Enedis, 3 stratégies (ROI optimal, autoconsommation max, couverture %). Calcul économies, surplus, ROI, VAN 25 ans, LCOE.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">🔋</div>
+      <h3>Hors réseau + batterie</h3>
+      <p>6 technologies batterie (LFP, AGM, NMC recondit.), simulation horaire, matrice PV × batterie, jours de déficit.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">🌤️</div>
+      <h3>Données météo intégrées</h3>
+      <p>Import Open-Meteo (gratuit, CORS natif) ou PVGIS. Démo embarquée : Paris, Toulouse, Nice, Bordeaux. Carte interactive Leaflet.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">📄</div>
+      <h3>Devis professionnel</h3>
+      <p>Formulaire complet installateur + client + chantier. Export PDF A4 prêt à envoyer, TVA configurable (5,5 % / 10 % / 20 %).</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">💾</div>
+      <h3>Gestion de projets</h3>
+      <p>Sauvegarde locale, clonage pour comparer scénarios, export / import JSON. Fonctionne 100 % hors connexion.</p>
+    </div>
+  </div>
+
+  <div class="install-block">
+    <h2>Installation en 3 étapes</h2>
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <strong>Télécharger</strong>
+        <p>Récupérer le fichier <code>Open-Solar-Energy-*.AppImage</code> depuis la page Releases.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <strong>Rendre exécutable</strong>
+        <p><code>chmod +x Open-Solar-Energy-*.AppImage</code></p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <strong>Lancer</strong>
+        <p>Double-clic sur le fichier ou <code>./Open-Solar-Energy-*.AppImage</code></p>
+      </div>
+    </div>
+    <p style="color:#64748b;font-size:0.85rem;margin-top:1rem">Les mises à jour sont automatiques : l'application vérifie et installe les nouvelles versions au démarrage.</p>
+  </div>
+
+  <div class="cta-bottom">
+    <h2>Alternative open-source à PVGIS</h2>
+    <p>Aucune donnée envoyée à un serveur. Tous les calculs s'effectuent localement.</p>
+    <a class="download-btn" href="https://github.com/Poisson48/open_solar_energy/releases/latest">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/>
+      </svg>
+      Télécharger
+    </a>
+  </div>
+
+</main>
+
+<footer>
+  <p>
+    <a href="https://github.com/Poisson48/open_solar_energy">GitHub</a> &nbsp;·&nbsp;
+    Licence MIT &nbsp;·&nbsp;
+    Données météo <a href="https://open-meteo.com">Open-Meteo</a> &amp; <a href="https://re.jrc.ec.europa.eu/pvg_tools/fr/">PVGIS (JRC)</a>
+  </p>
+</footer>
+
+</body>
+</html>

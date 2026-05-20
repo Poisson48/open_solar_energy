@@ -1,8 +1,31 @@
 # Open Solar Energy
 
-**Alternative open-source à PVGIS** — dimensionnement et simulation de systèmes photovoltaïques, 100 % navigateur, sans serveur, sans inscription.
+**Alternative open-source à PVGIS** — dimensionnement et simulation de systèmes photovoltaïques, 100 % local, sans serveur, sans inscription.
 
 > Inspiré de [PVGIS (JRC / Commission Européenne)](https://re.jrc.ec.europa.eu/pvg_tools/fr/)
+
+[![Dernière release](https://img.shields.io/github/v/release/Poisson48/open_solar_energy?label=version&color=f59e0b)](https://github.com/Poisson48/open_solar_energy/releases/latest)
+[![Téléchargements](https://img.shields.io/github/downloads/Poisson48/open_solar_energy/total?color=10b981)](https://github.com/Poisson48/open_solar_energy/releases/latest)
+[![Licence MIT](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
+
+---
+
+## Téléchargement
+
+| Plateforme | Fichier | Notes |
+|---|---|---|
+| **Linux x64** | `Open-Solar-Energy-*.AppImage` | [→ Dernière release](https://github.com/Poisson48/open_solar_energy/releases/latest) |
+| Windows *(bientôt)* | `Open-Solar-Energy-*-Setup.exe` | — |
+
+**Linux — installation rapide :**
+```bash
+chmod +x Open-Solar-Energy-*.AppImage
+./Open-Solar-Energy-*.AppImage
+```
+
+Les mises à jour sont automatiques : l'application vérifie et installe les nouvelles versions au démarrage.
+
+> **Utilisation sans installation** : cloner le dépôt et lancer `./serve.sh` (Linux/macOS) ou `serve.bat` (Windows).
 
 ---
 

@@ -1,0 +1,52 @@
+{
+  "name": "open-solar-energy",
+  "version": "1.7.0",
+  "description": "Alternative open-source à PVGIS — dimensionnement et simulation de systèmes photovoltaïques",
+  "main": "electron-main.js",
+  "scripts": {
+    "start": "electron . --no-sandbox",
+    "build:linux": "electron-builder --linux",
+    "build:win": "electron-builder --win",
+    "release": "electron-builder --linux --publish always"
+  },
+  "build": {
+    "appId": "com.poisson48.open-solar-energy",
+    "productName": "Open Solar Energy",
+    "files": [
+      "index.html",
+      "electron-main.js",
+      "js/**/*",
+      "css/**/*",
+      "data/**/*"
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "poisson48",
+      "repo": "open_solar_energy"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        }
+      ],
+      "category": "Science"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    }
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.0"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.0"
+  }
+}
