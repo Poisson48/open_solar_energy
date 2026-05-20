@@ -37,7 +37,7 @@ const SizingEngine = (() => {
     } else {
       bill.monthlyKwh.forEach((kwh, i) => {
         if (kwh <= 0) return;
-        const hpRatio = (bill.monthlyKwh_hp && kwh > 0)
+        const hpRatio = (bill.monthlyKwh_hp && bill.monthlyKwh_hp[i] > 0)
           ? Math.min(1, Math.max(0, bill.monthlyKwh_hp[i] / kwh))
           : 0.65;
         const hp = bill.priceHpHc?.hp ?? TARIFS.hphc.hp;
@@ -154,6 +154,63 @@ const SizingEngine = (() => {
     }
   }
 
+  // ── Profil PV demi-horaire normalisé (kWh/slot/kWc) ─────────────
+  // Identique à OffgridSizing.buildHalfHourPvProfile — résultat [12][48]
+  function _buildHalfHourPvProfile(weatherData, monthlyHtilt, losses, tilt, azimuth, lat, pvTech) {
+    const tech = pvTech || 'crystSi';
+    const profiles = [];
+    for (let m = 1; m <= 12; m++) {
+      const md   = weatherData[m - 1];
+      const days = DAYS[m - 1];
+      const shape = new Float32Array(48);
+      let shapeSum = 0;
+      for (let h = 0; h < 24; h++) {
+        const irr = SolarMath.hourlyIrradiance(lat, m, h, md, tilt, azimuth);
+        shape[h * 2]     = irr / 2;
+        shape[h * 2 + 1] = irr / 2;
+        shapeSum += irr;
+      }
+      const monthlyPerKwc = SolarMath.pvProduction(monthlyHtilt[m - 1], 1, losses, md.T_avg, tech, m, lat);
+      const perDayPerKwc  = days > 0 ? monthlyPerKwc / days : 0;
+      const slots = new Float32Array(48);
+      if (shapeSum > 0) {
+        for (let s = 0; s < 48; s++) slots[s] = shape[s] * perDayPerKwc / shapeSum;
+      }
+      profiles.push(slots);
+    }
+    return profiles;
+  }
+
+  // ── Autoconsommation slot-à-slot sans batterie (réseau) ──────────
+  // pvSlotsFlat : Float32Array(nHours×2) par kWc — index = slot absolu
+  function _calcSlotMetrics(pvSlotsFlat, Ppeak, enedis) {
+    const data    = enedis.halfHourly;
+    const daysArr = enedis.year ? getMonthlyDays(enedis.year) : DAYS;
+    const monthly = Array.from({length: 12}, (_, i) => ({
+      month: i + 1, name: MONTH_NAMES[i],
+      prod: 0, conso: 0, autoconsoKwh: 0, surplus: 0, deficit: 0
+    }));
+    let dayIdx = 0;
+    for (let m = 0; m < 12; m++) {
+      const nDays = daysArr[m];
+      for (let d = 0; d < nDays; d++) {
+        for (let s = 0; s < 48; s++) {
+          const idx = dayIdx * 48 + s;
+          if (idx >= data.length) break;
+          const c = data[idx] || 0;
+          const p = (pvSlotsFlat[idx] || 0) * Ppeak;
+          monthly[m].prod         += p;
+          monthly[m].conso        += c;
+          monthly[m].autoconsoKwh += Math.min(p, c);
+          monthly[m].surplus      += Math.max(0, p - c);
+          monthly[m].deficit      += Math.max(0, c - p);
+        }
+        dayIdx++;
+      }
+    }
+    return monthly;
+  }
+
   // ── Moteur principal ───────────────────────────────────────────
   /**
    * @param {object} input       Données saisies (bill, site, sizing)
@@ -177,31 +234,61 @@ const SizingEngine = (() => {
     const currentBill = calcCurrentAnnualBill(bill);
     const annualConso  = bill.monthlyKwh.reduce((s, k) => s + k, 0);
 
-    // 4. Balayage de 0.5 à PpeakMax (pas 0.1 kWc)
+    // 4. Pré-calcul profil PV 30min si données Enedis disponibles
+    // Priorité : météo horaire réelle (jour-à-jour) > profil mensuel moyen aplati
+    const enedis = typeof AppState !== 'undefined' ? AppState.hourlyEnedisData : null;
+    const hasEnedisSlots = !!(enedis?.halfHourly?.length >= 48 * 365);
+    let pvProfilesPerKwc = null;  // Float32Array(nHours×2) par kWc si dispo
+    if (hasEnedisSlots) {
+      const daysArr = enedis.year ? getMonthlyDays(enedis.year) : DAYS;
+      const hourlyWx = typeof AppState !== 'undefined' ? AppState.hourlyWeatherData : null;
+      if (hourlyWx) {
+        pvProfilesPerKwc = SolarMath.buildYearPvSlots(
+          hourlyWx, site.tilt, site.azimuth, site.losses, site.tech, lat,
+          (typeof AppState !== 'undefined' && AppState.location?.lon) || 0
+        );
+      } else {
+        const monthlyProfs = _buildHalfHourPvProfile(weatherData, monthlyHtilt, site.losses, site.tilt, site.azimuth, lat, site.tech);
+        pvProfilesPerKwc = new Float32Array(daysArr.reduce((s, d) => s + d, 0) * 48);
+        let di = 0;
+        for (let m = 0; m < 12; m++) {
+          for (let d = 0; d < daysArr[m]; d++, di++) pvProfilesPerKwc.set(monthlyProfs[m], di * 48);
+        }
+      }
+    }
+
+    // 5. Balayage de 0.5 à PpeakMax (pas 0.1 kWc)
     const allCandidates = [];
     for (let Ppeak = 0.5; Ppeak <= PpeakMax + 0.05; Ppeak = Math.round((Ppeak + 0.1) * 10) / 10) {
 
-      // Production mensuelle (lat transmis pour correction thermique exacte)
-      const monthlyProd = monthlyHtilt.map((Htilt, i) =>
-        SolarMath.pvProduction(Htilt, Ppeak, site.losses, weatherData[i].T_avg, site.tech, i + 1, lat)
-      );
-
-      // Métriques mensuelles
-      const monthlyMetrics = monthlyProd.map((prod, i) => {
-        const conso       = bill.monthlyKwh[i];
-        const autoconsoKwh = Math.min(prod, conso);
-        const surplus      = Math.max(0, prod - conso);
-        const deficit      = Math.max(0, conso - prod);
-        return { month: i+1, name: MONTH_NAMES[i], prod, conso, autoconsoKwh, surplus, deficit };
-      });
+      // Métriques mensuelles : slot-à-slot si Enedis dispo, sinon mensuel agrégé
+      let monthlyMetrics;
+      if (pvProfilesPerKwc) {
+        monthlyMetrics = _calcSlotMetrics(pvProfilesPerKwc, Ppeak, enedis);
+      } else {
+        const monthlyProd = monthlyHtilt.map((Htilt, i) =>
+          SolarMath.pvProduction(Htilt, Ppeak, site.losses, weatherData[i].T_avg, site.tech, i + 1, lat)
+        );
+        monthlyMetrics = monthlyProd.map((prod, i) => {
+          const conso       = bill.monthlyKwh[i];
+          const autoconsoKwh = Math.min(prod, conso);
+          const surplus      = Math.max(0, prod - conso);
+          const deficit      = Math.max(0, conso - prod);
+          return { month: i+1, name: MONTH_NAMES[i], prod, conso, autoconsoKwh, surplus, deficit };
+        });
+      }
 
       // Agrégation annuelle
       const annualProd          = monthlyMetrics.reduce((s, m) => s + m.prod, 0);
       const annualAutoconsoKwh  = monthlyMetrics.reduce((s, m) => s + m.autoconsoKwh, 0);
       const annualSurplus       = monthlyMetrics.reduce((s, m) => s + m.surplus, 0);
       const annualDeficit       = monthlyMetrics.reduce((s, m) => s + m.deficit, 0);
+      // Conso réelle Enedis (plus précise que la facture mensuelle arrondée)
+      const annualConsoReal     = pvProfilesPerKwc
+        ? monthlyMetrics.reduce((s, m) => s + m.conso, 0)
+        : annualConso;
 
-      const coverageRate        = annualConso  > 0 ? annualAutoconsoKwh / annualConso  : 0;
+      const coverageRate        = annualConsoReal > 0 ? annualAutoconsoKwh / annualConsoReal : 0;
       const autoconsoRate = annualProd   > 0 ? annualAutoconsoKwh / annualProd   : 0;
 
       // Finance
@@ -232,7 +319,7 @@ const SizingEngine = (() => {
         incentive:   Math.round(incentive),
         systemCost: Math.round(systemCost),
         annualProd:  Math.round(annualProd),
-        annualConso,
+        annualConso: Math.round(annualConsoReal),
         annualAutoconsoKwh: Math.round(annualAutoconsoKwh),
         annualSurplus:  Math.round(annualSurplus),
         annualDeficit:  Math.round(annualDeficit),
@@ -247,6 +334,7 @@ const SizingEngine = (() => {
         npv25,
         lcoe,
         co2Saved:       Math.round(annualAutoconsoKwh * 0.052),
+        slotLevel:      hasEnedisSlots,
         monthlyMetrics
       });
     }
@@ -282,7 +370,7 @@ const SizingEngine = (() => {
           hp:               getVal('sz-price-hp')   || TARIFS.hphc.hp,
           hc:               getVal('sz-price-hc')   || TARIFS.hphc.hc
         },
-        subscriptionPerYear: getVal('sz-subscription') || 147
+        subscriptionPerYear: (() => { const v = parseFloat(document.getElementById('sz-subscription')?.value); return isNaN(v) ? 147 : v; })()
       },
       site: {
         tilt:            getVal('sz-tilt')        || 30,

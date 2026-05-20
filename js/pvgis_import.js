@@ -44,9 +44,8 @@ const PVGISImport = (() => {
   function estimateDHI_DNI(GHI_monthly, lat) {
     return GHI_monthly.map((GHI, i) => {
       // H0 : irradiation extraterrestre horizontale (simplifiée)
-      const H0 = SolarMath ? SolarMath.extraterrestrialApprox
-        ? SolarMath.extraterrestrialApprox(lat, i + 1)
-        : extraterrestrialApprox(lat, i + 1)
+      const H0 = SolarMath?.extraterrestrialIrradiation
+        ? SolarMath.extraterrestrialIrradiation(lat, i + 1)
         : extraterrestrialApprox(lat, i + 1);
 
       const Kt = H0 > 0 ? Math.min(1, GHI / H0) : 0.5;
@@ -78,7 +77,7 @@ const PVGISImport = (() => {
     const B = (2*Math.PI*day)/365;
     const E0 = 1 + 0.033*Math.cos(B);
     const cosW = -Math.tan(latR)*Math.tan(decl);
-    const ws = Math.abs(cosW) > 1 ? (cosW<0?Math.PI/2:0) : Math.acos(Math.max(-1,Math.min(1,cosW)));
+    const ws = Math.abs(cosW) > 1 ? (cosW<0?Math.PI:0) : Math.acos(Math.max(-1,Math.min(1,cosW)));
     const H0 = (24/Math.PI)*Gsc*E0*(ws*Math.sin(latR)*Math.sin(decl) + Math.cos(latR)*Math.cos(decl)*Math.sin(ws));
     return Math.max(1, H0 * DAYS_IN_MONTH[month-1]); // kWh/m²/mois
   }
@@ -144,7 +143,74 @@ const PVGISImport = (() => {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // 1b. PVGIS MRcalc — GHI + DHI + T° depuis satellite SARAH3
+  // 1b. Open-Meteo HORAIRE — GHI + DHI + T° à la résolution 1h
+  //     Même API que le mensuel, paramètre `hourly` au lieu de `daily`.
+  //     Données en UTC → correction longitude appliquée dans buildYearPvSlots.
+  // ─────────────────────────────────────────────────────────────
+  async function fetchOpenMeteoHourly(lat, lon, year) {
+    const url = new URL(OPENMETEO_BASE);
+    url.searchParams.set('latitude',   lat);
+    url.searchParams.set('longitude',  lon);
+    url.searchParams.set('start_date', `${year}-01-01`);
+    url.searchParams.set('end_date',   `${year}-12-31`);
+    url.searchParams.set('hourly',     'shortwave_radiation,diffuse_radiation,temperature_2m');
+    url.searchParams.set('timezone',   'UTC');
+    const resp = await fetch(url.toString(), { signal: AbortSignal.timeout(30000) });
+    if (!resp.ok) throw new Error(`Open-Meteo hourly ${resp.status}`);
+    return resp.json();
+  }
+
+  async function importHourlyWeather(lat, lon) {
+    // Aligner l'année sur les données Enedis si disponibles
+    const year = AppState.hourlyEnedisData?.year || AppState.enedisYear || 2023;
+    setStatus(`⏳ Météo horaire ${year} en cours (Open-Meteo)…`, 'loading');
+
+    const data = await fetchOpenMeteoHourly(lat, lon, year);
+    const h = data.hourly;
+    if (!h?.shortwave_radiation?.length) throw new Error('Données horaires absentes');
+
+    const n    = h.shortwave_radiation.length;
+    const ghi  = new Float32Array(n);
+    const dhi  = new Float32Array(n);
+    const temp = new Float32Array(n);
+
+    for (let i = 0; i < n; i++) {
+      ghi[i]  = Math.max(0, h.shortwave_radiation[i] || 0);
+      dhi[i]  = Math.max(0, Math.min(h.diffuse_radiation[i] || 0, ghi[i]));
+      temp[i] = h.temperature_2m[i] ?? 15;
+    }
+
+    AppState.hourlyWeatherData = { ghi, dhi, temp, year, nHours: n };
+    return { year, nHours: n, annualGhiKwh: Array.from(ghi).reduce((s, v) => s + v, 0) / 1000 };
+  }
+
+  async function doImportHourlyWeather() {
+    const { lat, lon } = AppState.location;
+    if (!lat || !lon) { showToast('⚠ Sélectionnez un lieu d\'abord.', 'error'); return; }
+
+    const btn = document.getElementById('btn-hourly-weather');
+    if (btn) { btn.disabled = true; btn.classList.add('btn-loading'); }
+
+    try {
+      const { year, nHours, annualGhiKwh } = await importHourlyWeather(lat, lon);
+      setStatus(`✓ Météo horaire ${year} — ${nHours} mesures — GHI ≈ ${Math.round(annualGhiKwh)} kWh/m²`, 'success');
+      showToast(`✓ Météo horaire ${year} importée (${nHours} points)`);
+      const statusEl = document.getElementById('hourly-weather-status');
+      if (statusEl) {
+        statusEl.textContent = `✓ Météo horaire ${year} — production jour/jour activée`;
+        statusEl.style.display = 'block';
+      }
+    } catch (err) {
+      console.error(err);
+      setStatus(`✗ Import horaire échoué : ${err.message}`, 'error');
+      showToast('✗ Import météo horaire échoué', 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.classList.remove('btn-loading'); }
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // 1c. PVGIS MRcalc — GHI + DHI + T° depuis satellite SARAH3
   //     Meilleur que Open-Meteo + Erbs : DHI mesuré, pas estimé.
   //     CORS bloqué en file:// → tentative proxy.
   // ─────────────────────────────────────────────────────────────
@@ -482,7 +548,8 @@ const PVGISImport = (() => {
   function init() {
     document.getElementById('btn-pvgis-weather')?.addEventListener('click', doImportWeather);
     document.getElementById('btn-pvgis-pvcalc')?.addEventListener('click', doImportPVCalc);
+    document.getElementById('btn-hourly-weather')?.addEventListener('click', doImportHourlyWeather);
   }
 
-  return { init, doImportWeather, doImportPVCalc, importFromFile, setStatus };
+  return { init, doImportWeather, doImportPVCalc, doImportHourlyWeather, importFromFile, setStatus };
 })();

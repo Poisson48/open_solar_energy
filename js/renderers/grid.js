@@ -86,9 +86,14 @@ function _getPanelConsoKwh(prefix) {
 }
 
 function _estimateSpecificYield() {
-  if (AppState.weatherData) {
-    const annualGHI = AppState.weatherData.reduce((s, m) => s + (m.GHI || 0), 0);
-    return annualGHI * 0.78; // PR ≈ 0.78 résidentiel
+  if (AppState.weatherData && typeof SolarMath?.tiltedIrradiation === 'function') {
+    const lat     = AppState.location?.lat ?? 44;
+    const tilt    = parseFloat(document.getElementById('inp-tilt')?.value)    || 30;
+    const azimuth = parseFloat(document.getElementById('inp-azimuth')?.value) || 0;
+    const losses  = parseFloat(document.getElementById('inp-losses')?.value)  || 14;
+    const annualHtilt = AppState.weatherData.reduce((s, m, i) =>
+      s + SolarMath.tiltedIrradiation(m.GHI, m.DHI, lat, tilt, azimuth, i + 1), 0);
+    return annualHtilt * (1 - losses / 100) * 0.85; // PR thermique ≈ 0.85
   }
   return 1000; // kWh/kWc par défaut (moyenne France)
 }

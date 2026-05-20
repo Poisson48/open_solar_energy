@@ -29,8 +29,8 @@ const SolarMath = (() => {
 
   function sunriseHourAngle(lat, decl) {
     const cosW = -Math.tan(lat * DEG) * Math.tan(decl * DEG);
-    if (cosW < -1) return 90;
-    if (cosW >  1) return 0;
+    if (cosW < -1) return 180; // jour polaire — soleil ne se couche pas
+    if (cosW >  1) return 0;   // nuit polaire — soleil ne se lève pas
     return Math.acos(cosW) / DEG;
   }
 
@@ -188,10 +188,15 @@ const SolarMath = (() => {
     const H_annual = monthly.reduce((s, m) => s + m.Htilt, 0);
     const PR = H_annual > 0 ? E_annual / (Ppeak * H_annual) : 0;
     const CF = E_annual / (Ppeak * 8760);
-    // LCOE avec dégradation 0,5 %/an sur 25 ans
-    let cumProd25 = 0;
-    for (let y = 1; y <= 25; y++) cumProd25 += E_annual * Math.pow(1 - 0.005, y - 1);
-    const LCOE = (systemCost > 0 && cumProd25 > 0) ? systemCost / cumProd25 : 0;
+    // LCOE avec dégradation 0.5%/an + O&M 0.5%/an + remplacement onduleur 12% an 15
+    const omAnnual    = systemCost * 0.005;
+    const inverterRpl = systemCost * 0.12;
+    let cumCost = systemCost, cumProd25 = 0;
+    for (let y = 1; y <= 25; y++) {
+      cumProd25 += E_annual * Math.pow(1 - 0.005, y - 1);
+      cumCost   += omAnnual + (y === 15 ? inverterRpl : 0);
+    }
+    const LCOE = (systemCost > 0 && cumProd25 > 0) ? cumCost / cumProd25 : 0;
     const ROI  = (E_annual * kwhPrice) > 0 ? systemCost / (E_annual * kwhPrice) : 0;
     const CO2  = E_annual * co2Factor;
     return {
@@ -313,9 +318,118 @@ const SolarMath = (() => {
     );
   }
 
+  // ── Transposition HDKR d'une mesure horaire réelle ───────────────
+  /**
+   * Transpose une mesure GHI/DHI réelle (W/m²) sur plan incliné.
+   * Contrairement à hourlyIrradiance(), prend les vraies valeurs mesurées
+   * plutôt que de les distribuer depuis une moyenne mensuelle.
+   *
+   * @param {number} ghi_wm2    GHI mesuré (W/m²) — average sur l'heure
+   * @param {number} dhi_wm2    DHI mesuré (W/m²)
+   * @param {number} lat        Latitude (°)
+   * @param {number} tilt       Inclinaison (°)
+   * @param {number} azimuth    Azimut (° — 0=Sud, convention standard)
+   * @param {number} dayOfYear  Jour julien (1–365)
+   * @param {number} solarHour  Heure solaire au milieu du pas (ex: 11.5 pour 11h–12h)
+   * @returns {number} Irradiance sur plan incliné (W/m²)
+   */
+  function transposeHourlyReal(ghi_wm2, dhi_wm2, lat, tilt, azimuth, dayOfYear, solarHour) {
+    if (ghi_wm2 <= 0) return 0;
+    if (tilt === 0) return ghi_wm2;
+
+    const tiltR = tilt    * DEG;
+    const azR   = azimuth * DEG;
+    const latR  = lat     * DEG;
+    const declR = declination(dayOfYear) * DEG;
+    const omR   = (solarHour - 12) * 15 * DEG;
+
+    const cosZ = Math.sin(declR)*Math.sin(latR) + Math.cos(declR)*Math.cos(omR)*Math.cos(latR);
+    if (cosZ < 0.01) return 0;
+
+    const cosI = Math.sin(declR)*Math.sin(latR)*Math.cos(tiltR)
+               - Math.sin(declR)*Math.cos(latR)*Math.sin(tiltR)*Math.cos(azR)
+               + Math.cos(declR)*Math.cos(omR)*Math.cos(latR)*Math.cos(tiltR)
+               + Math.cos(declR)*Math.cos(omR)*Math.sin(latR)*Math.sin(tiltR)*Math.cos(azR)
+               + Math.cos(declR)*Math.sin(omR)*Math.sin(tiltR)*Math.sin(azR);
+    const Rb_h = Math.max(0, cosI) / cosZ;
+
+    const ibHour = Math.max(0, ghi_wm2 - dhi_wm2);
+    const B    = 2 * Math.PI * dayOfYear / 365;
+    const E0   = 1.000110 + 0.034221*Math.cos(B) + 0.001280*Math.sin(B);
+    const G0h  = 1367 * E0 * cosZ;
+    const Ai_h = G0h > 1 ? Math.min(1, ibHour / G0h) : 0;
+    const f_h  = ghi_wm2 > 0 ? Math.sqrt(Math.max(0, ibHour / ghi_wm2)) : 0;
+
+    return Math.max(0,
+      (ibHour + dhi_wm2 * Ai_h) * Rb_h
+      + dhi_wm2 * (1 - Ai_h) * (1 + Math.cos(tiltR)) / 2
+        * (1 + f_h * Math.pow(Math.sin(tiltR / 2), 3))
+      + ghi_wm2 * 0.2 * (1 - Math.cos(tiltR)) / 2
+    );
+  }
+
+  // ── Profil PV annuel slot par slot depuis données météo horaires ──
+  /**
+   * Construit un profil de production PV (Float32Array de nHours×2 demi-heures)
+   * en utilisant les vraies mesures horaires GHI/DHI/T° (pas une moyenne mensuelle).
+   * Chaque jour a sa propre courbe de production — journées nuageuses incluses.
+   *
+   * @param {object} hourlyData  { ghi: Float32Array, dhi: Float32Array, temp: Float32Array, year }
+   * @param {number} tilt        Inclinaison panneaux (°)
+   * @param {number} azimuth     Azimut (° — 0=Sud)
+   * @param {number} losses      Pertes système (%)
+   * @param {string} tech        Technologie PV ('crystSi', 'CIS', 'CdTe')
+   * @param {number} lat         Latitude (°)
+   * @param {number} lon         Longitude (°) — pour correction heure solaire vs UTC
+   * @returns {Float32Array}     nHours×2 valeurs (kWh/slot/kWc)
+   */
+  function buildYearPvSlots(hourlyData, tilt, azimuth, losses, tech, lat, lon) {
+    const { ghi, dhi, temp, year } = hourlyData;
+    const nHours = ghi.length;
+    const slots  = new Float32Array(nHours * 2);
+
+    const tempCoeff = { crystSi: -0.0045, CIS: -0.0036, CdTe: -0.0025 };
+    const gamma   = tempCoeff[tech] || -0.004;
+    const lossF   = Math.max(0.1, 1 - (losses || 14) / 100);
+    const lonCorr = (lon || 0) / 15;  // correction UTC → heure solaire (heures)
+
+    const daysPerMonth = (typeof getMonthlyDays === 'function' && year)
+      ? getMonthlyDays(year) : DAYS_IN_MONTH;
+
+    let h = 0;
+    let doy = 1;
+    for (let m = 0; m < 12; m++) {
+      const nDays = daysPerMonth[m];
+      for (let d = 0; d < nDays; d++, doy++) {
+        for (let hh = 0; hh < 24; hh++, h++) {
+          if (h >= nHours) break;
+          const ghiVal  = Math.max(0, ghi[h]  || 0);
+          const dhiVal  = Math.max(0, Math.min(dhi[h] || 0, ghiVal));
+          const tempVal = temp[h] !== undefined ? temp[h] : 15;
+
+          // Heure solaire = heure UTC + correction longitude (données Open-Meteo en UTC)
+          const solarHour = hh + 0.5 + lonCorr;  // milieu du pas + correction
+          const Htilt_h   = transposeHourlyReal(ghiVal, dhiVal, lat, tilt, azimuth, doy, solarHour);
+
+          // Correction thermique NOCT
+          const Tcell   = tempVal + 25 * Htilt_h / 800;
+          const PR_temp = 1 + gamma * Math.max(0, Tcell - 25);
+          const PR      = Math.max(0.5, lossF * Math.min(1, PR_temp));
+
+          // kWh/kWc pour cette heure, réparti en 2 slots 30min égaux
+          const kwh_h = Htilt_h * PR / 1000;
+          slots[h * 2]     = kwh_h / 2;
+          slots[h * 2 + 1] = kwh_h / 2;
+        }
+      }
+    }
+    return slots;
+  }
+
   return {
     tiltedIrradiation, pvProduction, gridSystemAnnual, offgridSystem,
     optimalTilt, tiltAzimuthHeatmap, daylightHours, hourlyIrradiance,
-    calcRb, extraterrestrialIrradiation
+    calcRb, extraterrestrialIrradiation,
+    transposeHourlyReal, buildYearPvSlots
   };
 })();

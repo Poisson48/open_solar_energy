@@ -165,7 +165,7 @@ function autoCalcOffgridPanelWp() {
 
   const annualProdPerKwc = AppState.weatherData.reduce((sum, m, i) => {
     const Htilt = SolarMath.tiltedIrradiation(m.GHI, m.DHI, AppState.location.lat, tilt, azimuth, i + 1);
-    return sum + SolarMath.pvProduction(Htilt, 1.0, losses, m.T_avg, 'crystSi', i + 1, AppState.location.lat);
+    return sum + SolarMath.pvProduction(Htilt, 1.0, losses, m.T_avg, AppState.install?.tech || 'crystSi', i + 1, AppState.location.lat);
   }, 0);
 
   if (annualProdPerKwc < 100) { showToast('⚠ Données météo insuffisantes.', 'error'); return; }

@@ -127,14 +127,28 @@ const HourlyModule = (() => {
 
   /**
    * Calcule la production PV horaire (kWh) pour un mois donné
-   * en utilisant SolarMath.hourlyIrradiance
+   * en utilisant SolarMath.hourlyIrradiance + correction thermique NOCT
+   * (cohérente avec solar_math.js pvProduction — évite l'écart ~8-15 % en été)
    */
   function getHourlyPvProduction(month, Ppeak, tilt, azimuth, losses) {
     if (!AppState.weatherData || month < 1 || month > 12) return new Array(24).fill(0);
     const monthData = AppState.weatherData[month - 1];
-    const lossF = 1 - (losses || 14) / 100;
+    const lat  = AppState.location?.lat ?? 44;
+    const tech = AppState.install?.tech || 'crystSi';
+
+    // Correction thermique NOCT (même modèle que pvProduction dans solar_math.js)
+    const tempCoeff = { crystSi: -0.0045, CIS: -0.0036, CdTe: -0.0025, unknown: -0.004 };
+    const gamma  = tempCoeff[tech] || -0.004;
+    const days   = DAYS_IN_MONTH[month - 1];
+    const Htilt  = SolarMath.tiltedIrradiation(monthData.GHI, monthData.DHI, lat, tilt, azimuth, month);
+    const sunH   = Math.max(3, SolarMath.daylightHours(lat, month));
+    const G_eff  = Htilt > 0 ? (Htilt / days * 1000) / sunH : 0;
+    const Tcell  = (monthData.T_avg || 15) + 25 * G_eff / 800;
+    const PR_temp = 1 + gamma * Math.max(0, Tcell - 25);
+    const lossF  = Math.max(0.5, (1 - (losses || 14) / 100) * Math.min(1, PR_temp));
+
     return Array.from({length: 24}, (_, h) => {
-      const irr = SolarMath.hourlyIrradiance(AppState.location.lat, month, h, monthData, tilt, azimuth);
+      const irr = SolarMath.hourlyIrradiance(lat, month, h, monthData, tilt, azimuth);
       return irr * Ppeak * lossF / 1000;  // kWh
     });
   }

@@ -180,8 +180,9 @@ function loadProject(id) {
 
   // Relancer les calculs après restauration des formulaires
   setTimeout(() => {
-    if (typeof calcGridPanels === 'function') calcGridPanels();
-    if (typeof calcSizing     === 'function') calcSizing();
+    if (typeof calcGridPanels        === 'function') calcGridPanels();
+    if (typeof calcSizing            === 'function') calcSizing();
+    if (installType === 'offgrid' && typeof calcOffgridSizing === 'function') calcOffgridSizing();
     if (typeof renderIrradiationData === 'function') renderIrradiationData();
   }, 100);
 }
@@ -279,7 +280,22 @@ async function importProjectsFile(input) {
       const zip = await JSZip.loadAsync(file);
       const projectFile = zip.file('project.json');
       if (!projectFile) { alert('ZIP invalide : project.json manquant'); return; }
-      const jsonText = await projectFile.async('string');
+      let jsonText = await projectFile.async('string');
+
+      // Restaurer enedis_30min.csv si présent dans le ZIP
+      const enedisFile = zip.file('enedis_30min.csv');
+      if (enedisFile) {
+        const csvText = await enedisFile.async('string');
+        const lines   = csvText.trim().split('\n').slice(1); // skip header
+        const arr     = new Float32Array(lines.length);
+        lines.forEach((line, i) => { arr[i] = parseFloat(line.split(',')[1]) || 0; });
+        const parsed = JSON.parse(jsonText);
+        if (parsed.hourlyEnedisData?.halfHourly === '__enedis_30min.csv__') {
+          parsed.hourlyEnedisData.halfHourly = Array.from(arr);
+        }
+        jsonText = JSON.stringify(parsed);
+      }
+
       const result = ProjectManager.importOne(jsonText);
       if (result.error) { alert('Erreur import ZIP : ' + result.error); return; }
       showToast(`✓ Projet "${result.project.name}" importé depuis ZIP`);
@@ -429,6 +445,7 @@ function resetForNewProject() {
   AppState.hourlyEnedisData        = null;
   AppState.monthlyKwhHp            = null;
   AppState.enedisYear              = null;
+  AppState._includeIncentive       = true;
 
   // 4. Remettre à zéro les labels et statuts secondaires
   const szTotal = document.getElementById('sz-annual-total');
