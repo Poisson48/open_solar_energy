@@ -2,14 +2,14 @@
 
 **Alternative open-source à PVGIS** - dimensionnement et simulation de systèmes photovoltaïques, 100 % local, sans serveur, sans inscription.
 
+## [poisson48.github.io/open_solar_energy](https://poisson48.github.io/open_solar_energy/)
+
 > Inspiré de [PVGIS (JRC / Commission Européenne)](https://re.jrc.ec.europa.eu/pvg_tools/fr/)
 
 [![Dernière release](https://img.shields.io/github/v/release/Poisson48/open_solar_energy?label=version&color=f59e0b)](https://github.com/Poisson48/open_solar_energy/releases/latest)
 [![Téléchargements](https://img.shields.io/github/downloads/Poisson48/open_solar_energy/total?color=10b981)](https://github.com/Poisson48/open_solar_energy/releases/latest)
 [![Licence MIT](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
 [![Site web](https://img.shields.io/badge/site-GitHub%20Pages-0f172a)](https://poisson48.github.io/open_solar_energy/)
-
-> **Site web & téléchargement** → [poisson48.github.io/open_solar_energy](https://poisson48.github.io/open_solar_energy/)
 
 ---
 
