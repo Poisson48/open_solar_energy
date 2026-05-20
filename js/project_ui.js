@@ -772,18 +772,56 @@ async function openGitHistoryModal() {
   }
 }
 
-async function gitNewBranch() {
+function gitNewBranch() {
   if (!window.electronAPI || !AppState.currentProjectId) return;
-  const name = prompt('Nom de la variante (ex : option-batterie-15kWh, devis-client-v2) :');
-  if (!name || !name.trim()) return;
+  const bar = document.getElementById('git-branch-bar');
+  if (!bar) return;
+
+  // Afficher le formulaire inline dans la barre
+  bar.innerHTML = `
+    <form id="git-new-branch-form" onsubmit="gitNewBranchSubmit(event)"
+          style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:600;color:var(--color-text-muted);white-space:nowrap">Nom de la variante :</span>
+      <input id="git-new-branch-input" type="text"
+             placeholder="ex : option-batterie-15kWh"
+             style="flex:1;min-width:180px;font-size:12px;padding:4px 8px;border:1px solid var(--color-accent);border-radius:6px;background:var(--color-bg);color:var(--color-text);outline:none"
+             autocomplete="off" spellcheck="false">
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button type="submit" class="btn btn-accent btn-sm" id="git-new-branch-btn" style="font-size:11px">Créer</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="openGitHistoryModal()" style="font-size:11px">Annuler</button>
+      </div>
+      <div style="font-size:10px;color:var(--color-text-muted);width:100%;margin-top:2px">
+        Suggestions : <span style="cursor:pointer;color:var(--color-accent)" onclick="document.getElementById('git-new-branch-input').value='option-A'">option-A</span> ·
+        <span style="cursor:pointer;color:var(--color-accent)" onclick="document.getElementById('git-new-branch-input').value='devis-client-v2'">devis-client-v2</span> ·
+        <span style="cursor:pointer;color:var(--color-accent)" onclick="document.getElementById('git-new-branch-input').value='puissance-reduite'">puissance-reduite</span>
+      </div>
+    </form>`;
+
+  bar.style.display = 'block';
+  document.getElementById('git-new-branch-input')?.focus();
+}
+
+async function gitNewBranchSubmit(event) {
+  event.preventDefault();
+  const input = document.getElementById('git-new-branch-input');
+  const btn   = document.getElementById('git-new-branch-btn');
+  const name  = input?.value.trim();
+  if (!name) { input?.focus(); return; }
+
+  // État chargement
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  if (input) input.disabled = true;
+
   try {
-    const res = await window.electronAPI.gitCreateBranch(AppState.currentProjectId, name.trim());
+    const res = await window.electronAPI.gitCreateBranch(AppState.currentProjectId, name);
     if (res.ok) {
       showToast(`✓ Variante "${res.branchName}" créée — vous travaillez maintenant dessus`);
-      openGitHistoryModal(); // rafraîchir
+      openGitHistoryModal();
     }
   } catch (e) {
     showToast('Erreur : ' + e.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Créer'; }
+    if (input) { input.disabled = false; input.focus(); }
   }
 }
 
