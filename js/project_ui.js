@@ -108,16 +108,9 @@ function buildProjectData() {
  * @param {string} actionMessage - Message de commit descriptif
  */
 async function gitAutoSave(actionMessage) {
+  if (!AppState.currentProjectId) return;
   const project = buildProjectData();
-  // Auto-crée un projet si aucun n'est actif (premier calcul sans sauvegarde manuelle)
-  if (!AppState.currentProjectId) {
-    AppState.currentProjectId = project.id;
-    const nameEl = document.getElementById('project-name-input');
-    if (nameEl && !nameEl.value.trim()) nameEl.value = project.name;
-    updateProjectBar();
-  } else {
-    AppState.currentProjectId = project.id;
-  }
+  AppState.currentProjectId = project.id;
 
   // Sauvegarde localStorage (compatibilité existante)
   ProjectManager.save(project);

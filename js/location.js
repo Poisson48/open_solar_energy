@@ -69,7 +69,11 @@ function setLocationCoords(lat, lon) {
   AppState.location.lat = Math.round(lat * 10000) / 10000;
   AppState.location.lon = Math.round(lon * 10000) / 10000;
 
-  if (AppState.demoData) {
+  // Ne snapper sur une ville démo QUE si on n'a pas de données météo réelles
+  const hasRealWeather = AppState.location.name &&
+    (AppState.location.name.includes('PVGIS') || AppState.location.name.includes('Open-Meteo'));
+
+  if (AppState.demoData && !hasRealWeather) {
     let minDist = Infinity;
     let bestKey = 'paris';
     Object.entries(AppState.demoData.locations).forEach(([key, loc]) => {
@@ -83,6 +87,9 @@ function setLocationCoords(lat, lon) {
     document.querySelectorAll('.preset-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.loc === bestKey);
     });
+  } else {
+    // Coordonnées mises à jour sans changer les données météo
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
   }
   updateLocationUI();
   updateMapMarker();
