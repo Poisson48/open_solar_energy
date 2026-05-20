@@ -160,6 +160,11 @@ function handleEnedisCSV(input) {
     const msg   = `✓ ${result.format} ${result.year} importé - ${result.totalAnnual.toLocaleString('fr')} kWh/an${warns}`;
     setStatus('var(--color-success)', msg);
     showToast(`✓ Enedis ${result.year} importé — ${result.totalAnnual.toLocaleString('fr')} kWh/an${warns}`);
+
+    // Commit git après import Enedis
+    if (typeof gitAutoSave === 'function') {
+      gitAutoSave(`Import Enedis ${result.year || ''}`);
+    }
   });
 }
 

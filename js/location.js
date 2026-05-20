@@ -58,6 +58,10 @@ function setLocation(key) {
   document.querySelectorAll('.preset-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.loc === key);
   });
+  // Commit git après changement de localisation (preset)
+  if (typeof gitAutoSave === 'function') {
+    gitAutoSave(`Localisation → ${loc.name}`);
+  }
 }
 
 // ── Définir localisation par coordonnées ────────────────────
@@ -82,6 +86,10 @@ function setLocationCoords(lat, lon) {
   }
   updateLocationUI();
   updateMapMarker();
+  // Commit git après changement de localisation (coordonnées / carte)
+  if (typeof gitAutoSave === 'function') {
+    gitAutoSave(`Localisation → ${AppState.location.name}`);
+  }
 }
 
 function updateMapMarker() {
@@ -140,6 +148,10 @@ async function geocodeAddress() {
       // Restore geocoded name (setLocationCoords snaps to nearest demo city)
       AppState.location.name = geocodedName;
       updateLocationUI();
+      // Commit git après géocodage
+      if (typeof gitAutoSave === 'function') {
+        gitAutoSave(`Localisation → ${geocodedName}`);
+      }
     }
   } catch (e) {
     console.warn('Géocodage échoué', e);

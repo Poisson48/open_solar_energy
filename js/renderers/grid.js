@@ -141,6 +141,11 @@ function calcGridSystem() {
   AppState.lastGridResult = results;
   AppState.lastGridParams = params;
   renderGridResults(results, params);
+
+  // Commit git après calcul réseau
+  if (typeof gitAutoSave === 'function') {
+    gitAutoSave(`Calcul réseau — ${params.Ppeak.toFixed(2)} kWc · ${results.E_annual.toLocaleString('fr')} kWh/an`);
+  }
 }
 
 function renderGridResults(results, params) {

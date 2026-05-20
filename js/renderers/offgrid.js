@@ -17,6 +17,11 @@ function calcOffgridSizing() {
   AppState.lastOffgridSizingResult    = rec;
   AppState.lastOffgridSizingCandidates = allCandidates;
   renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, useHourly);
+
+  // Commit git après dimensionnement hors-réseau
+  if (typeof gitAutoSave === 'function' && rec) {
+    gitAutoSave(`Calcul hors-réseau — ${rec.Ppeak} kWc · ${rec.C_batt_gross} kWh batterie`);
+  }
 }
 
 function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, hourlyMode) {
