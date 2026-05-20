@@ -3,241 +3,614 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Open Solar Energy — Simulateur PV gratuit</title>
+  <title>Open Solar Energy — Simulateur PV gratuit pour Linux</title>
+  <meta name="description" content="Dimensionnement et simulation de systèmes photovoltaïques. Alternative open-source à PVGIS, 100 % local, sans serveur.">
   <style>
     :root {
       --sun: #f59e0b;
-      --sun-light: #fef3c7;
-      --green: #10b981;
-      --dark: #1e293b;
+      --sun-dim: #d97706;
+      --green: #16a34a;
+      --green-light: #dcfce7;
+      --dark: #0f172a;
+      --dark2: #1e293b;
+      --slate: #334155;
       --muted: #64748b;
+      --border: #e2e8f0;
       --bg: #f8fafc;
-      --card: #ffffff;
+      --white: #ffffff;
+      --radius: 1rem;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--dark); }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; background: var(--bg); color: var(--dark); line-height: 1.6; }
+    a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; display: block; }
 
-    header {
-      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-      color: white;
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(15,23,42,0.95);
+      backdrop-filter: blur(8px);
+      padding: 0.75rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .nav-logo { display: flex; align-items: center; gap: 0.6rem; color: white; font-weight: 700; font-size: 1rem; }
+    .nav-logo span { color: var(--sun); }
+    .nav-links { display: flex; align-items: center; gap: 1.5rem; }
+    .nav-links a { color: #94a3b8; font-size: 0.9rem; transition: color 0.15s; }
+    .nav-links a:hover { color: white; }
+    .nav-dl {
+      background: var(--sun); color: var(--dark); font-weight: 700;
+      padding: 0.45rem 1.1rem; border-radius: 0.5rem; font-size: 0.9rem;
+      transition: background 0.15s;
+    }
+    .nav-dl:hover { background: var(--sun-dim); color: var(--dark); }
+
+    /* ── HERO ── */
+    .hero {
+      background: linear-gradient(160deg, #0f172a 0%, #1a3a2a 60%, #0f2a1a 100%);
+      padding: 5rem 2rem 0;
       text-align: center;
-      padding: 4rem 2rem 3rem;
+      overflow: hidden;
+      position: relative;
     }
-    .badge {
-      display: inline-block;
-      background: var(--sun);
-      color: #1e293b;
-      font-size: 0.75rem;
-      font-weight: 700;
-      padding: 0.25rem 0.75rem;
-      border-radius: 999px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 1rem;
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(245,158,11,0.08), transparent);
     }
-    header h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 800; margin-bottom: 1rem; }
-    header p { font-size: 1.2rem; color: #94a3b8; max-width: 600px; margin: 0 auto 2rem; }
-
-    .download-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: var(--sun);
-      color: #1e293b;
-      font-size: 1.1rem;
-      font-weight: 700;
-      padding: 0.9rem 2rem;
-      border-radius: 0.75rem;
-      text-decoration: none;
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3);
+      color: var(--sun); font-size: 0.8rem; font-weight: 600;
+      padding: 0.3rem 0.9rem; border-radius: 999px; margin-bottom: 1.5rem;
+    }
+    .hero h1 {
+      font-size: clamp(2.2rem, 5vw, 4rem);
+      font-weight: 900; color: white; line-height: 1.1;
+      margin-bottom: 1.25rem; position: relative;
+    }
+    .hero h1 em { color: var(--sun); font-style: normal; }
+    .hero p {
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      color: #94a3b8; max-width: 560px; margin: 0 auto 2.5rem;
+      position: relative;
+    }
+    .hero-cta { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; position: relative; }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: var(--sun); color: var(--dark);
+      font-size: 1.05rem; font-weight: 800;
+      padding: 0.85rem 2rem; border-radius: 0.75rem;
+      box-shadow: 0 4px 20px rgba(245,158,11,0.35);
       transition: transform 0.15s, box-shadow 0.15s;
-      box-shadow: 0 4px 14px rgba(245,158,11,0.4);
     }
-    .download-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(245,158,11,0.5); }
-    .download-btn svg { width: 1.25rem; height: 1.25rem; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(245,158,11,0.45); color: var(--dark); }
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: rgba(255,255,255,0.06); color: #cbd5e1;
+      font-size: 1.05rem; font-weight: 600;
+      padding: 0.85rem 2rem; border-radius: 0.75rem;
+      border: 1px solid rgba(255,255,255,0.12);
+      transition: background 0.15s;
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.1); color: white; }
+    .hero-meta { margin-top: 1.5rem; color: #475569; font-size: 0.85rem; position: relative; }
 
-    .meta { margin-top: 1.5rem; color: #64748b; font-size: 0.9rem; }
-    .meta a { color: #94a3b8; }
+    /* ── SCREENSHOT HERO ── */
+    .hero-screenshot {
+      margin-top: 3.5rem;
+      position: relative;
+      max-width: 1100px;
+      margin-left: auto; margin-right: auto;
+    }
+    .hero-screenshot img {
+      width: 100%;
+      border-radius: 0.75rem 0.75rem 0 0;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-bottom: none;
+      box-shadow: 0 -8px 60px rgba(0,0,0,0.6);
+    }
+    .screenshot-bar {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-top: none;
+      border-radius: 0 0 0.75rem 0.75rem;
+      padding: 0.5rem 1rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-r { background: #ef4444; }
+    .dot-y { background: #f59e0b; }
+    .dot-g { background: #22c55e; }
 
-    main { max-width: 1000px; margin: 0 auto; padding: 3rem 1.5rem; }
+    /* ── STATS BAND ── */
+    .stats-band {
+      background: var(--dark2);
+      border-top: 1px solid rgba(255,255,255,0.06);
+      padding: 2.5rem 2rem;
+    }
+    .stats-inner {
+      max-width: 900px; margin: 0 auto;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 2rem; text-align: center;
+    }
+    .stat-val { font-size: 2rem; font-weight: 800; color: var(--sun); }
+    .stat-label { font-size: 0.85rem; color: #64748b; margin-top: 0.25rem; }
 
-    .section-title {
-      font-size: 1.5rem;
-      font-weight: 700;
+    /* ── SECTION WRAPPER ── */
+    section { padding: 5rem 2rem; }
+    .section-inner { max-width: 1100px; margin: 0 auto; }
+    .section-tag {
+      display: inline-block;
+      background: var(--green-light); color: var(--green);
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; padding: 0.25rem 0.75rem;
+      border-radius: 999px; margin-bottom: 1rem;
+    }
+    .section-title { font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 800; margin-bottom: 1rem; }
+    .section-sub { color: var(--muted); font-size: 1.05rem; max-width: 560px; }
+
+    /* ── SCREENSHOTS GALLERY ── */
+    .gallery-section { background: white; }
+    .tabs-nav {
+      display: flex; gap: 0.5rem; flex-wrap: wrap;
       margin-bottom: 1.5rem;
-      color: var(--dark);
+    }
+    .tab-btn {
+      padding: 0.5rem 1.1rem; border-radius: 0.5rem;
+      border: 1px solid var(--border);
+      background: var(--bg); color: var(--muted);
+      font-size: 0.9rem; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .tab-btn.active, .tab-btn:hover {
+      background: var(--dark); color: white; border-color: var(--dark);
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .gallery-img {
+      width: 100%; border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+    .gallery-caption {
+      margin-top: 1rem; color: var(--muted); font-size: 0.9rem; text-align: center;
     }
 
-    .features {
+    /* ── FEATURES ── */
+    .features-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 1.25rem;
-      margin-bottom: 3rem;
+      gap: 1.25rem; margin-top: 3rem;
     }
     .feature-card {
-      background: var(--card);
-      border: 1px solid #e2e8f0;
-      border-radius: 1rem;
-      padding: 1.5rem;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      transition: box-shadow 0.2s;
     }
-    .feature-card .icon {
-      font-size: 2rem;
-      margin-bottom: 0.75rem;
-    }
+    .feature-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.07); }
+    .feature-icon { font-size: 2rem; margin-bottom: 1rem; }
     .feature-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; }
-    .feature-card p { font-size: 0.9rem; color: var(--muted); line-height: 1.5; }
+    .feature-card p { font-size: 0.9rem; color: var(--muted); line-height: 1.6; }
+    .feature-card ul { list-style: none; margin-top: 0.75rem; }
+    .feature-card ul li { font-size: 0.87rem; color: var(--muted); padding: 0.2rem 0; padding-left: 1.2rem; position: relative; }
+    .feature-card ul li::before { content: '↗'; position: absolute; left: 0; color: var(--green); font-size: 0.75rem; top: 0.25rem; }
 
-    .install-block {
-      background: var(--dark);
-      color: #e2e8f0;
-      border-radius: 1rem;
-      padding: 2rem;
-      margin-bottom: 3rem;
+    /* ── INSTALL ── */
+    .install-section { background: var(--dark); }
+    .install-section .section-title { color: white; }
+    .install-section .section-sub { color: #94a3b8; }
+    .install-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 2rem; margin-top: 3rem;
     }
-    .install-block h2 { color: white; margin-bottom: 1.5rem; font-size: 1.3rem; }
-    .step { display: flex; gap: 1rem; margin-bottom: 1.25rem; align-items: flex-start; }
+    @media (max-width: 700px) { .install-grid { grid-template-columns: 1fr; } }
+    .install-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius); padding: 2rem;
+    }
+    .install-card h3 { color: white; font-size: 1.1rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.6rem; }
+    .os-badge {
+      background: rgba(245,158,11,0.15); color: var(--sun);
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+      padding: 0.2rem 0.6rem; border-radius: 0.3rem;
+    }
+    .install-step { display: flex; gap: 1rem; margin-bottom: 1.25rem; }
     .step-num {
-      background: var(--sun);
-      color: #1e293b;
-      font-weight: 800;
-      width: 2rem; height: 2rem;
-      border-radius: 50%;
+      background: var(--sun); color: var(--dark);
+      width: 1.75rem; height: 1.75rem; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-      font-size: 0.9rem;
+      font-size: 0.8rem; font-weight: 800; flex-shrink: 0; margin-top: 0.15rem;
     }
-    .step-content { padding-top: 0.2rem; }
-    .step-content strong { color: white; }
-    .step-content p { color: #94a3b8; font-size: 0.9rem; margin-top: 0.25rem; }
+    .install-step p { color: #94a3b8; font-size: 0.9rem; margin-top: 0.2rem; }
+    .install-step strong { color: white; }
     code {
-      background: #0f172a;
-      color: var(--sun);
-      padding: 0.15rem 0.4rem;
-      border-radius: 0.3rem;
-      font-family: monospace;
-      font-size: 0.85rem;
+      background: rgba(0,0,0,0.4); color: var(--sun);
+      font-family: 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.83rem; padding: 0.15rem 0.45rem; border-radius: 0.3rem;
     }
-
-    .cta-bottom {
-      text-align: center;
-      padding: 2rem;
-      background: var(--sun-light);
-      border-radius: 1rem;
-      margin-bottom: 2rem;
+    .code-block {
+      background: #0d1117;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 0.6rem; padding: 1.25rem 1.5rem;
+      margin-top: 0.75rem; overflow-x: auto;
     }
-    .cta-bottom h2 { margin-bottom: 0.75rem; }
-    .cta-bottom p { color: var(--muted); margin-bottom: 1.5rem; }
+    .code-block code {
+      background: none; color: #e6edf3;
+      font-size: 0.88rem; padding: 0; display: block; line-height: 1.8;
+    }
+    .code-block code .c { color: #8b949e; }
+    .install-note { color: #64748b; font-size: 0.82rem; margin-top: 1rem; }
 
+    /* ── MODELS TABLE ── */
+    .models-section { background: white; }
+    .table-wrap { overflow-x: auto; margin-top: 2rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th { background: var(--dark); color: white; font-weight: 600; padding: 0.75rem 1rem; text-align: left; }
+    td { padding: 0.7rem 1rem; border-bottom: 1px solid var(--border); color: var(--slate); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--bg); }
+    .tag-good { background: #dcfce7; color: #16a34a; font-size: 0.75rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 0.3rem; }
+    .tag-mid  { background: #fef9c3; color: #854d0e; font-size: 0.75rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 0.3rem; }
+
+    /* ── CTA BOTTOM ── */
+    .cta-section {
+      background: linear-gradient(135deg, #0f2a1a 0%, #1a3a2a 100%);
+      text-align: center; padding: 5rem 2rem;
+    }
+    .cta-section h2 { font-size: clamp(1.8rem, 3vw, 2.5rem); color: white; font-weight: 800; margin-bottom: 1rem; }
+    .cta-section p { color: #94a3b8; font-size: 1rem; margin-bottom: 2rem; }
+
+    /* ── FOOTER ── */
     footer {
-      text-align: center;
-      padding: 2rem;
-      color: var(--muted);
-      font-size: 0.85rem;
-      border-top: 1px solid #e2e8f0;
+      background: var(--dark); border-top: 1px solid rgba(255,255,255,0.06);
+      padding: 2rem; text-align: center;
+      color: #475569; font-size: 0.85rem;
     }
-    footer a { color: var(--muted); }
+    footer a { color: #64748b; transition: color 0.15s; }
+    footer a:hover { color: #94a3b8; }
+    footer .footer-links { display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+      .hero { padding: 3.5rem 1.25rem 0; }
+    }
+
+    /* ── ICONS SVG inline ── */
+    .icon { width: 1.1em; height: 1.1em; vertical-align: -0.15em; }
   </style>
 </head>
 <body>
 
-<header>
-  <div class="badge">Gratuit &amp; Open Source</div>
-  <h1>Open Solar Energy</h1>
-  <p>Dimensionnement et simulation de systèmes photovoltaïques — 100 % local, sans serveur, sans inscription.</p>
-  <a class="download-btn" href="https://github.com/Poisson48/open_solar_energy/releases/latest">
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/>
-    </svg>
-    Télécharger pour Linux (.AppImage)
-  </a>
-  <div class="meta">
-    Linux x64 &nbsp;·&nbsp; Mises à jour automatiques &nbsp;·&nbsp;
-    <a href="https://github.com/Poisson48/open_solar_energy">Code source sur GitHub</a>
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    Open <span>Solar</span> Energy
   </div>
-</header>
-
-<main>
-
-  <h2 class="section-title">Ce que fait l'application</h2>
-  <div class="features">
-    <div class="feature-card">
-      <div class="icon">☀️</div>
-      <h3>Simulation solaire physique</h3>
-      <p>Transposition HDKR (Hay-Davies-Klucher-Reindl), correction thermique NOCT, optimisation automatique inclinaison + azimut.</p>
-    </div>
-    <div class="feature-card">
-      <div class="icon">🏠</div>
-      <h3>Dimensionnement réseau</h3>
-      <p>Import CSV Enedis, 3 stratégies (ROI optimal, autoconsommation max, couverture %). Calcul économies, surplus, ROI, VAN 25 ans, LCOE.</p>
-    </div>
-    <div class="feature-card">
-      <div class="icon">🔋</div>
-      <h3>Hors réseau + batterie</h3>
-      <p>6 technologies batterie (LFP, AGM, NMC recondit.), simulation horaire, matrice PV × batterie, jours de déficit.</p>
-    </div>
-    <div class="feature-card">
-      <div class="icon">🌤️</div>
-      <h3>Données météo intégrées</h3>
-      <p>Import Open-Meteo (gratuit, CORS natif) ou PVGIS. Démo embarquée : Paris, Toulouse, Nice, Bordeaux. Carte interactive Leaflet.</p>
-    </div>
-    <div class="feature-card">
-      <div class="icon">📄</div>
-      <h3>Devis professionnel</h3>
-      <p>Formulaire complet installateur + client + chantier. Export PDF A4 prêt à envoyer, TVA configurable (5,5 % / 10 % / 20 %).</p>
-    </div>
-    <div class="feature-card">
-      <div class="icon">💾</div>
-      <h3>Gestion de projets</h3>
-      <p>Sauvegarde locale, clonage pour comparer scénarios, export / import JSON. Fonctionne 100 % hors connexion.</p>
-    </div>
+  <div class="nav-links">
+    <a href="#screenshots">Captures</a>
+    <a href="#features">Fonctionnalités</a>
+    <a href="#install">Installation</a>
+    <a href="https://github.com/Poisson48/open_solar_energy">GitHub</a>
+    <a class="nav-dl" href="https://github.com/Poisson48/open_solar_energy/releases/latest">↓ Télécharger</a>
   </div>
+</nav>
 
-  <div class="install-block">
-    <h2>Installation en 3 étapes</h2>
-    <div class="step">
-      <div class="step-num">1</div>
-      <div class="step-content">
-        <strong>Télécharger</strong>
-        <p>Récupérer le fichier <code>Open-Solar-Energy-*.AppImage</code> depuis la page Releases.</p>
-      </div>
-    </div>
-    <div class="step">
-      <div class="step-num">2</div>
-      <div class="step-content">
-        <strong>Rendre exécutable</strong>
-        <p><code>chmod +x Open-Solar-Energy-*.AppImage</code></p>
-      </div>
-    </div>
-    <div class="step">
-      <div class="step-num">3</div>
-      <div class="step-content">
-        <strong>Lancer</strong>
-        <p>Double-clic sur le fichier ou <code>./Open-Solar-Energy-*.AppImage</code></p>
-      </div>
-    </div>
-    <p style="color:#64748b;font-size:0.85rem;margin-top:1rem">Les mises à jour sont automatiques : l'application vérifie et installe les nouvelles versions au démarrage.</p>
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+    Open Source · Gratuit · Sans inscription
   </div>
-
-  <div class="cta-bottom">
-    <h2>Alternative open-source à PVGIS</h2>
-    <p>Aucune donnée envoyée à un serveur. Tous les calculs s'effectuent localement.</p>
-    <a class="download-btn" href="https://github.com/Poisson48/open_solar_energy/releases/latest">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/>
-      </svg>
-      Télécharger
+  <h1>Dimensionnez votre<br>installation <em>solaire</em><br>sans compromis</h1>
+  <p>Alternative open-source à PVGIS — calculs physiques complets, import Enedis, simulation batterie, devis professionnel. 100 % local, 0 serveur.</p>
+  <div class="hero-cta">
+    <a class="btn-primary" href="https://github.com/Poisson48/open_solar_energy/releases/latest">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
+      Télécharger pour Linux
+    </a>
+    <a class="btn-secondary" href="https://github.com/Poisson48/open_solar_energy">
+      <svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+      Voir le code
     </a>
   </div>
+  <div class="hero-meta">Linux x64 AppImage · Mises à jour automatiques · v1.7.0</div>
 
-</main>
+  <div class="hero-screenshot">
+    <img src="screenshots/app-dimensionnement.jpg" alt="Open Solar Energy — onglet dimensionnement avec résultats ROI et graphiques mensuels" loading="eager">
+    <div class="screenshot-bar">
+      <div class="dot dot-r"></div>
+      <div class="dot dot-y"></div>
+      <div class="dot dot-g"></div>
+    </div>
+  </div>
+</section>
 
+<!-- STATS -->
+<div class="stats-band">
+  <div class="stats-inner">
+    <div>
+      <div class="stat-val">HDKR</div>
+      <div class="stat-label">Modèle de transposition anisotrope (Hay-Davies-Klucher-Reindl)</div>
+    </div>
+    <div>
+      <div class="stat-val">6</div>
+      <div class="stat-label">Technologies de batterie (LFP, AGM, NMC recondit.)</div>
+    </div>
+    <div>
+      <div class="stat-val">100 %</div>
+      <div class="stat-label">Local — aucune donnée envoyée à un serveur</div>
+    </div>
+    <div>
+      <div class="stat-val">MIT</div>
+      <div class="stat-label">Licence libre — utilisation, modification, redistribution</div>
+    </div>
+  </div>
+</div>
+
+<!-- SCREENSHOTS -->
+<section class="gallery-section" id="screenshots">
+  <div class="section-inner">
+    <div class="section-tag">Captures d'écran</div>
+    <h2 class="section-title">L'application en action</h2>
+    <p class="section-sub">Interface complète avec carte interactive, graphiques de production et analyse financière détaillée.</p>
+
+    <div class="tabs-nav" style="margin-top:2rem">
+      <button class="tab-btn active" onclick="showTab('tab-sizing', this)">Dimensionnement réseau</button>
+      <button class="tab-btn" onclick="showTab('tab-monthly', this)">Données mensuelles</button>
+      <button class="tab-btn" onclick="showTab('tab-tracker', this)">Suiveur solaire</button>
+    </div>
+
+    <div id="tab-sizing" class="tab-content active">
+      <img class="gallery-img" src="screenshots/app-dimensionnement.jpg" alt="Onglet dimensionnement — ROI, puissance recommandée, autoconsommation, graphiques mensuels">
+      <p class="gallery-caption">Résultats pour Toulouse — 8 kWc, ROI 3,1 ans, 86,8 % autoconsommation, +17 410 € de gain net actualisé sur 25 ans</p>
+    </div>
+    <div id="tab-monthly" class="tab-content">
+      <img class="gallery-img" src="screenshots/app-monthly.jpg" alt="Onglet données mensuelles — irradiation mensuelle, tableau détaillé">
+      <p class="gallery-caption">Irradiation mensuelle sur plan incliné pour Toulouse — modèle HDKR anisotrope avec données Open-Meteo</p>
+    </div>
+    <div id="tab-tracker" class="tab-content">
+      <img class="gallery-img" src="screenshots/app-tracker.jpg" alt="Onglet suiveur solaire — comparaison fixe vs suiveur">
+      <p class="gallery-caption">Comparaison fixe vs. suiveur 1 et 2 axes — gain de production estimé selon latitude et configuration</p>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features" style="background: var(--bg);">
+  <div class="section-inner">
+    <div class="section-tag">Fonctionnalités</div>
+    <h2 class="section-title">Tout ce qu'il faut pour dimensionner</h2>
+    <p class="section-sub">Du calcul physique rigoureux jusqu'au devis PDF prêt à envoyer.</p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">☀️</div>
+        <h3>Physique solaire précise</h3>
+        <p>Modèles de référence académique, pas de coefficients forfaitaires.</p>
+        <ul>
+          <li>Transposition HDKR anisotrope (Hay-Davies-Klucher-Reindl 1990)</li>
+          <li>Intégration numérique Rb (Braun & Mitchell) — tout azimut</li>
+          <li>Correction thermique NOCT réelle (IEC 61215)</li>
+          <li>Optimisation inclinaison + azimut (91×13 combinaisons)</li>
+          <li>VAN 25 ans, LCOE, payback actualisé (+3 %/an hausse élec)</li>
+        </ul>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🏠</div>
+        <h3>Dimensionnement réseau</h3>
+        <p>Depuis ta facture EDF ou l'export CSV de ton espace Enedis.</p>
+        <ul>
+          <li>Import CSV Enedis multi-format (Wh/kWh, 30min, HP/HC)</li>
+          <li>3 stratégies : ROI optimal / autoconso max / couverture cible</li>
+          <li>Calcul économies, surplus injecté, prime autoconsommation</li>
+          <li>Tarif Base ou HP/HC, abonnement déduit</li>
+        </ul>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🔋</div>
+        <h3>Hors réseau + batterie</h3>
+        <p>Simulation horaire complète avec 6 technologies de stockage.</p>
+        <ul>
+          <li>Import Enedis direct (ZIP ou CSV) dans l'onglet hors réseau</li>
+          <li>Simulation horaire si données 30min disponibles</li>
+          <li>SOC mensuel porté sur 12 mois — bilan annuel réaliste</li>
+          <li>Matrice heatmap PV × batterie, jours de déficit</li>
+          <li>LFP, AGM, NMC recondit. (Leaf, Zoé, Tesla)</li>
+        </ul>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🌤️</div>
+        <h3>Données météo</h3>
+        <p>Plusieurs sources, une seule interface.</p>
+        <ul>
+          <li>Open-Meteo (gratuit, CORS natif, moy. 2020–2023)</li>
+          <li>PVGIS JRC (via proxy ou import JSON manuel)</li>
+          <li>4 villes démo embarquées (Paris, Toulouse, Nice, Bordeaux)</li>
+          <li>Carte Leaflet interactive — clic ou glissé pour placer le site</li>
+        </ul>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">📄</div>
+        <h3>Devis professionnel</h3>
+        <p>Génération PDF A4 complète depuis l'application.</p>
+        <ul>
+          <li>Infos installateur (société, SIRET, RGE) sauvegardées</li>
+          <li>7 lignes de coût éditables + remise + TVA (5,5 / 10 / 20 %)</li>
+          <li>Import automatique des résultats du dimensionnement</li>
+          <li>Numéro auto-généré, bloc signature client, impression directe</li>
+        </ul>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">💾</div>
+        <h3>Gestion de projets</h3>
+        <p>Plusieurs scénarios, zéro cloud.</p>
+        <ul>
+          <li>Sauvegarde locale (localStorage), pas de compte requis</li>
+          <li>Clonage pour comparer orientations, technologies, surfaces</li>
+          <li>Export / import JSON — partage entre machines</li>
+          <li>Ctrl+S pour sauvegarder à tout moment</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- INSTALL -->
+<section class="install-section" id="install">
+  <div class="section-inner">
+    <div class="section-tag" style="background:rgba(245,158,11,0.15);color:var(--sun)">Installation</div>
+    <h2 class="section-title">Prêt en 30 secondes</h2>
+    <p class="section-sub">Aucune dépendance, aucun runtime à installer. Un seul fichier exécutable.</p>
+
+    <div class="install-grid">
+      <div class="install-card">
+        <h3>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Linux x64
+          <span class="os-badge">Disponible</span>
+        </h3>
+        <div class="install-step">
+          <div class="step-num">1</div>
+          <div>
+            <strong>Télécharger</strong>
+            <p>Récupérer <code>Open-Solar-Energy-*.AppImage</code> depuis la <a href="https://github.com/Poisson48/open_solar_energy/releases/latest" style="color:var(--sun)">page Releases</a>.</p>
+          </div>
+        </div>
+        <div class="install-step">
+          <div class="step-num">2</div>
+          <div>
+            <strong>Rendre exécutable</strong>
+            <div class="code-block">
+              <code>chmod +x Open-Solar-Energy-*.AppImage</code>
+            </div>
+          </div>
+        </div>
+        <div class="install-step">
+          <div class="step-num">3</div>
+          <div>
+            <strong>Lancer</strong>
+            <div class="code-block">
+              <code>./Open-Solar-Energy-*.AppImage</code>
+            </div>
+          </div>
+        </div>
+        <p class="install-note">Les mises à jour sont automatiques — l'application vérifie les nouvelles versions au démarrage et propose le redémarrage.</p>
+      </div>
+
+      <div class="install-card">
+        <h3>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Windows
+          <span class="os-badge" style="background:rgba(100,116,139,0.15);color:#64748b">Bientôt</span>
+        </h3>
+        <div class="install-step">
+          <div class="step-num">1</div>
+          <div>
+            <strong>Télécharger</strong>
+            <p>Le fichier <code>Open-Solar-Energy-*-Setup.exe</code> sera disponible dans les <a href="https://github.com/Poisson48/open_solar_energy/releases" style="color:var(--sun)">releases</a>.</p>
+          </div>
+        </div>
+        <div class="install-step">
+          <div class="step-num">2</div>
+          <div>
+            <strong>Installer</strong>
+            <p>Double-clic sur le fichier <code>.exe</code> et suivre l'assistant.</p>
+          </div>
+        </div>
+        <div class="install-step">
+          <div class="step-num">3</div>
+          <div>
+            <strong>Alternative — navigateur</strong>
+            <div class="code-block">
+              <code><span class="c"># Cloner le dépôt :</span>
+git clone https://github.com/Poisson48/open_solar_energy.git
+cd open_solar_energy
+<span class="c"># Lancer :</span>
+serve.bat</code>
+            </div>
+          </div>
+        </div>
+        <p class="install-note">La version navigateur fonctionne sur tout OS avec Python 3 installé.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BATTERY TABLE -->
+<section class="models-section" id="batteries">
+  <div class="section-inner">
+    <div class="section-tag">Stockage</div>
+    <h2 class="section-title">6 technologies de batterie</h2>
+    <p class="section-sub">Coûts HT pro intégrés — comparez les options pour trouver le meilleur rapport coût/durabilité.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Technologie</th>
+            <th>DoD</th>
+            <th>Rendement</th>
+            <th>Cycles</th>
+            <th>Coût</th>
+            <th>Profil</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>LFP standard (neuf)</td><td>80 %</td><td>97 %</td><td>3 000</td><td>400 €/kWh</td><td><span class="tag-good">Fiable</span></td></tr>
+          <tr><td>LFP DIY CATL/EVE 280Ah</td><td>90 %</td><td>97 %</td><td>3 000</td><td>100 €/kWh + BMS 200 €</td><td><span class="tag-good">Économique</span></td></tr>
+          <tr><td>AGM plomb carbone</td><td>50 %</td><td>85 %</td><td>600</td><td>120 €/kWh</td><td><span class="tag-mid">Budget</span></td></tr>
+          <tr><td>NMC recondit. Nissan Leaf</td><td>80 %</td><td>96 %</td><td>800</td><td>45 €/kWh + BMS 150 €</td><td><span class="tag-good">Économique</span></td></tr>
+          <tr><td>NMC recondit. Renault Zoé</td><td>80 %</td><td>96 %</td><td>900</td><td>50 €/kWh + BMS 150 €</td><td><span class="tag-good">Économique</span></td></tr>
+          <tr><td>NMC recondit. Tesla</td><td>85 %</td><td>97 %</td><td>1 000</td><td>65 €/kWh + BMS 200 €</td><td><span class="tag-good">Haute densité</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- CTA BOTTOM -->
+<section class="cta-section">
+  <div class="section-inner" style="text-align:center">
+    <h2>Prêt à dimensionner votre installation ?</h2>
+    <p>Gratuit, open-source, aucune donnée envoyée à un serveur.</p>
+    <a class="btn-primary" href="https://github.com/Poisson48/open_solar_energy/releases/latest" style="display:inline-flex">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
+      Télécharger Open Solar Energy
+    </a>
+  </div>
+</section>
+
+<!-- FOOTER -->
 <footer>
-  <p>
-    <a href="https://github.com/Poisson48/open_solar_energy">GitHub</a> &nbsp;·&nbsp;
-    Licence MIT &nbsp;·&nbsp;
-    Données météo <a href="https://open-meteo.com">Open-Meteo</a> &amp; <a href="https://re.jrc.ec.europa.eu/pvg_tools/fr/">PVGIS (JRC)</a>
-  </p>
+  <div class="footer-links">
+    <a href="https://github.com/Poisson48/open_solar_energy">GitHub</a>
+    <a href="https://github.com/Poisson48/open_solar_energy/releases">Releases</a>
+    <a href="https://github.com/Poisson48/open_solar_energy/issues">Signaler un bug</a>
+    <a href="https://open-meteo.com">Open-Meteo</a>
+    <a href="https://re.jrc.ec.europa.eu/pvg_tools/fr/">PVGIS (JRC)</a>
+  </div>
+  <p>Licence MIT · Données météo Open-Meteo &amp; PVGIS · Développé avec <a href="https://claude.ai/code">Claude Code</a></p>
 </footer>
 
+<script>
+  function showTab(id, btn) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    btn.classList.add('active');
+  }
+</script>
 </body>
 </html>
