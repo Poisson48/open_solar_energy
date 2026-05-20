@@ -86,20 +86,27 @@ function closeEnedisModal() {
   document.getElementById('enedis-modal').style.display = 'none';
 }
 
-function handleEnedisCSV(input, statusId = 'sz-csv-status') {
-  const file     = input.files[0];
-  const statusEl = document.getElementById(statusId);
+function handleEnedisCSV(input) {
+  const file = input.files[0];
   if (!file) return;
 
-  statusEl.style.display = 'block';
-  statusEl.style.color   = 'var(--color-text-muted)';
-  statusEl.textContent   = '⏳ Lecture du fichier…';
+  const STATUS_IDS = ['sz-csv-status', 'og2-edf-import-status'];
+  const setStatus = (color, text) => {
+    STATUS_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.style.display = 'block';
+      el.style.color   = color;
+      el.textContent   = text;
+    });
+  };
+
+  setStatus('var(--color-text-muted)', '⏳ Lecture du fichier…');
 
   EnedisImport.handleFile(file, result => {
     input.value = '';
     if (result.error) {
-      statusEl.style.color   = 'var(--color-danger)';
-      statusEl.textContent   = '✗ ' + result.error;
+      setStatus('var(--color-danger)', '✗ ' + result.error);
       return;
     }
 
@@ -150,9 +157,8 @@ function handleEnedisCSV(input, statusId = 'sz-csv-status') {
     document.getElementById('sz-kwh-1')?.dispatchEvent(new Event('input'));
 
     const warns = result.warnings.length ? ` - ⚠ ${result.warnings[0]}` : '';
-    statusEl.style.color = 'var(--color-success)';
-    statusEl.textContent =
-      `✓ ${result.format} ${result.year} importé - ${result.totalAnnual.toLocaleString('fr')} kWh/an${warns}`;
+    const msg   = `✓ ${result.format} ${result.year} importé - ${result.totalAnnual.toLocaleString('fr')} kWh/an${warns}`;
+    setStatus('var(--color-success)', msg);
     showToast(`✓ Enedis ${result.year} importé — ${result.totalAnnual.toLocaleString('fr')} kWh/an${warns}`);
   });
 }
