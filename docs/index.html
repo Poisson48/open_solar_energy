@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Open Solar Energy — Simulateur PV gratuit pour Linux</title>
-  <meta name="description" content="Dimensionnement et simulation de systèmes photovoltaïques. Alternative open-source à PVGIS, 100 % local, sans serveur.">
+  <title>Open Solar Energy — Beta publique</title>
+  <meta name="description" content="Simulateur PV open-source en beta. Dimensionnement solaire, import Enedis, simulation batterie. On cherche des testeurs pour remonter les bugs.">
   <style>
     :root {
       --sun: #f59e0b;
@@ -306,22 +306,21 @@
 <!-- HERO -->
 <section class="hero">
   <div class="hero-badge">
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-    Open Source · Gratuit · Sans inscription
+    🧪 Beta publique — on cherche des testeurs
   </div>
-  <h1>Dimensionnez votre<br>installation <em>solaire</em><br>sans compromis</h1>
-  <p>Alternative open-source à PVGIS — calculs physiques complets, import Enedis, simulation batterie, devis professionnel. 100 % local, 0 serveur.</p>
+  <h1>Un simulateur PV<br><em>open-source</em>,<br>en cours de route</h1>
+  <p>Application desktop Linux pour dimensionner des installations solaires. Encore jeune, probablement buguée par endroits — tes retours et rapports de bugs sont ce dont on a besoin.</p>
   <div class="hero-cta">
     <a class="btn-primary" href="https://github.com/Poisson48/open_solar_energy/releases/latest">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
-      Télécharger pour Linux
+      Essayer la beta Linux
     </a>
-    <a class="btn-secondary" href="https://github.com/Poisson48/open_solar_energy">
-      <svg class="icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
-      Voir le code
+    <a class="btn-secondary" href="https://github.com/Poisson48/open_solar_energy/issues/new">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Signaler un bug
     </a>
   </div>
-  <div class="hero-meta">Linux x64 AppImage · Mises à jour automatiques · v1.7.0</div>
+  <div class="hero-meta">v1.7.0 beta · Linux x64 · Mises à jour automatiques</div>
 
   <div class="hero-screenshot">
     <img src="screenshots/app-dimensionnement.jpg" alt="Open Solar Energy — onglet dimensionnement avec résultats ROI et graphiques mensuels" loading="eager">
@@ -333,24 +332,18 @@
   </div>
 </section>
 
-<!-- STATS -->
+<!-- BETA NOTICE -->
 <div class="stats-band">
-  <div class="stats-inner">
-    <div>
-      <div class="stat-val">HDKR</div>
-      <div class="stat-label">Modèle de transposition anisotrope (Hay-Davies-Klucher-Reindl)</div>
-    </div>
-    <div>
-      <div class="stat-val">6</div>
-      <div class="stat-label">Technologies de batterie (LFP, AGM, NMC recondit.)</div>
-    </div>
-    <div>
-      <div class="stat-val">100 %</div>
-      <div class="stat-label">Local — aucune donnée envoyée à un serveur</div>
-    </div>
-    <div>
-      <div class="stat-val">MIT</div>
-      <div class="stat-label">Licence libre — utilisation, modification, redistribution</div>
+  <div class="stats-inner" style="grid-template-columns:1fr;text-align:left;max-width:700px">
+    <div style="display:flex;gap:1rem;align-items:flex-start">
+      <span style="font-size:1.5rem;flex-shrink:0">⚠️</span>
+      <div>
+        <div style="color:white;font-weight:700;margin-bottom:0.4rem">Application en beta — utilise avec un regard critique</div>
+        <div style="color:#94a3b8;font-size:0.9rem;line-height:1.6">
+          Les modèles de calcul sont basés sur des références académiques (HDKR, NOCT IEC 61215…) mais l'app n'a pas encore été validée de façon extensive. Des bugs, incohérences ou cas limites peuvent exister.
+          Si tu trouves quelque chose de bizarre, <a href="https://github.com/Poisson48/open_solar_energy/issues/new" style="color:var(--sun);text-decoration:underline">ouvre une issue sur GitHub</a> — c'est exactement ce qu'on cherche.
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -386,9 +379,9 @@
 <!-- FEATURES -->
 <section id="features" style="background: var(--bg);">
   <div class="section-inner">
-    <div class="section-tag">Fonctionnalités</div>
-    <h2 class="section-title">Tout ce qu'il faut pour dimensionner</h2>
-    <p class="section-sub">Du calcul physique rigoureux jusqu'au devis PDF prêt à envoyer.</p>
+    <div class="section-tag">Ce que ça fait</div>
+    <h2 class="section-title">Fonctionnalités disponibles</h2>
+    <p class="section-sub">Voilà ce qui est implémenté — certaines parties sont plus matures que d'autres.</p>
 
     <div class="features-grid">
       <div class="feature-card">
@@ -580,15 +573,56 @@ serve.bat</code>
   </div>
 </section>
 
+<!-- CONTRIBUTE -->
+<section style="background:white">
+  <div class="section-inner">
+    <div class="section-tag">Participer</div>
+    <h2 class="section-title">Comment aider ?</h2>
+    <p class="section-sub">Pas besoin de coder. La meilleure contribution en ce moment c'est d'essayer l'app et de remonter ce qui ne va pas.</p>
+    <div class="features-grid" style="margin-top:2rem">
+      <div class="feature-card">
+        <div class="feature-icon">🐛</div>
+        <h3>Signaler un bug</h3>
+        <p>Un calcul qui semble faux, un import qui plante, une interface qui s'affiche mal — tout est utile.</p>
+        <div style="margin-top:1rem">
+          <a href="https://github.com/Poisson48/open_solar_energy/issues/new" style="display:inline-block;background:var(--dark);color:white;padding:0.5rem 1.1rem;border-radius:0.5rem;font-size:0.9rem;font-weight:600">Ouvrir une issue →</a>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">💬</div>
+        <h3>Donner un avis</h3>
+        <p>Tu utilises PVGIS ou une autre solution actuellement ? Dis-nous ce qui manque, ce qui est confus, ce qui est bien.</p>
+        <div style="margin-top:1rem">
+          <a href="https://github.com/Poisson48/open_solar_energy/discussions" style="display:inline-block;background:var(--dark);color:white;padding:0.5rem 1.1rem;border-radius:0.5rem;font-size:0.9rem;font-weight:600">Discussions GitHub →</a>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔧</div>
+        <h3>Contribuer au code</h3>
+        <p>JavaScript vanilla, aucun framework. Si tu vois quelque chose à améliorer, une PR est la bienvenue.</p>
+        <div style="margin-top:1rem">
+          <a href="https://github.com/Poisson48/open_solar_energy" style="display:inline-block;background:var(--dark);color:white;padding:0.5rem 1.1rem;border-radius:0.5rem;font-size:0.9rem;font-weight:600">Fork sur GitHub →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- CTA BOTTOM -->
 <section class="cta-section">
   <div class="section-inner" style="text-align:center">
-    <h2>Prêt à dimensionner votre installation ?</h2>
-    <p>Gratuit, open-source, aucune donnée envoyée à un serveur.</p>
-    <a class="btn-primary" href="https://github.com/Poisson48/open_solar_energy/releases/latest" style="display:inline-flex">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
-      Télécharger Open Solar Energy
-    </a>
+    <h2>Envie de tester ?</h2>
+    <p>Gratuit, open-source, sans inscription. Si quelque chose cloche, dis-le nous.</p>
+    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+      <a class="btn-primary" href="https://github.com/Poisson48/open_solar_energy/releases/latest" style="display:inline-flex">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
+        Télécharger la beta
+      </a>
+      <a class="btn-secondary" href="https://github.com/Poisson48/open_solar_energy/issues/new" style="display:inline-flex">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Signaler un bug
+      </a>
+    </div>
   </div>
 </section>
 
@@ -597,7 +631,7 @@ serve.bat</code>
   <div class="footer-links">
     <a href="https://github.com/Poisson48/open_solar_energy">GitHub</a>
     <a href="https://github.com/Poisson48/open_solar_energy/releases">Releases</a>
-    <a href="https://github.com/Poisson48/open_solar_energy/issues">Signaler un bug</a>
+    <a href="https://github.com/Poisson48/open_solar_energy/issues/new">Signaler un bug</a>
     <a href="https://open-meteo.com">Open-Meteo</a>
     <a href="https://re.jrc.ec.europa.eu/pvg_tools/fr/">PVGIS (JRC)</a>
   </div>
