@@ -177,6 +177,20 @@ function loadProject(id) {
   // Formulaires
   restoreFormState(project.formState);
 
+  // Restaurer le statut import météo (PVGIS / Open-Meteo)
+  if (AppState.weatherData && AppState.location?.name) {
+    const source = AppState.location.name.match(/\((PVGIS[^)]*|Open-Meteo)\)/)?.[1];
+    if (source) {
+      const totalGHI = Math.round(AppState.weatherData.reduce((s, m) => s + (m.GHI || 0), 0));
+      const statusEl = document.getElementById('pvgis-import-status');
+      if (statusEl) {
+        statusEl.style.color   = '#2e7d32';
+        statusEl.textContent   = `✓ ${source} - GHI annuel : ${totalGHI} kWh/m²/an`;
+        statusEl.style.display = 'block';
+      }
+    }
+  }
+
   // Restaurer les indicateurs de statut Enedis
   if (AppState.enedisYear || AppState.hourlyEnedisData) {
     const year = AppState.enedisYear || AppState.hourlyEnedisData?.year || '';
