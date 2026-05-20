@@ -56,6 +56,15 @@ function importSizingToQuote() {
   if (rec?.annualProd)  setVal('dv-sys-prod',    Math.round(rec.annualProd));
   if (rec?.co2Saved)    setVal('dv-sys-co2',     Math.round(rec.co2Saved));
 
+  // Propager le modele panneau depuis les onglets dimensionnement / réseau
+  const panelModelEl = document.getElementById('dv-sys-panel-model');
+  if (panelModelEl && !panelModelEl.value) {
+    const modelSz  = (document.getElementById('sz-panel-model')?.value  || '').trim();
+    const modelInp = (document.getElementById('inp-panel-model')?.value || '').trim();
+    if (modelSz)  panelModelEl.value = modelSz;
+    else if (modelInp) panelModelEl.value = modelInp;
+  }
+
   setVal('dv-site-address', AppState.location.name || '');
   if (inp?.tilt)                   setVal('dv-site-tilt',    inp.tilt);
   if (inp?.azimuth !== undefined)  setVal('dv-site-azimuth', inp.azimuth);

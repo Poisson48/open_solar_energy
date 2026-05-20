@@ -37,6 +37,17 @@ function initTabGrid() {
             </div>
           </div>
 
+          <div class="form-group" style="margin-bottom:6px">
+            <label style="display:flex;align-items:center;justify-content:space-between">
+              <span for="inp-panel-model">Modele panneau</span>
+              <span style="display:inline-flex;gap:4px">
+                <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.saveFromForm('inp')" style="padding:2px 8px;font-size:10px" title="Enregistrer dans la bibliotheque">💾 Enregistrer</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.openLibraryModal('inp')" style="padding:2px 8px;font-size:10px" title="Choisir dans la bibliotheque">📋 Bibliotheque</button>
+              </span>
+            </label>
+            <input type="text" id="inp-panel-model" placeholder="ex : Jinko Tiger Neo 415W" style="width:100%">
+          </div>
+
           <div class="form-group" style="margin-bottom:10px">
             <label for="inp-panel-wp">Puissance unitaire panneau</label>
             <div class="input-unit">

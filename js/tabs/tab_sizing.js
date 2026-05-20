@@ -75,6 +75,16 @@ function initTabSizing() {
             Toiture et installation
           </summary>
           <div style="margin-top:10px">
+            <div class="form-group" style="margin-bottom:6px">
+              <label style="display:flex;align-items:center;justify-content:space-between">
+                <span for="sz-panel-model">Modele panneau</span>
+                <span style="display:inline-flex;gap:4px">
+                  <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.saveFromForm('sz')" style="padding:2px 8px;font-size:10px" title="Enregistrer dans la bibliotheque">💾 Enregistrer</button>
+                  <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.openLibraryModal('sz')" style="padding:2px 8px;font-size:10px" title="Choisir dans la bibliotheque">📋 Bibliotheque</button>
+                </span>
+              </label>
+              <input type="text" id="sz-panel-model" placeholder="ex : Jinko Tiger Neo 415W" style="width:100%">
+            </div>
             <div class="params-grid">
               <div class="form-group">
                 <label for="sz-tilt">Inclinaison <button type="button" class="btn btn-outline btn-sm" onclick="optimizeTiltFor('sz')" style="padding:1px 7px;font-size:10px;margin-left:4px">⚡ Auto</button></label>
