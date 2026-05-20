@@ -3,7 +3,7 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '1.7.2';
+const APP_VERSION = '1.7.3';
 // Historique :
 //   1.4.0 - Module devis professionnel
 //   1.5.0 - Refactoring multi-fichiers, modal démarrage, infos client,
@@ -18,6 +18,7 @@ const APP_VERSION = '1.7.2';
 //   1.7.1 - Audit bugs B1-B10 : payback DCF, reset Enedis, selectOptimal sans mutation,
 //            années bissextiles, AppState initialisé, LCOE nominal
 //   1.7.2 - Fix sandbox Linux : AppImage utilisable sans --no-sandbox
+//   1.7.3 - Fix sandbox Linux (app.disableSandbox) + release non-draft
 
 const AppState = {
   location:   { lat: 48.8566, lon: 2.3522, alt: 35, name: 'Paris, France' },

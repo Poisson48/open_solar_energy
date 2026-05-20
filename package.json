@@ -1,6 +1,6 @@
 {
   "name": "open-solar-energy",
-  "version": "1.7.2",
+  "version": "1.7.3",
   "description": "Alternative open-source à PVGIS — dimensionnement et simulation de systèmes photovoltaïques",
   "main": "electron-main.js",
   "scripts": {
@@ -22,7 +22,8 @@
     "publish": {
       "provider": "github",
       "owner": "poisson48",
-      "repo": "open_solar_energy"
+      "repo": "open_solar_energy",
+      "releaseType": "release"
     },
     "linux": {
       "target": [
