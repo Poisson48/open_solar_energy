@@ -5,6 +5,11 @@
  *   1. Données Enedis 30min importées (si disponibles) → profil réel
  *   2. Profil synthétique basé sur les consommations mensuelles (fallback)
  *
+ * v1.8.0 :
+ *   - Auto-affichage si weatherData + hourlyEnedisData disponibles
+ *   - computeAllMonths() : calcule et affiche les 12 mois
+ *   - Graphe superposition 12 mois (Charts.renderMonthlyOverlay)
+ *
  * Dépend de : app_state.js, solar_math.js, charts.js
  */
 
@@ -13,6 +18,12 @@ const HourlyModule = (() => {
   // Données brutes 30min (tableau de 17520 valeurs = 365j × 48 slots)
   let _rawData = null;    // Float32Array ou Array<number> en kWh par slot 30min
   let _rawYear = null;
+
+  // Dernier mois affiché (pour navigation)
+  let _currentMonth = 6;
+
+  const MONTHS_FR = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  const MONTHS_LONG = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 
   /** Stocker les données brutes Enedis 30min. setData(null) réinitialise. */
   function setData(data) {
@@ -191,61 +202,49 @@ const HourlyModule = (() => {
     });
   }
 
-  /**
-   * Lance l'analyse complète et affiche les résultats dans l'onglet
-   */
-  function compute() {
-    if (!AppState.weatherData) {
-      showToast('⚠ Sélectionnez d\'abord un lieu avec des données météo.', 'error');
-      return;
-    }
-
-    const month   = parseInt(document.getElementById('hourly-month')?.value)   || 6;
-    const Ppeak   = parseFloat(document.getElementById('hourly-ppeak')?.value) || 3;
-    const battKwh = parseFloat(document.getElementById('hourly-batt')?.value)  || 0;
-    const dod     = parseFloat(document.getElementById('hourly-dod')?.value)   || 80;
-    const tilt    = parseFloat(document.getElementById('hourly-tilt')?.value)  || 30;
-    const azimuth = parseFloat(document.getElementById('hourly-azimuth')?.value) || 0;
-
-    const losses = AppState.install?.losses ?? 14;
-    const consoH = getHourlyConsumptionProfile(month);
-    const pvH    = getHourlyPvProduction(month, Ppeak, tilt, azimuth, losses);
-    const sim    = battKwh > 0
+  /** Simule un mois et retourne les données + KPIs */
+  function _simulateMonth(month, Ppeak, battKwh, dod, tilt, azimuth) {
+    const losses  = AppState.install?.losses ?? 14;
+    const consoH  = getHourlyConsumptionProfile(month);
+    const pvH     = getHourlyPvProduction(month, Ppeak, tilt, azimuth, losses);
+    const sim     = battKwh > 0
       ? simulateDailyBattery(pvH, consoH, battKwh, dod)
       : pvH.map((pv, h) => {
-          const conso = consoH[h];
+          const conso     = consoH[h];
           const autoconso = Math.min(pv, conso);
-          return { hour: h, pv, conso, soc: 0, autoconso, surplus: Math.max(0, pv - conso), grid: Math.max(0, conso - pv) };
+          return { hour: h, pv, conso, soc: 0, autoconso,
+                   surplus: Math.max(0, pv - conso), grid: Math.max(0, conso - pv) };
         });
 
-    // KPIs journaliers
     const totalPv      = sim.reduce((s, r) => s + r.pv, 0);
     const totalConso   = sim.reduce((s, r) => s + r.conso, 0);
     const totalAuto    = sim.reduce((s, r) => s + r.autoconso, 0);
     const totalSurplus = sim.reduce((s, r) => s + r.surplus, 0);
     const totalGrid    = sim.reduce((s, r) => s + r.grid, 0);
-    const autoPct  = totalPv > 0 ? Math.round(totalAuto / totalPv * 100) : 0;
-    // Si déficit > 0, le taux ne peut pas afficher 100% (évite l'arrondi trompeur)
-    const coverPct = totalConso > 0
+    const autoPct      = totalPv > 0 ? Math.round(totalAuto / totalPv * 100) : 0;
+    const coverPct     = totalConso > 0
       ? (totalGrid > 0 ? Math.min(99, Math.round(totalAuto / totalConso * 100)) : 100)
       : 0;
 
-    const MONTHS = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
-    const monthName = MONTHS[month - 1];
-    const dataSource = _rawData ? 'Données Enedis réelles' : 'Profil synthétique';
+    return { sim, totalPv, totalConso, totalAuto, totalSurplus, totalGrid, autoPct, coverPct };
+  }
 
+  /** Construit le bloc HTML d'un seul mois */
+  function _buildMonthHTML(month, data, battKwh, dod, Ppeak, dataSource) {
+    const monthName = MONTHS_FR[month - 1];
     const isOffgrid = AppState.installationType === 'offgrid';
-    const labelSurplus = isOffgrid ? 'Surplus (énergie perdue)' : 'Surplus injecté';
-    const labelSurplusUnit = isOffgrid ? 'non consommé, dissipé' : 'réseau / perdu';
-    const labelDeficit = isOffgrid ? 'Déficit non couvert' : 'Soutirage réseau';
-    const labelDeficitUnit = isOffgrid ? 'batterie vide, manque' : 'déficit non couvert';
-    const labelColDeficit = isOffgrid ? 'Déficit<br>Wh' : 'Réseau<br>Wh';
+    const labelSurplus      = isOffgrid ? 'Surplus (énergie perdue)' : 'Surplus injecté';
+    const labelSurplusUnit  = isOffgrid ? 'non consommé, dissipé' : 'réseau / perdu';
+    const labelDeficit      = isOffgrid ? 'Déficit non couvert' : 'Soutirage réseau';
+    const labelDeficitUnit  = isOffgrid ? 'batterie vide, manque' : 'déficit non couvert';
+    const labelColDeficit   = isOffgrid ? 'Déficit<br>Wh' : 'Réseau<br>Wh';
 
-    const chartId1 = 'hourly-chart-main-' + Date.now();
-    const chartId2 = battKwh > 0 ? 'hourly-chart-soc-' + Date.now() : null;
+    const ts        = `${month}-${Date.now()}`;
+    const chartId1  = `hourly-chart-main-${ts}`;
+    const chartId2  = battKwh > 0 ? `hourly-chart-soc-${ts}` : null;
+    const { sim, totalPv, totalConso, totalSurplus, totalGrid, autoPct, coverPct } = data;
 
-    const el = document.getElementById('hourly-results');
-    el.innerHTML = `
+    return `
       <div class="kpi-grid" style="margin-bottom:12px">
         <div class="kpi-card">
           <div class="kpi-value accent">${Math.round(totalPv * 1000)} Wh</div>
@@ -316,16 +315,153 @@ const HourlyModule = (() => {
           </table>
         </div>
       </div>`;
+  }
 
-    // Rendre les graphiques
+  /**
+   * Lance l'analyse des 12 mois et affiche les résultats dans l'onglet.
+   * C'est la fonction principale appelée par le bouton "Analyser les 12 mois"
+   * ainsi qu'en auto-trigger si les données sont disponibles.
+   */
+  function computeAllMonths() {
+    if (!AppState.weatherData) {
+      showToast('⚠ Sélectionnez d\'abord un lieu avec des données météo.', 'error');
+      return;
+    }
+
+    const Ppeak   = parseFloat(document.getElementById('hourly-ppeak')?.value)   || 3;
+    const battKwh = parseFloat(document.getElementById('hourly-batt')?.value)    || 0;
+    const dod     = parseFloat(document.getElementById('hourly-dod')?.value)     || 80;
+    const tilt    = parseFloat(document.getElementById('hourly-tilt')?.value)    || 30;
+    const azimuth = parseFloat(document.getElementById('hourly-azimuth')?.value) || 0;
+
+    const dataSource = _rawData ? 'Données Enedis réelles' : 'Profil synthétique';
+    const isOffgrid  = AppState.installationType === 'offgrid';
     const chartGridLabel = isOffgrid ? 'Déficit non couvert (Wh)' : 'Soutirage réseau (Wh)';
+
+    // Simuler les 12 mois
+    const allData = Array.from({ length: 12 }, (_, i) =>
+      _simulateMonth(i + 1, Ppeak, battKwh, dod, tilt, azimuth)
+    );
+
+    // ID unique pour le graphe overlay
+    const overlayId = 'hourly-chart-overlay-' + Date.now();
+
+    // Construire l'UI : tabs de navigation mois + contenu
+    const tabBtns = MONTHS_FR.map((m, i) => `
+      <button class="hourly-month-tab${i === _currentMonth - 1 ? ' active' : ''}"
+              data-month="${i + 1}"
+              style="padding:4px 10px;border:1px solid var(--color-border);border-radius:4px;background:${i === _currentMonth - 1 ? 'var(--color-accent)' : 'var(--color-bg)'};color:${i === _currentMonth - 1 ? '#fff' : 'inherit'};cursor:pointer;font-size:12px;white-space:nowrap">
+        ${m}
+      </button>`).join('');
+
+    const monthPanels = MONTHS_LONG.map((mLong, i) => {
+      const isActive = (i + 1) === _currentMonth;
+      const monthHtml = _buildMonthHTML(i + 1, allData[i], battKwh, dod, Ppeak, dataSource);
+      return `
+        <div id="hourly-panel-${i + 1}"
+             style="display:${isActive ? 'block' : 'none'}">
+          <div class="card-title" style="font-size:14px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--color-border)">
+            ${mLong}
+          </div>
+          ${monthHtml}
+        </div>`;
+    }).join('');
+
+    const el = document.getElementById('hourly-results');
+    el.innerHTML = `
+      <!-- Graphe superposition 12 mois -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title" style="margin-bottom:6px">Vue annuelle — Superposition des 12 mois</div>
+        <div class="chart-container" style="height:280px"><canvas id="${overlayId}"></canvas></div>
+      </div>
+
+      <!-- Navigation mois -->
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;align-items:center">
+        <span style="font-size:12px;color:var(--color-text-muted);margin-right:4px">Mois :</span>
+        ${tabBtns}
+      </div>
+
+      <!-- Panneau par mois -->
+      <div id="hourly-month-panels">
+        ${monthPanels}
+      </div>`;
+
+    // Navigation entre mois
+    el.querySelectorAll('.hourly-month-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const m = parseInt(btn.dataset.month);
+        _currentMonth = m;
+        // Mettre à jour les styles des boutons
+        el.querySelectorAll('.hourly-month-tab').forEach(b => {
+          const active = parseInt(b.dataset.month) === m;
+          b.style.background   = active ? 'var(--color-accent)' : 'var(--color-bg)';
+          b.style.color        = active ? '#fff' : 'inherit';
+        });
+        // Afficher le bon panneau
+        el.querySelectorAll('[id^="hourly-panel-"]').forEach(panel => {
+          panel.style.display = panel.id === `hourly-panel-${m}` ? 'block' : 'none';
+        });
+      });
+    });
+
+    // Rendre les graphiques avec un léger délai pour que le DOM soit prêt
     setTimeout(() => {
-      Charts.renderHourlyProfile(chartId1, sim, monthName, chartGridLabel);
-      if (battKwh > 0 && chartId2) {
-        Charts.renderHourlySoc(chartId2, sim, battKwh * dod / 100);
-      }
+      // Graphe superposition annuelle
+      const overlayInput = allData.map((d, i) => ({
+        monthName: MONTHS_FR[i],
+        sim: d.sim
+      }));
+      Charts.renderMonthlyOverlay(overlayId, overlayInput);
+
+      // Graphes de chaque mois (seulement le mois actif au premier rendu,
+      // les autres seront rendus à la demande au survol des tabs)
+      allData.forEach((d, i) => {
+        const month = i + 1;
+        const ts    = `${month}-`;
+        // Chercher le canvas du mois (par préfixe d'ID dans le panel correspondant)
+        const panel = document.getElementById(`hourly-panel-${month}`);
+        if (!panel) return;
+
+        const mainCanvas = panel.querySelector(`[id^="hourly-chart-main-"]`);
+        const socCanvas  = panel.querySelector(`[id^="hourly-chart-soc-"]`);
+
+        if (mainCanvas) {
+          Charts.renderHourlyProfile(mainCanvas.id, d.sim, MONTHS_FR[i], chartGridLabel);
+        }
+        if (socCanvas && battKwh > 0) {
+          Charts.renderHourlySoc(socCanvas.id, d.sim, battKwh * dod / 100);
+        }
+      });
     }, 50);
   }
 
-  return { setData, getHourlyConsumptionProfile, getHourlyPvProduction, simulateDailyBattery, compute, updateSourceStatus: _updateSourceStatus };
+  /**
+   * Ancienne fonction compute() — conservée pour compatibilité.
+   * Désormais délègue à computeAllMonths().
+   */
+  function compute() {
+    computeAllMonths();
+  }
+
+  /**
+   * Auto-trigger : affiche les résultats si les données nécessaires sont déjà disponibles.
+   * Appelé à l'activation de l'onglet daily ou après chargement d'un projet.
+   */
+  function autoComputeIfReady() {
+    if (AppState.weatherData) {
+      // On a les données météo — on peut calculer (avec profil réel ou synthétique)
+      computeAllMonths();
+    }
+  }
+
+  return {
+    setData,
+    getHourlyConsumptionProfile,
+    getHourlyPvProduction,
+    simulateDailyBattery,
+    compute,
+    computeAllMonths,
+    autoComputeIfReady,
+    updateSourceStatus: _updateSourceStatus
+  };
 })();

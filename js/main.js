@@ -108,6 +108,8 @@ function activateTab(tab) {
   if (pane) pane.classList.add('active');
   AppState.activeTab = tab;
   if (tab === 'irradiation') renderIrradiationData();
+  // Auto-affichage onglet horaire si données disponibles
+  if (tab === 'daily') HourlyModule.autoComputeIfReady();
 }
 
 function initTabs() {
@@ -176,7 +178,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-calc-grid')?.addEventListener('click',     () => withLoading('btn-calc-grid',     calcGridSystem));
   document.getElementById('btn-calc-irr')?.addEventListener('click',      () => withLoading('btn-calc-irr',      renderIrradiationData));
   document.getElementById('btn-calc-opt')?.addEventListener('click',      () => withLoading('btn-calc-opt',      calcOptimization));
-  document.getElementById('btn-calc-hourly')?.addEventListener('click',   () => withLoading('btn-calc-hourly',   () => HourlyModule.compute()));
+  document.getElementById('btn-calc-hourly')?.addEventListener('click',   () => withLoading('btn-calc-hourly',   () => HourlyModule.computeAllMonths()));
 
   // 5. Initialiser l'UI projets (modal démarrage, Ctrl+S, etc.)
   initProjectUI();
@@ -191,6 +193,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     renderIrradiationData();
     calcSizing();
     HourlyModule.updateSourceStatus();
+    // Si l'onglet daily est actif dès le démarrage, déclencher l'analyse
+    if (AppState.activeTab === 'daily') HourlyModule.autoComputeIfReady();
   }, 350);
 
 });

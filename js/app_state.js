@@ -3,7 +3,7 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '1.7.6';
+const APP_VERSION = '1.8.2';
 // Historique :
 //   1.4.0 - Module devis professionnel
 //   1.5.0 - Refactoring multi-fichiers, modal démarrage, infos client,
@@ -22,6 +22,9 @@ const APP_VERSION = '1.7.6';
 //   1.7.4 - Bouton Enedis unifié (même modal réseau/batterie) + status sync
 //   1.7.5 - Édition projet (nom + client) + persistance complète à la réouverture
 //   1.7.6 - Fix Auto surface, restauration Enedis au chargement, auto-save 3min
+//   1.8.0 - Données horaires : auto-affichage, 12 mois, graphe superposition annuelle
+//   1.8.1 - Saisie modele panneau + bibliotheque globale (ose_panels_v1)
+//   1.8.2 - Git autosave : chaque action importante crée un commit git
 
 const AppState = {
   location:   { lat: 48.8566, lon: 2.3522, alt: 35, name: 'Paris, France' },
@@ -81,11 +84,11 @@ const AppState = {
 // Champs de formulaire persistés dans un projet
 const PROJECT_FIELDS = [
   // Système PV réseau (Ppeak calculé depuis surface + panneaux)
-  'inp-surface','inp-panel-wp','inp-panel-m2','sel-tech','inp-losses','inp-tilt','inp-azimuth','inp-cost','inp-kwh-price','inp-co2',
+  'inp-surface','inp-panel-model','inp-panel-wp','inp-panel-m2','sel-tech','inp-losses','inp-tilt','inp-azimuth','inp-cost','inp-kwh-price','inp-co2',
   // Dimensionnement EDF
   'sz-tariff','sz-price-base','sz-price-hp','sz-price-hc','sz-subscription',
   ...Array.from({length:12}, (_,i) => `sz-kwh-${i+1}`),
-  'sz-tilt','sz-azimuth','sz-surface','sz-panel-wp','sz-panel-m2','sz-losses','sz-tech',
+  'sz-tilt','sz-azimuth','sz-surface','sz-panel-model','sz-panel-wp','sz-panel-m2','sz-losses','sz-tech',
   'sz-strategy','sz-target-coverage','sz-cost-kwp','sz-cost-total','sz-feedin',
   // Système réseau — mode panneaux
   'grid-panel-mode','grid-npanels-fixe',
@@ -93,7 +96,7 @@ const PROJECT_FIELDS = [
   'og2-daily-default',
   ...Array.from({length:12}, (_,i) => `og2-day-${i+1}`),
   'og2-batt-tech','og2-tilt','og2-azimuth','og2-surface',
-  'og2-panel-wp','og2-panel-m2','og2-losses','og2-target-coverage',
+  'og2-panel-model','og2-panel-wp','og2-panel-m2','og2-losses','og2-target-coverage',
   'og2-pv-cost-kwp','og2-bos-cost',
   // Hors réseau — mode panneaux
   'og2-panel-mode','og2-npanels-fixe'
