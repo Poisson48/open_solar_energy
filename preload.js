@@ -7,6 +7,9 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  openExternal:   (url)      => ipcRenderer.invoke('shell:openExternal', url),
+  openFileDialog: ()         => ipcRenderer.invoke('dialog:openFile'),
+
   /**
    * Sauvegarde le projet dans un repo git dédié.
    * @param {string} projectId - Identifiant unique du projet

@@ -66,6 +66,31 @@ autoUpdater.on('update-downloaded', () => {
 });
 
 // ══════════════════════════════════════════════════════════════
+//  IPC HANDLERS — SHELL / DIALOG
+// ══════════════════════════════════════════════════════════════
+
+ipcMain.handle('shell:openExternal', async (event, url) => {
+  // Autoriser uniquement http/https/file pour éviter tout abus
+  if (/^(https?:\/\/|file:\/\/)/.test(url)) {
+    await shell.openExternal(url);
+  } else if (!url.startsWith('http') && fs.existsSync(url)) {
+    await shell.openPath(url);
+  }
+});
+
+ipcMain.handle('dialog:openFile', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+    title: 'Sélectionner un fichier',
+    filters: [
+      { name: 'Documents', extensions: ['pdf', 'png', 'jpg', 'jpeg', 'webp'] },
+      { name: 'Tous les fichiers', extensions: ['*'] },
+    ],
+    properties: ['openFile'],
+  });
+  return canceled ? null : filePaths[0];
+});
+
+// ══════════════════════════════════════════════════════════════
 //  HELPERS GIT
 // ══════════════════════════════════════════════════════════════
 
