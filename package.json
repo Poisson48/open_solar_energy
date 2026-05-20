@@ -1,6 +1,6 @@
 {
   "name": "open-solar-energy",
-  "version": "1.8.5",
+  "version": "1.8.6",
   "description": "Alternative open-source à PVGIS — dimensionnement et simulation de systèmes photovoltaïques",
   "main": "electron-main.js",
   "scripts": {
