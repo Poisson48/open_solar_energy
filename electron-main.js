@@ -1,4 +1,6 @@
 const { app, BrowserWindow, shell, dialog } = require('electron');
+
+app.commandLine.appendSwitch('no-sandbox');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 
