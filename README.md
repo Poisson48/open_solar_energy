@@ -7,6 +7,9 @@
 [![Dernière release](https://img.shields.io/github/v/release/Poisson48/open_solar_energy?label=version&color=f59e0b)](https://github.com/Poisson48/open_solar_energy/releases/latest)
 [![Téléchargements](https://img.shields.io/github/downloads/Poisson48/open_solar_energy/total?color=10b981)](https://github.com/Poisson48/open_solar_energy/releases/latest)
 [![Licence MIT](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
+[![Site web](https://img.shields.io/badge/site-GitHub%20Pages-0f172a)](https://poisson48.github.io/open_solar_energy/)
+
+> **Site web & téléchargement** → [poisson48.github.io/open_solar_energy](https://poisson48.github.io/open_solar_energy/)
 
 ---
 
@@ -32,11 +35,13 @@ Les mises à jour sont automatiques : l'application vérifie et installe les nou
 ## Fonctionnalités
 
 ### Calcul solaire
-- Transposition Liu & Jordan (GHI → irradiation sur plan incliné)
+- Transposition **HDKR** anisotrope (Hay-Davies-Klucher-Reindl 1990) — GHI → irradiation sur plan incliné
+- Intégration numérique Rb (Braun & Mitchell) valide pour tout azimut
 - Corrélation d'Erbs pour estimer DHI depuis GHI
-- Production PV mensuelle avec correction thermique NOCT (IEC 61215)
+- Production PV mensuelle avec correction thermique NOCT (IEC 61215) et durée d'ensoleillement réelle
 - Optimisation automatique inclinaison + azimut (brute-force 91×13 combinaisons)
 - Températures de cellule, Performance Ratio, facteur de capacité
+- Payback actualisé (+3 %/an hausse électricité, dégradation 0,5 %/an), VAN 25 ans, LCOE
 
 ### Dimensionnement réseau (depuis facture EDF)
 - Saisie des 12 kWh mensuels ou **import CSV Enedis** (export espace client)
@@ -112,34 +117,32 @@ Les mises à jour sont automatiques : l'application vérifie et installe les nou
 
 ## Démarrage rapide
 
+### Option A — AppImage Linux (recommandé)
+
+1. Télécharger `Open-Solar-Energy-*.AppImage` depuis les [releases](https://github.com/Poisson48/open_solar_energy/releases/latest)
+2. Rendre exécutable et lancer :
+
+```bash
+chmod +x Open-Solar-Energy-*.AppImage
+./Open-Solar-Energy-*.AppImage
+```
+
+Les mises à jour sont automatiques au démarrage.
+
+### Option B — Sans installation (navigateur)
+
 ```bash
 git clone https://github.com/Poisson48/open_solar_energy.git
 cd open_solar_energy
 ```
 
-**Linux / macOS** — lancer le serveur local en une commande :
+| OS | Commande |
+|---|---|
+| Linux / macOS | `./serve.sh` |
+| Windows | double-clic sur `serve.bat` |
+| Tout OS | `python3 -m http.server 8080` → http://localhost:8080 |
 
-```bash
-./serve.sh
-```
-
-Le script démarre Python HTTP server sur le port 8080 et ouvre automatiquement le navigateur.
-
-**Windows** — double-cliquer sur `serve.bat` ou :
-
-```bat
-serve.bat
-```
-
-**Manuel** (tout OS) :
-
-```bash
-python3 -m http.server 8080
-# → http://localhost:8080
-```
-
-> Aucune dépendance à installer. Leaflet et Chart.js sont chargés depuis CDN.  
-> Pour une utilisation hors-ligne, télécharger les CDN et adapter les chemins dans `index.html`.
+> Aucune dépendance à installer. Leaflet et Chart.js sont chargés depuis CDN.
 
 ---
 
@@ -184,7 +187,7 @@ open_solar_energy/
 
 | Étape | Modèle |
 |---|---|
-| Irradiation inclinée | Liu & Jordan (isotrope) |
+| Irradiation inclinée | HDKR anisotrope (Hay-Davies-Klucher-Reindl 1990) |
 | Fraction diffuse | Corrélation d'Erbs 1982 |
 | Température cellule | NOCT IEC 61215 : `Tc = Tamb + (NOCT-20) × G/800` |
 | Production mensuelle | `E = H_tilt × Ppeak × PR_système × PR_température` |
