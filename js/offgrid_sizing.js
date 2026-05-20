@@ -1,5 +1,5 @@
 /**
- * offgrid_sizing.js — Dimensionnement système PV + batterie hors réseau
+ * offgrid_sizing.js - Dimensionnement système PV + batterie hors réseau
  *
  * Algorithme :
  *   Pour chaque combinaison (Ppeak × C_batt), simule le bilan énergétique
@@ -116,7 +116,7 @@ const OffgridSizing = (() => {
   }
 
   // ── Simulation année complète, slot par slot ──────────────────────
-  // pvSlotsFlat : Float32Array(nHours×2) de production par kWc — index absolu slot.
+  // pvSlotsFlat : Float32Array(nHours×2) de production par kWc - index absolu slot.
   // Conso réelle Enedis slot par slot.
   function simulateYearSlots(enedisData, pvSlotsFlat, Ppeak, C_usable, eta) {
     const data     = enedisData.halfHourly;
@@ -184,7 +184,7 @@ const OffgridSizing = (() => {
     const lossF     = Math.max(0.5, (1 - losses / 100) * Math.min(1, PR_temp));
     const pvH = hourlyIrr.map(irr => irr * Ppeak * lossF / 1000);
 
-    // Profil conso horaire — forme issue du module horaire, total calé sur dailyKwhTarget
+    // Profil conso horaire - forme issue du module horaire, total calé sur dailyKwhTarget
     const rawConsoH = HourlyModule.getHourlyConsumptionProfile(month);
     let consoH = rawConsoH;
     if (dailyKwhTarget != null) {
@@ -216,7 +216,7 @@ const OffgridSizing = (() => {
   }
 
   // ── Simulation annuelle ───────────────────────────────────────
-  // pvSlotsFlat : Float32Array pré-calculé (1 kWc) — null = pas de données slot
+  // pvSlotsFlat : Float32Array pré-calculé (1 kWc) - null = pas de données slot
   function simulateYear(monthlyHtilt, dailyConso, Ppeak, losses, weatherData, C_usable, eta, tilt, azimuth, lat, pvSlotsFlat, pvTech) {
     const tech = pvTech || 'crystSi';
     const enedisData = AppState.hourlyEnedisData;
@@ -352,7 +352,7 @@ const OffgridSizing = (() => {
 
     const allCandidates = [];
 
-    // Pré-calcul profil PV 30min par kWc — shared entre tous les candidats
+    // Pré-calcul profil PV 30min par kWc - shared entre tous les candidats
     // Priorité : données météo horaires réelles > profil mensuel moyen
     const hasEnedisSlots = !!(AppState.hourlyEnedisData?.halfHourly?.length >= 48 * 365);
     let pvSlotsFlat = null;

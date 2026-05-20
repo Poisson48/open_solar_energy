@@ -1,5 +1,5 @@
 /**
- * renderers/offgrid.js — Onglet Dimensionnement hors réseau
+ * renderers/offgrid.js - Onglet Dimensionnement hors réseau
  * Dépend de : app_state.js, charts/, offgrid_sizing.js, solar_math.js
  */
 
@@ -21,7 +21,7 @@ function calcOffgridSizing() {
 function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, hourlyMode) {
   const el = document.getElementById('offgrid2-results');
   if (!rec) {
-    el.innerHTML = '<div class="alert alert-warning">Aucune configuration trouvée — réduisez la cible ou augmentez la surface.</div>';
+    el.innerHTML = '<div class="alert alert-warning">Aucune configuration trouvée - réduisez la cible ou augmentez la surface.</div>';
     return;
   }
 
@@ -39,7 +39,7 @@ function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, hour
       <td>${Math.round(m.e_prod_day * 1000)}</td>
       <td>${Math.round(m.e_conso_day * 1000)}</td>
       <td style="${cls};font-weight:700">${m.deficit_days > 0 ? m.deficit_days + ' j' : '✓'}</td>
-      <td>${m.deficit_kwh > 0 ? m.deficit_kwh : '—'}</td>
+      <td>${m.deficit_kwh > 0 ? m.deficit_kwh : '-'}</td>
       <td>${m.soc_end_pct}%</td>
     </tr>`;
   }).join('');
@@ -51,7 +51,7 @@ function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, hour
   el.innerHTML = `
     <div class="card" style="border-left:4px solid var(--color-accent);margin-bottom:16px">
       <div class="section-header">
-        <div class="card-title">Système autonome recommandé — ${tech.label}${hourlyBadge}</div>
+        <div class="card-title">Système autonome recommandé - ${tech.label}${hourlyBadge}</div>
         <button class="btn btn-accent btn-sm"
           onclick="applyOffgridToHourly(${rec.Ppeak}, ${rec.C_batt_gross}, ${dodPct}, ${tilt}, ${azimuth})"
           title="Reporter ces valeurs dans l'onglet Analyse horaire">
@@ -103,7 +103,7 @@ function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, hour
     </div>
 
     <div class="card" style="margin-bottom:16px">
-      <div class="card-title">Matrice couverture — PV × Batterie</div>
+      <div class="card-title">Matrice couverture - PV × Batterie</div>
       <div id="${hmId}"></div>
     </div>
 
@@ -188,7 +188,7 @@ function autoCalcOffgridPanelWp() {
     const wpMax = STANDARD_WP[STANDARD_WP.length - 1];
     const ppeak = +(nPanelsMax * wpMax / 1000).toFixed(2);
     chosen = { wp: wpMax, nPanels: nPanelsMax, ppeak };
-    showToast(`⚠ Surface insuffisante pour ${neededPpeak.toFixed(1)} kWc — max possible : ${ppeak} kWc avec ${nPanelsMax}× ${wpMax} Wc`, 'error');
+    showToast(`⚠ Surface insuffisante pour ${neededPpeak.toFixed(1)} kWc - max possible : ${ppeak} kWc avec ${nPanelsMax}× ${wpMax} Wc`, 'error');
   } else {
     showToast(`✓ ${chosen.wp} Wc × ${chosen.nPanels} panneaux = ${chosen.ppeak} kWc pour ${targetPct}% de couverture annuelle`);
   }
@@ -208,7 +208,7 @@ function importEDFToOffgrid() {
   const input    = AppState.lastSizingInput;
   const statusEl = document.getElementById('og2-edf-import-status');
   if (!input?.bill?.monthlyKwh) {
-    if (statusEl) statusEl.textContent = '⚠ Aucune donnée EDF — lancez d\'abord le dimensionnement réseau.';
+    if (statusEl) statusEl.textContent = '⚠ Aucune donnée EDF - lancez d\'abord le dimensionnement réseau.';
     return;
   }
   const kwh = input.bill.monthlyKwh;

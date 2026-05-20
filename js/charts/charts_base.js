@@ -1,5 +1,5 @@
 /**
- * charts_base.js — Initialisation globale Chart.js + utilitaire destroy
+ * charts_base.js - Initialisation globale Chart.js + utilitaire destroy
  * Doit être chargé EN PREMIER parmi les fichiers charts/
  */
 

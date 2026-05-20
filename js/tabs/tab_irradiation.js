@@ -1,5 +1,5 @@
 /**
- * tab_irradiation.js — HTML de l'onglet Données mensuelles
+ * tab_irradiation.js - HTML de l'onglet Données mensuelles
  */
 function initTabIrradiation() {
   document.getElementById('tab-irradiation').innerHTML = `

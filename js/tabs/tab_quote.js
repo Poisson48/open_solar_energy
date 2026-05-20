@@ -1,5 +1,5 @@
 /**
- * tab_quote.js — HTML de l'onglet Devis professionnel
+ * tab_quote.js - HTML de l'onglet Devis professionnel
  */
 function initTabQuote() {
   document.getElementById('tab-quote').innerHTML = `
@@ -218,7 +218,7 @@ function initTabQuote() {
                   <td><input type="number" id="dv-line-misc-qty" value="0" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center" oninput="updateQuoteLine('misc')"></td>
                   <td><input type="text" id="dv-line-misc-unit" value="" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center"></td>
                   <td><input type="number" id="dv-line-misc-price" value="0" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:right" oninput="updateQuoteLine('misc')"></td>
-                  <td id="dv-line-misc-total" style="text-align:right;padding:4px 6px;font-weight:600">—</td>
+                  <td id="dv-line-misc-total" style="text-align:right;padding:4px 6px;font-weight:600">-</td>
                 </tr>
               </tbody>
             </table>
@@ -232,7 +232,7 @@ function initTabQuote() {
                   </tr>
                   <tr id="dv-remise-row" style="color:var(--color-danger);display:none">
                     <td style="padding:3px 8px">Remise (<span id="dv-remise-pct">0</span>%)</td>
-                    <td id="dv-total-remise" style="text-align:right;padding:3px 8px">— €</td>
+                    <td id="dv-total-remise" style="text-align:right;padding:3px 8px">- €</td>
                   </tr>
                   <tr>
                     <td style="padding:3px 8px">Base HT</td>
@@ -271,9 +271,9 @@ function initTabQuote() {
             <div class="form-group">
               <label for="dv-tva">TVA applicable</label>
               <select id="dv-tva" onchange="updateQuoteTotals()">
-                <option value="10" selected>10 % — Rénovation résidentielle</option>
-                <option value="5.5">5,5 % — Amélioration énergie</option>
-                <option value="20">20 % — Neuf / Pro</option>
+                <option value="10" selected>10 % - Rénovation résidentielle</option>
+                <option value="5.5">5,5 % - Amélioration énergie</option>
+                <option value="20">20 % - Neuf / Pro</option>
               </select>
             </div>
             <div class="form-group">

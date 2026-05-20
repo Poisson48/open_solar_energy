@@ -1,5 +1,5 @@
 /**
- * tab_offgrid.js — HTML de l'onglet Système hors réseau
+ * tab_offgrid.js - HTML de l'onglet Système hors réseau
  */
 function initTabOffgrid() {
   document.getElementById('tab-offgrid').innerHTML = `
@@ -61,12 +61,12 @@ function initTabOffgrid() {
             <div class="form-group" style="margin-bottom:10px">
               <label for="og2-batt-tech">Type de batterie</label>
               <select id="og2-batt-tech">
-                <option value="lfp">LFP standard — Lithium Fer Phosphate (neuf, recommandé)</option>
-                <option value="lfp_diy">LFP DIY — Cellules CATL/EVE 280Ah (meilleur rapport qualité/prix)</option>
-                <option value="agm">AGM — Plomb Carbone (économique)</option>
-                <option value="nmc_leaf">NMC recondit. — Nissan Leaf</option>
-                <option value="nmc_zoe">NMC recondit. — Renault Zoé</option>
-                <option value="nmc_tesla">NMC recondit. — Tesla</option>
+                <option value="lfp">LFP standard - Lithium Fer Phosphate (neuf, recommandé)</option>
+                <option value="lfp_diy">LFP DIY - Cellules CATL/EVE 280Ah (meilleur rapport qualité/prix)</option>
+                <option value="agm">AGM - Plomb Carbone (économique)</option>
+                <option value="nmc_leaf">NMC recondit. - Nissan Leaf</option>
+                <option value="nmc_zoe">NMC recondit. - Renault Zoé</option>
+                <option value="nmc_tesla">NMC recondit. - Tesla</option>
               </select>
             </div>
             <div id="og2-batt-info" class="alert alert-info" style="font-size:11px"></div>

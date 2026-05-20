@@ -1,5 +1,5 @@
 /**
- * tab_tracker.js — HTML de l'onglet Suiveur PV
+ * tab_tracker.js - HTML de l'onglet Suiveur PV
  */
 function initTabTracker() {
   document.getElementById('tab-tracker').innerHTML = `
@@ -14,7 +14,7 @@ function initTabTracker() {
           <tr><th>Configuration</th><th>Gain production est.</th><th>Coût supplémentaire</th><th>Complexité</th></tr>
         </thead>
         <tbody>
-          <tr><td>Plan fixe optimisé</td><td>Référence (100%)</td><td>—</td><td>Faible</td></tr>
+          <tr><td>Plan fixe optimisé</td><td>Référence (100%)</td><td>-</td><td>Faible</td></tr>
           <tr><td>Suiveur 1 axe horizontal</td><td>+15 à +20%</td><td>+25 à +40%</td><td>Moyenne</td></tr>
           <tr><td>Suiveur 1 axe incliné</td><td>+18 à +25%</td><td>+30 à +50%</td><td>Moyenne</td></tr>
           <tr><td>Suiveur 2 axes</td><td>+25 à +40%</td><td>+60 à +100%</td><td>Élevée</td></tr>

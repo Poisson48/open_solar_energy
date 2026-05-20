@@ -1,5 +1,5 @@
 /**
- * charts_hourly.js — Graphiques onglet Analyse horaire
+ * charts_hourly.js - Graphiques onglet Analyse horaire
  * Dépend de : charts_base.js
  */
 
@@ -42,7 +42,7 @@
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: {
-          title: { display: true, text: `Profil journalier typique — ${monthName}` },
+          title: { display: true, text: `Profil journalier typique - ${monthName}` },
           legend: { position: 'top' }
         },
         scales: {

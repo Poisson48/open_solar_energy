@@ -1,5 +1,5 @@
 /**
- * charts_sizing.js — Graphiques onglet Dimensionnement réseau (EDF)
+ * charts_sizing.js - Graphiques onglet Dimensionnement réseau (EDF)
  * Dépend de : charts_base.js
  */
 

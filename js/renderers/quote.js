@@ -1,5 +1,5 @@
 /**
- * renderers/quote.js — Onglet Devis professionnel
+ * renderers/quote.js - Onglet Devis professionnel
  * Dépend de : app_state.js, quote_generator.js
  */
 
@@ -10,7 +10,7 @@ function updateQuoteLine(key) {
   const el    = document.getElementById(`dv-line-${key}-total`);
   if (el) el.textContent = total > 0
     ? total.toLocaleString('fr', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €'
-    : '—';
+    : '-';
   updateQuoteTotals();
 }
 

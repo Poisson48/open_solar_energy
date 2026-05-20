@@ -1,5 +1,5 @@
 /**
- * inverter_sizing.js — Dimensionnement et recommandation d'onduleurs
+ * inverter_sizing.js - Dimensionnement et recommandation d'onduleurs
  *
  * Types d'onduleurs pris en charge :
  *   - String (réseau, mono ou tri-phase)
@@ -80,7 +80,7 @@ const InverterSizing = (() => {
    * @param {string}  systemType   'grid' | 'hybrid' | 'offgrid'
    * @param {number}  phase        1 ou 3
    * @param {number}  battKwh      Capacité batterie (kWh, 0 si pas de batterie)
-   * @param {number}  panelWp      Puissance d'un panneau (Wc) — pour micro-onduleurs
+   * @param {number}  panelWp      Puissance d'un panneau (Wc) - pour micro-onduleurs
    * @param {number}  nPanels      Nombre de panneaux
    * @param {number}  vocPanel     Voc d'un panneau (V, optionnel)
    * @param {number}  iscPanel     Isc d'un panneau (A, optionnel)
@@ -112,7 +112,7 @@ const InverterSizing = (() => {
           pvRatio: null,
           estimatedPrice: Math.round(n * inv.pricePerUnit),
           score: 80,
-          notes: `${n} micro-onduleurs × ${Math.round(inv.nominalPower * 1000)} W — idéal si ombrage ou toiture complexe`
+          notes: `${n} micro-onduleurs × ${Math.round(inv.nominalPower * 1000)} W - idéal si ombrage ou toiture complexe`
         });
         return;
       }
@@ -208,9 +208,9 @@ const InverterSizing = (() => {
                   <td><strong>${r.brand}</strong> ${r.model}${i === 0 ? ' <span style="font-size:10px;background:var(--color-accent);color:#fff;padding:1px 5px;border-radius:3px">✓ recommandé</span>' : ''}</td>
                   <td>${r.quantity ? `${r.quantity} × ${Math.round((r.recommendedSize || r.size) * 1000)} W` : `${(r.size || r.recommendedSize || 0).toFixed(1)} kW`}</td>
                   <td>${r.pvRatio !== null ? r.pvRatio : '1:1/panneau'}</td>
-                  <td>${r.nMppt || (r.type === 'micro' ? '1/panneau' : '—')}</td>
-                  <td>${r.efficiency ? Math.round(r.efficiency * 1000) / 10 + ' %' : '—'}</td>
-                  <td>${r.estimatedPrice ? r.estimatedPrice.toLocaleString('fr') + ' €' : '—'}</td>
+                  <td>${r.nMppt || (r.type === 'micro' ? '1/panneau' : '-')}</td>
+                  <td>${r.efficiency ? Math.round(r.efficiency * 1000) / 10 + ' %' : '-'}</td>
+                  <td>${r.estimatedPrice ? r.estimatedPrice.toLocaleString('fr') + ' €' : '-'}</td>
                   <td style="font-size:11px">${(r.features || []).join(', ')}<br><span style="color:var(--color-text-muted)">${r.notes || ''}</span></td>
                 </tr>`).join('')}
             </tbody>
@@ -220,7 +220,7 @@ const InverterSizing = (() => {
 
     container.innerHTML = `
       <div class="alert alert-info" style="margin-bottom:12px;font-size:12px">
-        ℹ Catalogue simplifié — vérifiez les fiches techniques pour le câblage exact des chaînes (Voc, Isc, MPPT).
+        ℹ Catalogue simplifié - vérifiez les fiches techniques pour le câblage exact des chaînes (Voc, Isc, MPPT).
         Les prix sont des estimations HT pros (fourniture seule).
       </div>
       ${renderGroup(strings,  'string')}

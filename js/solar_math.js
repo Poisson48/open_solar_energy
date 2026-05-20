@@ -1,9 +1,9 @@
 /**
- * solar_math.js — Algorithmes de calcul solaire
+ * solar_math.js - Algorithmes de calcul solaire
  *
  * Modèles :
- *   Rb          : intégration numérique (Braun & Mitchell 1983) — valide pour tout azimut
- *   Transposit. : HDKR (Hay-Davies-Klucher-Reindl 1990) — anisotrope, +5-15 % vs Liu&Jordan
+ *   Rb          : intégration numérique (Braun & Mitchell 1983) - valide pour tout azimut
+ *   Transposit. : HDKR (Hay-Davies-Klucher-Reindl 1990) - anisotrope, +5-15 % vs Liu&Jordan
  *   Température : NOCT IEC 61215 avec durée d'ensoleillement réelle (lat, mois)
  */
 
@@ -29,8 +29,8 @@ const SolarMath = (() => {
 
   function sunriseHourAngle(lat, decl) {
     const cosW = -Math.tan(lat * DEG) * Math.tan(decl * DEG);
-    if (cosW < -1) return 180; // jour polaire — soleil ne se couche pas
-    if (cosW >  1) return 0;   // nuit polaire — soleil ne se lève pas
+    if (cosW < -1) return 180; // jour polaire - soleil ne se couche pas
+    if (cosW >  1) return 0;   // nuit polaire - soleil ne se lève pas
     return Math.acos(cosW) / DEG;
   }
 
@@ -65,7 +65,7 @@ const SolarMath = (() => {
    * Remplace l'ancienne approximation cos(lat-tilt)/cos(lat) + azCorr
    * qui était fausse pour les azimuts non-sud.
    *
-   * Formule Braun & Mitchell (1983) — cosine of incidence angle:
+   * Formule Braun & Mitchell (1983) - cosine of incidence angle:
    *   cos θ = sinδ sinφ cosβ − sinδ cosφ sinβ cosγ
    *         + cosδ cosω cosφ cosβ + cosδ cosω sinφ sinβ cosγ
    *         + cosδ sinω sinβ sinγ
@@ -78,7 +78,7 @@ const SolarMath = (() => {
     const declR = decl    * DEG;
     const tiltR = tilt    * DEG;
     const azR   = azimuth * DEG;
-    // IAM verre standard (IEC 61853-1) — réduit le terme beam de ~2-4 %
+    // IAM verre standard (IEC 61853-1) - réduit le terme beam de ~2-4 %
     // Martin & Ruiz b0=0.05 : IAM(θ) = max(0, 1 − b0·(1/cosθ − 1))
     const b0 = 0.05;
     const N     = 96;
@@ -104,7 +104,7 @@ const SolarMath = (() => {
 
   // ── Transposition HDKR ─────────────────────────────────────────
   /**
-   * Irradiation sur plan incliné (kWh/m²/mois) — modèle HDKR
+   * Irradiation sur plan incliné (kWh/m²/mois) - modèle HDKR
    * Hay-Davies-Klucher-Reindl (1990), Solar Energy 45(1):65-76
    *
    * Remplace Liu & Jordan isotrope : +5-15 % de précision sur
@@ -153,10 +153,10 @@ const SolarMath = (() => {
    *
    * Correction thermique NOCT (IEC 61215) améliorée :
    *   G_eff = Htilt_daily / daylightHours(lat, month)
-   * au lieu de 6h fixe — meilleure précision en hiver (jours courts)
+   * au lieu de 6h fixe - meilleure précision en hiver (jours courts)
    * et en été (jours longs, irradiance plus étalée).
    *
-   * @param {number} lat  Latitude (°) — optionnel, défaut 44°N (France centrale)
+   * @param {number} lat  Latitude (°) - optionnel, défaut 44°N (France centrale)
    */
   function pvProduction(Htilt, Ppeak, losses, Tavg, tech = 'crystSi', month = 6, lat = 44) {
     const tempCoeff = { crystSi: -0.0045, CIS: -0.0036, CdTe: -0.0025, unknown: -0.004 };
@@ -254,7 +254,7 @@ const SolarMath = (() => {
    *
    * Corrections vs ancienne version :
    *   1. Rb horaire calculé avec l'angle d'incidence exact (formule Braun & Mitchell)
-   *      tenant compte de l'azimut et de l'heure — l'ancienne formule utilisait
+   *      tenant compte de l'azimut et de l'heure - l'ancienne formule utilisait
    *      cos(lat-tilt)/cos(lat) constant, ignorait azimut et heure.
    *   2. HDKR appliqué à l'heure (Ai_h = Ib_h / G0_h, f_h = sqrt(Ib_h/GHI_h))
    */
@@ -324,11 +324,11 @@ const SolarMath = (() => {
    * Contrairement à hourlyIrradiance(), prend les vraies valeurs mesurées
    * plutôt que de les distribuer depuis une moyenne mensuelle.
    *
-   * @param {number} ghi_wm2    GHI mesuré (W/m²) — average sur l'heure
+   * @param {number} ghi_wm2    GHI mesuré (W/m²) - average sur l'heure
    * @param {number} dhi_wm2    DHI mesuré (W/m²)
    * @param {number} lat        Latitude (°)
    * @param {number} tilt       Inclinaison (°)
-   * @param {number} azimuth    Azimut (° — 0=Sud, convention standard)
+   * @param {number} azimuth    Azimut (° - 0=Sud, convention standard)
    * @param {number} dayOfYear  Jour julien (1–365)
    * @param {number} solarHour  Heure solaire au milieu du pas (ex: 11.5 pour 11h–12h)
    * @returns {number} Irradiance sur plan incliné (W/m²)
@@ -372,15 +372,15 @@ const SolarMath = (() => {
   /**
    * Construit un profil de production PV (Float32Array de nHours×2 demi-heures)
    * en utilisant les vraies mesures horaires GHI/DHI/T° (pas une moyenne mensuelle).
-   * Chaque jour a sa propre courbe de production — journées nuageuses incluses.
+   * Chaque jour a sa propre courbe de production - journées nuageuses incluses.
    *
    * @param {object} hourlyData  { ghi: Float32Array, dhi: Float32Array, temp: Float32Array, year }
    * @param {number} tilt        Inclinaison panneaux (°)
-   * @param {number} azimuth     Azimut (° — 0=Sud)
+   * @param {number} azimuth     Azimut (° - 0=Sud)
    * @param {number} losses      Pertes système (%)
    * @param {string} tech        Technologie PV ('crystSi', 'CIS', 'CdTe')
    * @param {number} lat         Latitude (°)
-   * @param {number} lon         Longitude (°) — pour correction heure solaire vs UTC
+   * @param {number} lon         Longitude (°) - pour correction heure solaire vs UTC
    * @returns {Float32Array}     nHours×2 valeurs (kWh/slot/kWc)
    */
   function buildYearPvSlots(hourlyData, tilt, azimuth, losses, tech, lat, lon) {

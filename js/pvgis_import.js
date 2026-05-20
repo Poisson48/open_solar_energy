@@ -1,5 +1,5 @@
 /**
- * pvgis_import.js — Import données solaires et météo
+ * pvgis_import.js - Import données solaires et météo
  *
  * Sources :
  *   1. Open-Meteo Archive API  → GHI + T° (CORS natif, aucune clé requise)
@@ -143,7 +143,7 @@ const PVGISImport = (() => {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // 1b. Open-Meteo HORAIRE — GHI + DHI + T° à la résolution 1h
+  // 1b. Open-Meteo HORAIRE - GHI + DHI + T° à la résolution 1h
   //     Même API que le mensuel, paramètre `hourly` au lieu de `daily`.
   //     Données en UTC → correction longitude appliquée dans buildYearPvSlots.
   // ─────────────────────────────────────────────────────────────
@@ -193,11 +193,11 @@ const PVGISImport = (() => {
 
     try {
       const { year, nHours, annualGhiKwh } = await importHourlyWeather(lat, lon);
-      setStatus(`✓ Météo horaire ${year} — ${nHours} mesures — GHI ≈ ${Math.round(annualGhiKwh)} kWh/m²`, 'success');
+      setStatus(`✓ Météo horaire ${year} - ${nHours} mesures - GHI ≈ ${Math.round(annualGhiKwh)} kWh/m²`, 'success');
       showToast(`✓ Météo horaire ${year} importée (${nHours} points)`);
       const statusEl = document.getElementById('hourly-weather-status');
       if (statusEl) {
-        statusEl.textContent = `✓ Météo horaire ${year} — production jour/jour activée`;
+        statusEl.textContent = `✓ Météo horaire ${year} - production jour/jour activée`;
         statusEl.style.display = 'block';
       }
     } catch (err) {
@@ -210,7 +210,7 @@ const PVGISImport = (() => {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // 1c. PVGIS MRcalc — GHI + DHI + T° depuis satellite SARAH3
+  // 1c. PVGIS MRcalc - GHI + DHI + T° depuis satellite SARAH3
   //     Meilleur que Open-Meteo + Erbs : DHI mesuré, pas estimé.
   //     CORS bloqué en file:// → tentative proxy.
   // ─────────────────────────────────────────────────────────────
@@ -347,7 +347,7 @@ const PVGISImport = (() => {
     let weather = null;
     let source  = '';
     try {
-      // Priorité 1 : PVGIS MRcalc (SARAH3) — GHI + DHI mesurés par satellite
+      // Priorité 1 : PVGIS MRcalc (SARAH3) - GHI + DHI mesurés par satellite
       try {
         weather = await importWeatherPVGIS_MRcalc(lat, lon);
         source  = 'PVGIS-SARAH3';
@@ -363,9 +363,9 @@ const PVGISImport = (() => {
       document.getElementById('loc-name').textContent = AppState.location.name;
 
       const totalGHI = weather.reduce((s, m) => s + m.GHI, 0);
-      setStatus(`✓ ${source} — GHI annuel : ${Math.round(totalGHI)} kWh/m²/an`, 'success');
+      setStatus(`✓ ${source} - GHI annuel : ${Math.round(totalGHI)} kWh/m²/an`, 'success');
       showWeatherPreview(weather, source);
-      if (typeof showToast === 'function') showToast(`☀️ Météo ${source} — ${Math.round(totalGHI)} kWh/m²/an`);
+      if (typeof showToast === 'function') showToast(`☀️ Météo ${source} - ${Math.round(totalGHI)} kWh/m²/an`);
     } catch (err) {
       console.error(err);
       setStatus(`✗ Import météo échoué : ${err.message}`, 'error');
@@ -388,7 +388,7 @@ const PVGISImport = (() => {
     setStatus('⏳ Import PVcalc (PVGIS + proxy)...', 'loading');
     try {
       const result = await importPVCalc(lat, lon, { peakpower, loss, angle, aspect, pvtech });
-      setStatus(`✓ PVGIS PVcalc — ${Math.round(result.totals.E_y)} kWh/an`, 'success');
+      setStatus(`✓ PVGIS PVcalc - ${Math.round(result.totals.E_y)} kWh/an`, 'success');
       showPVCalcComparison(result);
     } catch (err) {
       console.error(err);
@@ -410,7 +410,7 @@ const PVGISImport = (() => {
       <div class="alert alert-success" style="margin-top:8px">
         <div style="font-size:11px">
           <strong>${source || 'Données météo'}</strong><br>
-          GHI : <strong>${totalGHI} kWh/m²/an</strong> — T°moy : <strong>${avgT}°C</strong><br>
+          GHI : <strong>${totalGHI} kWh/m²/an</strong> - T°moy : <strong>${avgT}°C</strong><br>
           <span style="color:var(--color-text-muted)">${dhiNote}</span>
         </div>
       </div>`;
@@ -445,7 +445,7 @@ const PVGISImport = (() => {
             <div class="kpi-value">
               ${pvgisResult.totals.E_y > 0
                 ? ((localResult.E_annual - pvgisResult.totals.E_y) / pvgisResult.totals.E_y * 100).toFixed(1) + ' %'
-                : '—'}
+                : '-'}
             </div>
             <div class="kpi-label">Écart local/PVGIS<br><span class="kpi-unit"></span></div>
           </div>
@@ -456,7 +456,7 @@ const PVGISImport = (() => {
         </div>` : ''}
         <div class="chart-container"><canvas id="${chartId}"></canvas></div>
         <p style="font-size:11px;color:var(--color-text-muted);margin-top:8px">
-          Source PVGIS : JRC European Commission — Base PVGIS-SARAH2 / ERA5
+          Source PVGIS : JRC European Commission - Base PVGIS-SARAH2 / ERA5
         </p>
       </div>`;
 
@@ -490,7 +490,7 @@ const PVGISImport = (() => {
           <strong>Proxy CORS indisponible</strong><br>
           <a href="${link}" target="_blank" style="color:var(--color-primary);font-weight:700">
             Ouvrir PVGIS PVcalc ↗
-          </a> — télécharger le JSON puis :
+          </a> - télécharger le JSON puis :
           <label class="btn btn-outline btn-sm" style="margin-top:6px;display:inline-flex;cursor:pointer">
             <input type="file" accept=".json" style="display:none" onchange="PVGISImport.importFromFile(this)">
             Importer le fichier JSON
@@ -510,7 +510,7 @@ const PVGISImport = (() => {
         const data = JSON.parse(e.target.result);
         const result = parsePVCalcJSON(data);
         if (result) {
-          setStatus(`✓ Fichier PVGIS importé — ${Math.round(result.totals.E_y)} kWh/an`, 'success');
+          setStatus(`✓ Fichier PVGIS importé - ${Math.round(result.totals.E_y)} kWh/an`, 'success');
           showPVCalcComparison(result);
         }
       } catch (err) {

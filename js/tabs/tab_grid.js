@@ -1,5 +1,5 @@
 /**
- * tab_grid.js — HTML de l'onglet Système PV réseau
+ * tab_grid.js - HTML de l'onglet Système PV réseau
  */
 function initTabGrid() {
   document.getElementById('tab-grid').innerHTML = `
@@ -65,11 +65,11 @@ function initTabGrid() {
           <div id="grid-panels-info" style="background:var(--color-bg-card);border:1px solid var(--color-border);border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:13px">
             <div style="display:flex;justify-content:space-between;align-items:center">
               <span style="color:var(--color-text-muted)">Panneaux installables</span>
-              <span id="grid-npanels" style="font-weight:700;font-size:16px;color:var(--color-primary)">—</span>
+              <span id="grid-npanels" style="font-weight:700;font-size:16px;color:var(--color-primary)">-</span>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
               <span style="color:var(--color-text-muted)">Puissance crête totale</span>
-              <span id="grid-ppeak-display" style="font-weight:700;font-size:16px;color:var(--color-accent)">—</span>
+              <span id="grid-ppeak-display" style="font-weight:700;font-size:16px;color:var(--color-accent)">-</span>
             </div>
           </div>
           <input type="hidden" id="inp-ppeak" value="3">

@@ -1,4 +1,4 @@
-# Cahier des Charges — Open Solar Energy
+# Cahier des Charges - Open Solar Energy
 **Version** : 0.1  
 **Date** : 2026-04-11  
 **Auteur** : Leo Haize Etancelin  
@@ -26,7 +26,7 @@ Open Solar Energy est un outil web open-source permettant à tout utilisateur (p
 
 ## 2. Périmètre fonctionnel
 
-### 2.1 Module 1 — Localisation et données météo
+### 2.1 Module 1 - Localisation et données météo
 
 **Entrées utilisateur :**
 - Saisie manuelle de latitude / longitude (décimales)
@@ -41,13 +41,13 @@ Open Solar Energy est un outil web open-source permettant à tout utilisateur (p
 
 ---
 
-### 2.2 Module 2 — Système PV connecté au réseau
+### 2.2 Module 2 - Système PV connecté au réseau
 
 **Paramètres d'entrée :**
 | Paramètre | Unité | Valeur par défaut |
 |---|---|---|
 | Puissance crête | kWc | 3 |
-| Technologie PV | — | Silicium monocristallin |
+| Technologie PV | - | Silicium monocristallin |
 | Inclinaison panneau | ° | 30 |
 | Azimut | ° (0=Sud) | 0 |
 | Pertes système | % | 14 |
@@ -70,7 +70,7 @@ Open Solar Energy est un outil web open-source permettant à tout utilisateur (p
 
 ---
 
-### 2.3 Module 3 — Système hors réseau (autonome)
+### 2.3 Module 3 - Système hors réseau (autonome)
 
 **Paramètres d'entrée :**
 | Paramètre | Unité |
@@ -94,7 +94,7 @@ Open Solar Energy est un outil web open-source permettant à tout utilisateur (p
 
 ---
 
-### 2.4 Module 4 — Données d'irradiation mensuelles
+### 2.4 Module 4 - Données d'irradiation mensuelles
 
 **Affichage :**
 - Irradiation globale horizontale (GHI) par mois
@@ -108,7 +108,7 @@ Open Solar Energy est un outil web open-source permettant à tout utilisateur (p
 
 ---
 
-### 2.5 Module 5 — Optimisation d'angle
+### 2.5 Module 5 - Optimisation d'angle
 
 **Fonctionnalité :**
 - Calcul de l'inclinaison et de l'azimut optimaux pour maximiser la production annuelle
@@ -129,7 +129,7 @@ Open Solar Energy est un outil web open-source permettant à tout utilisateur (p
 - Carte interactive (Leaflet.js) pour sélection du site
 - Graphiques interactifs (Chart.js)
 - Formulaires de saisie avec validation en temps réel
-- Bouton "Calculer" — résultats affichés sans rechargement de page
+- Bouton "Calculer" - résultats affichés sans rechargement de page
 - Bouton "Exporter CSV" et "Exporter JSON" sur chaque module
 - Bouton "Générer rapport PDF" (via window.print() ou jsPDF)
 
@@ -151,7 +151,7 @@ Open Solar Energy est un outil web open-source permettant à tout utilisateur (p
 | Cartographie | Leaflet.js (CDN ou local) |
 | Graphiques | Chart.js (CDN ou local) |
 | PDF | window.print() CSS @media print (v1), jsPDF (v2) |
-| Calcul solaire | Algorithme SPA (Solar Position Algorithm) — implémentation JS |
+| Calcul solaire | Algorithme SPA (Solar Position Algorithm) - implémentation JS |
 
 ### 4.2 Structure des fichiers
 ```
@@ -241,20 +241,20 @@ Facteur d'émission paramétrable (défaut France : 0.052 kgCO₂/kWh)
 
 ## 7. Phases de développement
 
-### Phase 1 — Socle (MVP)
+### Phase 1 - Socle (MVP)
 - [ ] Structure HTML/CSS de l'application (onglets, layout)
 - [ ] Module localisation (carte Leaflet, saisie coordonnées)
 - [ ] Import et parsing des données météo JSON
 - [ ] Module PV réseau (calcul + graphique Chart.js)
 - [ ] Export CSV
 
-### Phase 2 — Modules complémentaires
+### Phase 2 - Modules complémentaires
 - [ ] Module hors réseau
 - [ ] Module données irradiation mensuelle
 - [ ] Module optimisation d'angle (heatmap)
 - [ ] Export JSON + rapport PDF
 
-### Phase 3 — Qualité et enrichissement
+### Phase 3 - Qualité et enrichissement
 - [ ] Jeu de données météo de démonstration complet (plusieurs villes françaises)
 - [ ] Géocodage via Nominatim (optionnel, avec fallback)
 - [ ] Mode sombre

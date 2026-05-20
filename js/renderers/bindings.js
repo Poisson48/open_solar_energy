@@ -1,5 +1,5 @@
 /**
- * renderers/bindings.js — Liaisons événements + modal Enedis
+ * renderers/bindings.js - Liaisons événements + modal Enedis
  * Dépend de : app_state.js, solar_math.js, offgrid_sizing.js, enedis_import.js
  */
 
@@ -116,7 +116,7 @@ function handleEnedisCSV(input, statusId = 'sz-csv-status') {
       }
     }
 
-    // Onglet hors-réseau : conso journalière (Wh/j) — jours corrects pour années bissextiles
+    // Onglet hors-réseau : conso journalière (Wh/j) - jours corrects pour années bissextiles
     const daysArr = result.year ? getMonthlyDays(result.year) : DAYS_IN_MONTH;
     result.monthlyKwh.forEach((kwh, i) => {
       const whPerDay = Math.round(kwh * 1000 / daysArr[i]);
@@ -149,10 +149,10 @@ function handleEnedisCSV(input, statusId = 'sz-csv-status') {
     AppState.enedisYear   = result.year || null;
     document.getElementById('sz-kwh-1')?.dispatchEvent(new Event('input'));
 
-    const warns = result.warnings.length ? ` — ⚠ ${result.warnings[0]}` : '';
+    const warns = result.warnings.length ? ` - ⚠ ${result.warnings[0]}` : '';
     statusEl.style.color = 'var(--color-success)';
     statusEl.textContent =
-      `✓ ${result.format} ${result.year} importé — ${result.totalAnnual.toLocaleString('fr')} kWh/an${warns}`;
+      `✓ ${result.format} ${result.year} importé - ${result.totalAnnual.toLocaleString('fr')} kWh/an${warns}`;
   });
 }
 

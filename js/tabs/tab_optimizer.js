@@ -1,5 +1,5 @@
 /**
- * tab_optimizer.js — HTML de l'onglet Optimisation
+ * tab_optimizer.js - HTML de l'onglet Optimisation
  */
 function initTabOptimizer() {
   document.getElementById('tab-optimizer').innerHTML = `

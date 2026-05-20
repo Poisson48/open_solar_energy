@@ -1,5 +1,5 @@
 /**
- * charts_offgrid.js — Graphiques onglet Dimensionnement hors réseau
+ * charts_offgrid.js - Graphiques onglet Dimensionnement hors réseau
  * Dépend de : charts_base.js
  */
 
@@ -81,7 +81,7 @@
     const rows = ppeaks.map(p => {
       const cells = batts.map(b => {
         const c = allCandidates.find(x => x.Ppeak === p && x.C_batt_gross === b);
-        if (!c) return '<td>—</td>';
+        if (!c) return '<td>-</td>';
         const pct    = c.coverageRate;
         const isRec  = (p === recPpeak && b === recBatt);
         const bg     = pct >= 95 ? 'rgba(26,107,60,0.85)' : pct >= 80 ? 'rgba(245,166,35,0.80)' : pct >= 60 ? 'rgba(230,119,0,0.70)' : 'rgba(198,40,40,0.65)';

@@ -1,5 +1,5 @@
 /**
- * project_manager.js — Gestion de projets (localStorage)
+ * project_manager.js - Gestion de projets (localStorage)
  *
  * Un projet contient :
  *   - Métadonnées : id, name, description, createdAt, updatedAt

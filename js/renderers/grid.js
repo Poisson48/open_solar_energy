@@ -1,5 +1,5 @@
 /**
- * renderers/grid.js — Onglets Système PV réseau, Hors réseau simple,
+ * renderers/grid.js - Onglets Système PV réseau, Hors réseau simple,
  *                     Données irradiation, Optimisation
  * Dépend de : app_state.js, charts/, solar_math.js, export.js
  */
@@ -52,15 +52,15 @@ function calcPanelsForMode(prefix) {
     const nEl   = document.getElementById('grid-npanels');
     const pEl   = document.getElementById('grid-ppeak-display');
     const hidden = document.getElementById('inp-ppeak');
-    if (nEl)    nEl.textContent  = nPanels > 0 ? `${nPanels} panneaux` : '—';
-    if (pEl)    pEl.textContent  = Ppeak   > 0 ? `${Ppeak.toFixed(2)} kWc` : '—';
+    if (nEl)    nEl.textContent  = nPanels > 0 ? `${nPanels} panneaux` : '-';
+    if (pEl)    pEl.textContent  = Ppeak   > 0 ? `${Ppeak.toFixed(2)} kWc` : '-';
     if (hidden) hidden.value     = Ppeak   > 0 ? Ppeak : 3;
   } else if (prefix === 'og2') {
     const el = document.getElementById('og2-npanels-display');
     if (el) {
       el.textContent = mode === 'conso'
         ? 'Auto (dimensionnement libre)'
-        : nPanels > 0 ? `${nPanels} panneaux · ${Ppeak.toFixed(2)} kWc` : '—';
+        : nPanels > 0 ? `${nPanels} panneaux · ${Ppeak.toFixed(2)} kWc` : '-';
     }
   } else if (prefix === 'dv') {
     if (mode !== 'fixe') {
@@ -148,8 +148,8 @@ function renderGridResults(results, params) {
   const kpiHtml = `
     <div class="kpi-grid">
       <div class="kpi-card" style="border-left:3px solid var(--color-primary)">
-        <div class="kpi-value">${params.nPanels ?? '—'}</div>
-        <div class="kpi-label">Panneaux installés<br><span class="kpi-unit">${params.nPanels ? `${params.panelWp} Wc × ${params.nPanels}` : '—'}</span></div>
+        <div class="kpi-value">${params.nPanels ?? '-'}</div>
+        <div class="kpi-label">Panneaux installés<br><span class="kpi-unit">${params.nPanels ? `${params.panelWp} Wc × ${params.nPanels}` : '-'}</span></div>
       </div>
       <div class="kpi-card" style="border-left:3px solid var(--color-accent)">
         <div class="kpi-value accent">${params.Ppeak.toFixed(2)}</div>
@@ -165,7 +165,7 @@ function renderGridResults(results, params) {
       </div>
       <div class="kpi-card">
         <div class="kpi-value info">${results.PR}</div>
-        <div class="kpi-label">Performance Ratio<br><span class="kpi-unit">—</span></div>
+        <div class="kpi-label">Performance Ratio<br><span class="kpi-unit">-</span></div>
       </div>
       <div class="kpi-card">
         <div class="kpi-value">${results.CF} %</div>
@@ -201,7 +201,7 @@ function renderGridResults(results, params) {
             <td>${m.E_month}</td>
             <td>${m.T_avg}</td>
           </tr>`).join('')}
-        <tr><td>Total</td><td>${results.H_annual}</td><td>${results.E_annual.toLocaleString('fr')}</td><td>—</td></tr>
+        <tr><td>Total</td><td>${results.H_annual}</td><td>${results.E_annual.toLocaleString('fr')}</td><td>-</td></tr>
       </tbody>
     </table>`;
 
@@ -295,7 +295,7 @@ function renderIrradiationData() {
   el.innerHTML = `
     <div class="card">
       <div class="section-header">
-        <div class="card-title">Irradiation mensuelle — ${AppState.location.name}</div>
+        <div class="card-title">Irradiation mensuelle - ${AppState.location.name}</div>
         <button class="btn btn-outline btn-sm" onclick="Exporter.exportIrradiationCSV(AppState.weatherData)">CSV</button>
       </div>
       <div class="chart-container"><canvas id="${chartId}"></canvas></div>

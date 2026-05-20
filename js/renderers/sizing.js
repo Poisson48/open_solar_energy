@@ -1,5 +1,5 @@
 /**
- * renderers/sizing.js — Onglet Dimensionnement réseau (EDF)
+ * renderers/sizing.js - Onglet Dimensionnement réseau (EDF)
  * Dépend de : app_state.js, constants.js, charts/, sizing.js, export.js
  */
 
@@ -34,7 +34,7 @@ function calcSizing() {
 function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
   const el = document.getElementById('sizing-results');
   if (!rec) {
-    el.innerHTML = '<div class="alert alert-warning">Impossible de calculer — vérifiez les données.</div>';
+    el.innerHTML = '<div class="alert alert-warning">Impossible de calculer - vérifiez les données.</div>';
     return;
   }
 
@@ -61,7 +61,7 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
     <div class="card" style="border-left:4px solid var(--color-accent);margin-bottom:16px">
       <div class="card-title">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-        Installation recommandée — ${AppState.location.name}${slotBadge}
+        Installation recommandée - ${AppState.location.name}${slotBadge}
       </div>
       <div class="kpi-grid">
         <div class="kpi-card" style="border-left:3px solid var(--color-accent)">

@@ -1,5 +1,5 @@
 /**
- * main.js — Point d'entrée v1.5
+ * main.js - Point d'entrée v1.5
  * Orchestre l'initialisation de tous les modules.
  * La logique métier est répartie dans :
  *   location.js, project_ui.js, renderers.js, hourly_module.js, inverter_sizing.js

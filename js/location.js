@@ -1,5 +1,5 @@
 /**
- * location.js — Gestion de la carte et de la localisation
+ * location.js - Gestion de la carte et de la localisation
  * Extrait de main.js v1.4
  */
 

@@ -1,5 +1,5 @@
 /**
- * export.js — Export CSV, JSON, PDF
+ * export.js - Export CSV, JSON, PDF
  */
 
 const Exporter = (() => {

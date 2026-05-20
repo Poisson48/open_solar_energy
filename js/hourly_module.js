@@ -1,5 +1,5 @@
 /**
- * hourly_module.js — Analyse horaire de la consommation et de la production PV
+ * hourly_module.js - Analyse horaire de la consommation et de la production PV
  *
  * Sources de données :
  *   1. Données Enedis 30min importées (si disponibles) → profil réel
@@ -28,7 +28,7 @@ const HourlyModule = (() => {
     if (_rawData) {
       el.style.background = '#e8f5e9';
       el.style.color = 'var(--color-success)';
-      el.textContent = `✓ Données Enedis réelles — ${_rawYear || ''} (${_rawData.length} mesures 30min)`;
+      el.textContent = `✓ Données Enedis réelles - ${_rawYear || ''} (${_rawData.length} mesures 30min)`;
     } else {
       el.style.background = 'var(--color-bg)';
       el.style.color = 'var(--color-text-muted)';
@@ -71,7 +71,7 @@ const HourlyModule = (() => {
       return weights.map(w => (w / sum) * dailyKwh);
     }
 
-    // 2. Onglet hors-réseau (Wh/j) — rempli manuellement ou via import Enedis
+    // 2. Onglet hors-réseau (Wh/j) - rempli manuellement ou via import Enedis
     const ogWhDay = parseFloat(document.getElementById(`og2-day-${month}`)?.value) || 0;
     const ogDef   = parseFloat(document.getElementById('og2-daily-default')?.value) || 0;
     const whDay   = ogWhDay > 0 ? ogWhDay : ogDef;
@@ -128,7 +128,7 @@ const HourlyModule = (() => {
   /**
    * Calcule la production PV horaire (kWh) pour un mois donné
    * en utilisant SolarMath.hourlyIrradiance + correction thermique NOCT
-   * (cohérente avec solar_math.js pvProduction — évite l'écart ~8-15 % en été)
+   * (cohérente avec solar_math.js pvProduction - évite l'écart ~8-15 % en été)
    */
   function getHourlyPvProduction(month, Ppeak, tilt, azimuth, losses) {
     if (!AppState.weatherData || month < 1 || month > 12) return new Array(24).fill(0);
@@ -275,7 +275,7 @@ const HourlyModule = (() => {
 
       <div class="card" style="margin-bottom:12px">
         <div class="card-title" style="margin-bottom:6px">
-          Profil horaire — ${monthName} · ${Ppeak} kWc · ${dataSource}
+          Profil horaire - ${monthName} · ${Ppeak} kWc · ${dataSource}
         </div>
         <div class="chart-container"><canvas id="${chartId1}"></canvas></div>
       </div>

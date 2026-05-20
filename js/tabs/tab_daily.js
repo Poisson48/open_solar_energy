@@ -1,5 +1,5 @@
 /**
- * tab_daily.js — HTML de l'onglet Données horaires + analyse EDF 30min
+ * tab_daily.js - HTML de l'onglet Données horaires + analyse EDF 30min
  */
 function initTabDaily() {
   document.getElementById('tab-daily').innerHTML = `

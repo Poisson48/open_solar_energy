@@ -1,6 +1,6 @@
 # Open Solar Energy
 
-**Alternative open-source à PVGIS** — dimensionnement et simulation de systèmes photovoltaïques, 100 % local, sans serveur, sans inscription.
+**Alternative open-source à PVGIS** - dimensionnement et simulation de systèmes photovoltaïques, 100 % local, sans serveur, sans inscription.
 
 > Inspiré de [PVGIS (JRC / Commission Européenne)](https://re.jrc.ec.europa.eu/pvg_tools/fr/)
 
@@ -18,9 +18,9 @@
 | Plateforme | Fichier | Notes |
 |---|---|---|
 | **Linux x64** | `Open-Solar-Energy-*.AppImage` | [→ Dernière release](https://github.com/Poisson48/open_solar_energy/releases/latest) |
-| Windows *(bientôt)* | `Open-Solar-Energy-*-Setup.exe` | — |
+| Windows *(bientôt)* | `Open-Solar-Energy-*-Setup.exe` | - |
 
-**Linux — installation rapide :**
+**Linux - installation rapide :**
 ```bash
 chmod +x Open-Solar-Energy-*.AppImage
 ./Open-Solar-Energy-*.AppImage
@@ -35,7 +35,7 @@ Les mises à jour sont automatiques : l'application vérifie et installe les nou
 ## Fonctionnalités
 
 ### Calcul solaire
-- Transposition **HDKR** anisotrope (Hay-Davies-Klucher-Reindl 1990) — GHI → irradiation sur plan incliné
+- Transposition **HDKR** anisotrope (Hay-Davies-Klucher-Reindl 1990) - GHI → irradiation sur plan incliné
 - Intégration numérique Rb (Braun & Mitchell) valide pour tout azimut
 - Corrélation d'Erbs pour estimer DHI depuis GHI
 - Production PV mensuelle avec correction thermique NOCT (IEC 61215) et durée d'ensoleillement réelle
@@ -93,7 +93,7 @@ Les mises à jour sont automatiques : l'application vérifie et installe les nou
 
 ### Gestion de projets
 - **Modal démarrage** : nouveau projet ou chargement d'un projet existant à chaque démarrage
-- **Infos client** saisies à la création (nom, adresse, téléphone, email) — pré-remplies dans le devis
+- **Infos client** saisies à la création (nom, adresse, téléphone, email) - pré-remplies dans le devis
 - **Export fichier** : chaque projet exportable en `.json` local (bouton 📤 dans la barre et la liste)
 - Sauvegarde locale (localStorage), pas de serveur requis
 - Capture de 60+ champs de formulaire + localisation + météo
@@ -117,7 +117,7 @@ Les mises à jour sont automatiques : l'application vérifie et installe les nou
 
 ## Démarrage rapide
 
-### Option A — AppImage Linux (recommandé)
+### Option A - AppImage Linux (recommandé)
 
 1. Télécharger `Open-Solar-Energy-*.AppImage` depuis les [releases](https://github.com/Poisson48/open_solar_energy/releases/latest)
 2. Rendre exécutable et lancer :
@@ -129,7 +129,7 @@ chmod +x Open-Solar-Energy-*.AppImage
 
 Les mises à jour sont automatiques au démarrage.
 
-### Option B — Sans installation (navigateur)
+### Option B - Sans installation (navigateur)
 
 ```bash
 git clone https://github.com/Poisson48/open_solar_energy.git
@@ -198,24 +198,24 @@ open_solar_energy/
 
 ## Utilisation
 
-### 1 — Choisir le lieu
+### 1 - Choisir le lieu
 Cliquer sur la carte ou utiliser les presets (Paris, Toulouse, Nice, Bordeaux).  
 Pour un site réel, importer les données météo via **"Importer météo (Open-Meteo)"**.
 
-### 2a — Dimensionnement réseau
+### 2a - Dimensionnement réseau
 1. Onglet **Dimensionnement**
 2. Saisir les kWh mensuels **ou** cliquer **📂 Importer CSV Enedis**
-3. Renseigner les paramètres toiture (inclinaison, azimut — bouton ⚡ Auto disponible)
+3. Renseigner les paramètres toiture (inclinaison, azimut - bouton ⚡ Auto disponible)
 4. Choisir la stratégie (ROI optimal, autoconsommation max, couverture %)
 5. Cliquer **Dimensionner** → résultats + graphiques + tableau mensuel
 
-### 2b — Dimensionnement hors réseau
+### 2b - Dimensionnement hors réseau
 1. Onglet **Hors réseau**
 2. Cliquer **📂 Importer fichier Enedis (ZIP/CSV)** directement dans l'onglet **ou** saisir la conso journalière manuellement
 3. Choisir la technologie batterie et le taux de couverture visé
 4. Cliquer **Dimensionner** → système optimal (PV + batterie, coût, jours de déficit)
 
-### 3 — Sauvegarder / Cloner
+### 3 - Sauvegarder / Cloner
 - `Ctrl+S` ou bouton **💾 Sauvegarder** dans le header
 - **📁 Projets** → liste des projets, Charger / Cloner / Exporter
 
@@ -225,7 +225,7 @@ Pour un site réel, importer les données météo via **"Importer météo (Open-
 
 | Version | Changements |
 |---|---|
-| **1.7.0** | Repasse physique et financière complète : (1) Rb par intégration numérique (Braun & Mitchell) valide pour tout azimut — remplace la correction ad hoc `azCorr` ; (2) Modèle de transposition HDKR (Hay-Davies-Klucher-Reindl 1990) anisotrope remplace Liu & Jordan isotrope (+5-15 % précision diffuse) ; (3) Correction thermique NOCT avec durée d'ensoleillement réelle au lieu de 6 h fixe ; (4) `hourlyIrradiance` avec cos(θ) exact et HDKR horaire (Rb variait plus selon azimut) ; (5) Payback actualisé +3 %/an hausse électricité, dégradation 0,5 %/an ; (6) VAN 25 ans (NPV) à 4 % et LCOE avec dégradation |
+| **1.7.0** | Repasse physique et financière complète : (1) Rb par intégration numérique (Braun & Mitchell) valide pour tout azimut - remplace la correction ad hoc `azCorr` ; (2) Modèle de transposition HDKR (Hay-Davies-Klucher-Reindl 1990) anisotrope remplace Liu & Jordan isotrope (+5-15 % précision diffuse) ; (3) Correction thermique NOCT avec durée d'ensoleillement réelle au lieu de 6 h fixe ; (4) `hourlyIrradiance` avec cos(θ) exact et HDKR horaire (Rb variait plus selon azimut) ; (5) Payback actualisé +3 %/an hausse électricité, dégradation 0,5 %/an ; (6) VAN 25 ans (NPV) à 4 % et LCOE avec dégradation |
 | **1.6.1** | Script de lancement Linux `serve.sh` : détection Python, vérification port libre, ouverture navigateur auto (`xdg-open`), nettoyage propre sur Ctrl+C |
 | **1.6.0** | Hors-réseau : import Enedis direct, simulation horaire avec données 30min réelles, SOC mensuel porté, recommandation coût+jours-déficit, correction battCeil depuis conso réelle. Bugs corrigés : clé `halfHourly` (données Enedis perdues au save/load), azimut `tiltedIrradiation` (azR inutilisé → azimut⚡Auto toujours -90°), nom de lieu écrasé après géocodage, auto-inclinaison non restaurée au chargement de projet, météo rechargée depuis la ville démo la plus proche pour les anciens projets |
 | **1.5.1** | Serveur de développement local (`python -m http.server 8080`) via `.claude/launch.json` |
@@ -255,8 +255,8 @@ Voir [TODO.md](TODO.md) pour le détail.
 
 ## Licence
 
-MIT — libre d'utilisation, modification et redistribution.
+MIT - libre d'utilisation, modification et redistribution.
 
 ---
 
-*Développé avec [Claude Code](https://claude.ai/code) — Anthropic*
+*Développé avec [Claude Code](https://claude.ai/code) - Anthropic*

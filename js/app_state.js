@@ -1,20 +1,20 @@
 /**
- * app_state.js — État global partagé + constantes
+ * app_state.js - État global partagé + constantes
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
 const APP_VERSION = '1.7.0';
 // Historique :
-//   1.4.0 — Module devis professionnel
-//   1.5.0 — Refactoring multi-fichiers, modal démarrage, infos client,
+//   1.4.0 - Module devis professionnel
+//   1.5.0 - Refactoring multi-fichiers, modal démarrage, infos client,
 //            module horaire EDF, dimensionnement onduleurs
-//   1.5.1 — Serveur de développement local (.claude/launch.json)
-//   1.5.2 — Refacto constants.js · bugfixes (autoConso/ROI/panelWp)
+//   1.5.1 - Serveur de développement local (.claude/launch.json)
+//   1.5.2 - Refacto constants.js · bugfixes (autoConso/ROI/panelWp)
 //            · onglet réseau : calcul auto nb panneaux depuis surface
-//   1.5.3 — Suppression valeurs par défaut · projet démo au démarrage
-//   1.6.0 — Hors-réseau : import Enedis direct, simulation slot-par-slot 17520
-//   1.6.1 — Script serve.sh Linux
-//   1.7.0 — Rb intégration numérique (tout azimut), HDKR anisotrope, payback/VAN/LCOE
+//   1.5.3 - Suppression valeurs par défaut · projet démo au démarrage
+//   1.6.0 - Hors-réseau : import Enedis direct, simulation slot-par-slot 17520
+//   1.6.1 - Script serve.sh Linux
+//   1.7.0 - Rb intégration numérique (tout azimut), HDKR anisotrope, payback/VAN/LCOE
 
 const AppState = {
   location:   { lat: 48.8566, lon: 2.3522, alt: 35, name: 'Paris, France' },

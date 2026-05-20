@@ -1,4 +1,50 @@
+# Dependencies
 node_modules/
+
+# Build outputs (electron-builder)
 dist/
 out/
+build/
+release/
+*.AppImage
+*.deb
+*.rpm
+*.snap
+*.exe
+*.dmg
+*.zip
+*.tar.gz
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Cache
+.cache/
+.eslintcache
+*.tsbuildinfo
+
+# Tests
+coverage/
+
+# Local memory (claude context)
 memory/

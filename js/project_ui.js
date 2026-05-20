@@ -1,5 +1,5 @@
 /**
- * project_ui.js — Gestion de projets (UI) + modal démarrage + infos client
+ * project_ui.js - Gestion de projets (UI) + modal démarrage + infos client
  * Dépend de : app_state.js, project_manager.js
  */
 
@@ -18,7 +18,7 @@ function showToast(msg, type = 'ok') {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  BARRE PROJET — affichage client
+//  BARRE PROJET - affichage client
 // ══════════════════════════════════════════════════════════════
 function updateProjectBar() {
   const clientEl = document.getElementById('project-bar-client');
@@ -251,7 +251,7 @@ function renderProjectsList(containerId = 'projects-list-container') {
 
 function cloneProject(id) {
   const src = ProjectManager.get(id);
-  const name = prompt('Nom du clone :', (src?.name || '') + ' — variante');
+  const name = prompt('Nom du clone :', (src?.name || '') + ' - variante');
   if (name === null) return;
   const copy = ProjectManager.clone(id, name.trim() || src.name + ' (copie)');
   if (copy) { renderProjectsList(); showToast(`✓ Clone "${copy.name}" créé`); }
@@ -543,7 +543,7 @@ function seedDemoProject() {
 
   const demo = {
     id:        DEMO_PROJECT_ID,
-    name:      'Démo — Maison Toulouse',
+    name:      'Démo - Maison Toulouse',
     isDemo:    true,
     client: {
       nom:     'Famille Dupont',

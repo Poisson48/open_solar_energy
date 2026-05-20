@@ -1,5 +1,5 @@
 /**
- * constants.js — Constantes partagées entre tous les modules
+ * constants.js - Constantes partagées entre tous les modules
  * Doit être chargé APRÈS app_state.js
  */
 

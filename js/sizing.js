@@ -1,5 +1,5 @@
 /**
- * sizing.js — Moteur de dimensionnement PV depuis facture EDF
+ * sizing.js - Moteur de dimensionnement PV depuis facture EDF
  *
  * Logique : l'utilisateur saisit sa consommation réelle, le logiciel
  * calcule le kWp optimal par balayage discret (0.1 kWc de pas).
@@ -54,7 +54,7 @@ const SizingEngine = (() => {
 
   /**
    * Payback actualisé (années) avec dégradation panneaux + hausse prix électricité.
-   * Inclut O&M (0,5 %/an) et remplacement onduleur (12 % à 15 ans) — cohérent avec LCOE.
+   * Inclut O&M (0,5 %/an) et remplacement onduleur (12 % à 15 ans) - cohérent avec LCOE.
    */
   function calcPayback(systemCost, firstYearGain) {
     if (firstYearGain <= 0 || systemCost <= 0) return null;
@@ -74,7 +74,7 @@ const SizingEngine = (() => {
   /**
    * Valeur Actuelle Nette (€) sur SYSTEM_LIFETIME ans.
    * VAN > 0 → investissement rentable au taux d'actualisation DISCOUNT_RATE.
-   * Inclut O&M (0,5 %/an) et remplacement onduleur (12 % à 15 ans) — cohérent avec LCOE.
+   * Inclut O&M (0,5 %/an) et remplacement onduleur (12 % à 15 ans) - cohérent avec LCOE.
    */
   function calcNPV(systemCost, firstYearGain) {
     if (systemCost <= 0) return 0;
@@ -110,8 +110,8 @@ const SizingEngine = (() => {
   }
 
   /**
-   * Prime à l'autoconsommation solaire (France — décret 2021-1444).
-   * Varie chaque trimestre — vérifier l'arrêté en vigueur sur energie.gouv.fr
+   * Prime à l'autoconsommation solaire (France - décret 2021-1444).
+   * Varie chaque trimestre - vérifier l'arrêté en vigueur sur energie.gouv.fr
    * Valeurs indicatives 2025 (à vérifier sur energie.gouv.fr chaque trimestre) :
    *   ≤ 3 kWc  : 300 €/kWc  |  ≤ 9 kWc : 230 €/kWc
    *   ≤ 36 kWc : 100 €/kWc  |  ≤ 100 kWc : 60 €/kWc
@@ -155,7 +155,7 @@ const SizingEngine = (() => {
   }
 
   // ── Profil PV demi-horaire normalisé (kWh/slot/kWc) ─────────────
-  // Identique à OffgridSizing.buildHalfHourPvProfile — résultat [12][48]
+  // Identique à OffgridSizing.buildHalfHourPvProfile - résultat [12][48]
   function _buildHalfHourPvProfile(weatherData, monthlyHtilt, losses, tilt, azimuth, lat, pvTech) {
     const tech = pvTech || 'crystSi';
     const profiles = [];
@@ -182,7 +182,7 @@ const SizingEngine = (() => {
   }
 
   // ── Autoconsommation slot-à-slot sans batterie (réseau) ──────────
-  // pvSlotsFlat : Float32Array(nHours×2) par kWc — index = slot absolu
+  // pvSlotsFlat : Float32Array(nHours×2) par kWc - index = slot absolu
   function _calcSlotMetrics(pvSlotsFlat, Ppeak, enedis) {
     const data    = enedis.halfHourly;
     const daysArr = enedis.year ? getMonthlyDays(enedis.year) : DAYS;

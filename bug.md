@@ -1,4 +1,4 @@
-# Bugs — Open Solar Energy
+# Bugs - Open Solar Energy
 
 > Tests effectués par Playwright (headless Chromium) le 2026-04-20.
 > Serveur : `python3 -m http.server 8080`
@@ -8,7 +8,7 @@
 
 ## ❌ BUG CRITIQUE
 
-### 1. `bindSharedParamSync is not defined` — erreur JS au démarrage
+### 1. `bindSharedParamSync is not defined` - erreur JS au démarrage
 
 **Fichier :** `js/main.js:169`
 **Symptôme :** Erreur JavaScript non catchée à chaque chargement de page.
@@ -47,9 +47,9 @@ Uncaught ReferenceError: bindSharedParamSync is not defined
 
 ---
 
-### 3. Import fichier Enedis ZIP — données non chargées / statut silencieux
+### 3. Import fichier Enedis ZIP - données non chargées / statut silencieux
 
-**Fichier :** `js/renderers.js:874` — `handleEnedisCSV()`
+**Fichier :** `js/renderers.js:874` - `handleEnedisCSV()`
 **Symptôme :** Après import du ZIP Enedis (30min) via le modal, `AppState.monthlyKwh` reste vide, les champs `sz-kwh-1..12` ne sont pas mis à jour, et aucun toast de confirmation n'est affiché.
 **Comportement observé :**
 - Le statut `sz-csv-status` reste invisible
@@ -64,26 +64,26 @@ Uncaught ReferenceError: bindSharedParamSync is not defined
 
 ---
 
-### 4. PVGIS Import météo — statut invisible après clic
+### 4. PVGIS Import météo - statut invisible après clic
 
-**Fichier :** `js/pvgis_import.js:228` — `doImportWeather()`
+**Fichier :** `js/pvgis_import.js:228` - `doImportWeather()`
 **Symptôme :** Après clic sur "Importer météo (MRcalc)", l'élément `#pvgis-import-status` reste invisible pendant et après l'appel API (testé avec 4 secondes de délai).
 **Cause probable :** L'API Open-Meteo est appelée en réseau (`fetch`). En environnement headless sans accès internet garanti, l'appel peut timeout ou échouer avant que `setStatus()` ne soit appelé.
-**Impact en production :** Probablement mineur si internet disponible — à vérifier avec réseau normal.
+**Impact en production :** Probablement mineur si internet disponible - à vérifier avec réseau normal.
 **À surveiller :** En cas d'erreur réseau, le message `✗ Open-Meteo inaccessible` devrait apparaître mais n'a pas été observé (possible timeout > 4s).
 
 ---
 
 ## ℹ️ NON-BUGS (comportements normaux)
 
-### Onglet "Suiveur PV" — pas de bouton calculer
+### Onglet "Suiveur PV" - pas de bouton calculer
 L'onglet est explicitement en développement (message affiché : "Le module Suiveur PV est en cours de développement"). C'est voulu.
 
 ### Onglet "Hors réseau" masqué en mode réseau
 Comportement normal : `TABS_OFFGRID_ONLY = ['offgrid']` est caché quand `installationType === 'grid'`. De même, les onglets réseau (sizing, grid, tracker, optimizer) sont masqués en mode autonome.
 
 ### Bouton "Import Enedis" dans onglet Dimensionnement, pas Grid
-Le bouton est dans `#tab-sizing` (onglet Dimensionnement), pas dans l'onglet Grid — c'est correct, les données mensuelles alimentent le dimensionnement.
+Le bouton est dans `#tab-sizing` (onglet Dimensionnement), pas dans l'onglet Grid - c'est correct, les données mensuelles alimentent le dimensionnement.
 
 ---
 

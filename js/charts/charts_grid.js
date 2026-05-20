@@ -1,5 +1,5 @@
 /**
- * charts_grid.js — Graphiques onglet Système PV réseau + données météo
+ * charts_grid.js - Graphiques onglet Système PV réseau + données météo
  * Dépend de : charts_base.js
  */
 

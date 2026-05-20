@@ -1,5 +1,5 @@
 /**
- * tab_sizing.js — HTML de l'onglet Dimensionnement EDF
+ * tab_sizing.js - HTML de l'onglet Dimensionnement EDF
  */
 function initTabSizing() {
   document.getElementById('tab-sizing').innerHTML = `

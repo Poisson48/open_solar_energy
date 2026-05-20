@@ -1,5 +1,5 @@
 /**
- * enedis_import.js — Parser CSV export Enedis (espace client)
+ * enedis_import.js - Parser CSV export Enedis (espace client)
  *
  * Formats supportés dans le ZIP :
  *   - ma-conso-mensuelle       : MM/YYYY;kWh   → monthlyKwh
@@ -349,7 +349,7 @@ const EnedisImport = (() => {
   // ── Gestionnaire ZIP : parse TOUS les CSV, merge le meilleur ──
   function handleZip(file, onResult) {
     if (typeof JSZip === 'undefined') {
-      onResult({ error: 'JSZip non chargé — rechargez la page.' });
+      onResult({ error: 'JSZip non chargé - rechargez la page.' });
       return;
     }
 

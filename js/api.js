@@ -1,5 +1,5 @@
 /**
- * api.js — API de pilotage pour tester l'app depuis la console ou des scripts
+ * api.js - API de pilotage pour tester l'app depuis la console ou des scripts
  *
  * Usage basique :
  *   AppAPI.setSizing({ monthlyKwh: [300,280,...], surface: 20 }).calc('sizing')
@@ -124,8 +124,8 @@ const AppAPI = (() => {
   /**
    * Injecte des données Enedis sans passer par le parser CSV.
    * @param {object} config
-   * @param {number[]}      [config.monthlyKwh]   kWh/mois (12 valeurs) — remplit sz-kwh-*
-   * @param {number[]|Float32Array} [config.halfHourly] kWh/slot 30min (n×48 valeurs) — simulation batterie
+   * @param {number[]}      [config.monthlyKwh]   kWh/mois (12 valeurs) - remplit sz-kwh-*
+   * @param {number[]|Float32Array} [config.halfHourly] kWh/slot 30min (n×48 valeurs) - simulation batterie
    * @param {number[]}      [config.monthlyKwhHp]  kWh HP/mois (optionnel, tarif HP/HC)
    * @param {number}        [config.year]          année des données (défaut 2023)
    */
@@ -197,10 +197,10 @@ const AppAPI = (() => {
   /**
    * Applique tous les paramètres et lance le calcul en une seule appel.
    * @param {object} config
-   * @param {object} [config.install]  — paramètres partagés (tilt, azimuth, surface…)
-   * @param {object} [config.sizing]   — paramètres onglet Dimensionnement
-   * @param {object} [config.offgrid]  — paramètres onglet Hors-réseau
-   * @param {string} [config.tab]      — 'sizing' | 'grid' | 'offgrid'
+   * @param {object} [config.install]  - paramètres partagés (tilt, azimuth, surface…)
+   * @param {object} [config.sizing]   - paramètres onglet Dimensionnement
+   * @param {object} [config.offgrid]  - paramètres onglet Hors-réseau
+   * @param {string} [config.tab]      - 'sizing' | 'grid' | 'offgrid'
    * @returns résultats AppState
    */
   function runScenario({ install, sizing, offgrid, tab = 'sizing' } = {}) {
@@ -240,8 +240,8 @@ const AppAPI = (() => {
       const status = ok ? 'pass' : (isWarn ? 'warn' : 'fail');
       report.tests.push({ name, status, expected: String(expected), actual: String(actual) });
       if (ok) report.pass++;
-      else if (isWarn) { report.warn++; console.warn(`⚠ ${name} — attendu: ${expected}, obtenu: ${actual}`); }
-      else { report.fail++; console.error(`✗ ${name} — attendu: ${expected}, obtenu: ${actual}`); }
+      else if (isWarn) { report.warn++; console.warn(`⚠ ${name} - attendu: ${expected}, obtenu: ${actual}`); }
+      else { report.fail++; console.error(`✗ ${name} - attendu: ${expected}, obtenu: ${actual}`); }
     }
 
     // Sauvegarder l'état
@@ -252,7 +252,7 @@ const AppAPI = (() => {
     try {
       const demoWeather = AppState.demoData?.locations?.toulouse?.monthly;
       const weather = demoWeather || AppState.weatherData;
-      if (!weather) { console.error('Aucune donnée météo disponible — importez un lieu d\'abord.'); return report; }
+      if (!weather) { console.error('Aucune donnée météo disponible - importez un lieu d\'abord.'); return report; }
 
       AppState.weatherData = weather;
       if (demoWeather) { AppState.location.lat = 43.6; AppState.location.lon = 1.44; }
@@ -370,7 +370,7 @@ const AppAPI = (() => {
     }
 
     const sym = report.fail ? '✗' : report.warn ? '⚠' : '✓';
-    console.log(`\n${sym} Diagnostic — ${report.pass} ✓  ${report.warn} ⚠  ${report.fail} ✗ (total ${report.tests.length})`);
+    console.log(`\n${sym} Diagnostic - ${report.pass} ✓  ${report.warn} ⚠  ${report.fail} ✗ (total ${report.tests.length})`);
     console.table(report.tests.map(t => ({
       Test:     t.name,
       Statut:   t.status === 'pass' ? '✓' : t.status === 'warn' ? '⚠' : '✗',
@@ -384,7 +384,7 @@ const AppAPI = (() => {
 
   function help() {
     console.log(`
-AppAPI — pilotage de l'app Open Solar Energy
+AppAPI - pilotage de l'app Open Solar Energy
 ─────────────────────────────────────────────
 AppAPI.goTo('sizing'|'grid'|'offgrid'|...)
 
@@ -393,7 +393,7 @@ AppAPI.setInstall({ tilt, azimuth, surface, panelWp, panelM2, losses, tech })
 
 AppAPI.setSizing({
   monthlyKwh:[...12],          // kWh/mois
-  monthlyKwhHp:[...12],        // kWh HP/mois (Enedis HP/HC) — null pour effacer
+  monthlyKwhHp:[...12],        // kWh HP/mois (Enedis HP/HC) - null pour effacer
   tariff,                      // 'base' | 'hphc'
   priceBase, priceHp, priceHc, // €/kWh
   subscription,                // abonnement €/an (0 = pas d'abo)
@@ -402,7 +402,7 @@ AppAPI.setSizing({
   targetCoverage,              // % couverture cible
   feedin,                      // tarif rachat surplus €/kWh
   surface, tech,
-  includeIncentive,            // true (défaut) | false — prime autoconso France
+  includeIncentive,            // true (défaut) | false - prime autoconso France
 })
 
 AppAPI.setOffgrid({

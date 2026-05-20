@@ -1,5 +1,5 @@
 /**
- * quote_generator.js — Générateur de devis professionnel
+ * quote_generator.js - Générateur de devis professionnel
  *
  * Fonctions exposées :
  *   QuoteGen.readForm()          → lit le formulaire devis
@@ -202,11 +202,11 @@ const QuoteGen = (() => {
   </div>
   <div class="dv-box">
     <h4>Site d'installation</h4>
-    <p>${chantierStr || '—'}</p>
+    <p>${chantierStr || '-'}</p>
   </div>
   <div class="dv-box">
     <h4>Système PV</h4>
-    <table style="margin:0">${sysRows || '<tr><td>—</td></tr>'}</table>
+    <table style="margin:0">${sysRows || '<tr><td>-</td></tr>'}</table>
   </div>
 </div>
 
@@ -246,7 +246,7 @@ ${d.notes ? `<div class="notes"><strong>Notes et conditions :</strong><br>${d.no
 </div>
 
 <div class="footer">
-  Devis généré par Open Solar Energy v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : ''} — open source · Document non contractuel avant signature
+  Devis généré par Open Solar Energy v${typeof APP_VERSION !== 'undefined' ? APP_VERSION : ''} - open source · Document non contractuel avant signature
 </div>
 
 </body></html>`;

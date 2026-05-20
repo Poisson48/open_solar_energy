@@ -1,8 +1,8 @@
-# TODO — Open Solar Energy
+# TODO - Open Solar Energy
 
 ## Bugs connus
 
-- [ ] **Simulation horaire — variation jour à jour absente** : `simulateMonthHourly` répète le même profil moyen pour chaque jour du mois. Une séquence de jours nuageux en hiver vide la batterie sans possibilité de rattrapage, ce que le modèle actuel ne capture pas. Solution : ajouter un facteur aléatoire (ou une distribution nuageuse mensuelle basée sur l'irradiation réelle).
+- [ ] **Simulation horaire - variation jour à jour absente** : `simulateMonthHourly` répète le même profil moyen pour chaque jour du mois. Une séquence de jours nuageux en hiver vide la batterie sans possibilité de rattrapage, ce que le modèle actuel ne capture pas. Solution : ajouter un facteur aléatoire (ou une distribution nuageuse mensuelle basée sur l'irradiation réelle).
 - [ ] **Données météo démo limitées** : seulement 4 villes. Pour les sites isolés (ex. Cévennes), la ville la plus proche peut avoir un GHI très différent. Améliorer l'import Open-Meteo automatique à la sélection du lieu.
 - [ ] **`sz-kwh-*` non rechargés depuis Enedis au chargement de projet** : les champs du dimensionnement réseau sont restaurés via `formState`, mais si l'utilisateur n'a pas sauvegardé après l'import Enedis initial, ils sont vides. Même fix que `og2-day-*` (déjà fait) à appliquer.
 
