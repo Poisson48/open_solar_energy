@@ -299,6 +299,356 @@ if (!r5) {
   checkNaN('Ppeak autoconso_max', r5.Ppeak);
 }
 
+// ── Scénario 6 : bosCost=0 explicit — ne doit PAS utiliser le défaut 500€ ───
+console.log('\n═══ Scénario 6 — bosCost=0 explicite vs bosCost=500 ═══');
+await page.evaluate(() => AppAPI.setLocation(48.8566, 2.3522, 'Paris, France'));
+
+const r6_bos0 = await page.evaluate(() =>
+  AppAPI.runScenario({
+    install:  { tilt: 30, azimuth: 0, surface: 25, panelWp: 400, losses: 14 },
+    offgrid:  { dailyDefault: 3500, battTech: 'lfp', targetCoverage: 90, pvCostKwp: 650, bosCost: 0 },
+    tab:      'offgrid'
+  })
+);
+const r6_bos500 = await page.evaluate(() =>
+  AppAPI.runScenario({
+    install:  { tilt: 30, azimuth: 0, surface: 25, panelWp: 400, losses: 14 },
+    offgrid:  { dailyDefault: 3500, battTech: 'lfp', targetCoverage: 90, pvCostKwp: 650, bosCost: 500 },
+    tab:      'offgrid'
+  })
+);
+
+if (!r6_bos0 || !r6_bos500) {
+  console.error('ERREUR scénario 6 null');
+  errors++;
+} else {
+  console.log(`  Coût bosCost=0   : ${r6_bos0.systemCost} €`);
+  console.log(`  Coût bosCost=500 : ${r6_bos500.systemCost} €`);
+  console.log(`  Différence       : ${r6_bos500.systemCost - r6_bos0.systemCost} € (attendu: 500)`);
+  check('bosCost=0 < bosCost=500 (bug fix)', r6_bos500.systemCost - r6_bos0.systemCost, 500, 10);
+}
+
+// ── Scénario 7 : includeIncentive=false — coût net = coût brut ───────────────
+console.log('\n═══ Scénario 7 — includeIncentive=false (prime désactivée) ═══');
+await page.evaluate(() => AppAPI.setLocation(48.8566, 2.3522, 'Paris, France'));
+
+const MONTHLY = [350,300,280,250,240,230,240,250,270,310,340,360];
+const r7_with = await page.evaluate(() =>
+  AppAPI.runScenario({
+    install: { tilt: 30, azimuth: 0, surface: 20, panelWp: 400, losses: 14 },
+    sizing:  {
+      monthlyKwh: [350,300,280,250,240,230,240,250,270,310,340,360],
+      tariff: 'base', priceBase: 0.2516, subscription: 120,
+      costKwp: 900, strategy: 'roi_optimal', includeIncentive: true
+    },
+    tab: 'sizing'
+  })
+);
+const r7_without = await page.evaluate(() =>
+  AppAPI.runScenario({
+    install: { tilt: 30, azimuth: 0, surface: 20, panelWp: 400, losses: 14 },
+    sizing:  {
+      monthlyKwh: [350,300,280,250,240,230,240,250,270,310,340,360],
+      tariff: 'base', priceBase: 0.2516, subscription: 120,
+      costKwp: 900, strategy: 'roi_optimal', includeIncentive: false
+    },
+    tab: 'sizing'
+  })
+);
+
+if (!r7_with || !r7_without) {
+  console.error('ERREUR scénario 7 null');
+  errors++;
+} else {
+  console.log(`  Ppeak (avec prime)  : ${r7_with.Ppeak} kWc  incentive=${r7_with.incentive} € coût net=${r7_with.systemCost} €`);
+  console.log(`  Ppeak (sans prime)  : ${r7_without.Ppeak} kWc  incentive=${r7_without.incentive} € coût net=${r7_without.systemCost} €`);
+  // Sans prime : systemCost doit égaler systemCostBrut
+  check('Sans prime : incentive = 0', r7_without.incentive, 0);
+  check('Sans prime : coût net = coût brut', r7_without.systemCost, r7_without.systemCostBrut);
+  // Avec prime : coût net < coût brut
+  if (r7_with.incentive > 0 && r7_with.systemCost >= r7_with.systemCostBrut) {
+    console.error(`  ✗ Avec prime : systemCost ${r7_with.systemCost} devrait être < systemCostBrut ${r7_with.systemCostBrut}`);
+    errors++;
+  } else {
+    console.log(`  ✓ Avec prime : coût net (${r7_with.systemCost} €) < coût brut (${r7_with.systemCostBrut} €)`);
+  }
+}
+
+// ── Scénario 8 : HP/HC avec données HP mensuelles réelles ────────────────────
+console.log('\n═══ Scénario 8 — HP/HC avec monthlyKwhHp injecté via API ═══');
+await page.evaluate(() => AppAPI.setLocation(43.6, 1.44, 'Toulouse'));
+
+const r8 = await page.evaluate(() =>
+  AppAPI.runScenario({
+    install: { tilt: 35, azimuth: 0, surface: 25, panelWp: 400, losses: 14 },
+    sizing:  {
+      monthlyKwh:   [320,280,260,230,210,190,200,210,240,280,310,340],
+      monthlyKwhHp: [208,182,169,150,137,124,130,137,156,182,202,221], // ~65% HP
+      tariff: 'hphc', priceHp: 0.2460, priceHc: 0.1860,
+      subscription: 120, costKwp: 1000, strategy: 'roi_optimal',
+    },
+    tab: 'sizing'
+  })
+);
+
+if (!r8) {
+  console.error('ERREUR scénario 8 null');
+  errors++;
+} else {
+  console.log(`  Ppeak         : ${r8.Ppeak} kWc`);
+  console.log(`  savedOnBill   : ${r8.savedOnBill} €`);
+  console.log(`  currentBill   : cf. newAnnualBill+savedOnBill`);
+  checkNaN('HP/HC + monthlyKwhHp : Ppeak', r8.Ppeak);
+  checkNaN('HP/HC + monthlyKwhHp : savedOnBill', r8.savedOnBill);
+  checkNaN('HP/HC + monthlyKwhHp : npv25', r8.npv25);
+  if (r8.savedOnBill <= 0) {
+    console.error('  ✗ savedOnBill devrait être > 0');
+    errors++;
+  } else {
+    console.log('  ✓ savedOnBill > 0');
+  }
+}
+
+// ── Scénario 9 : NPV cohérence — VAN positive si payback < durée vie ─────────
+console.log('\n═══ Scénario 9 — Cohérence NPV / Payback ═══');
+const r9 = r1;  // Réutilise scénario 1 (Paris, tarif base, 80% couverture)
+if (r9 && r9.paybackYears !== null) {
+  console.log(`  Payback    : ${r9.paybackYears} ans`);
+  console.log(`  NPV 25 ans : ${r9.npv25} €`);
+  if (r9.paybackYears <= 25 && r9.npv25 <= 0) {
+    console.error(`  ✗ NPV ${r9.npv25} devrait être > 0 pour un payback de ${r9.paybackYears} ans < 25 ans`);
+    errors++;
+  } else if (r9.paybackYears <= 25) {
+    console.log(`  ✓ NPV > 0 avec payback (${r9.paybackYears} ans) < durée vie (25 ans)`);
+  } else {
+    console.log(`  ℹ payback ${r9.paybackYears} > 25 ans, VAN potentiellement négative`);
+  }
+  // Payback doit être > ROI simple (car inclut O&M)
+  if (r9.ROI && r9.paybackYears < r9.ROI) {
+    console.warn(`  ⚠ paybackYears (${r9.paybackYears}) < ROI simple (${r9.ROI}) — suspect (O&M devrait allonger le payback)`);
+  } else {
+    console.log(`  ✓ paybackYears (${r9.paybackYears}) ≥ ROI simple (${r9.ROI})`);
+  }
+} else {
+  console.log('  ℹ payback null (investissement non rentable dans l\'horizon 40 ans)');
+}
+
+// ── Scénario 10 : Précision facture EDF base — currentBill exacte ────────────
+console.log('\n═══ Scénario 10 — Précision facture EDF base ═══');
+// conso = 300 kWh/mois × 12 = 3600 kWh/an
+// facture attendue = 3600 × 0.2516 + 120 = 905.76 + 120 = 1025.76 → 1026 €
+await page.evaluate(() => AppAPI.setLocation(48.8566, 2.3522, 'Paris, France'));
+const r10 = await page.evaluate(() =>
+  AppAPI.runScenario({
+    install: { tilt: 30, azimuth: 0, surface: 20, panelWp: 400, losses: 14 },
+    sizing: {
+      monthlyKwh:    [300,300,300,300,300,300,300,300,300,300,300,300],
+      tariff:        'base',
+      priceBase:     0.2516,
+      subscription:  120,
+      costKwp:       900,
+      strategy:      'bill_coverage_pct',
+      targetCoverage: 50,
+    },
+    tab: 'sizing'
+  })
+);
+if (!r10) {
+  console.error('ERREUR scénario 10 null');
+  errors++;
+} else {
+  const expectedBill = Math.round(3600 * 0.2516 + 120); // 1026
+  console.log(`  currentBill   : ${r10.currentBill} € (attendu: ${expectedBill})`);
+  console.log(`  newAnnualBill : ${r10.newAnnualBill} €`);
+  console.log(`  savedOnBill   : ${r10.savedOnBill} €`);
+  checkNaN('currentBill non NaN', r10.currentBill);
+  check('currentBill ≈ kWh×price+sub', r10.currentBill, expectedBill, 2);
+  // Identité comptable : newAnnualBill + savedOnBill = currentBill (feedin=0)
+  check('currentBill = newAnnualBill + savedOnBill', r10.currentBill, r10.newAnnualBill + r10.savedOnBill, 1);
+  // savedOnBill ≤ currentBill (ne peut pas économiser plus que la facture entière)
+  if (r10.savedOnBill > r10.currentBill) {
+    console.error(`  ✗ savedOnBill ${r10.savedOnBill} > currentBill ${r10.currentBill}`);
+    errors++;
+  } else {
+    console.log(`  ✓ savedOnBill (${r10.savedOnBill}) ≤ currentBill (${r10.currentBill})`);
+  }
+  // newAnnualBill ≥ 0
+  if (r10.newAnnualBill < 0) {
+    console.error(`  ✗ newAnnualBill ${r10.newAnnualBill} < 0`);
+    errors++;
+  } else {
+    console.log(`  ✓ newAnnualBill (${r10.newAnnualBill}) ≥ 0`);
+  }
+}
+
+// ── Scénario 11 : HP/HC — précision facture avec ratio connu ─────────────────
+console.log('\n═══ Scénario 11 — HP/HC facture exacte (ratio 65% HP) ═══');
+// bill = 3600 × (0.65×0.2460 + 0.35×0.1860) + 120 = 3600×0.2250 + 120 = 810+120 = 930 €
+await page.evaluate(() => AppAPI.setLocation(43.6, 1.44, 'Toulouse'));
+const r11 = await page.evaluate(() =>
+  AppAPI.runScenario({
+    install: { tilt: 30, azimuth: 0, surface: 20, panelWp: 400, losses: 14 },
+    sizing: {
+      monthlyKwh:   [300,300,300,300,300,300,300,300,300,300,300,300],
+      monthlyKwhHp: [195,195,195,195,195,195,195,195,195,195,195,195], // 65% exactement
+      tariff:       'hphc',
+      priceHp:      0.2460,
+      priceHc:      0.1860,
+      subscription: 120,
+      costKwp:      900,
+      strategy:     'roi_optimal',
+    },
+    tab: 'sizing'
+  })
+);
+if (!r11) {
+  console.error('ERREUR scénario 11 null');
+  errors++;
+} else {
+  const expectedBill = Math.round(3600 * (0.65 * 0.2460 + 0.35 * 0.1860) + 120); // 930
+  console.log(`  currentBill attendue : ${expectedBill} €`);
+  console.log(`  currentBill obtenue  : ${r11.currentBill} €`);
+  checkNaN('currentBill HP/HC non NaN', r11.currentBill);
+  check('currentBill HP/HC = formule exacte', r11.currentBill, expectedBill, 2);
+  check('currentBill HP/HC = newAnnualBill + savedOnBill', r11.currentBill, r11.newAnnualBill + r11.savedOnBill, 1);
+  // savedOnBill HP/HC : tout le PV est pendant HP → économies = autoconsoKwh × priceHp
+  checkNaN('savedOnBill HP/HC non NaN', r11.savedOnBill);
+  console.log(`  savedOnBill : ${r11.savedOnBill} € (doit être > 0 et au tarif HP)`);
+  if (r11.savedOnBill <= 0) {
+    console.error('  ✗ savedOnBill HP/HC devrait être > 0');
+    errors++;
+  } else {
+    console.log('  ✓ savedOnBill HP/HC > 0');
+  }
+}
+
+// ── Scénario 12 : Rendement spécifique dans plage physique réaliste ───────────
+console.log('\n═══ Scénario 12 — Rendement spécifique dans plage France ═══');
+await page.evaluate(() => AppAPI.setLocation(48.8566, 2.3522, 'Paris, France'));
+const r12 = await page.evaluate(() =>
+  AppAPI.runScenario({
+    install: { tilt: 30, azimuth: 0, surface: 40, panelWp: 400, losses: 14 },
+    sizing: {
+      monthlyKwh: [350,300,280,250,240,230,240,250,270,310,340,360],
+      tariff: 'base', priceBase: 0.2516, subscription: 120,
+      costKwp: 900, strategy: 'roi_optimal',
+    },
+    tab: 'sizing'
+  })
+);
+if (!r12) {
+  console.error('ERREUR scénario 12 null');
+  errors++;
+} else {
+  const specificYield = Math.round(r12.annualProd / r12.Ppeak);
+  console.log(`  Ppeak             : ${r12.Ppeak} kWc`);
+  console.log(`  Production/an     : ${r12.annualProd} kWh`);
+  console.log(`  Rendement spéc.   : ${specificYield} kWh/kWc/an (attendu 900-1400)`);
+  checkNaN('Rendement spécifique non NaN', specificYield);
+  if (specificYield < 900 || specificYield > 1400) {
+    console.error(`  ✗ Rendement ${specificYield} hors plage 900-1400 kWh/kWc/an pour Paris`);
+    errors++;
+  } else {
+    console.log(`  ✓ Rendement spécifique ${specificYield} kWh/kWc/an ∈ [900, 1400]`);
+  }
+}
+
+// ── Scénario 13 : tech CIS produit plus que crystSi en été chaud ─────────────
+console.log('\n═══ Scénario 13 — CIS vs crystSi : coeff température ═══');
+await page.evaluate(() => AppAPI.setLocation(43.6, 1.44, 'Toulouse'));
+const r13_si = await page.evaluate(() =>
+  AppAPI.runScenario({
+    install: { tilt: 35, azimuth: 0, surface: 40, panelWp: 400, losses: 14 },
+    sizing: {
+      monthlyKwh: [300,300,300,300,300,300,300,300,300,300,300,300],
+      tariff: 'base', priceBase: 0.2516, subscription: 120,
+      costKwp: 900, strategy: 'roi_optimal', tech: 'crystSi',
+    },
+    tab: 'sizing'
+  })
+);
+const r13_cis = await page.evaluate(() =>
+  AppAPI.runScenario({
+    install: { tilt: 35, azimuth: 0, surface: 40, panelWp: 400, losses: 14 },
+    sizing: {
+      monthlyKwh: [300,300,300,300,300,300,300,300,300,300,300,300],
+      tariff: 'base', priceBase: 0.2516, subscription: 120,
+      costKwp: 900, strategy: 'roi_optimal', tech: 'CIS',
+    },
+    tab: 'sizing'
+  })
+);
+if (!r13_si || !r13_cis) {
+  console.error('ERREUR scénario 13 null');
+  errors++;
+} else {
+  console.log(`  Production crystSi : ${r13_si.annualProd} kWh  (γ = -0.45%/°C)`);
+  console.log(`  Production CIS     : ${r13_cis.annualProd} kWh  (γ = -0.36%/°C)`);
+  // En été à Toulouse (Tcell > 25°C), CIS perd moins → production annuelle CIS ≥ crystSi
+  if (r13_cis.annualProd < r13_si.annualProd) {
+    console.error(`  ✗ CIS (${r13_cis.annualProd}) devrait produire ≥ crystSi (${r13_si.annualProd}) à Toulouse`);
+    errors++;
+  } else {
+    const gainPct = ((r13_cis.annualProd - r13_si.annualProd) / r13_si.annualProd * 100).toFixed(2);
+    console.log(`  ✓ CIS produit +${gainPct}% vs crystSi (coeff thermique plus favorable)`);
+  }
+  // Vérification que la différence reste physique (< 5% en annuel)
+  const diffPct = Math.abs(r13_cis.annualProd - r13_si.annualProd) / r13_si.annualProd * 100;
+  if (diffPct > 5) {
+    console.error(`  ✗ Différence CIS/crystSi ${diffPct.toFixed(1)}% > 5% (anormal pour un coeff thermique)`);
+    errors++;
+  } else {
+    console.log(`  ✓ Différence ${diffPct.toFixed(1)}% < 5% (physiquement cohérent)`);
+  }
+}
+
+// ── Scénario 14 : Hors-réseau — couverture ≥ cible et cohérence coûts ────────
+console.log('\n═══ Scénario 14 — Hors-réseau : coverage ≥ cible et coûts cohérents ═══');
+await page.evaluate(() => AppAPI.setLocation(43.6, 1.44, 'Toulouse'));
+const r14 = await page.evaluate(() =>
+  AppAPI.runScenario({
+    install:  { tilt: 35, azimuth: 0, surface: 30, panelWp: 400, losses: 14 },
+    offgrid:  { dailyDefault: 2000, battTech: 'lfp', targetCoverage: 90, pvCostKwp: 650 },
+    tab:      'offgrid'
+  })
+);
+if (!r14) {
+  console.error('ERREUR scénario 14 null');
+  errors++;
+} else {
+  console.log(`  Ppeak          : ${r14.Ppeak} kWc`);
+  console.log(`  Batt brute     : ${r14.C_batt_gross} kWh`);
+  console.log(`  Coverage       : ${r14.coverageRate} %`);
+  console.log(`  Déficit jours  : ${r14.deficit_days}`);
+  console.log(`  Coût PV        : ${r14.costPV} €`);
+  console.log(`  Coût batt      : ${r14.costBatt} €`);
+  console.log(`  Coût système   : ${r14.systemCost} €`);
+  // Coverage ≥ cible (90%)
+  if (r14.coverageRate < 90) {
+    console.error(`  ✗ coverageRate ${r14.coverageRate} < 90% (cible)`);
+    errors++;
+  } else {
+    console.log(`  ✓ coverageRate ${r14.coverageRate}% ≥ 90%`);
+  }
+  // Cohérence coûts : costPV + costBatt + bosCost ≈ systemCost
+  const expectedCost = r14.costPV + r14.costBatt + 500; // bosCost défaut 500
+  if (Math.abs(r14.systemCost - expectedCost) > 10) {
+    console.error(`  ✗ systemCost ${r14.systemCost} ≠ costPV+costBatt+BOS (${expectedCost})`);
+    errors++;
+  } else {
+    console.log(`  ✓ systemCost cohérent : ${r14.costPV} + ${r14.costBatt} + 500 = ${r14.systemCost}`);
+  }
+  checkNaN('deficit_days non NaN', r14.deficit_days);
+  checkNaN('total_conso non NaN', r14.total_conso);
+  checkNaN('battLifeYears non NaN', r14.battLifeYears);
+  // Durée de vie LFP raisonnable (10-20 ans)
+  if (r14.battLifeYears < 10 || r14.battLifeYears > 20) {
+    console.warn(`  ⚠ battLifeYears ${r14.battLifeYears} hors plage attendue 10-20 ans pour LFP`);
+  } else {
+    console.log(`  ✓ battLifeYears ${r14.battLifeYears} ans ∈ [10, 20]`);
+  }
+}
+
 // ── AppAPI.state() ────────────────────────────────────────────────────────────
 const snap = await page.evaluate(() => {
   const s = AppAPI.state();

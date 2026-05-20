@@ -54,15 +54,18 @@ const SizingEngine = (() => {
 
   /**
    * Payback actualisé (années) avec dégradation panneaux + hausse prix électricité.
-   * Résultat < ROI simple car les gains augmentent avec l'électricité.
+   * Inclut O&M (0,5 %/an) et remplacement onduleur (12 % à 15 ans) — cohérent avec LCOE.
    */
   function calcPayback(systemCost, firstYearGain) {
     if (firstYearGain <= 0 || systemCost <= 0) return null;
+    const omCost      = systemCost * 0.005;   // 0,5 %/an
+    const inverterRpl = systemCost * 0.12;    // remplacement onduleur à 15 ans
     let cum = 0;
     for (let y = 1; y <= 40; y++) {
-      cum += firstYearGain
-           * Math.pow(1 + ELEC_ESCALATION,   y - 1)
-           * Math.pow(1 - PANEL_DEGRADATION, y - 1);
+      const gain = firstYearGain
+                 * Math.pow(1 + ELEC_ESCALATION,   y - 1)
+                 * Math.pow(1 - PANEL_DEGRADATION, y - 1);
+      cum += gain - omCost - (y === 15 ? inverterRpl : 0);
       if (cum >= systemCost) return y;
     }
     return null;
@@ -71,16 +74,20 @@ const SizingEngine = (() => {
   /**
    * Valeur Actuelle Nette (€) sur SYSTEM_LIFETIME ans.
    * VAN > 0 → investissement rentable au taux d'actualisation DISCOUNT_RATE.
+   * Inclut O&M (0,5 %/an) et remplacement onduleur (12 % à 15 ans) — cohérent avec LCOE.
    */
   function calcNPV(systemCost, firstYearGain) {
     if (systemCost <= 0) return 0;
     if (firstYearGain <= 0) return -systemCost;
+    const omCost      = systemCost * 0.005;
+    const inverterRpl = systemCost * 0.12;
     let npv = -systemCost;
     for (let y = 1; y <= SYSTEM_LIFETIME; y++) {
       const gain = firstYearGain
                  * Math.pow(1 + ELEC_ESCALATION,   y - 1)
                  * Math.pow(1 - PANEL_DEGRADATION, y - 1);
-      npv += gain / Math.pow(1 + DISCOUNT_RATE, y);
+      const netGain = gain - omCost - (y === 15 ? inverterRpl : 0);
+      npv += netGain / Math.pow(1 + DISCOUNT_RATE, y);
     }
     return npv;
   }
@@ -250,6 +257,9 @@ const SizingEngine = (() => {
       sizing.targetCoveragePct
     );
 
+    // Expose currentBill dans recommended pour l'accès via AppAPI.getResults('sizing')
+    if (recommended) recommended.currentBill = Math.round(currentBill);
+
     return { recommended, allCandidates, monthlyHtilt, currentBill: Math.round(currentBill), annualConso };
   }
 
@@ -288,7 +298,11 @@ const SizingEngine = (() => {
         targetCoveragePct:  getVal('sz-target-coverage') || 60,
         feedinTariff:       getVal('sz-feedin')   || 0,
         systemCostPerKwp:   getVal('sz-cost-kwp') || 900,
-        realTotalCost:      getVal('sz-cost-total') || 0
+        realTotalCost:      getVal('sz-cost-total') || 0,
+        // _includeIncentive : positionné via API (AppState) ou UI si checkbox existe
+        includeIncentive:   typeof AppState !== 'undefined'
+                              ? (AppState._includeIncentive ?? true)
+                              : true
       }
     };
   }
