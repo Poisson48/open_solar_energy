@@ -3,7 +3,7 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '1.8.3';
+const APP_VERSION = '1.8.4';
 // Historique :
 //   1.4.0 - Module devis professionnel
 //   1.5.0 - Refactoring multi-fichiers, modal démarrage, infos client,
@@ -26,6 +26,7 @@ const APP_VERSION = '1.8.3';
 //   1.8.1 - Saisie modele panneau + bibliotheque globale (ose_panels_v1)
 //   1.8.2 - Git autosave : chaque action importante crée un commit git
 //   1.8.3 - Fix preload.js absent de l'AppImage + gitAutoSave sans projet actif
+//   1.8.4 - Fix snap Toulouse + projets fantômes au démarrage
 
 const AppState = {
   location:   { lat: 48.8566, lon: 2.3522, alt: 35, name: 'Paris, France' },
