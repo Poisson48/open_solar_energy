@@ -1,6 +1,4 @@
 const { app, BrowserWindow, shell, dialog } = require('electron');
-
-app.disableSandbox();
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 

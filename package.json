@@ -11,6 +11,7 @@
   },
   "build": {
     "appId": "com.poisson48.open-solar-energy",
+    "afterPack": "./afterPack.js",
     "productName": "Open Solar Energy",
     "files": [
       "index.html",

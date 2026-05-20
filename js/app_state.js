@@ -18,7 +18,7 @@ const APP_VERSION = '1.7.3';
 //   1.7.1 - Audit bugs B1-B10 : payback DCF, reset Enedis, selectOptimal sans mutation,
 //            années bissextiles, AppState initialisé, LCOE nominal
 //   1.7.2 - Fix sandbox Linux : AppImage utilisable sans --no-sandbox
-//   1.7.3 - Fix sandbox Linux (app.disableSandbox) + release non-draft
+//   1.7.3 - Fix sandbox Linux : wrapper --no-sandbox + release non-draft
 
 const AppState = {
   location:   { lat: 48.8566, lon: 2.3522, alt: 35, name: 'Paris, France' },
