@@ -30,6 +30,11 @@ function calcSizing() {
   AppState.lastSizingCandidates = allCandidates;
   AppState.lastSizingInput      = input;
   renderSizingResults(recommended, allCandidates, currentBill, annualConso);
+
+  // Commit git après dimensionnement
+  if (typeof gitAutoSave === 'function' && recommended) {
+    gitAutoSave(`Calcul dimensionnement — ${recommended.Ppeak} kWc`);
+  }
 }
 
 function renderSizingResults(rec, allCandidates, currentBill, annualConso) {

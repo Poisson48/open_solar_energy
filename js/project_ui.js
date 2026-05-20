@@ -60,28 +60,27 @@ function restoreFormState(fields) {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  SAUVEGARDER LE PROJET
+//  CONSTRUCTION DES DONNÉES DU PROJET (logique commune)
 // ══════════════════════════════════════════════════════════════
-function saveCurrentProject() {
+function buildProjectData() {
   const nameEl = document.getElementById('project-name-input');
-  const name = (nameEl?.value || '').trim() || 'Projet sans nom';
-  if (nameEl) nameEl.value = name;
+  const name   = (nameEl?.value || '').trim() || 'Projet sans nom';
 
   const sizingRec  = AppState.lastSizingResult;
   const offgridRec = AppState.lastOffgridSizingResult;
   const summary = {
-    annualConso:      AppState.lastSizingInput?.bill?.monthlyKwh?.reduce((s,v)=>s+v,0) || null,
+    annualConso:      AppState.lastSizingInput?.bill?.monthlyKwh?.reduce((s, v) => s + v, 0) || null,
     recommendedPpeak: sizingRec?.Ppeak || offgridRec?.Ppeak || null,
     systemCost:       sizingRec?.systemCost || offgridRec?.systemCost || null,
     coverageRate:     sizingRec?.coverageRate || offgridRec?.coverageRate || null,
-    locationName:     AppState.location.name
+    locationName:     AppState.location.name,
   };
 
   const enedisSerial = AppState.hourlyEnedisData?.halfHourly
     ? { ...AppState.hourlyEnedisData, halfHourly: Array.from(AppState.hourlyEnedisData.halfHourly) }
     : null;
 
-  const project = {
+  return {
     id:               AppState.currentProjectId || ProjectManager.newId(),
     name,
     installationType: AppState.installationType || 'grid',
@@ -94,9 +93,50 @@ function saveCurrentProject() {
     monthlyKwhHp:     AppState.monthlyKwhHp ? AppState.monthlyKwhHp.slice() : null,
     enedisYear:       AppState.enedisYear || null,
     formState:        captureFormState(),
-    summary
+    summary,
   };
+}
 
+// ══════════════════════════════════════════════════════════════
+//  SAUVEGARDE GIT AUTOMATIQUE
+// ══════════════════════════════════════════════════════════════
+/**
+ * Sauvegarde le projet courant dans localStorage ET dans un commit git.
+ * Ne fait rien si aucun projet actif ou si l'API Electron n'est pas disponible
+ * (ex. : navigateur web sans Electron, ou git absent sur la machine).
+ *
+ * @param {string} actionMessage - Message de commit descriptif
+ */
+async function gitAutoSave(actionMessage) {
+  if (!AppState.currentProjectId) return;
+  const project = buildProjectData();
+  AppState.currentProjectId = project.id;
+
+  // Sauvegarde localStorage (compatibilité existante)
+  ProjectManager.save(project);
+
+  // Sauvegarde git (optionnelle : nécessite Electron + git installé)
+  if (!window.electronAPI) return;
+  try {
+    await window.electronAPI.gitSave(
+      AppState.currentProjectId,
+      JSON.stringify(project, null, 2),
+      actionMessage
+    );
+  } catch (e) {
+    console.warn('[gitAutoSave] git non disponible :', e);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SAUVEGARDER LE PROJET (Ctrl+S / bouton)
+// ══════════════════════════════════════════════════════════════
+function saveCurrentProject() {
+  const nameEl = document.getElementById('project-name-input');
+  const name   = (nameEl?.value || '').trim() || 'Projet sans nom';
+  if (nameEl) nameEl.value = name;
+
+  const project = buildProjectData();
   const ok = ProjectManager.save(project);
   AppState.currentProjectId = project.id;
 
@@ -111,7 +151,10 @@ function saveCurrentProject() {
       btn.style.background = btn.style.borderColor = btn.style.color = '';
     }, 2500);
   }
-  showToast(ok ? `✓ Projet "${name}" sauvegardé` : '✗ Erreur de sauvegarde (localStorage plein ?)', ok ? 'ok' : 'error');
+  showToast(ok ? `\u2713 Projet "${name}" sauvegardé` : '\u2717 Erreur de sauvegarde (localStorage plein ?)', ok ? 'ok' : 'error');
+
+  // Commit git après le toast (non bloquant)
+  gitAutoSave('Sauvegarde manuelle');
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -633,6 +676,83 @@ function seedDemoProject() {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  MODAL HISTORIQUE GIT
+// ══════════════════════════════════════════════════════════════
+
+async function openGitHistoryModal() {
+  const modal = document.getElementById('git-history-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+
+  const listEl = document.getElementById('git-history-list');
+
+  if (!window.electronAPI) {
+    listEl.innerHTML = `<p style="color:var(--color-text-muted);text-align:center;padding:20px">
+      L'historique git n'est disponible que dans l'application Electron.<br>
+      <span style="font-size:11px">En mode navigateur, seule la sauvegarde localStorage est active.</span>
+    </p>`;
+    return;
+  }
+
+  if (!AppState.currentProjectId) {
+    listEl.innerHTML = `<p style="color:var(--color-text-muted);text-align:center;padding:20px">
+      Sauvegardez d'abord le projet pour accéder à son historique.
+    </p>`;
+    return;
+  }
+
+  listEl.innerHTML = '<p style="color:var(--color-text-muted);text-align:center;padding:20px">Chargement…</p>';
+
+  try {
+    const commits = await window.electronAPI.gitLog(AppState.currentProjectId);
+    if (!commits || commits.length === 0) {
+      listEl.innerHTML = `<p style="color:var(--color-text-muted);text-align:center;padding:20px">
+        Aucun historique git disponible pour ce projet.<br>
+        <span style="font-size:11px">Effectuez une action (calcul, import, Ctrl+S) pour créer le premier point de sauvegarde.</span>
+      </p>`;
+      return;
+    }
+    listEl.innerHTML = commits.map((c, i) => {
+      const date   = new Date(c.date).toLocaleString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const isCur  = i === 0;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--color-border)${isCur ? ';background:var(--color-surface2);margin:0 -4px;padding-left:4px;padding-right:4px' : ''}">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:${isCur ? '700' : '500'};font-size:13px;color:${isCur ? 'var(--color-accent)' : 'inherit'}">${c.message}${isCur ? ' <span style="font-size:10px;font-weight:400;color:var(--color-text-muted)">(actuel)</span>' : ''}</div>
+          <div style="font-size:11px;color:var(--color-text-muted)">${date} · <code style="font-size:10px">${c.hash.slice(0, 7)}</code></div>
+        </div>
+        ${!isCur ? `<button class="btn btn-outline btn-sm" onclick="restoreGitVersion('${c.hash}')" title="Restaurer cette version">Restaurer</button>` : ''}
+      </div>`;
+    }).join('');
+  } catch (e) {
+    listEl.innerHTML = `<p style="color:var(--color-danger);text-align:center;padding:20px">Erreur de lecture de l'historique git : ${e.message}</p>`;
+  }
+}
+
+function closeGitHistoryModal() {
+  const modal = document.getElementById('git-history-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function restoreGitVersion(hash) {
+  if (!window.electronAPI || !AppState.currentProjectId) return;
+  if (!confirm(`Restaurer la version ${hash.slice(0, 7)} ? L'état actuel non sauvegardé sera perdu.`)) return;
+  try {
+    const jsonText = await window.electronAPI.gitCheckout(AppState.currentProjectId, hash);
+    const project  = JSON.parse(jsonText);
+    // Recréer Float32Array pour les données Enedis si nécessaire
+    if (project.hourlyEnedisData?.halfHourly) {
+      project.hourlyEnedisData.halfHourly = new Float32Array(project.hourlyEnedisData.halfHourly);
+    }
+    ProjectManager.save(project);
+    closeGitHistoryModal();
+    loadProject(project.id);
+    showToast(`\u2713 Version ${hash.slice(0, 7)} restaurée`);
+  } catch (e) {
+    showToast('Erreur lors de la restauration : ' + e.message, 'error');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
 //  INIT : afficher le modal au démarrage si besoin
 // ══════════════════════════════════════════════════════════════
 function initProjectUI() {
@@ -650,18 +770,13 @@ function initProjectUI() {
     }
   });
 
-  // Ctrl+S → sauvegarder
+  // Ctrl+S → sauvegarder (toast + commit git)
   document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       e.preventDefault();
       saveCurrentProject();
     }
   });
-
-  // Auto-save toutes les 3 minutes si un projet est actif
-  setInterval(() => {
-    if (AppState.currentProjectId) saveCurrentProject();
-  }, 3 * 60 * 1000);
 
   // Toujours montrer le modal de démarrage
   openStartupModal();

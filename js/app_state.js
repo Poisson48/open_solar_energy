@@ -3,7 +3,7 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '1.7.6';
+const APP_VERSION = '1.8.2';
 // Historique :
 //   1.4.0 - Module devis professionnel
 //   1.5.0 - Refactoring multi-fichiers, modal démarrage, infos client,
@@ -22,6 +22,7 @@ const APP_VERSION = '1.7.6';
 //   1.7.4 - Bouton Enedis unifié (même modal réseau/batterie) + status sync
 //   1.7.5 - Édition projet (nom + client) + persistance complète à la réouverture
 //   1.7.6 - Fix Auto surface, restauration Enedis au chargement, auto-save 3min
+//   1.8.2 - Git autosave : chaque action importante cree un commit git
 
 const AppState = {
   location:   { lat: 48.8566, lon: 2.3522, alt: 35, name: 'Paris, France' },
