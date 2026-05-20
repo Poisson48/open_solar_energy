@@ -72,12 +72,17 @@ const AppAPI = (() => {
       params.monthlyKwh.forEach((v, i) => setField(`sz-kwh-${i + 1}`, v));
     }
     // HP/HC mensuel réel (ex: importé depuis Enedis)
-    if (params.monthlyKwhHp) {
-      AppState.monthlyKwhHp = params.monthlyKwhHp.slice();
+    // null explicite = réinitialiser, undefined = ne pas toucher
+    if (params.monthlyKwhHp !== undefined) {
+      AppState.monthlyKwhHp = Array.isArray(params.monthlyKwhHp) ? params.monthlyKwhHp.slice() : null;
+    } else if (params.monthlyKwh) {
+      // Nouvelle conso mensuelle sans split HP/HC → effacer l'ancien split
+      AppState.monthlyKwhHp = null;
     }
-    // Prime autoconso : true (défaut) = inclure, false = désactiver
-    // Toujours réinitialiser pour éviter un état persistant entre appels API
-    AppState._includeIncentive = params.includeIncentive !== undefined ? params.includeIncentive : true;
+    // Prime autoconso : si non précisé, ne PAS toucher l'état existant
+    if (params.includeIncentive !== undefined) {
+      AppState._includeIncentive = params.includeIncentive;
+    }
     return AppAPI;
   }
 
@@ -171,6 +176,7 @@ const AppAPI = (() => {
     sizing:  () => calcSizing(),
     grid:    () => calcGridSystem(),
     offgrid: () => calcOffgridSizing(),
+    hourly:  () => HourlyModule.compute(),
   };
 
   const RESULT_KEYS = {
@@ -179,9 +185,14 @@ const AppAPI = (() => {
     offgrid: () => AppState.lastOffgridSizingResult,
   };
 
+  const CANDIDATES_KEYS = {
+    sizing:  () => AppState.lastSizingCandidates,
+    offgrid: () => AppState.lastOffgridSizingCandidates,
+  };
+
   function calc(tab) {
     const fn = CALC_FNS[tab];
-    if (!fn) throw new Error(`Onglet inconnu : "${tab}". Valeurs : sizing, grid, offgrid`);
+    if (!fn) throw new Error(`Onglet inconnu : "${tab}". Valeurs : sizing, grid, offgrid, hourly`);
     fn();
     return getResults(tab);
   }
@@ -190,6 +201,33 @@ const AppAPI = (() => {
     const getter = RESULT_KEYS[tab];
     if (!getter) return null;
     return getter();
+  }
+
+  /**
+   * Retourne tous les candidats calculés pour un onglet (sizing ou offgrid).
+   * Disponibles après un appel à calc() ou depuis le dernier calcul UI.
+   * @param {string} tab  'sizing' | 'offgrid'
+   * @returns {Array|null}
+   */
+  function getAllCandidates(tab) {
+    const getter = CANDIDATES_KEYS[tab];
+    if (!getter) return null;
+    return getter();
+  }
+
+  /**
+   * Réinitialise l'état Enedis + HP/HC sans toucher aux paramètres d'installation.
+   * Utile entre deux scénarios de test pour repartir d'un état propre.
+   */
+  function reset() {
+    AppState.hourlyEnedisData   = null;
+    AppState.monthlyKwhHp       = null;
+    AppState.enedisYear         = null;
+    AppState._includeIncentive  = true;
+    if (typeof HourlyModule !== 'undefined' && typeof HourlyModule.setData === 'function') {
+      HourlyModule.setData(null);
+    }
+    return AppAPI;
   }
 
   // ── Scénario complet ─────────────────────────────────────────
@@ -215,9 +253,13 @@ const AppAPI = (() => {
 
   function state() {
     return {
-      location:  AppState.location,
-      install:   AppState.install,
-      activeTab: AppState.activeTab,
+      location:      AppState.location,
+      install:       AppState.install,
+      activeTab:     AppState.activeTab,
+      enedisYear:    AppState.enedisYear || null,
+      hasEnedis30min: !!(AppState.hourlyEnedisData?.halfHourly?.length >= 48 * 365),
+      monthlyKwhHp:  AppState.monthlyKwhHp || null,
+      includeIncentive: AppState._includeIncentive ?? true,
       results: {
         sizing:  AppState.lastSizingResult,
         grid:    AppState.lastGridResult,
@@ -244,10 +286,12 @@ const AppAPI = (() => {
       else { report.fail++; console.error(`✗ ${name} - attendu: ${expected}, obtenu: ${actual}`); }
     }
 
-    // Sauvegarder l'état
-    const savedWeather  = AppState.weatherData;
-    const savedLocation = { ...AppState.location };
-    const savedEnedis   = AppState.hourlyEnedisData;
+    // Sauvegarder l'état complet
+    const savedWeather        = AppState.weatherData;
+    const savedLocation       = { ...AppState.location };
+    const savedEnedis         = AppState.hourlyEnedisData;
+    const savedMonthlyKwhHp   = AppState.monthlyKwhHp;
+    const savedIncludeIncentive = AppState._includeIncentive;
 
     try {
       const demoWeather = AppState.demoData?.locations?.toulouse?.monthly;
@@ -304,21 +348,46 @@ const AppAPI = (() => {
       }
 
       // ── Test 4 : Tarif HP/HC ─────────────────────────────────
+      const kwhHpTest = CONSO_TEST.map(v => Math.round(v * 0.65));
       AppAPI.setSizing({ tariff: 'hphc', priceHp: 0.246, priceHc: 0.186,
                          monthlyKwh: CONSO_TEST,
-                         monthlyKwhHp: CONSO_TEST.map(v => Math.round(v * 0.65)) });
+                         monthlyKwhHp: kwhHpTest });
       const sizHphc = AppAPI.calc('sizing');
       if (sizHphc) {
-        const billBase = siz?.currentBill || 0;
-        // Facture HP/HC doit être ≥ facture base (HP > tarif base)
         const billHphc = sizHphc.currentBill;
         check('sizing HP/HC – facture plausible (>0)', billHphc > 0, '>0', billHphc + ' €');
+        // Facture attendue : abo + somme(k * 0.65 * 0.246 + k * 0.35 * 0.186)
+        const expectedHphc = Math.round(147 + CONSO_TEST.reduce((s, k) =>
+          s + k * 0.65 * 0.246 + k * 0.35 * 0.186, 0));
+        check('sizing HP/HC – facture correcte (±10€)',
+          Math.abs(billHphc - expectedHphc) <= 10, expectedHphc + ' €', billHphc + ' €');
+        // Facture HP/HC > facture base (HP 0.246 > base 0.2516 est faux, mais la pondération donne < base)
+        // Vérifier juste que les économies autoconso sont > 0
+        check('sizing HP/HC – savedOnBill > 0', sizHphc.savedOnBill > 0, '>0 €', sizHphc.savedOnBill + ' €');
       }
-      // Restaurer tarif base
+
+      // Test 4b : mois avec HP=0 (toute conso en HC) → bug précédent appliquait fallback 65%
+      const kwhHpWithZero = [...kwhHpTest]; kwhHpWithZero[0] = 0; // Janvier = 100% HC
+      AppAPI.setSizing({ monthlyKwh: CONSO_TEST, monthlyKwhHp: kwhHpWithZero });
+      const sizHphcZero = AppAPI.calc('sizing');
+      if (sizHphcZero) {
+        // Janvier avec HP=0 → coût = CONSO[0] × 0.186 (pur HC)
+        // Avec bug fallback 65% → coût = CONSO[0] × (0.65×0.246 + 0.35×0.186) > pur HC
+        const janHC = CONSO_TEST[0] * 0.186;
+        const janFallback = CONSO_TEST[0] * (0.65 * 0.246 + 0.35 * 0.186);
+        check('sizing HP/HC – ratio HP=0 correctement géré (< fallback 65%)',
+          sizHphcZero.currentBill < Math.round(147 + CONSO_TEST.reduce((s, k) =>
+            s + k * 0.65 * 0.246 + k * 0.35 * 0.186, 0)),
+          '< facture fallback 65%', sizHphcZero.currentBill + ' €');
+      }
+
+      // Test 4c : vérifier que setSizing(monthlyKwhHp: null) réinitialise bien l'état
       AppAPI.setSizing({ tariff: 'base', monthlyKwhHp: null });
+      check('setSizing(null) – HP/HC effacé de AppState',
+        AppAPI.state().monthlyKwhHp === null, 'null', String(AppAPI.state().monthlyKwhHp));
 
       // ── Test 5 : Hors réseau LFP ─────────────────────────────
-      AppAPI.setInstall({ tilt: 30, azimuth: 0, losses: 14 })
+      AppAPI.reset().setInstall({ tilt: 30, azimuth: 0, losses: 14 })
         .setOffgrid({ dailyDefault: 1000, battTech: 'lfp', targetCoverage: 90, surface: 15 });
       const og = AppAPI.calc('offgrid');
 
@@ -333,6 +402,26 @@ const AppAPI = (() => {
         // costPV + costBatt + BOS ≈ systemCost
         const reconstituted = og.costPV + og.costBatt;
         check('offgrid – costPV + costBatt ≤ systemCost', reconstituted <= og.systemCost, `≤${og.systemCost}`, reconstituted);
+        // Cohérence couverture vs déficit
+        const covCalc = og.total_conso > 0
+          ? Math.round((og.total_conso - og.total_deficit) / og.total_conso * 1000) / 10
+          : 0;
+        check('offgrid – coverageRate cohérent vs déficit',
+          Math.abs(covCalc - og.coverageRate) < 0.5, covCalc + '%', og.coverageRate + '%');
+        // getAllCandidates doit retourner un tableau non vide
+        const cands = AppAPI.getAllCandidates('offgrid');
+        check('offgrid – getAllCandidates() non vide', Array.isArray(cands) && cands.length > 0,
+          'array>0', cands ? cands.length + ' candidats' : 'null');
+      }
+
+      // ── Test 5b : Batterie AGM (DoD 50%, η 85%) ─────────────────
+      AppAPI.setOffgrid({ battTech: 'agm', targetCoverage: 85 });
+      const ogAgm = AppAPI.calc('offgrid');
+      if (ogAgm) {
+        check('offgrid AGM – coverageRate ≥ 80%', ogAgm.coverageRate >= 80, '≥80%', ogAgm.coverageRate + '%', ogAgm.coverageRate >= 75);
+        // AGM DoD=50% → C_usable ≤ C_batt_gross * 0.5
+        check('offgrid AGM – C_usable ≤ 50% brut',
+          ogAgm.C_usable <= ogAgm.C_batt_gross * 0.51, '≤50%', (ogAgm.C_usable / ogAgm.C_batt_gross * 100).toFixed(0) + '%');
       }
 
       // ── Test 6 : Autonomie totale (100%) ─────────────────────
@@ -358,15 +447,41 @@ const AppAPI = (() => {
       const annualEnedis = Array.from(syntheticEnedis).reduce((s, v) => s + v, 0);
       check('Enedis synthétique – somme ≈ 365 kWh', Math.abs(annualEnedis - 365) < 5, '360–370 kWh', annualEnedis.toFixed(1) + ' kWh');
 
-      AppAPI.setEnedisData({ halfHourly: syntheticEnedis, year: 2023 })
+      AppAPI.reset().setEnedisData({ halfHourly: syntheticEnedis, year: 2023 })
         .setOffgrid({ dailyDefault: 1000, battTech: 'lfp', targetCoverage: 90, surface: 15 });
       const ogEnedis = AppAPI.calc('offgrid');
       check('offgrid Enedis – slotLevel actif', ogEnedis?.slotLevel === true, 'true', ogEnedis?.slotLevel);
+      if (ogEnedis) {
+        // total_conso depuis Enedis doit être ≈ 365 kWh (1 kWh/j × 365 j)
+        check('offgrid Enedis – total_conso ≈ 365 kWh', Math.abs(ogEnedis.total_conso - 365) <= 15, '350–380 kWh', ogEnedis.total_conso + ' kWh');
+        // Vérifier la cohérence couverture vs déficit sur données slot réelles
+        const covEnedis = ogEnedis.total_conso > 0
+          ? Math.round((ogEnedis.total_conso - ogEnedis.total_deficit) / ogEnedis.total_conso * 1000) / 10
+          : 0;
+        check('offgrid Enedis – coverageRate cohérent',
+          Math.abs(covEnedis - ogEnedis.coverageRate) < 0.5, covEnedis + '%', ogEnedis.coverageRate + '%');
+      }
+
+      // ── Test 8 : getAllCandidates sizing ───────────────────────
+      AppAPI.reset().setInstall({ tilt: 30, azimuth: 0, surface: 20, losses: 14 })
+        .setSizing({ monthlyKwh: CONSO_TEST, tariff: 'base', priceBase: 0.2516,
+                     subscription: 147, strategy: 'autoconso_max' });
+      AppAPI.calc('sizing');
+      const sizCands = AppAPI.getAllCandidates('sizing');
+      check('getAllCandidates sizing – tableau non vide', Array.isArray(sizCands) && sizCands.length > 0,
+        'array>0', sizCands ? sizCands.length + ' candidats' : 'null');
+      if (sizCands?.length > 1) {
+        // Vérifier que les candidats sont triés par Ppeak croissant
+        const sorted = sizCands.every((c, i) => i === 0 || c.Ppeak >= sizCands[i - 1].Ppeak);
+        check('getAllCandidates sizing – Ppeak croissant', sorted, 'true', String(sorted));
+      }
 
     } finally {
-      AppState.weatherData       = savedWeather;
-      AppState.location          = savedLocation;
-      AppState.hourlyEnedisData  = savedEnedis;
+      AppState.weatherData        = savedWeather;
+      AppState.location           = savedLocation;
+      AppState.hourlyEnedisData   = savedEnedis;
+      AppState.monthlyKwhHp       = savedMonthlyKwhHp;
+      AppState._includeIncentive  = savedIncludeIncentive;
     }
 
     const sym = report.fail ? '✗' : report.warn ? '⚠' : '✓';
@@ -393,7 +508,7 @@ AppAPI.setInstall({ tilt, azimuth, surface, panelWp, panelM2, losses, tech })
 
 AppAPI.setSizing({
   monthlyKwh:[...12],          // kWh/mois
-  monthlyKwhHp:[...12],        // kWh HP/mois (Enedis HP/HC) - null pour effacer
+  monthlyKwhHp:[...12]|null,   // kWh HP/mois (Enedis HP/HC) - null efface l'état
   tariff,                      // 'base' | 'hphc'
   priceBase, priceHp, priceHc, // €/kWh
   subscription,                // abonnement €/an (0 = pas d'abo)
@@ -402,8 +517,10 @@ AppAPI.setSizing({
   targetCoverage,              // % couverture cible
   feedin,                      // tarif rachat surplus €/kWh
   surface, tech,
-  includeIncentive,            // true (défaut) | false - prime autoconso France
+  includeIncentive,            // true|false - prime autoconso France (ne change pas si omis)
 })
+  Note HP/HC : monthlyKwhHp=null efface explicitement les données HP. Si omis, l'état
+  existant est conservé. Nouvelle conso (monthlyKwh) sans monthlyKwhHp efface aussi.
 
 AppAPI.setOffgrid({
   dailyDefault,                // Wh/j uniforme
@@ -418,16 +535,18 @@ AppAPI.setWeatherData(data)
   → data = [{GHI, DHI, T_avg, name?}, ...] ×12 en kWh/m²/mois
 
 AppAPI.setEnedisData({ monthlyKwh, halfHourly?, monthlyKwhHp?, year? })
-  → monthlyKwh : kWh/mois × 12 (remplit sz-kwh-*)
-  → halfHourly : Float32Array ou Array kWh/slot × (n×48) pour simulation batterie
-  → monthlyKwhHp : kWh HP × 12 pour tarif HP/HC (optionnel)
+  → monthlyKwh    : kWh/mois × 12 (remplit sz-kwh-*)
+  → halfHourly    : Float32Array ou Array kWh/slot × (n×48) pour simulation batterie
+  → monthlyKwhHp  : kWh HP × 12 pour tarif HP/HC (optionnel)
 
 AppAPI.setLocation(lat, lon, name?)
-AppAPI.calc('sizing'|'grid'|'offgrid')       → résultats
-AppAPI.getResults('sizing'|'grid'|'offgrid') → résultats sans recalculer
+AppAPI.reset()                               → réinitialise Enedis + HP/HC (chaînable)
+AppAPI.calc('sizing'|'grid'|'offgrid'|'hourly') → résultats
+AppAPI.getResults('sizing'|'grid'|'offgrid')    → résultats sans recalculer
+AppAPI.getAllCandidates('sizing'|'offgrid')      → tous les candidats du dernier calc
 AppAPI.runScenario({ install, sizing, offgrid, tab }) → one-shot
 AppAPI.runDiagnostic()                       → tests automatiques (console + rapport)
-AppAPI.state()                               → snapshot AppState
+AppAPI.state()                               → snapshot AppState enrichi
 
 Résultats sizing  : Ppeak, nPanels, annualProd, annualConso, annualAutoconsoKwh,
                     coverageRate(%), autoconsoRate(%), savedOnBill, feedinRevenue,
@@ -437,14 +556,20 @@ Résultats offgrid : Ppeak, C_batt_gross, C_usable, coverageRate(%), systemCost,
                     deficit_days, autonomyDays, total_conso, total_deficit,
                     costPV, costBatt, battLifeYears, slotLevel (bool)
 
+Conventions batterie :
+  - eta = rendement aller-retour (ex: LFP 97%)
+  - Pertes en CHARGE uniquement : stocké = surplus × eta (pas de perte en décharge)
+  - Round-trip réel = eta (et non eta²)
+  - Seuil micro-déficit : 50 Wh/j ignorés pour éviter le bruit numérique
+
 Exemple sizing :
-  AppAPI.setInstall({ tilt:30, azimuth:0, surface:20, losses:14 })
+  AppAPI.reset().setInstall({ tilt:30, azimuth:0, surface:20, losses:14 })
     .setSizing({ monthlyKwh:[350,300,280,250,240,230,240,250,270,310,340,360],
                  strategy:'bill_coverage_pct', targetCoverage:80 })
     .calc('sizing');
 
 Exemple offgrid avec données Enedis :
-  AppAPI.setEnedisData({ monthlyKwh:[400,360,...], year:2023 })
+  AppAPI.reset().setEnedisData({ monthlyKwh:[400,360,...], year:2023 })
     .setOffgrid({ battTech:'lfp', targetCoverage:90, surface:15 })
     .calc('offgrid');
 
@@ -453,7 +578,8 @@ Diagnostic complet :
 `);
   }
 
-  return { goTo, setInstall, setSizing, setOffgrid, setLocation, setWeatherData, setEnedisData, calc, getResults, runScenario, runDiagnostic, state, help };
+  return { goTo, setInstall, setSizing, setOffgrid, setLocation, setWeatherData, setEnedisData,
+           calc, getResults, getAllCandidates, reset, runScenario, runDiagnostic, state, help };
 })();
 
 window.AppAPI = AppAPI;

@@ -153,6 +153,7 @@ function handleEnedisCSV(input, statusId = 'sz-csv-status') {
     statusEl.style.color = 'var(--color-success)';
     statusEl.textContent =
       `✓ ${result.format} ${result.year} importé - ${result.totalAnnual.toLocaleString('fr')} kWh/an${warns}`;
+    showToast(`✓ Enedis ${result.year} importé — ${result.totalAnnual.toLocaleString('fr')} kWh/an${warns}`);
   });
 }
 

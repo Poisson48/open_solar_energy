@@ -14,10 +14,10 @@ const HourlyModule = (() => {
   let _rawData = null;    // Float32Array ou Array<number> en kWh par slot 30min
   let _rawYear = null;
 
-  /** Stocker les données brutes Enedis 30min */
+  /** Stocker les données brutes Enedis 30min. setData(null) réinitialise. */
   function setData(data) {
-    if (!data) return;
-    _rawData = data.values;  // tableau de valeurs kWh
+    if (!data) { _rawData = null; _rawYear = null; _updateSourceStatus(); return; }
+    _rawData = data.values;
     _rawYear = data.year;
     _updateSourceStatus();
   }

@@ -14,7 +14,8 @@ function calcOffgridSizing() {
   }
   const { recommended: rec, allCandidates, tech, annual_conso, useHourly } =
     OffgridSizing.run(input, AppState.weatherData, AppState.location.lat);
-  AppState.lastOffgridSizingResult = rec;
+  AppState.lastOffgridSizingResult    = rec;
+  AppState.lastOffgridSizingCandidates = allCandidates;
   renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, useHourly);
 }
 

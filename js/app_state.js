@@ -43,6 +43,18 @@ const AppState = {
 
   // Données horaires (depuis import Enedis 30min)
   hourlyEnedisData: null,   // { halfHourly: Float32Array, year: 2023, format: '30min' }
+  hourlyWeatherData: null,  // données météo horaires (PVGIS)
+  enedisYear: null,         // année des données Enedis importées
+
+  // Résultats de dimensionnement (candidats)
+  lastSizingCandidates: null,
+  lastOffgridSizingCandidates: null,
+
+  // Données HP/HC mensuelles (Enedis)
+  monthlyKwhHp: null,       // tableau 12 valeurs kWh HP par mois
+
+  // Paramètre prime autoconso (modifiable via AppAPI)
+  _includeIncentive: true,
 
   // Type d'installation : 'grid' (raccordé réseau) | 'offgrid' (autonome)
   installationType: 'grid',
@@ -55,6 +67,7 @@ const AppState = {
     panelWp: 400,
     panelM2: 1.96,
     losses:  14,
+    tech:    'crystSi',
   }
 };
 

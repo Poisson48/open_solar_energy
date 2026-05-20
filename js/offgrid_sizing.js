@@ -225,11 +225,14 @@ const OffgridSizing = (() => {
       ? simulateYearSlots(enedisData, pvSlotsFlat, Ppeak, C_usable, eta)
       : null;
 
+    const knownYear = enedisData?.year || AppState.enedisYear || null;
+    const daysArr = knownYear ? getMonthlyDays(knownYear) : DAYS;
+
     let soc = C_usable * 0.5;
     const monthly = [];
 
     for (let i = 0; i < 12; i++) {
-      const days = DAYS[i];
+      const days = daysArr[i];
       let res;
       let e_prod_day, e_conso_day;
 
@@ -267,13 +270,12 @@ const OffgridSizing = (() => {
       });
     }
 
-    const dataYear     = slotMonthly ? AppState.hourlyEnedisData?.year : null;
-    const total_days   = dataYear ? getMonthlyDays(dataYear).reduce((s, d) => s + d, 0) : DAYS.reduce((s, d) => s + d, 0);
+    const total_days   = daysArr.reduce((s, d) => s + d, 0);
     const deficit_days = monthly.reduce((s, m) => s + m.deficit_days, 0);
     // Si slot-par-slot : conso = somme réelle Enedis ; sinon : dailyConso formulaire
     const total_conso  = slotMonthly
       ? slotMonthly.reduce((s, m) => s + m.conso_kwh, 0)
-      : dailyConso.reduce((s, v, i) => s + v * DAYS[i], 0) / 1000;
+      : dailyConso.reduce((s, v, i) => s + v * daysArr[i], 0) / 1000;
     const total_deficit = monthly.reduce((s, m) => s + m.deficit_kwh, 0);
     const coverageRate  = total_conso > 0 ? Math.max(0, (total_conso - total_deficit) / total_conso * 100) : 0;
     const autonomyDays  = total_days - deficit_days;

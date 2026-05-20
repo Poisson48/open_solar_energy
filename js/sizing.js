@@ -37,8 +37,10 @@ const SizingEngine = (() => {
     } else {
       bill.monthlyKwh.forEach((kwh, i) => {
         if (kwh <= 0) return;
-        const hpRatio = (bill.monthlyKwh_hp && bill.monthlyKwh_hp[i] > 0)
-          ? Math.min(1, Math.max(0, bill.monthlyKwh_hp[i] / kwh))
+        // Fallback 65% HP seulement si aucune donnée HP/HC Enedis disponible.
+        // Quand monthlyKwh_hp[i]=0 (toute consommation en HC), ne pas utiliser 0.65.
+        const hpRatio = bill.monthlyKwh_hp != null
+          ? Math.min(1, Math.max(0, (bill.monthlyKwh_hp[i] ?? 0) / kwh))
           : 0.65;
         const hp = bill.priceHpHc?.hp ?? TARIFS.hphc.hp;
         const hc = bill.priceHpHc?.hc ?? TARIFS.hphc.hc;
@@ -53,19 +55,20 @@ const SizingEngine = (() => {
   // DISCOUNT_RATE, SYSTEM_LIFETIME
 
   /**
-   * Payback actualisé (années) avec dégradation panneaux + hausse prix électricité.
-   * Inclut O&M (0,5 %/an) et remplacement onduleur (12 % à 15 ans) - cohérent avec LCOE.
+   * Payback actualisé (DCF, années) — flux nets actualisés au DISCOUNT_RATE.
+   * Inclut dégradation panneaux, hausse prix électricité, O&M, remplacement onduleur.
    */
   function calcPayback(systemCost, firstYearGain) {
     if (firstYearGain <= 0 || systemCost <= 0) return null;
-    const omCost      = systemCost * 0.005;   // 0,5 %/an
-    const inverterRpl = systemCost * 0.12;    // remplacement onduleur à 15 ans
+    const omCost      = systemCost * 0.005;
+    const inverterRpl = systemCost * 0.12;
     let cum = 0;
     for (let y = 1; y <= 40; y++) {
       const gain = firstYearGain
                  * Math.pow(1 + ELEC_ESCALATION,   y - 1)
                  * Math.pow(1 - PANEL_DEGRADATION, y - 1);
-      cum += gain - omCost - (y === 15 ? inverterRpl : 0);
+      const netGain = gain - omCost - (y === 15 ? inverterRpl : 0);
+      cum += netGain / Math.pow(1 + DISCOUNT_RATE, y);
       if (cum >= systemCost) return y;
     }
     return null;
@@ -132,16 +135,16 @@ const SizingEngine = (() => {
       case 'autoconso_max': {
         // Max autoconso en évitant les installations où > 40% part au réseau
         const goodRatio = results.filter(r => r.autoconsoRate >= 60);
-        const pool = goodRatio.length ? goodRatio : results;
+        const pool = goodRatio.length ? goodRatio : [...results];
         return pool.sort((a, b) =>
           b.annualAutoconsoKwh !== a.annualAutoconsoKwh
             ? b.annualAutoconsoKwh - a.annualAutoconsoKwh
-            : a.Ppeak - b.Ppeak  // à égalité d'autoconso, préférer le plus petit système
+            : a.Ppeak - b.Ppeak
         )[0];
       }
 
       case 'roi_optimal':
-        return results.filter(r => r.ROI < 30).sort((a, b) => a.ROI - b.ROI)[0]
+        return [...results].filter(r => r.ROI < 30).sort((a, b) => a.ROI - b.ROI)[0]
           || results[0];
 
       case 'bill_coverage_pct': {
@@ -150,7 +153,7 @@ const SizingEngine = (() => {
       }
 
       default:
-        return results.sort((a, b) => a.ROI - b.ROI)[0];
+        return [...results].sort((a, b) => a.ROI - b.ROI)[0];
     }
   }
 

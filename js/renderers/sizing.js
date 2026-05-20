@@ -26,8 +26,9 @@ function calcSizing() {
   }
   const { recommended, allCandidates, currentBill } =
     SizingEngine.run(input, AppState.weatherData, AppState.location.lat);
-  AppState.lastSizingResult = recommended;
-  AppState.lastSizingInput  = input;
+  AppState.lastSizingResult     = recommended;
+  AppState.lastSizingCandidates = allCandidates;
+  AppState.lastSizingInput      = input;
   renderSizingResults(recommended, allCandidates, currentBill, annualConso);
 }
 
@@ -103,7 +104,7 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
         ${rec.lcoe > 0 ? `
         <div class="kpi-card">
           <div class="kpi-value info">${rec.lcoe.toFixed(3)}</div>
-          <div class="kpi-label">LCOE<br><span class="kpi-unit">€/kWh produit (25 ans)</span></div>
+          <div class="kpi-label">LCOE nominal<br><span class="kpi-unit">€/kWh produit (25 ans)</span></div>
         </div>` : ''}
       </div>
       <div style="font-size:11px;color:var(--color-text-muted);margin-top:-8px;margin-bottom:4px">
