@@ -196,13 +196,6 @@ function autoCalcOffgridPanelWp() {
 
   const wpEl = document.getElementById('og2-panel-wp');
   if (wpEl) wpEl.value = chosen.wp;
-
-  const surfaceNeeded = Math.ceil(chosen.nPanels * panelM2 * 10) / 10;
-  const surfEl = document.getElementById('og2-surface');
-  if (surfEl && surfaceNeeded < surface) {
-    surfEl.value = surfaceNeeded;
-    surfEl.dispatchEvent(new Event('input'));
-  }
 }
 
 function importEDFToOffgrid() {

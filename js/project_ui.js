@@ -140,6 +140,11 @@ function loadProject(id) {
     : null;
   AppState.monthlyKwhHp = project.monthlyKwhHp ? project.monthlyKwhHp.slice() : null;
   AppState.enedisYear   = project.enedisYear || null;
+  // Restaurer monthlyKwh depuis le formState sauvegardé
+  if (project.formState) {
+    const kwh = Array.from({length:12}, (_, i) => parseFloat(project.formState[`sz-kwh-${i+1}`]) || 0);
+    if (kwh.some(v => v > 0)) AppState.monthlyKwh = kwh;
+  }
   if (AppState.hourlyEnedisData && typeof HourlyModule?.setData === 'function') {
     HourlyModule.setData({ values: AppState.hourlyEnedisData.halfHourly, year: AppState.hourlyEnedisData.year });
     // Repeupler les champs og2-day-* si vides (projet ancien ou import fait avant la sauvegarde)
@@ -171,6 +176,23 @@ function loadProject(id) {
 
   // Formulaires
   restoreFormState(project.formState);
+
+  // Restaurer les indicateurs de statut Enedis
+  if (AppState.enedisYear || AppState.hourlyEnedisData) {
+    const year = AppState.enedisYear || AppState.hourlyEnedisData?.year || '';
+    const msg  = `✓ Données Enedis${year ? ' ' + year : ''} chargées`;
+    ['sz-csv-status', 'og2-edf-import-status'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.style.display = 'block';
+      el.style.color   = 'var(--color-success)';
+      el.textContent   = msg;
+    });
+    const hStatus = document.getElementById('hourly-data-status');
+    if (hStatus && AppState.hourlyEnedisData)
+      hStatus.textContent = '✓ Données 30min disponibles pour l\'analyse horaire';
+  }
+
   // Synchroniser AppState.install avec les valeurs restaurées
   if (typeof readInstallFromTab === 'function') {
     Object.keys(INSTALL_FIELDS).forEach(readInstallFromTab);
@@ -635,6 +657,11 @@ function initProjectUI() {
       saveCurrentProject();
     }
   });
+
+  // Auto-save toutes les 3 minutes si un projet est actif
+  setInterval(() => {
+    if (AppState.currentProjectId) saveCurrentProject();
+  }, 3 * 60 * 1000);
 
   // Toujours montrer le modal de démarrage
   openStartupModal();
