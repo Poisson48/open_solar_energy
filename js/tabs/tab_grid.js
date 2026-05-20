@@ -54,6 +54,7 @@ function initTabGrid() {
                 <button type="button" id="grid-pmode-fixe"    class="btn btn-outline btn-sm"        onclick="setPanelMode('grid','fixe')"    style="padding:2px 8px;font-size:10px" title="Valeur fixée manuellement">✏️ Fixe</button>
               </span>
             </label>
+            <input type="hidden" id="grid-panel-mode" value="surface">
             <div id="grid-npanels-fixe-wrap" style="display:none;margin-bottom:6px">
               <div class="input-unit">
                 <input type="number" id="grid-npanels-fixe" value="8" min="1" step="1" oninput="calcGridPanels()">

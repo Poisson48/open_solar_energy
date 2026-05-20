@@ -47,9 +47,16 @@ function restoreFormState(fields) {
     if (el.type === 'checkbox') el.checked = !!val;
     else el.value = val;
   });
+  // Recalculs et affichages dépendants
+  document.getElementById('sz-tariff')?.dispatchEvent(new Event('change'));
   document.getElementById('sz-kwh-1')?.dispatchEvent(new Event('input'));
   document.getElementById('og2-day-1')?.dispatchEvent(new Event('input'));
   document.getElementById('og2-batt-tech')?.dispatchEvent(new Event('change'));
+  // Restaurer les modes panneaux
+  if (typeof setPanelMode === 'function') {
+    setPanelMode('grid', fields['grid-panel-mode'] || 'surface');
+    setPanelMode('og2',  fields['og2-panel-mode']  || 'surface');
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -196,6 +203,41 @@ async function exportCurrentProject() {
     return;
   }
   await ProjectManager.exportOneZip(AppState.currentProjectId);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  MODAL ÉDITION DU PROJET (nom + infos client)
+// ══════════════════════════════════════════════════════════════
+function openEditProjectModal() {
+  document.getElementById('edit-project-name').value    = document.getElementById('project-name-input')?.value || '';
+  document.getElementById('edit-client-nom').value      = AppState.currentClient.nom     || '';
+  document.getElementById('edit-client-adresse').value  = AppState.currentClient.adresse || '';
+  document.getElementById('edit-client-tel').value      = AppState.currentClient.tel     || '';
+  document.getElementById('edit-client-email').value    = AppState.currentClient.email   || '';
+  document.getElementById('edit-project-modal').style.display = 'block';
+  document.getElementById('edit-project-name').focus();
+}
+
+function closeEditProjectModal() {
+  document.getElementById('edit-project-modal').style.display = 'none';
+}
+
+function saveEditProject(event) {
+  event.preventDefault();
+  const newName = document.getElementById('edit-project-name').value.trim() || 'Projet sans nom';
+  const nameEl  = document.getElementById('project-name-input');
+  if (nameEl) nameEl.value = newName;
+
+  AppState.currentClient = {
+    nom:     document.getElementById('edit-client-nom').value.trim(),
+    adresse: document.getElementById('edit-client-adresse').value.trim(),
+    tel:     document.getElementById('edit-client-tel').value.trim(),
+    email:   document.getElementById('edit-client-email').value.trim(),
+  };
+  updateProjectBar();
+  prefillClientInQuote();
+  closeEditProjectModal();
+  showToast('✓ Informations du projet mises à jour');
 }
 
 // ══════════════════════════════════════════════════════════════

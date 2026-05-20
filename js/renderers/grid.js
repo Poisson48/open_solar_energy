@@ -17,6 +17,8 @@ function setPanelMode(prefix, mode) {
   if (fixeWrap) fixeWrap.style.display = mode === 'fixe' ? '' : 'none';
   const dvPanel = document.getElementById('dv-sys-panels');
   if (prefix === 'dv' && dvPanel) dvPanel.readOnly = (mode !== 'fixe');
+  const modeInput = document.getElementById(`${prefix}-panel-mode`);
+  if (modeInput) modeInput.value = mode;
   calcPanelsForMode(prefix);
 }
 
