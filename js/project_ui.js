@@ -705,9 +705,11 @@ async function openGitHistoryModal() {
   if (!modal) return;
   modal.style.display = 'flex';
 
-  const listEl = document.getElementById('git-history-list');
+  const listEl    = document.getElementById('git-history-list');
+  const branchBar = document.getElementById('git-branch-bar');
 
   if (!window.electronAPI) {
+    if (branchBar) branchBar.style.display = 'none';
     listEl.innerHTML = `<p style="color:var(--color-text-muted);text-align:center;padding:20px">
       L'historique git n'est disponible que dans l'application Electron.<br>
       <span style="font-size:11px">En mode navigateur, seule la sauvegarde localStorage est active.</span>
@@ -716,16 +718,44 @@ async function openGitHistoryModal() {
   }
 
   if (!AppState.currentProjectId) {
+    if (branchBar) branchBar.style.display = 'none';
     listEl.innerHTML = `<p style="color:var(--color-text-muted);text-align:center;padding:20px">
-      Sauvegardez d'abord le projet pour accéder à son historique.
+      Effectuez une action (calcul, import, Ctrl+S) pour créer le premier point de sauvegarde.
     </p>`;
     return;
   }
 
   listEl.innerHTML = '<p style="color:var(--color-text-muted);text-align:center;padding:20px">Chargement…</p>';
 
+  // Charger branches et commits en parallèle
   try {
-    const commits = await window.electronAPI.gitLog(AppState.currentProjectId);
+    const [commits, branches] = await Promise.all([
+      window.electronAPI.gitLog(AppState.currentProjectId),
+      window.electronAPI.gitBranches(AppState.currentProjectId),
+    ]);
+
+    // Afficher la barre des branches si plusieurs ou une branche connue
+    if (branchBar && branches && branches.length > 0) {
+      branchBar.style.display = 'block';
+      const branchListEl = document.getElementById('git-branch-list');
+      if (branchListEl) {
+        branchListEl.innerHTML = branches.map(b => {
+          const style = b.current
+            ? 'background:var(--color-accent);color:#fff;border-color:var(--color-accent)'
+            : '';
+          return `<button class="btn btn-outline btn-sm" style="${style};font-size:11px"
+            onclick="gitSwitchBranch('${b.name.replace(/'/g, '')}')"
+            ${b.current ? 'disabled' : ''}>
+            ${b.current ? '✓ ' : ''}${b.name}
+          </button>`;
+        }).join('');
+      }
+    } else if (branchBar) {
+      branchBar.style.display = 'block'; // afficher quand même pour le bouton "+ Nouvelle variante"
+      const branchListEl = document.getElementById('git-branch-list');
+      if (branchListEl) branchListEl.innerHTML = '<span style="font-size:11px;color:var(--color-text-muted)">main</span>';
+    }
+
     if (!commits || commits.length === 0) {
       listEl.innerHTML = `<p style="color:var(--color-text-muted);text-align:center;padding:20px">
         Aucun historique git disponible pour ce projet.<br>
@@ -734,8 +764,8 @@ async function openGitHistoryModal() {
       return;
     }
     listEl.innerHTML = commits.map((c, i) => {
-      const date   = new Date(c.date).toLocaleString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-      const isCur  = i === 0;
+      const date  = new Date(c.date).toLocaleString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const isCur = i === 0;
       return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--color-border)${isCur ? ';background:var(--color-surface2);margin:0 -4px;padding-left:4px;padding-right:4px' : ''}">
         <div style="flex:1;min-width:0">
           <div style="font-weight:${isCur ? '700' : '500'};font-size:13px;color:${isCur ? 'var(--color-accent)' : 'inherit'}">${c.message}${isCur ? ' <span style="font-size:10px;font-weight:400;color:var(--color-text-muted)">(actuel)</span>' : ''}</div>
@@ -745,7 +775,47 @@ async function openGitHistoryModal() {
       </div>`;
     }).join('');
   } catch (e) {
-    listEl.innerHTML = `<p style="color:var(--color-danger);text-align:center;padding:20px">Erreur de lecture de l'historique git : ${e.message}</p>`;
+    listEl.innerHTML = `<p style="color:var(--color-danger);text-align:center;padding:20px">Erreur : ${e.message}</p>`;
+  }
+}
+
+async function gitNewBranch() {
+  if (!window.electronAPI || !AppState.currentProjectId) return;
+  const name = prompt('Nom de la variante (ex : option-batterie-15kWh, devis-client-v2) :');
+  if (!name || !name.trim()) return;
+  try {
+    const res = await window.electronAPI.gitCreateBranch(AppState.currentProjectId, name.trim());
+    if (res.ok) {
+      showToast(`✓ Variante "${res.branchName}" créée — vous travaillez maintenant dessus`);
+      openGitHistoryModal(); // rafraîchir
+    }
+  } catch (e) {
+    showToast('Erreur : ' + e.message, 'error');
+  }
+}
+
+async function gitSwitchBranch(branchName) {
+  if (!window.electronAPI || !AppState.currentProjectId) return;
+  try {
+    // Sauvegarder l'état courant avant de switcher
+    await window.electronAPI.gitSave(
+      AppState.currentProjectId,
+      JSON.stringify(buildProjectData(), null, 2),
+      'Sauvegarde avant changement de variante'
+    );
+    await window.electronAPI.gitSwitchBranch(AppState.currentProjectId, branchName);
+    // Lire le project.json de la branche cible
+    const jsonText = await window.electronAPI.gitRead(AppState.currentProjectId);
+    const project  = JSON.parse(jsonText);
+    if (project.hourlyEnedisData?.halfHourly) {
+      project.hourlyEnedisData.halfHourly = new Float32Array(project.hourlyEnedisData.halfHourly);
+    }
+    ProjectManager.save(project);
+    closeGitHistoryModal();
+    loadProject(project.id);
+    showToast(`✓ Variante "${branchName}" chargée`);
+  } catch (e) {
+    showToast('Erreur : ' + e.message, 'error');
   }
 }
 

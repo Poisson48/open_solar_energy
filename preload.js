@@ -35,6 +35,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('git:checkout', projectId, hash),
 
   /**
+   * Lit le project.json courant (après un switch de branche).
+   * @param {string} projectId
+   * @returns {Promise<string>} - Contenu JSON
+   */
+  gitRead: (projectId) =>
+    ipcRenderer.invoke('git:read', projectId),
+
+  /**
    * Liste les branches du repo du projet.
    * @param {string} projectId
    * @returns {Promise<Array<{name: string, current: boolean}>>}

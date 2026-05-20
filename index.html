@@ -425,12 +425,20 @@
       <button onclick="closeGitHistoryModal()" aria-label="Fermer"
               style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1;padding:0">✕</button>
     </div>
+    <!-- Barre branches -->
+    <div id="git-branch-bar" style="display:none;padding:10px 20px;background:var(--color-bg);border-bottom:1px solid var(--color-border);flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:600;color:var(--color-text-muted)">Variante :</span>
+        <div id="git-branch-list" style="display:flex;gap:6px;flex-wrap:wrap;flex:1"></div>
+        <button class="btn btn-outline btn-sm" onclick="gitNewBranch()" style="white-space:nowrap">+ Nouvelle variante</button>
+      </div>
+    </div>
     <!-- Corps -->
     <div style="padding:20px;overflow-y:auto;flex:1">
       <p style="font-size:12px;color:var(--color-text-muted);margin-bottom:12px">
-        Chaque action importante (dimensionnement, import Enedis, changement de localisation, Ctrl+S)
-        crée automatiquement un point de sauvegarde. Cliquez sur <strong>Restaurer</strong> pour revenir
-        à une version antérieure.
+        Chaque action importante crée un point de sauvegarde.
+        <strong>Restaurer</strong> revient à une version antérieure.
+        <strong>Nouvelle variante</strong> crée une branche git pour explorer une configuration différente sans perdre l'originale.
       </p>
       <div id="git-history-list" style="font-size:13px">
         <p style="color:var(--color-text-muted);text-align:center;padding:20px">Chargement…</p>

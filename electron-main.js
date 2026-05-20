@@ -168,6 +168,16 @@ ipcMain.handle('git:checkout', async (event, projectId, hash) => {
 });
 
 /**
+ * git:read — Lit le project.json courant (après un switch de branche).
+ */
+ipcMain.handle('git:read', async (event, projectId) => {
+  const dir  = getProjectDir(projectId);
+  const file = path.join(dir, 'project.json');
+  if (!fs.existsSync(file)) throw new Error('project.json introuvable');
+  return fs.readFileSync(file, 'utf8');
+});
+
+/**
  * git:branches — Liste les branches du repo.
  */
 ipcMain.handle('git:branches', async (event, projectId) => {
