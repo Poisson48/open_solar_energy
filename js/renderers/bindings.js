@@ -202,7 +202,7 @@ function bindSharedParamSync() {
   });
 
   // Sizing tab : changement de tarif → affichage/masquage des prix HP/HC
-  const tariffSel    = document.getElementById('sz-tariff');
+  const tariffSel = document.getElementById('sz-tariff');
   if (tariffSel) {
     const updateTariff = () => {
       const isHpHc = tariffSel.value === 'hphc';
@@ -213,5 +213,16 @@ function bindSharedParamSync() {
     };
     tariffSel.addEventListener('change', updateTariff);
     updateTariff();
+  }
+
+  // Sizing tab : stratégie → affiche taux cible seulement si pertinent
+  const strategySel = document.getElementById('sz-strategy');
+  if (strategySel) {
+    const updateStrategy = () => {
+      const group = document.getElementById('sz-target-coverage-group');
+      if (group) group.style.display = strategySel.value === 'bill_coverage_pct' ? '' : 'none';
+    };
+    strategySel.addEventListener('change', updateStrategy);
+    updateStrategy();
   }
 }

@@ -71,7 +71,9 @@ function createNewProject(event) {
   resetForNewProject();
   closeStartupModal();
   prefillClientInQuote();
-  showToast(`✓ Projet "${name}" créé`);
+  // Persistance immédiate — l'utilisateur ne perd pas son projet s'il oublie Ctrl+S
+  if (typeof saveCurrentProject === 'function') saveCurrentProject();
+  else showToast(`✓ Projet "${name}" créé`);
 }
 
 // ══════════════════════════════════════════════════════════════

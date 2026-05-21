@@ -26,6 +26,7 @@ function restoreFormState(fields) {
   });
   // Recalculs et affichages dépendants
   document.getElementById('sz-tariff')?.dispatchEvent(new Event('change'));
+  document.getElementById('sz-strategy')?.dispatchEvent(new Event('change'));
   document.getElementById('sz-kwh-1')?.dispatchEvent(new Event('input'));
   document.getElementById('og2-day-1')?.dispatchEvent(new Event('input'));
   document.getElementById('og2-batt-tech')?.dispatchEvent(new Event('change'));

@@ -837,7 +837,9 @@ details.card > summary:focus-visible {
   header h1 { font-size: 14px; }
   header .subtitle { display: none; }
   #project-bar { flex-wrap: wrap; gap: 6px; }
-  #project-bar #project-name-input { max-width: 100%; width: 100%; }
+  #project-bar #project-name-input { max-width: 100%; width: 100%; order: -1; }
+  .project-bar-sep { display: none; }
+  #btn-git-history { display: none; }
   .tabs-bar { padding: 0 8px; gap: 0; }
   .tab-btn { font-size: 11px; padding: 8px 10px; }
   .tab-btn .tab-number { display: none; }

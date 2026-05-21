@@ -11,7 +11,9 @@ function showToast(msg, type = 'ok') {
   const el = document.getElementById('ose-toast');
   if (!el) return;
   el.textContent = msg;
-  el.style.background = type === 'error' ? 'var(--color-danger)' : 'var(--color-primary)';
+  el.style.background = type === 'error' ? 'var(--color-danger)'
+    : type === 'warning' ? 'var(--color-warning)'
+    : 'var(--color-primary)';
   el.classList.add('show');
   clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
@@ -391,10 +393,11 @@ function newProjectBlank() {
   AppState.currentProjectId = null;
   AppState.currentClient = { nom: '', adresse: '', tel: '', email: '' };
   const nameEl = document.getElementById('project-name-input');
-  if (nameEl) nameEl.value = '';
+  if (nameEl) { nameEl.value = ''; nameEl.focus(); }
   updateProjectBar();
   resetForNewProject();
   closeProjectsModal();
+  showToast('Nouveau projet vierge — entrez un nom de projet puis Ctrl+S', 'warning');
 }
 
 // ══════════════════════════════════════════════════════════════
