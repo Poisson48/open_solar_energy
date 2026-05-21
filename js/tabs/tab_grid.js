@@ -41,8 +41,8 @@ function initTabGrid() {
             <label style="display:flex;align-items:center;justify-content:space-between">
               <span for="inp-panel-model">Modèle de panneau</span>
               <span style="display:inline-flex;gap:4px">
-                <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.saveFromForm('inp')" style="padding:2px 8px;font-size:10px" title="Enregistrer dans la bibliotheque">💾 Enregistrer</button>
-                <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.openLibraryModal('inp')" style="padding:2px 8px;font-size:10px" title="Choisir dans la bibliotheque">📋 Bibliotheque</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.saveFromForm('inp')" style="padding:2px 8px;font-size:10px" title="Enregistrer dans la bibliothèque">💾 Enregistrer</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.openLibraryModal('inp')" style="padding:2px 8px;font-size:10px" title="Choisir dans la bibliothèque">📋 Bibliothèque</button>
               </span>
             </label>
             <input type="text" id="inp-panel-model" placeholder="ex : Jinko Tiger Neo 415W" style="width:100%">

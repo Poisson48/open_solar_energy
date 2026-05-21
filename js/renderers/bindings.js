@@ -67,7 +67,7 @@ function bindOffgridLiveTotal() {
 
 function optimizeTiltFor(prefix, withAz = false) {
   if (!AppState.weatherData) {
-    alert('Sélectionnez d\'abord un lieu avec des données météo.');
+    showToast('Sélectionnez d\'abord un lieu avec des données météo.', 'error');
     return;
   }
   const opt    = SolarMath.optimalTilt(AppState.location.lat, AppState.weatherData, withAz);

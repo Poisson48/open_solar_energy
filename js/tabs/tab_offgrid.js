@@ -86,8 +86,8 @@ function initTabOffgrid() {
               <label style="display:flex;align-items:center;justify-content:space-between">
                 <span for="og2-panel-model">Modèle de panneau</span>
                 <span style="display:inline-flex;gap:4px">
-                  <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.saveFromForm('og2')" style="padding:2px 8px;font-size:10px" title="Enregistrer dans la bibliotheque">💾 Enregistrer</button>
-                  <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.openLibraryModal('og2')" style="padding:2px 8px;font-size:10px" title="Choisir dans la bibliotheque">📋 Bibliotheque</button>
+                  <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.saveFromForm('og2')" style="padding:2px 8px;font-size:10px" title="Enregistrer dans la bibliothèque">💾 Enregistrer</button>
+                  <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.openLibraryModal('og2')" style="padding:2px 8px;font-size:10px" title="Choisir dans la bibliothèque">📋 Bibliothèque</button>
                 </span>
               </label>
               <input type="text" id="og2-panel-model" placeholder="ex : Jinko Tiger Neo 415W" style="width:100%">
@@ -112,7 +112,10 @@ function initTabOffgrid() {
                 <div class="input-unit"><input type="number" id="og2-surface" value="" placeholder="m²"><span class="unit-tag">m²</span></div>
               </div>
               <div class="form-group">
-                <label for="og2-panel-wp">Panneaux (Wc) <button type="button" class="btn btn-outline btn-sm" onclick="autoCalcOffgridPanelWp()" style="padding:1px 7px;font-size:10px;margin-left:4px">⚡ Auto</button></label>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+                  <label for="og2-panel-wp" style="margin:0">Panneaux (Wc)</label>
+                  <button type="button" class="btn btn-outline btn-sm" onclick="autoCalcOffgridPanelWp()" style="padding:1px 7px;font-size:10px">⚡ Auto</button>
+                </div>
                 <div class="input-unit"><input type="number" id="og2-panel-wp" value="400" step="10"><span class="unit-tag">Wc</span></div>
               </div>
               <div class="form-group">

@@ -146,7 +146,7 @@ const PanelDB = (() => {
             <div style="display:flex;gap:4px;flex-shrink:0">
               ${isPicker ? `<button class="btn btn-accent btn-sm" onclick="PanelDB._applyAndClose('${p.id}')" style="font-size:11px;padding:2px 8px">Utiliser</button>` : ''}
               <button class="btn btn-outline btn-sm" onclick="PanelDB._renderManager('${p.id}')" style="font-size:11px;padding:2px 8px" title="Modifier">✏️</button>
-              <button class="btn btn-sm" onclick="PanelDB._confirmDelete('${p.id}')" style="font-size:11px;padding:2px 8px;background:var(--color-danger);color:#fff;border:none;border-radius:4px;cursor:pointer" title="Supprimer">✕</button>
+              <button class="btn btn-sm" data-del="${p.id}" onclick="PanelDB._confirmDelete('${p.id}')" style="font-size:11px;padding:2px 8px;background:var(--color-danger);color:#fff;border:none;border-radius:4px;cursor:pointer" title="Supprimer">✕</button>
             </div>
           </div>`;
         }).join('');
@@ -301,7 +301,16 @@ const PanelDB = (() => {
   function _confirmDelete(id) {
     const p = getById(id);
     if (!p) return;
-    if (!confirm(`Supprimer "${p.model}" de la bibliothèque ?`)) return;
+    const btn = document.querySelector(`[data-del="${id}"]`);
+    if (!btn) return;
+    const container = btn.parentElement;
+    container.innerHTML = `
+      <span style="font-size:11px;color:var(--color-danger);white-space:nowrap;align-self:center">Supprimer ?</span>
+      <button class="btn btn-sm" onclick="PanelDB._deleteConfirmed('${id}')" style="font-size:11px;padding:2px 8px;background:var(--color-danger);color:#fff;border:none;border-radius:4px;cursor:pointer">Oui</button>
+      <button class="btn btn-outline btn-sm" onclick="PanelDB._renderManager()" style="font-size:11px;padding:2px 8px">Non</button>`;
+  }
+
+  function _deleteConfirmed(id) {
     remove(id);
     _renderManager();
     if (typeof showToast === 'function') showToast('Panneau supprimé');
@@ -384,7 +393,7 @@ const PanelDB = (() => {
     applyPanel, saveFromForm, removePanel, syncModelToQuote,
     // Internals exposés pour les onclick inline
     _renderManager, _autoDims, _autoRendement,
-    _submitForm, _confirmDelete, _applyAndClose,
+    _submitForm, _confirmDelete, _deleteConfirmed, _applyAndClose,
     _openLink, _browseFile,
   };
 

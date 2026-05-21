@@ -256,7 +256,7 @@ ${d.notes ? `<div class="notes"><strong>Notes et conditions :</strong><br>${d.no
   function print(data) {
     const html = buildHTML(data || readForm());
     const win = window.open('', '_blank', 'width=900,height=700');
-    if (!win) { alert('Autorisez les popups pour imprimer le devis.'); return; }
+    if (!win) { if (typeof showToast === 'function') showToast('Autorisez les popups du navigateur pour imprimer le devis.', 'warning'); return; }
     win.document.write(html);
     win.document.close();
     win.onload = () => { win.focus(); win.print(); };
