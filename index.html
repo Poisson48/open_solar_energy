@@ -34,15 +34,21 @@
 
 <!-- ═══ BARRE PROJET ═════════════════════════════════════════ -->
 <div id="project-bar">
-  <span id="project-bar-label">Projet :</span>
-  <input type="text" id="project-name-input" placeholder="Nom du projet…">
-  <span id="project-bar-client" style="font-size:12px;color:var(--color-text-muted);padding:0 4px"></span>
-  <button onclick="openEditProjectModal()" title="Modifier nom et infos client" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;color:var(--color-text-muted);line-height:1" aria-label="Modifier les informations du projet">✏️</button>
-  <button id="install-type-badge" onclick="toggleInstallationType()" title="Changer le type d'installation" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1.5px solid;cursor:pointer;transition:all .2s"></button>
+  <span id="project-bar-label">Projet</span>
+  <input type="text" id="project-name-input" placeholder="Nom du projet…" aria-label="Nom du projet">
+  <span id="project-bar-client" style="font-size:12px;color:rgba(255,255,255,0.7);padding:0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px"></span>
+  <button onclick="openEditProjectModal()" title="Modifier le nom et les informations client" aria-label="Modifier le projet" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:var(--radius);cursor:pointer;font-size:12px;padding:3px 8px;color:rgba(255,255,255,0.85);line-height:1;white-space:nowrap;flex-shrink:0">✏️ Éditer</button>
+
+  <div class="project-bar-sep"></div>
+
   <button id="btn-save-project" onclick="saveCurrentProject()" title="Sauvegarder (Ctrl+S)">💾 Sauvegarder</button>
-  <button class="btn btn-outline btn-sm" onclick="exportCurrentProject()" title="Exporter en fichier local">📤 Exporter</button>
-  <button class="btn btn-outline btn-sm" id="btn-git-history" onclick="openGitHistoryModal()" title="Historique des versions (git)">🕐 Historique</button>
-  <button id="btn-open-projects" onclick="openProjectsModal()" title="Gérer les projets">📁 Projets</button>
+  <button class="btn btn-outline btn-sm" onclick="exportCurrentProject()" title="Télécharger le projet en fichier .zip" style="border-color:rgba(255,255,255,0.3);color:rgba(255,255,255,0.85)">📤 Exporter</button>
+  <button class="btn btn-outline btn-sm" id="btn-git-history" onclick="openGitHistoryModal()" title="Historique des versions" style="border-color:rgba(255,255,255,0.3);color:rgba(255,255,255,0.85)">🕐 Historique</button>
+
+  <div class="project-bar-sep"></div>
+
+  <button id="btn-open-projects" onclick="openProjectsModal()" title="Gérer mes projets">📁 Projets</button>
+  <button id="install-type-badge" onclick="toggleInstallationType()" title="Basculer entre installation réseau et hors-réseau" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1.5px solid;cursor:pointer;transition:all .2s;flex-shrink:0"></button>
 </div>
 
 <!-- ═══ MODAL DÉMARRAGE ═══════════════════════════════════════ -->
@@ -165,8 +171,8 @@
           <button onclick="showStartupStep1()" style="background:none;border:none;cursor:pointer;color:var(--color-text-muted);font-size:18px">←</button>
           <div style="font-size:16px;font-weight:700">Continuer un projet</div>
         </div>
-        <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Importer un projet depuis un fichier JSON">
-          📤 Importer fichier
+        <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Importer un projet depuis un fichier JSON ou ZIP">
+          📥 Importer un fichier
           <input type="file" accept=".json,.zip" style="display:none" onchange="importProjectsFile(this)">
         </label>
       </div>
@@ -265,8 +271,8 @@
       <div id="projects-modal-title" style="font-weight:700;font-size:16px">📁 Mes projets</div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-outline btn-sm" onclick="ProjectManager.exportAll()" title="Exporter tous les projets en JSON">⬇ Export tout</button>
-        <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Importer des projets depuis un fichier JSON">
-          ⬆ Import
+        <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Importer des projets depuis un fichier JSON ou ZIP">
+          📥 Importer
           <input type="file" accept=".json,.zip" style="display:none" onchange="importProjectsFile(this)">
         </label>
         <button class="btn btn-outline btn-sm" onclick="newProjectBlank()" style="color:var(--color-success);border-color:var(--color-success)">+ Nouveau</button>
@@ -386,10 +392,10 @@
         <span class="tab-number" aria-hidden="true">3</span>Hors réseau
       </button>
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-irradiation" data-tab="irradiation">
-        <span class="tab-number" aria-hidden="true">4</span>Données mensuelles
+        <span class="tab-number" aria-hidden="true">4</span>Météo mensuelle
       </button>
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-daily" data-tab="daily">
-        <span class="tab-number" aria-hidden="true">5</span>Données horaires
+        <span class="tab-number" aria-hidden="true">5</span>Analyse horaire
       </button>
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-optimizer" data-tab="optimizer">
         <span class="tab-number" aria-hidden="true">6</span>Optimisation

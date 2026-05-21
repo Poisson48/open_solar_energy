@@ -39,7 +39,7 @@ function initTabGrid() {
 
           <div class="form-group" style="margin-bottom:6px">
             <label style="display:flex;align-items:center;justify-content:space-between">
-              <span for="inp-panel-model">Modele panneau</span>
+              <span for="inp-panel-model">Modèle de panneau</span>
               <span style="display:inline-flex;gap:4px">
                 <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.saveFromForm('inp')" style="padding:2px 8px;font-size:10px" title="Enregistrer dans la bibliotheque">💾 Enregistrer</button>
                 <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.openLibraryModal('inp')" style="padding:2px 8px;font-size:10px" title="Choisir dans la bibliotheque">📋 Bibliotheque</button>
@@ -74,7 +74,7 @@ function initTabGrid() {
             </div>
           </div>
 
-          <div id="grid-panels-info" style="background:var(--color-bg-card);border:1px solid var(--color-border);border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:13px">
+          <div id="grid-panels-info" style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:13px">
             <div style="display:flex;justify-content:space-between;align-items:center">
               <span style="color:var(--color-text-muted)">Panneaux installables</span>
               <span id="grid-npanels" style="font-weight:700;font-size:16px;color:var(--color-primary)">-</span>

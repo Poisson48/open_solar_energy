@@ -231,48 +231,99 @@ function renderProjectsList(containerId = 'projects-list-container') {
     const isCurrent = p.id === AppState.currentProjectId;
     const clientName = p.client?.nom ? ` · ${p.client.nom}` : '';
     const kwh   = p.summary?.annualConso ? `${p.summary.annualConso.toLocaleString('fr')} kWh/an` : '';
-    const ppeak = p.summary?.recommendedPpeak ? `· ${p.summary.recommendedPpeak} kWc` : '';
-    const cost  = p.summary?.systemCost ? `· ${p.summary.systemCost.toLocaleString('fr')} €` : '';
+    const ppeak = p.summary?.recommendedPpeak ? ` · ${p.summary.recommendedPpeak} kWc` : '';
+    const cost  = p.summary?.systemCost ? ` · ${p.summary.systemCost.toLocaleString('fr')} €` : '';
     const loc   = p.summary?.locationName || p.location?.name || '';
 
     const demoTag = p.isDemo
       ? `<span style="background:var(--color-accent);color:#fff;font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;margin-left:6px;vertical-align:middle">DÉMO</span>`
       : '';
+    const activeTag = isCurrent
+      ? `<span style="font-size:11px;font-weight:400;color:var(--color-text-muted);margin-left:4px">(actif)</span>`
+      : '';
     return `
-    <div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--color-border)${isCurrent?';background:var(--color-surface2);margin:0 -22px;padding-left:22px;padding-right:22px':''}" >
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 0;border-bottom:1px solid var(--color-border)${isCurrent?';background:var(--color-surface2);margin:0 -22px;padding:12px 22px':''}" >
       <div style="flex:1;min-width:0">
-        <div style="font-weight:600;font-size:14px${isCurrent?';color:var(--color-accent)':''}">${p.name}${demoTag}${clientName}${isCurrent ? ' <span style="font-size:11px;font-weight:400;color:var(--color-text-muted)">(actif)</span>' : ''}</div>
-        <div style="font-size:11px;color:var(--color-text-muted);margin-top:2px">${loc} · ${date} ${kwh} ${ppeak} ${cost}</div>
-      </div>
-      <div style="display:flex;gap:6px;flex-shrink:0">
-        <button class="btn btn-outline btn-sm" onclick="loadProject('${p.id}')">Charger</button>
-        <button class="btn btn-outline btn-sm" onclick="ProjectManager.exportOne('${p.id}')" title="Exporter en fichier JSON">📤</button>
-        <button class="btn btn-outline btn-sm" onclick="cloneProject('${p.id}')">Cloner</button>
-        ${p.isDemo ? '' : `<button class="btn btn-sm" style="color:var(--color-danger);border-color:var(--color-danger);background:none" onclick="deleteProject('${p.id}')">✕</button>`}
+        <div style="font-weight:600;font-size:14px${isCurrent?';color:var(--color-accent)':''}">${p.name}${demoTag}${clientName}${activeTag}</div>
+        <div style="font-size:11px;color:var(--color-text-muted);margin-top:3px">${loc ? loc + ' · ' : ''}${date}${kwh ? ' · ' + kwh : ''}${ppeak}${cost}</div>
+        <div id="project-actions-${p.id}" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">
+          ${_projectActionsHTML(p)}
+        </div>
       </div>
     </div>`;
   }).join('');
 }
 
+function _projectActionsHTML(p) {
+  return `<button class="btn btn-primary btn-sm" onclick="loadProject('${p.id}')">Charger</button>
+          <button class="btn btn-outline btn-sm" onclick="startCloneProject('${p.id}')">Cloner</button>
+          <button class="btn btn-outline btn-sm" onclick="ProjectManager.exportOne('${p.id}')" title="Exporter en fichier JSON">📤 Export</button>
+          ${p.isDemo ? '' : `<button class="btn btn-outline btn-sm" style="color:var(--color-danger);border-color:var(--color-danger)" onclick="confirmDeleteProject('${p.id}')">✕ Supprimer</button>`}`;
+}
+
+function confirmDeleteProject(id) {
+  const actionsEl = document.getElementById(`project-actions-${id}`);
+  if (!actionsEl) return;
+  const p = ProjectManager.get(id);
+  if (!p) return;
+  actionsEl.innerHTML = `
+    <span style="font-size:12px;color:var(--color-danger);font-weight:600;align-self:center">Supprimer « ${p.name} » ?</span>
+    <button class="btn btn-danger btn-sm" onclick="deleteProject('${id}')">Oui, supprimer</button>
+    <button class="btn btn-outline btn-sm" onclick="cancelProjectAction('${id}')">Annuler</button>`;
+}
+
+function startCloneProject(id) {
+  const actionsEl = document.getElementById(`project-actions-${id}`);
+  if (!actionsEl) return;
+  const p = ProjectManager.get(id);
+  if (!p) return;
+  const defaultName = (p.name || '') + ' — variante';
+  actionsEl.innerHTML = `
+    <input type="text" id="clone-name-${id}" value="${defaultName}" placeholder="Nom du clone…"
+           style="flex:1;min-width:140px;padding:4px 8px;font-size:12px;border:1px solid var(--color-accent);border-radius:var(--radius);outline:none"
+           onkeydown="if(event.key==='Enter')submitCloneProject('${id}');if(event.key==='Escape')cancelProjectAction('${id}')">
+    <button class="btn btn-primary btn-sm" onclick="submitCloneProject('${id}')">Créer</button>
+    <button class="btn btn-outline btn-sm" onclick="cancelProjectAction('${id}')">Annuler</button>`;
+  document.getElementById(`clone-name-${id}`)?.focus();
+}
+
+function submitCloneProject(id) {
+  const input = document.getElementById(`clone-name-${id}`);
+  const name  = input?.value.trim();
+  const src   = ProjectManager.get(id);
+  if (!src) return;
+  const copy = ProjectManager.clone(id, name || src.name + ' (copie)');
+  if (copy) {
+    showToast(`✓ Clone "${copy.name}" créé`);
+    renderProjectsList();
+    renderProjectsList('startup-projects-list');
+  }
+}
+
+function cancelProjectAction(id) {
+  const actionsEl = document.getElementById(`project-actions-${id}`);
+  if (!actionsEl) return;
+  const p = ProjectManager.get(id);
+  if (p) actionsEl.innerHTML = _projectActionsHTML(p);
+}
+
 function cloneProject(id) {
-  const src = ProjectManager.get(id);
-  const name = prompt('Nom du clone :', (src?.name || '') + ' - variante');
-  if (name === null) return;
-  const copy = ProjectManager.clone(id, name.trim() || src.name + ' (copie)');
-  if (copy) { renderProjectsList(); showToast(`✓ Clone "${copy.name}" créé`); }
+  startCloneProject(id);
 }
 
 function deleteProject(id) {
   const p = ProjectManager.get(id);
   if (!p) return;
-  if (!confirm(`Supprimer "${p.name}" ?`)) return;
   ProjectManager.remove(id);
   if (AppState.currentProjectId === id) {
     AppState.currentProjectId = null;
     const nameEl = document.getElementById('project-name-input');
     if (nameEl) nameEl.value = '';
+    updateProjectBar();
   }
+  showToast(`✓ Projet "${p.name}" supprimé`);
   renderProjectsList();
+  renderProjectsList('startup-projects-list');
 }
 
 async function importProjectsFile(input) {
@@ -284,7 +335,7 @@ async function importProjectsFile(input) {
     try {
       const zip = await JSZip.loadAsync(file);
       const projectFile = zip.file('project.json');
-      if (!projectFile) { alert('ZIP invalide : project.json manquant'); return; }
+      if (!projectFile) { showToast('ZIP invalide : project.json manquant', 'error'); return; }
       let jsonText = await projectFile.async('string');
 
       const enedisFile = zip.file('enedis_30min.csv');
@@ -301,11 +352,11 @@ async function importProjectsFile(input) {
       }
 
       const result = ProjectManager.importOne(jsonText);
-      if (result.error) { alert('Erreur import ZIP : ' + result.error); return; }
+      if (result.error) { showToast('Erreur import ZIP : ' + result.error, 'error'); return; }
       showToast(`✓ Projet "${result.project.name}" importé depuis ZIP`);
       renderProjectsList();
       renderProjectsList('startup-projects-list');
-    } catch(e) { alert('Erreur lecture ZIP : ' + e.message); }
+    } catch(e) { showToast('Erreur lecture ZIP : ' + e.message, 'error'); }
     return;
   }
 
@@ -323,7 +374,7 @@ async function importProjectsFile(input) {
         if (!result.error) result._msg = `✓ Projet "${result.project.name}" importé`;
       }
     } catch { result = { error: 'Fichier JSON invalide' }; }
-    if (result.error) { alert('Erreur import : ' + result.error); }
+    if (result.error) { showToast('Erreur import : ' + result.error, 'error'); }
     else {
       showToast(result._msg);
       renderProjectsList();
@@ -360,10 +411,11 @@ function initProjectUI() {
     if (e.key === 'Escape') {
       closeProjectsModal();
       closeStartupModal();
+      closeEditProjectModal();
+      closeGitHistoryModal();
+      if (typeof closeEnedisModal === 'function') closeEnedisModal();
+      return;
     }
-  });
-
-  document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       e.preventDefault();
       saveCurrentProject();

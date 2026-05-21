@@ -84,7 +84,7 @@ function initTabOffgrid() {
           <div style="margin-top:10px">
             <div class="form-group" style="margin-bottom:6px">
               <label style="display:flex;align-items:center;justify-content:space-between">
-                <span for="og2-panel-model">Modele panneau</span>
+                <span for="og2-panel-model">Modèle de panneau</span>
                 <span style="display:inline-flex;gap:4px">
                   <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.saveFromForm('og2')" style="padding:2px 8px;font-size:10px" title="Enregistrer dans la bibliotheque">💾 Enregistrer</button>
                   <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.openLibraryModal('og2')" style="padding:2px 8px;font-size:10px" title="Choisir dans la bibliotheque">📋 Bibliotheque</button>
@@ -94,11 +94,17 @@ function initTabOffgrid() {
             </div>
             <div class="params-grid">
               <div class="form-group">
-                <label for="og2-tilt">Inclinaison <button type="button" class="btn btn-outline btn-sm" onclick="optimizeTiltFor('og2')" style="padding:1px 7px;font-size:10px;margin-left:4px">⚡ Auto</button></label>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+                  <label for="og2-tilt" style="margin:0">Inclinaison</label>
+                  <button type="button" class="btn btn-outline btn-sm" onclick="optimizeTiltFor('og2')" style="padding:1px 7px;font-size:10px">⚡ Auto</button>
+                </div>
                 <div class="input-unit"><input type="number" id="og2-tilt" value="30" min="0" max="90"><span class="unit-tag">°</span></div>
               </div>
               <div class="form-group">
-                <label for="og2-azimuth">Azimut <button type="button" class="btn btn-outline btn-sm" onclick="optimizeTiltFor('og2', true)" style="padding:1px 7px;font-size:10px;margin-left:4px">⚡ Auto</button></label>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+                  <label for="og2-azimuth" style="margin:0">Azimut</label>
+                  <button type="button" class="btn btn-outline btn-sm" onclick="optimizeTiltFor('og2', true)" style="padding:1px 7px;font-size:10px">⚡ Auto</button>
+                </div>
                 <div class="input-unit"><input type="number" id="og2-azimuth" value="0" min="-180" max="180"><span class="unit-tag">°</span></div>
               </div>
               <div class="form-group">

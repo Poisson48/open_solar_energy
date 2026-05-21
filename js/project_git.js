@@ -104,7 +104,7 @@ async function openGitHistoryModal() {
           <div style="font-weight:${isCur ? '700' : '500'};font-size:13px;color:${isCur ? 'var(--color-accent)' : 'inherit'}">${c.message}${isCur ? ' <span style="font-size:10px;font-weight:400;color:var(--color-text-muted)">(actuel)</span>' : ''}</div>
           <div style="font-size:11px;color:var(--color-text-muted)">${date} · <code style="font-size:10px">${c.hash.slice(0, 7)}</code></div>
         </div>
-        ${!isCur ? `<button class="btn btn-outline btn-sm" onclick="restoreGitVersion('${c.hash}')" title="Restaurer cette version">Restaurer</button>` : ''}
+        ${!isCur ? `<button class="btn btn-outline btn-sm" data-restore-hash="${c.hash}" onclick="restoreGitVersionConfirm('${c.hash}')" title="Restaurer cette version">Restaurer</button>` : ''}
       </div>`;
     }).join('');
   } catch (e) {
@@ -195,9 +195,24 @@ function closeGitHistoryModal() {
   if (modal) modal.style.display = 'none';
 }
 
+function restoreGitVersionConfirm(hash) {
+  const btn = document.querySelector(`[data-restore-hash="${hash}"]`);
+  if (!btn) return;
+  const original = btn.textContent;
+  btn.textContent = 'Confirmer ?';
+  btn.style.cssText += ';background:var(--color-danger);color:#fff;border-color:var(--color-danger)';
+  const timer = setTimeout(() => {
+    if (btn.isConnected) {
+      btn.textContent = original;
+      btn.style.background = btn.style.color = btn.style.borderColor = '';
+      btn.onclick = () => restoreGitVersionConfirm(hash);
+    }
+  }, 3000);
+  btn.onclick = () => { clearTimeout(timer); restoreGitVersion(hash); };
+}
+
 async function restoreGitVersion(hash) {
   if (!window.electronAPI || !AppState.currentProjectId) return;
-  if (!confirm(`Restaurer la version ${hash.slice(0, 7)} ? L'état actuel non sauvegardé sera perdu.`)) return;
   try {
     const jsonText = await window.electronAPI.gitCheckout(AppState.currentProjectId, hash);
     const project  = JSON.parse(jsonText);
