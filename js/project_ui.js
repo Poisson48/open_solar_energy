@@ -79,10 +79,6 @@ function loadProject(id) {
     : null;
   AppState.monthlyKwhHp = project.monthlyKwhHp ? project.monthlyKwhHp.slice() : null;
   AppState.enedisYear   = project.enedisYear || null;
-  if (project.formState) {
-    const kwh = Array.from({length:12}, (_, i) => parseFloat(project.formState[`sz-kwh-${i+1}`]) || 0);
-    if (kwh.some(v => v > 0)) AppState.monthlyKwh = kwh;
-  }
   if (AppState.hourlyEnedisData && typeof HourlyModule?.setData === 'function') {
     HourlyModule.setData({ values: AppState.hourlyEnedisData.halfHourly, year: AppState.hourlyEnedisData.year });
     const anyFilled = Array.from({length:12}, (_, i) => document.getElementById(`og2-day-${i+1}`)?.value)

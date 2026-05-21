@@ -155,6 +155,10 @@ async function gitNewBranchSubmit(event) {
     if (res.ok) {
       showToast(`✓ Variante "${res.branchName}" créée — vous travaillez maintenant dessus`);
       openGitHistoryModal();
+    } else {
+      showToast(`Erreur : ${res.reason || 'impossible de créer la branche'}`, 'error');
+      if (btn) { btn.disabled = false; btn.textContent = 'Créer'; }
+      if (input) { input.disabled = false; input.focus(); }
     }
   } catch (e) {
     showToast('Erreur : ' + e.message, 'error');

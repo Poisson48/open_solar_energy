@@ -46,7 +46,8 @@ function showNewProjectForm() {
 }
 
 function showLoadProjectList() {
-  document.getElementById('startup-step-1').style.display  = 'none';
+  document.getElementById('startup-step-1').style.display    = 'none';
+  document.getElementById('startup-step-type').style.display = 'none';
   document.getElementById('startup-step-new').style.display  = 'none';
   document.getElementById('startup-step-load').style.display = 'block';
   renderProjectsList('startup-projects-list');

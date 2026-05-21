@@ -32,6 +32,7 @@ const ProjectManager = (() => {
     const idx = projects.findIndex(p => p.id === project.id);
     project.updatedAt = new Date().toISOString();
     if (idx >= 0) {
+      project.createdAt = projects[idx].createdAt || project.updatedAt;
       projects[idx] = project;
     } else {
       project.createdAt = project.createdAt || project.updatedAt;
@@ -55,8 +56,9 @@ const ProjectManager = (() => {
     const src = get(id);
     if (!src) return null;
     const copy = JSON.parse(JSON.stringify(src));
-    copy.id   = 'proj_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-    copy.name = newName || src.name + ' (copie)';
+    copy.id     = 'proj_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+    copy.name   = newName || src.name + ' (copie)';
+    copy.isDemo = false;
     copy.createdAt = new Date().toISOString();
     copy.updatedAt = copy.createdAt;
     save(copy);
