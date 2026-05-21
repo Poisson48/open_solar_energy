@@ -168,7 +168,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   bindSizingLiveTotal();
   bindBatteryInfo();
   bindOffgridLiveTotal();
-  // bindSharedParamSync supprimé lors du refactoring → bindInstallSync
+  bindSharedParamSync();
   initQuoteTab();
   calcGridPanels(); // initialise l'affichage panneaux/kWc
 
