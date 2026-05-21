@@ -54,8 +54,9 @@ const OffgridSizing = (() => {
 
       if (balance >= 0) {
         // Surplus → charge batterie
-        const stored = Math.min(balance * eta, C_usable - soc);
-        soc += stored;
+        const room   = Math.max(0, C_usable - soc);
+        const stored = Math.min(balance * eta, room);
+        soc = Math.min(C_usable, soc + stored);
         surplus_kwh += (balance - stored / eta);  // surplus perdu (batterie pleine)
       } else {
         // Déficit → décharge batterie
@@ -70,49 +71,6 @@ const OffgridSizing = (() => {
       }
     }
     return { soc_end: soc, deficit_days, deficit_kwh, surplus_kwh };
-  }
-
-  // ── Profil PV demi-horaire normalisé par kWc, cohérent avec pvProduction mensuel ──
-  // Retourne un tableau [12][48] en kWh/kWc par slot 30min, tel que
-  // somme_slots_du_mois × jours = pvProduction(Htilt, 1 kWc, losses, T_avg, pvTech, m)
-  function buildHalfHourPvProfile(weatherData, monthlyHtilt, losses, tilt, azimuth, lat, pvTech) {
-    const tech = pvTech || 'crystSi';
-    const profiles = [];
-    for (let m = 1; m <= 12; m++) {
-      const md = weatherData[m - 1];
-      const days = DAYS[m - 1];
-      // Forme : irradiance horaire puis split en 2 demi-heures égales
-      const shape = new Float32Array(48);
-      let shapeSum = 0;
-      for (let h = 0; h < 24; h++) {
-        const irr = SolarMath.hourlyIrradiance(lat, m, h, md, tilt, azimuth);
-        const half = irr / 2;
-        shape[h * 2]     = half;
-        shape[h * 2 + 1] = half;
-        shapeSum += irr;
-      }
-      // Énergie mensuelle par kWc (kWh) avec correction thermique, inclut (1-losses/100)
-      const monthlyPerKwc = SolarMath.pvProduction(monthlyHtilt[m - 1], 1, losses, md.T_avg, tech, m, lat);
-      const perDayPerKwc  = days > 0 ? monthlyPerKwc / days : 0;
-      // Normaliser la forme pour que la somme sur 24h = perDayPerKwc
-      const slots = new Float32Array(48);
-      if (shapeSum > 0) {
-        for (let s = 0; s < 48; s++) slots[s] = shape[s] * perDayPerKwc / shapeSum;
-      }
-      profiles.push(slots);
-    }
-    return profiles;
-  }
-
-  // ── Aplatit un profil mensuel [12][48] en Float32Array(nDays×48) ──
-  function _flattenMonthlyProfiles(profiles, daysArr) {
-    const totalDays = daysArr.reduce((s, d) => s + d, 0);
-    const flat = new Float32Array(totalDays * 48);
-    let di = 0;
-    for (let m = 0; m < 12; m++) {
-      for (let d = 0; d < daysArr[m]; d++, di++) flat.set(profiles[m], di * 48);
-    }
-    return flat;
   }
 
   // ── Simulation année complète, slot par slot ──────────────────────
@@ -143,8 +101,9 @@ const OffgridSizing = (() => {
           monthly[m].conso_kwh += conso;
           const balance = prod - conso;
           if (balance >= 0) {
-            const stored = Math.min(balance * eta, C_usable - soc);
-            soc += stored;
+            const room   = Math.max(0, C_usable - soc);
+            const stored = Math.min(balance * eta, room);
+            soc = Math.min(C_usable, soc + stored);
             monthly[m].surplus_kwh += balance - stored / eta;
           } else {
             const needed   = -balance;
@@ -200,8 +159,9 @@ const OffgridSizing = (() => {
       for (let h = 0; h < 24; h++) {
         const balance = pvH[h] - consoH[h];
         if (balance >= 0) {
-          const stored = Math.min(balance * eta, C_usable - soc);
-          soc += stored;
+          const room   = Math.max(0, C_usable - soc);
+          const stored = Math.min(balance * eta, room);
+          soc = Math.min(C_usable, soc + stored);
           surplus_kwh += balance - stored / eta;
         } else {
           const needed   = -balance;
@@ -316,7 +276,9 @@ const OffgridSizing = (() => {
 
     // Consommation journalière par mois (Wh/j)
     const dailyConso = Array.from({length:12}, (_, i) => conso.dailyWh[i] || conso.dailyWh[0]);
-    const annual_conso = dailyConso.reduce((s, v, i) => s + v * DAYS[i], 0) / 1000;
+    const knownYearEarly = AppState.hourlyEnedisData?.year || AppState.enedisYear || null;
+    const daysEarly      = knownYearEarly ? getMonthlyDays(knownYearEarly) : DAYS;
+    const annual_conso   = dailyConso.reduce((s, v, i) => s + v * daysEarly[i], 0) / 1000;
 
     const target = sizing.targetCoveragePct || 90;
     const fullAutonomy = target >= 99.9;
@@ -368,8 +330,8 @@ const OffgridSizing = (() => {
         );
       } else {
         // Fallback : profil mensuel moyen aplati
-        const monthlyProfs = buildHalfHourPvProfile(weatherData, monthlyHtilt, losses, site.tilt, site.azimuth, lat, pvTech);
-        pvSlotsFlat = _flattenMonthlyProfiles(monthlyProfs, daysArr);
+        const monthlyProfs = PvProfiles.buildMonthlyProfiles(weatherData, monthlyHtilt, losses, site.tilt, site.azimuth, lat, pvTech);
+        pvSlotsFlat = PvProfiles.flattenToYear(monthlyProfs, daysArr);
       }
     }
 
@@ -492,5 +454,5 @@ const OffgridSizing = (() => {
     a.download = 'dimensionnement_hors_reseau.csv'; a.click();
   }
 
-  return { run, readFormInput, exportCSV, BATTERY_TECH, DAYS, MONTH_NAMES };
+  return { run, readFormInput, exportCSV, BATTERY_TECH, MONTH_NAMES };
 })();

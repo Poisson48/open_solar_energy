@@ -10,123 +10,8 @@
 
 const SizingEngine = (() => {
 
-  // ── Tarifs EDF 2024 (défauts) ──────────────────────────────────
-  const TARIFS = {
-    base: { price: 0.2516 },
-    hphc: { hp: 0.2460, hc: 0.1860 }
-  };
-
   // DAYS_IN_MONTH et MONTH_NAMES définis dans constants.js
   const DAYS = DAYS_IN_MONTH;
-
-  // ── Calcul des économies selon le tarif ───────────────────────
-  function calcSavingsOnBill(monthlyMetrics, bill) {
-    if (bill.tariff === 'base') {
-      return monthlyMetrics.reduce((sum, m) => sum + m.autoconsoKwh * bill.priceBase, 0);
-    }
-    // HP/HC : PV produit pendant la journée (heures pleines) → économies au tarif HP
-    const hp = bill.priceHpHc?.hp ?? TARIFS.hphc.hp;
-    return monthlyMetrics.reduce((sum, m) => sum + m.autoconsoKwh * hp, 0);
-  }
-
-  // ── Calcul de la facture annuelle actuelle ─────────────────────
-  function calcCurrentAnnualBill(bill) {
-    let total = bill.subscriptionPerYear || 0;
-    if (bill.tariff === 'base') {
-      total += bill.monthlyKwh.reduce((s, k) => s + k * bill.priceBase, 0);
-    } else {
-      bill.monthlyKwh.forEach((kwh, i) => {
-        if (kwh <= 0) return;
-        // Fallback 65% HP seulement si aucune donnée HP/HC Enedis disponible.
-        // Quand monthlyKwh_hp[i]=0 (toute consommation en HC), ne pas utiliser 0.65.
-        const hpRatio = bill.monthlyKwh_hp != null
-          ? Math.min(1, Math.max(0, (bill.monthlyKwh_hp[i] ?? 0) / kwh))
-          : 0.65;
-        const hp = bill.priceHpHc?.hp ?? TARIFS.hphc.hp;
-        const hc = bill.priceHpHc?.hc ?? TARIFS.hphc.hc;
-        total += kwh * hpRatio * hp + kwh * (1 - hpRatio) * hc;
-      });
-    }
-    return total;
-  }
-
-  // ── Helpers financiers ────────────────────────────────────────
-  // Constantes définies dans constants.js : PANEL_DEGRADATION, ELEC_ESCALATION,
-  // DISCOUNT_RATE, SYSTEM_LIFETIME
-
-  /**
-   * Payback actualisé (DCF, années) — flux nets actualisés au DISCOUNT_RATE.
-   * Inclut dégradation panneaux, hausse prix électricité, O&M, remplacement onduleur.
-   */
-  function calcPayback(systemCost, firstYearGain) {
-    if (firstYearGain <= 0 || systemCost <= 0) return null;
-    const omCost      = systemCost * 0.005;
-    const inverterRpl = systemCost * 0.12;
-    let cum = 0;
-    for (let y = 1; y <= 40; y++) {
-      const gain = firstYearGain
-                 * Math.pow(1 + ELEC_ESCALATION,   y - 1)
-                 * Math.pow(1 - PANEL_DEGRADATION, y - 1);
-      const netGain = gain - omCost - (y === 15 ? inverterRpl : 0);
-      cum += netGain / Math.pow(1 + DISCOUNT_RATE, y);
-      if (cum >= systemCost) return y;
-    }
-    return null;
-  }
-
-  /**
-   * Valeur Actuelle Nette (€) sur SYSTEM_LIFETIME ans.
-   * VAN > 0 → investissement rentable au taux d'actualisation DISCOUNT_RATE.
-   * Inclut O&M (0,5 %/an) et remplacement onduleur (12 % à 15 ans) - cohérent avec LCOE.
-   */
-  function calcNPV(systemCost, firstYearGain) {
-    if (systemCost <= 0) return 0;
-    if (firstYearGain <= 0) return -systemCost;
-    const omCost      = systemCost * 0.005;
-    const inverterRpl = systemCost * 0.12;
-    let npv = -systemCost;
-    for (let y = 1; y <= SYSTEM_LIFETIME; y++) {
-      const gain = firstYearGain
-                 * Math.pow(1 + ELEC_ESCALATION,   y - 1)
-                 * Math.pow(1 - PANEL_DEGRADATION, y - 1);
-      const netGain = gain - omCost - (y === 15 ? inverterRpl : 0);
-      npv += netGain / Math.pow(1 + DISCOUNT_RATE, y);
-    }
-    return npv;
-  }
-
-  /**
-   * LCOE (€/kWh) avec dégradation + maintenance annuelle + remplacement onduleur.
-   * O&M ≈ 0.5 %/an du coût install, onduleur remplacé à 15 ans (~300 €/kWc).
-   */
-  function calcLCOE(systemCost, annualProd) {
-    if (annualProd <= 0 || systemCost <= 0) return 0;
-    const omRate       = 0.005; // 0.5 %/an
-    const inverterRepl = systemCost * 0.12; // ~12 % du coût (onduleur) remplacé à 15 ans
-    let cumProd = 0, cumCost = systemCost;
-    for (let y = 1; y <= SYSTEM_LIFETIME; y++) {
-      cumProd += annualProd * Math.pow(1 - PANEL_DEGRADATION, y - 1);
-      cumCost += systemCost * omRate;
-      if (y === 15) cumCost += inverterRepl;
-    }
-    return cumCost / cumProd;
-  }
-
-  /**
-   * Prime à l'autoconsommation solaire (France - décret 2021-1444).
-   * Varie chaque trimestre - vérifier l'arrêté en vigueur sur energie.gouv.fr
-   * Valeurs indicatives 2025 (à vérifier sur energie.gouv.fr chaque trimestre) :
-   *   ≤ 3 kWc  : 300 €/kWc  |  ≤ 9 kWc : 230 €/kWc
-   *   ≤ 36 kWc : 100 €/kWc  |  ≤ 100 kWc : 60 €/kWc
-   */
-  function calcFrenchIncentive(Ppeak) {
-    if (Ppeak <= 0)   return 0;
-    if (Ppeak <= 3)   return Math.round(Ppeak * 300);
-    if (Ppeak <= 9)   return Math.round(Ppeak * 230);
-    if (Ppeak <= 36)  return Math.round(Ppeak * 100);
-    if (Ppeak <= 100) return Math.round(Ppeak * 60);
-    return 0;
-  }
 
   // ── Sélection de l'optimal selon la stratégie ─────────────────
   function selectOptimal(results, strategy, targetCoveragePct) {
@@ -155,33 +40,6 @@ const SizingEngine = (() => {
       default:
         return [...results].sort((a, b) => a.ROI - b.ROI)[0];
     }
-  }
-
-  // ── Profil PV demi-horaire normalisé (kWh/slot/kWc) ─────────────
-  // Identique à OffgridSizing.buildHalfHourPvProfile - résultat [12][48]
-  function _buildHalfHourPvProfile(weatherData, monthlyHtilt, losses, tilt, azimuth, lat, pvTech) {
-    const tech = pvTech || 'crystSi';
-    const profiles = [];
-    for (let m = 1; m <= 12; m++) {
-      const md   = weatherData[m - 1];
-      const days = DAYS[m - 1];
-      const shape = new Float32Array(48);
-      let shapeSum = 0;
-      for (let h = 0; h < 24; h++) {
-        const irr = SolarMath.hourlyIrradiance(lat, m, h, md, tilt, azimuth);
-        shape[h * 2]     = irr / 2;
-        shape[h * 2 + 1] = irr / 2;
-        shapeSum += irr;
-      }
-      const monthlyPerKwc = SolarMath.pvProduction(monthlyHtilt[m - 1], 1, losses, md.T_avg, tech, m, lat);
-      const perDayPerKwc  = days > 0 ? monthlyPerKwc / days : 0;
-      const slots = new Float32Array(48);
-      if (shapeSum > 0) {
-        for (let s = 0; s < 48; s++) slots[s] = shape[s] * perDayPerKwc / shapeSum;
-      }
-      profiles.push(slots);
-    }
-    return profiles;
   }
 
   // ── Autoconsommation slot-à-slot sans batterie (réseau) ──────────
@@ -234,7 +92,7 @@ const SizingEngine = (() => {
     const PpeakMax = Math.min(20, (nPanelsMax * (site.panelWattPeak || 400)) / 1000);
 
     // 3. Facture actuelle
-    const currentBill = calcCurrentAnnualBill(bill);
+    const currentBill = FinanceCalc.calcCurrentAnnualBill(bill);
     const annualConso  = bill.monthlyKwh.reduce((s, k) => s + k, 0);
 
     // 4. Pré-calcul profil PV 30min si données Enedis disponibles
@@ -251,7 +109,7 @@ const SizingEngine = (() => {
           (typeof AppState !== 'undefined' && AppState.location?.lon) || 0
         );
       } else {
-        const monthlyProfs = _buildHalfHourPvProfile(weatherData, monthlyHtilt, site.losses, site.tilt, site.azimuth, lat, site.tech);
+        const monthlyProfs = PvProfiles.buildMonthlyProfiles(weatherData, monthlyHtilt, site.losses, site.tilt, site.azimuth, lat, site.tech);
         pvProfilesPerKwc = new Float32Array(daysArr.reduce((s, d) => s + d, 0) * 48);
         let di = 0;
         for (let m = 0; m < 12; m++) {
@@ -295,14 +153,14 @@ const SizingEngine = (() => {
       const autoconsoRate = annualProd   > 0 ? annualAutoconsoKwh / annualProd   : 0;
 
       // Finance
-      const savedOnBill    = calcSavingsOnBill(monthlyMetrics, bill);
+      const savedOnBill    = FinanceCalc.calcSavingsOnBill(monthlyMetrics, bill);
       const feedinRevenue  = annualSurplus * (sizing.feedinTariff || 0);
       const totalAnnualGain = savedOnBill + feedinRevenue;
       const systemCostBrut = sizing.realTotalCost > 0
         ? sizing.realTotalCost
         : Ppeak * (sizing.systemCostPerKwp || 900);
       // Prime autoconso France (réduit le coût net pour rentabilité)
-      const incentive      = sizing.includeIncentive !== false ? calcFrenchIncentive(Ppeak) : 0;
+      const incentive      = sizing.includeIncentive !== false ? FinanceCalc.calcFrenchIncentive(Ppeak) : 0;
       const systemCost     = Math.max(0, systemCostBrut - incentive);
       const ROI            = totalAnnualGain > 0 ? systemCost / totalAnnualGain : 99;
       const nPanels        = Math.ceil((Ppeak * 1000) / (site.panelWattPeak || 400));
@@ -310,9 +168,9 @@ const SizingEngine = (() => {
       const newAnnualBill  = Math.max(0, currentBill - savedOnBill);
 
       // Métriques financières avancées (sur coût net après prime)
-      const paybackYears   = calcPayback(systemCost, totalAnnualGain);
-      const npv25          = Math.round(calcNPV(systemCost, totalAnnualGain));
-      const lcoe           = Math.round(calcLCOE(systemCostBrut, annualProd) * 10000) / 10000;
+      const paybackYears   = FinanceCalc.calcPayback(systemCost, totalAnnualGain);
+      const npv25          = Math.round(FinanceCalc.calcNPV(systemCost, totalAnnualGain));
+      const lcoe           = Math.round(FinanceCalc.calcLCOE(systemCostBrut, annualProd) * 10000) / 10000;
 
       allCandidates.push({
         Ppeak: Math.round(Ppeak * 10) / 10,
@@ -368,10 +226,10 @@ const SizingEngine = (() => {
         tariff:             getStr('sz-tariff'),
         monthlyKwh,
         monthlyKwh_hp:      (typeof AppState !== 'undefined' && AppState.monthlyKwhHp) || null,
-        priceBase:          getVal('sz-price-base') || TARIFS.base.price,
+        priceBase:          getVal('sz-price-base') || FinanceCalc.TARIFS.base.price,
         priceHpHc: {
-          hp:               getVal('sz-price-hp')   || TARIFS.hphc.hp,
-          hc:               getVal('sz-price-hc')   || TARIFS.hphc.hc
+          hp:               getVal('sz-price-hp')   || FinanceCalc.TARIFS.hphc.hp,
+          hc:               getVal('sz-price-hc')   || FinanceCalc.TARIFS.hphc.hc
         },
         subscriptionPerYear: (() => { const v = parseFloat(document.getElementById('sz-subscription')?.value); return isNaN(v) ? 147 : v; })()
       },
@@ -410,5 +268,5 @@ const SizingEngine = (() => {
     a.download = 'dimensionnement_pv.csv'; a.click();
   }
 
-  return { run, readFormInput, exportCSV, TARIFS, MONTH_NAMES };
+  return { run, readFormInput, exportCSV, TARIFS: FinanceCalc.TARIFS, MONTH_NAMES };
 })();

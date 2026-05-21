@@ -1,6 +1,6 @@
 /**
- * project_ui.js - Gestion de projets (UI) + modal démarrage + infos client
- * Dépend de : app_state.js, project_manager.js
+ * project_ui.js - Sauvegarde/chargement projets, liste, modals
+ * Dépend de : app_state.js, project_manager.js, project_forms.js, project_git.js, project_startup.js
  */
 
 // ══════════════════════════════════════════════════════════════
@@ -27,108 +27,6 @@ function updateProjectBar() {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  CAPTURE / RESTAURATION FORMULAIRES
-// ══════════════════════════════════════════════════════════════
-function captureFormState() {
-  const fields = {};
-  PROJECT_FIELDS.forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    fields[id] = el.type === 'checkbox' ? el.checked : el.value;
-  });
-  return fields;
-}
-
-function restoreFormState(fields) {
-  if (!fields) return;
-  Object.entries(fields).forEach(([id, val]) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    if (el.type === 'checkbox') el.checked = !!val;
-    else el.value = val;
-  });
-  // Recalculs et affichages dépendants
-  document.getElementById('sz-tariff')?.dispatchEvent(new Event('change'));
-  document.getElementById('sz-kwh-1')?.dispatchEvent(new Event('input'));
-  document.getElementById('og2-day-1')?.dispatchEvent(new Event('input'));
-  document.getElementById('og2-batt-tech')?.dispatchEvent(new Event('change'));
-  // Restaurer les modes panneaux
-  if (typeof setPanelMode === 'function') {
-    setPanelMode('grid', fields['grid-panel-mode'] || 'surface');
-    setPanelMode('og2',  fields['og2-panel-mode']  || 'surface');
-  }
-}
-
-// ══════════════════════════════════════════════════════════════
-//  CONSTRUCTION DES DONNÉES DU PROJET (logique commune)
-// ══════════════════════════════════════════════════════════════
-function buildProjectData() {
-  const nameEl = document.getElementById('project-name-input');
-  const name   = (nameEl?.value || '').trim() || 'Projet sans nom';
-
-  const sizingRec  = AppState.lastSizingResult;
-  const offgridRec = AppState.lastOffgridSizingResult;
-  const summary = {
-    annualConso:      AppState.lastSizingInput?.bill?.monthlyKwh?.reduce((s, v) => s + v, 0) || null,
-    recommendedPpeak: sizingRec?.Ppeak || offgridRec?.Ppeak || null,
-    systemCost:       sizingRec?.systemCost || offgridRec?.systemCost || null,
-    coverageRate:     sizingRec?.coverageRate || offgridRec?.coverageRate || null,
-    locationName:     AppState.location.name,
-  };
-
-  const enedisSerial = AppState.hourlyEnedisData?.halfHourly
-    ? { ...AppState.hourlyEnedisData, halfHourly: Array.from(AppState.hourlyEnedisData.halfHourly) }
-    : null;
-
-  return {
-    id:               AppState.currentProjectId || ProjectManager.newId(),
-    name,
-    installationType: AppState.installationType || 'grid',
-    client:           { ...AppState.currentClient },
-    createdAt:        null,
-    updatedAt:        null,
-    location:         { ...AppState.location },
-    weatherData:      AppState.weatherData,
-    hourlyEnedisData: enedisSerial,
-    monthlyKwhHp:     AppState.monthlyKwhHp ? AppState.monthlyKwhHp.slice() : null,
-    enedisYear:       AppState.enedisYear || null,
-    formState:        captureFormState(),
-    summary,
-  };
-}
-
-// ══════════════════════════════════════════════════════════════
-//  SAUVEGARDE GIT AUTOMATIQUE
-// ══════════════════════════════════════════════════════════════
-/**
- * Sauvegarde le projet courant dans localStorage ET dans un commit git.
- * Ne fait rien si aucun projet actif ou si l'API Electron n'est pas disponible
- * (ex. : navigateur web sans Electron, ou git absent sur la machine).
- *
- * @param {string} actionMessage - Message de commit descriptif
- */
-async function gitAutoSave(actionMessage) {
-  if (!AppState.currentProjectId) return;
-  const project = buildProjectData();
-  AppState.currentProjectId = project.id;
-
-  // Sauvegarde localStorage (compatibilité existante)
-  ProjectManager.save(project);
-
-  // Sauvegarde git (optionnelle : nécessite Electron + git installé)
-  if (!window.electronAPI) return;
-  try {
-    await window.electronAPI.gitSave(
-      AppState.currentProjectId,
-      JSON.stringify(project, null, 2),
-      actionMessage
-    );
-  } catch (e) {
-    console.warn('[gitAutoSave] git non disponible :', e);
-  }
-}
-
-// ══════════════════════════════════════════════════════════════
 //  SAUVEGARDER LE PROJET (Ctrl+S / bouton)
 // ══════════════════════════════════════════════════════════════
 function saveCurrentProject() {
@@ -151,9 +49,8 @@ function saveCurrentProject() {
       btn.style.background = btn.style.borderColor = btn.style.color = '';
     }, 2500);
   }
-  showToast(ok ? `\u2713 Projet "${name}" sauvegardé` : '\u2717 Erreur de sauvegarde (localStorage plein ?)', ok ? 'ok' : 'error');
+  showToast(ok ? `✓ Projet "${name}" sauvegardé` : '✗ Erreur de sauvegarde (localStorage plein ?)', ok ? 'ok' : 'error');
 
-  // Commit git après le toast (non bloquant)
   gitAutoSave('Sauvegarde manuelle');
 }
 
@@ -169,7 +66,6 @@ function loadProject(id) {
   if (project.weatherData) {
     AppState.weatherData = project.weatherData;
   } else if (AppState.demoData && project.location) {
-    // Projet ancien sans météo : utiliser la ville démo la plus proche
     const { lat, lon } = project.location;
     let best = null, minDist = Infinity;
     Object.values(AppState.demoData.locations).forEach(loc => {
@@ -183,14 +79,12 @@ function loadProject(id) {
     : null;
   AppState.monthlyKwhHp = project.monthlyKwhHp ? project.monthlyKwhHp.slice() : null;
   AppState.enedisYear   = project.enedisYear || null;
-  // Restaurer monthlyKwh depuis le formState sauvegardé
   if (project.formState) {
     const kwh = Array.from({length:12}, (_, i) => parseFloat(project.formState[`sz-kwh-${i+1}`]) || 0);
     if (kwh.some(v => v > 0)) AppState.monthlyKwh = kwh;
   }
   if (AppState.hourlyEnedisData && typeof HourlyModule?.setData === 'function') {
     HourlyModule.setData({ values: AppState.hourlyEnedisData.halfHourly, year: AppState.hourlyEnedisData.year });
-    // Repeupler les champs og2-day-* si vides (projet ancien ou import fait avant la sauvegarde)
     const anyFilled = Array.from({length:12}, (_, i) => document.getElementById(`og2-day-${i+1}`)?.value)
       .some(v => parseFloat(v) > 0);
     if (!anyFilled) {
@@ -207,17 +101,14 @@ function loadProject(id) {
   AppState.installationType = installType;
   if (typeof applyInstallationType === 'function') applyInstallationType(installType);
 
-  // Infos client
   AppState.currentClient = project.client
     ? { ...project.client }
     : { nom: '', adresse: '', tel: '', email: '' };
   updateProjectBar();
 
-  // UI localisation
   updateLocationUI();
   updateMapMarker();
 
-  // Formulaires
   restoreFormState(project.formState);
 
   // Restaurer le statut import météo (PVGIS / Open-Meteo)
@@ -250,12 +141,10 @@ function loadProject(id) {
       hStatus.textContent = '✓ Données 30min disponibles pour l\'analyse horaire';
   }
 
-  // Synchroniser AppState.install avec les valeurs restaurées
   if (typeof readInstallFromTab === 'function') {
     Object.keys(INSTALL_FIELDS).forEach(readInstallFromTab);
   }
 
-  // Nom projet
   const nameEl = document.getElementById('project-name-input');
   if (nameEl) nameEl.value = project.name;
 
@@ -264,7 +153,6 @@ function loadProject(id) {
   prefillClientInQuote();
   showToast(`✓ Projet "${project.name}" chargé`);
 
-  // Relancer les calculs après restauration des formulaires
   setTimeout(() => {
     if (typeof calcGridPanels        === 'function') calcGridPanels();
     if (typeof calcSizing            === 'function') calcSizing();
@@ -403,11 +291,10 @@ async function importProjectsFile(input) {
       if (!projectFile) { alert('ZIP invalide : project.json manquant'); return; }
       let jsonText = await projectFile.async('string');
 
-      // Restaurer enedis_30min.csv si présent dans le ZIP
       const enedisFile = zip.file('enedis_30min.csv');
       if (enedisFile) {
         const csvText = await enedisFile.async('string');
-        const lines   = csvText.trim().split('\n').slice(1); // skip header
+        const lines   = csvText.trim().split('\n').slice(1);
         const arr     = new Float32Array(lines.length);
         lines.forEach((line, i) => { arr[i] = parseFloat(line.split(',')[1]) || 0; });
         const parsed = JSON.parse(jsonText);
@@ -451,139 +338,6 @@ async function importProjectsFile(input) {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  MODAL DE DÉMARRAGE
-// ══════════════════════════════════════════════════════════════
-function openStartupModal() {
-  showStartupStep1();
-  document.getElementById('startup-modal').style.display = 'flex';
-}
-
-function closeStartupModal() {
-  document.getElementById('startup-modal').style.display = 'none';
-}
-
-function showStartupStep1() {
-  document.getElementById('startup-step-1').style.display    = 'block';
-  document.getElementById('startup-step-type').style.display = 'none';
-  document.getElementById('startup-step-new').style.display  = 'none';
-  document.getElementById('startup-step-load').style.display = 'none';
-}
-
-function showInstallationTypeStep() {
-  document.getElementById('startup-step-1').style.display    = 'none';
-  document.getElementById('startup-step-type').style.display = 'block';
-  document.getElementById('startup-step-new').style.display  = 'none';
-  document.getElementById('startup-step-load').style.display = 'none';
-}
-
-function selectInstallationType(type) {
-  AppState.installationType = type;
-  if (typeof applyInstallationType === 'function') applyInstallationType(type);
-  showNewProjectForm();
-}
-
-function showNewProjectForm() {
-  document.getElementById('startup-step-1').style.display    = 'none';
-  document.getElementById('startup-step-type').style.display = 'none';
-  document.getElementById('startup-step-new').style.display  = 'block';
-  document.getElementById('startup-step-load').style.display = 'none';
-  document.getElementById('startup-project-name').focus();
-}
-
-function showLoadProjectList() {
-  document.getElementById('startup-step-1').style.display  = 'none';
-  document.getElementById('startup-step-new').style.display  = 'none';
-  document.getElementById('startup-step-load').style.display = 'block';
-  renderProjectsList('startup-projects-list');
-}
-
-function createNewProject(event) {
-  event.preventDefault();
-  const name = document.getElementById('startup-project-name').value.trim() || 'Nouveau projet';
-  const nom     = document.getElementById('startup-client-nom').value.trim();
-  const adresse = document.getElementById('startup-client-adresse').value.trim();
-  const tel     = document.getElementById('startup-client-tel').value.trim();
-  const email   = document.getElementById('startup-client-email').value.trim();
-
-  // Nouveau projet vierge
-  AppState.currentProjectId = null;
-  AppState.currentClient = { nom, adresse, tel, email };
-
-  const nameEl = document.getElementById('project-name-input');
-  if (nameEl) nameEl.value = name;
-
-  updateProjectBar();
-  resetForNewProject();
-  closeStartupModal();
-
-  // Pré-remplir les infos client dans l'onglet devis
-  prefillClientInQuote();
-
-  showToast(`✓ Projet "${name}" créé`);
-}
-
-function prefillClientInQuote() {
-  const c = AppState.currentClient;
-  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
-  setVal('dv-cli-name',    c.nom);
-  setVal('dv-cli-address', c.adresse);
-  setVal('dv-cli-phone',   c.tel);
-  setVal('dv-cli-email',   c.email);
-  setVal('dv-site-address', AppState.location?.name || '');
-}
-
-// ══════════════════════════════════════════════════════════════
-//  REMISE À ZÉRO DES FORMULAIRES (nouveau projet vierge)
-// ══════════════════════════════════════════════════════════════
-function resetForNewProject() {
-  // 1. Vider tous les champs persistés
-  PROJECT_FIELDS.forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    if (el.type === 'checkbox') el.checked = false;
-    else if (el.tagName === 'SELECT') el.selectedIndex = 0;
-    else el.value = '';
-  });
-
-  // 2. Remettre les zones de résultats en état placeholder
-  [
-    { id: 'sizing-results',   text: 'Renseignez vos données de facture<br>puis cliquez sur <strong>Dimensionner</strong>' },
-    { id: 'grid-results',     text: 'Cliquez sur <strong>Calculer</strong> pour lancer la simulation' },
-    { id: 'offgrid2-results', text: 'Renseignez votre consommation et cliquez sur <strong>Dimensionner</strong>' },
-    { id: 'hourly-results',   text: 'Sélectionnez un mois et cliquez sur <strong>Analyser</strong>' },
-  ].forEach(({ id, text }) => {
-    const el = document.getElementById(id);
-    if (el) el.innerHTML = `<div class="result-placeholder"><p>${text}</p></div>`;
-  });
-
-  // 3. Vider les résultats en mémoire
-  AppState.lastGridResult          = null;
-  AppState.lastGridParams          = null;
-  AppState.lastSizingResult        = null;
-  AppState.lastSizingInput         = null;
-  AppState.lastOffgridResult       = null;
-  AppState.lastOffgridSizingResult = null;
-  AppState.hourlyEnedisData        = null;
-  AppState.monthlyKwhHp            = null;
-  AppState.enedisYear              = null;
-  AppState._includeIncentive       = true;
-
-  // 4. Remettre à zéro les labels et statuts secondaires
-  const szTotal = document.getElementById('sz-annual-total');
-  if (szTotal) szTotal.textContent = '';
-  const ogTotal = document.getElementById('og2-annual-total');
-  if (ogTotal) ogTotal.textContent = '';
-  const csvStatus = document.getElementById('sz-csv-status');
-  if (csvStatus) { csvStatus.textContent = ''; csvStatus.style.display = 'none'; }
-  const hourlyStatus = document.getElementById('hourly-data-status');
-  if (hourlyStatus) hourlyStatus.textContent = '';
-
-  // 5. Rafraîchir les affichages calculés depuis les champs
-  if (typeof calcGridPanels === 'function') calcGridPanels();
-  document.getElementById('og2-batt-tech')?.dispatchEvent(new Event('change'));
-}
-
-// ══════════════════════════════════════════════════════════════
 //  NOUVEAU PROJET VIERGE (depuis la modal projets)
 // ══════════════════════════════════════════════════════════════
 function newProjectBlank() {
@@ -597,288 +351,9 @@ function newProjectBlank() {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  PROJET DÉMO
-// ══════════════════════════════════════════════════════════════
-const DEMO_PROJECT_ID = 'demo_ose_v1';
-
-/**
- * Insère le projet démo dans localStorage si absent.
- * Utilise les données météo Toulouse depuis AppState.demoData.
- */
-function seedDemoProject() {
-  if (ProjectManager.get(DEMO_PROJECT_ID)) return; // déjà présent
-
-  const toulouse = AppState.demoData?.locations?.toulouse;
-  if (!toulouse) return;
-
-  const formState = {
-    // Dimensionnement réseau
-    'sz-tariff':           'base',
-    'sz-price-base':       '0.2516',
-    'sz-subscription':     '147',
-    'sz-kwh-1':  '385', 'sz-kwh-2':  '345', 'sz-kwh-3':  '310',
-    'sz-kwh-4':  '268', 'sz-kwh-5':  '228', 'sz-kwh-6':  '192',
-    'sz-kwh-7':  '182', 'sz-kwh-8':  '188', 'sz-kwh-9':  '222',
-    'sz-kwh-10': '278', 'sz-kwh-11': '335', 'sz-kwh-12': '392',
-    'sz-tilt':           '32',
-    'sz-azimuth':        '0',
-    'sz-surface':        '22',
-    'sz-panel-wp':       '400',
-    'sz-panel-m2':       '1.96',
-    'sz-losses':         '14',
-    'sz-tech':           'crystSi',
-    'sz-strategy':       'autoconso_max',
-    'sz-target-coverage':'60',
-    'sz-cost-kwp':       '900',
-    'sz-cost-total':     '',
-    'sz-feedin':         '0.13',
-    // Système réseau (simulation directe)
-    'inp-surface':   '22',
-    'inp-panel-wp':  '400',
-    'inp-panel-m2':  '1.96',
-    'sel-tech':      'crystSi',
-    'inp-losses':    '14',
-    'inp-tilt':      '32',
-    'inp-azimuth':   '0',
-    'inp-cost':      '4400',
-    'inp-kwh-price': '0.13',
-    'inp-co2':       '0.052',
-    // Hors réseau
-    'og2-daily-default': '850',
-    'og2-batt-tech':     'lfp',
-    'og2-tilt':          '32',
-    'og2-azimuth':       '0',
-    'og2-surface':       '12',
-    'og2-panel-wp':      '400',
-    'og2-panel-m2':      '1.96',
-    'og2-losses':        '14',
-    'og2-target-coverage':'90',
-    'og2-pv-cost-kwp':   '650',
-    'og2-bos-cost':      '500',
-    ...Object.fromEntries(Array.from({length:12}, (_,i) => [`og2-day-${i+1}`, '0']))
-  };
-
-  const annualConso = Object.entries(formState)
-    .filter(([k]) => k.startsWith('sz-kwh-'))
-    .reduce((s, [, v]) => s + parseFloat(v), 0);
-
-  const demo = {
-    id:        DEMO_PROJECT_ID,
-    name:      'Démo - Maison Toulouse',
-    isDemo:    true,
-    client: {
-      nom:     'Famille Dupont',
-      adresse: '12 allée des Capucines, 31000 Toulouse',
-      tel:     '06 12 34 56 78',
-      email:   'dupont@example.fr'
-    },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    location:  { lat: toulouse.lat, lon: toulouse.lon, alt: toulouse.alt, name: toulouse.name },
-    weatherData: toulouse.monthly,
-    formState,
-    summary: {
-      annualConso,
-      recommendedPpeak: 4.4,
-      systemCost:       3960,
-      coverageRate:     62,
-      locationName:     toulouse.name
-    }
-  };
-
-  ProjectManager.save(demo);
-}
-
-// ══════════════════════════════════════════════════════════════
-//  MODAL HISTORIQUE GIT
-// ══════════════════════════════════════════════════════════════
-
-async function openGitHistoryModal() {
-  const modal = document.getElementById('git-history-modal');
-  if (!modal) return;
-  modal.style.display = 'flex';
-
-  const listEl    = document.getElementById('git-history-list');
-  const branchBar = document.getElementById('git-branch-bar');
-
-  if (!window.electronAPI) {
-    if (branchBar) branchBar.style.display = 'none';
-    listEl.innerHTML = `<p style="color:var(--color-text-muted);text-align:center;padding:20px">
-      L'historique git n'est disponible que dans l'application Electron.<br>
-      <span style="font-size:11px">En mode navigateur, seule la sauvegarde localStorage est active.</span>
-    </p>`;
-    return;
-  }
-
-  if (!AppState.currentProjectId) {
-    if (branchBar) branchBar.style.display = 'none';
-    listEl.innerHTML = `<p style="color:var(--color-text-muted);text-align:center;padding:20px">
-      Effectuez une action (calcul, import, Ctrl+S) pour créer le premier point de sauvegarde.
-    </p>`;
-    return;
-  }
-
-  listEl.innerHTML = '<p style="color:var(--color-text-muted);text-align:center;padding:20px">Chargement…</p>';
-
-  // Charger branches et commits en parallèle
-  try {
-    const [commits, branches] = await Promise.all([
-      window.electronAPI.gitLog(AppState.currentProjectId),
-      window.electronAPI.gitBranches(AppState.currentProjectId),
-    ]);
-
-    // Afficher la barre des branches si plusieurs ou une branche connue
-    if (branchBar && branches && branches.length > 0) {
-      branchBar.style.display = 'block';
-      const branchListEl = document.getElementById('git-branch-list');
-      if (branchListEl) {
-        branchListEl.innerHTML = branches.map(b => {
-          const style = b.current
-            ? 'background:var(--color-accent);color:#fff;border-color:var(--color-accent)'
-            : '';
-          return `<button class="btn btn-outline btn-sm" style="${style};font-size:11px"
-            onclick="gitSwitchBranch('${b.name.replace(/'/g, '')}')"
-            ${b.current ? 'disabled' : ''}>
-            ${b.current ? '✓ ' : ''}${b.name}
-          </button>`;
-        }).join('');
-      }
-    } else if (branchBar) {
-      branchBar.style.display = 'block'; // afficher quand même pour le bouton "+ Nouvelle variante"
-      const branchListEl = document.getElementById('git-branch-list');
-      if (branchListEl) branchListEl.innerHTML = '<span style="font-size:11px;color:var(--color-text-muted)">main</span>';
-    }
-
-    if (!commits || commits.length === 0) {
-      listEl.innerHTML = `<p style="color:var(--color-text-muted);text-align:center;padding:20px">
-        Aucun historique git disponible pour ce projet.<br>
-        <span style="font-size:11px">Effectuez une action (calcul, import, Ctrl+S) pour créer le premier point de sauvegarde.</span>
-      </p>`;
-      return;
-    }
-    listEl.innerHTML = commits.map((c, i) => {
-      const date  = new Date(c.date).toLocaleString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-      const isCur = i === 0;
-      return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--color-border)${isCur ? ';background:var(--color-surface2);margin:0 -4px;padding-left:4px;padding-right:4px' : ''}">
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:${isCur ? '700' : '500'};font-size:13px;color:${isCur ? 'var(--color-accent)' : 'inherit'}">${c.message}${isCur ? ' <span style="font-size:10px;font-weight:400;color:var(--color-text-muted)">(actuel)</span>' : ''}</div>
-          <div style="font-size:11px;color:var(--color-text-muted)">${date} · <code style="font-size:10px">${c.hash.slice(0, 7)}</code></div>
-        </div>
-        ${!isCur ? `<button class="btn btn-outline btn-sm" onclick="restoreGitVersion('${c.hash}')" title="Restaurer cette version">Restaurer</button>` : ''}
-      </div>`;
-    }).join('');
-  } catch (e) {
-    listEl.innerHTML = `<p style="color:var(--color-danger);text-align:center;padding:20px">Erreur : ${e.message}</p>`;
-  }
-}
-
-function gitNewBranch() {
-  if (!window.electronAPI || !AppState.currentProjectId) return;
-  const bar = document.getElementById('git-branch-bar');
-  if (!bar) return;
-
-  // Afficher le formulaire inline dans la barre
-  bar.innerHTML = `
-    <form id="git-new-branch-form" onsubmit="gitNewBranchSubmit(event)"
-          style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <span style="font-size:12px;font-weight:600;color:var(--color-text-muted);white-space:nowrap">Nom de la variante :</span>
-      <input id="git-new-branch-input" type="text"
-             placeholder="ex : option-batterie-15kWh"
-             style="flex:1;min-width:180px;font-size:12px;padding:4px 8px;border:1px solid var(--color-accent);border-radius:6px;background:var(--color-bg);color:var(--color-text);outline:none"
-             autocomplete="off" spellcheck="false">
-      <div style="display:flex;gap:6px;flex-shrink:0">
-        <button type="submit" class="btn btn-accent btn-sm" id="git-new-branch-btn" style="font-size:11px">Créer</button>
-        <button type="button" class="btn btn-outline btn-sm" onclick="openGitHistoryModal()" style="font-size:11px">Annuler</button>
-      </div>
-      <div style="font-size:10px;color:var(--color-text-muted);width:100%;margin-top:2px">
-        Suggestions : <span style="cursor:pointer;color:var(--color-accent)" onclick="document.getElementById('git-new-branch-input').value='option-A'">option-A</span> ·
-        <span style="cursor:pointer;color:var(--color-accent)" onclick="document.getElementById('git-new-branch-input').value='devis-client-v2'">devis-client-v2</span> ·
-        <span style="cursor:pointer;color:var(--color-accent)" onclick="document.getElementById('git-new-branch-input').value='puissance-reduite'">puissance-reduite</span>
-      </div>
-    </form>`;
-
-  bar.style.display = 'block';
-  document.getElementById('git-new-branch-input')?.focus();
-}
-
-async function gitNewBranchSubmit(event) {
-  event.preventDefault();
-  const input = document.getElementById('git-new-branch-input');
-  const btn   = document.getElementById('git-new-branch-btn');
-  const name  = input?.value.trim();
-  if (!name) { input?.focus(); return; }
-
-  // État chargement
-  if (btn) { btn.disabled = true; btn.textContent = '…'; }
-  if (input) input.disabled = true;
-
-  try {
-    const res = await window.electronAPI.gitCreateBranch(AppState.currentProjectId, name);
-    if (res.ok) {
-      showToast(`✓ Variante "${res.branchName}" créée — vous travaillez maintenant dessus`);
-      openGitHistoryModal();
-    }
-  } catch (e) {
-    showToast('Erreur : ' + e.message, 'error');
-    if (btn) { btn.disabled = false; btn.textContent = 'Créer'; }
-    if (input) { input.disabled = false; input.focus(); }
-  }
-}
-
-async function gitSwitchBranch(branchName) {
-  if (!window.electronAPI || !AppState.currentProjectId) return;
-  try {
-    // Sauvegarder l'état courant avant de switcher
-    await window.electronAPI.gitSave(
-      AppState.currentProjectId,
-      JSON.stringify(buildProjectData(), null, 2),
-      'Sauvegarde avant changement de variante'
-    );
-    await window.electronAPI.gitSwitchBranch(AppState.currentProjectId, branchName);
-    // Lire le project.json de la branche cible
-    const jsonText = await window.electronAPI.gitRead(AppState.currentProjectId);
-    const project  = JSON.parse(jsonText);
-    if (project.hourlyEnedisData?.halfHourly) {
-      project.hourlyEnedisData.halfHourly = new Float32Array(project.hourlyEnedisData.halfHourly);
-    }
-    ProjectManager.save(project);
-    closeGitHistoryModal();
-    loadProject(project.id);
-    showToast(`✓ Variante "${branchName}" chargée`);
-  } catch (e) {
-    showToast('Erreur : ' + e.message, 'error');
-  }
-}
-
-function closeGitHistoryModal() {
-  const modal = document.getElementById('git-history-modal');
-  if (modal) modal.style.display = 'none';
-}
-
-async function restoreGitVersion(hash) {
-  if (!window.electronAPI || !AppState.currentProjectId) return;
-  if (!confirm(`Restaurer la version ${hash.slice(0, 7)} ? L'état actuel non sauvegardé sera perdu.`)) return;
-  try {
-    const jsonText = await window.electronAPI.gitCheckout(AppState.currentProjectId, hash);
-    const project  = JSON.parse(jsonText);
-    // Recréer Float32Array pour les données Enedis si nécessaire
-    if (project.hourlyEnedisData?.halfHourly) {
-      project.hourlyEnedisData.halfHourly = new Float32Array(project.hourlyEnedisData.halfHourly);
-    }
-    ProjectManager.save(project);
-    closeGitHistoryModal();
-    loadProject(project.id);
-    showToast(`\u2713 Version ${hash.slice(0, 7)} restaurée`);
-  } catch (e) {
-    showToast('Erreur lors de la restauration : ' + e.message, 'error');
-  }
-}
-
-// ══════════════════════════════════════════════════════════════
 //  INIT : afficher le modal au démarrage si besoin
 // ══════════════════════════════════════════════════════════════
 function initProjectUI() {
-  // Fermer modal projets sur fond ou Escape
   document.getElementById('projects-modal')?.addEventListener('click', e => {
     if (e.target === e.currentTarget) closeProjectsModal();
   });
@@ -892,7 +367,6 @@ function initProjectUI() {
     }
   });
 
-  // Ctrl+S → sauvegarder (toast + commit git)
   document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       e.preventDefault();
@@ -900,6 +374,5 @@ function initProjectUI() {
     }
   });
 
-  // Toujours montrer le modal de démarrage
   openStartupModal();
 }
