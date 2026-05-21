@@ -220,6 +220,7 @@ function renderProjectsList(containerId = 'projects-list-container') {
   const container = document.getElementById(containerId);
   if (!container) return;
   const projects = ProjectManager.list();
+  const isStartup = containerId === 'startup-projects-list';
 
   if (projects.length === 0) {
     container.innerHTML = `<div style="text-align:center;padding:32px;color:var(--color-text-muted)">
@@ -249,11 +250,15 @@ function renderProjectsList(containerId = 'projects-list-container') {
         <div style="font-weight:600;font-size:14px${isCurrent?';color:var(--color-accent)':''}">${p.name}${demoTag}${clientName}${activeTag}</div>
         <div style="font-size:11px;color:var(--color-text-muted);margin-top:3px">${loc ? loc + ' · ' : ''}${date}${kwh ? ' · ' + kwh : ''}${ppeak}${cost}</div>
         <div id="project-actions-${p.id}" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">
-          ${_projectActionsHTML(p)}
+          ${isStartup ? _startupProjectActionsHTML(p) : _projectActionsHTML(p)}
         </div>
       </div>
     </div>`;
   }).join('');
+}
+
+function _startupProjectActionsHTML(p) {
+  return `<button class="btn btn-primary btn-sm" onclick="loadProject('${p.id}')">Ouvrir</button>`;
 }
 
 function _projectActionsHTML(p) {

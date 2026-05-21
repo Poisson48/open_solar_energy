@@ -9,7 +9,7 @@ function calcOffgridSizing() {
   const totalConso = input.conso.dailyWh.reduce((s, v) => s + v, 0);
   const hasEnedis  = !!(AppState.hourlyEnedisData?.halfHourly?.length);
   if (totalConso === 0 && !hasEnedis) {
-    showToast('⚠ Renseignez la consommation journalière (Wh/j) ou importez un fichier Enedis avant de dimensionner.', 'error');
+    showToast('Renseignez la consommation journalière (Wh/j) ou importez un fichier Enedis.', 'error');
     return;
   }
   const { recommended: rec, allCandidates, tech, annual_conso, useHourly } =
@@ -146,7 +146,7 @@ function applyOffgridToHourly(Ppeak, battKwh, dodPct, tilt, azimuth) {
 
 function autoCalcOffgridPanelWp() {
   if (!AppState.weatherData) {
-    showToast('⚠ Sélectionnez d\'abord un lieu avec des données météo.', 'error');
+    showToast('Sélectionnez d\'abord un lieu avec des données météo.', 'error');
     return;
   }
   const getVal = id => parseFloat(document.getElementById(id)?.value) || 0;
@@ -158,7 +158,7 @@ function autoCalcOffgridPanelWp() {
   const azimuth    = getVal('og2-azimuth')            || 0;
   const targetPct  = getVal('og2-target-coverage')    || 90;
 
-  if (!surface) { showToast('⚠ Renseignez d\'abord la surface disponible.', 'error'); return; }
+  if (!surface) { showToast('Renseignez d\'abord la surface disponible.', 'error'); return; }
 
   const defaultDay  = getVal('og2-daily-default') || 1000;
   const dailyWh     = Array.from({length: 12}, (_, i) => {
@@ -167,19 +167,19 @@ function autoCalcOffgridPanelWp() {
   });
   const annualConso = dailyWh.reduce((s, v, i) => s + v * DAYS_IN_MONTH[i], 0) / 1000;
 
-  if (annualConso < 10) { showToast('⚠ Renseignez d\'abord la consommation.', 'error'); return; }
+  if (annualConso < 10) { showToast('Renseignez d\'abord la consommation.', 'error'); return; }
 
   const annualProdPerKwc = AppState.weatherData.reduce((sum, m, i) => {
     const Htilt = SolarMath.tiltedIrradiation(m.GHI, m.DHI, AppState.location.lat, tilt, azimuth, i + 1);
     return sum + SolarMath.pvProduction(Htilt, 1.0, losses, m.T_avg, AppState.install?.tech || 'crystSi', i + 1, AppState.location.lat);
   }, 0);
 
-  if (annualProdPerKwc < 100) { showToast('⚠ Données météo insuffisantes.', 'error'); return; }
+  if (annualProdPerKwc < 100) { showToast('Données météo insuffisantes.', 'error'); return; }
 
   const neededPpeak  = (annualConso * targetPct / 100) / annualProdPerKwc;
   const STANDARD_WP  = [300, 320, 350, 375, 400, 420, 450, 480, 500, 550, 600, 650, 700];
   const nPanelsMax   = Math.floor(surface / panelM2);
-  if (nPanelsMax < 1) { showToast('⚠ Surface insuffisante pour un panneau.', 'error'); return; }
+  if (nPanelsMax < 1) { showToast('Surface insuffisante pour un panneau.', 'error'); return; }
 
   let chosen = null;
   for (const wp of STANDARD_WP) {

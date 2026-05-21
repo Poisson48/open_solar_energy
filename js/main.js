@@ -123,18 +123,20 @@ function initTabs() {
       writeInstallToTab(btn.dataset.tab);
     });
     btn.addEventListener('keydown', (e) => {
-      let next = -1;
-      if (e.key === 'ArrowRight') next = (idx + 1) % btns.length;
-      if (e.key === 'ArrowLeft')  next = (idx - 1 + btns.length) % btns.length;
-      if (e.key === 'Home') next = 0;
-      if (e.key === 'End')  next = btns.length - 1;
-      if (next >= 0) {
+      const visible = btns.filter(b => b.style.display !== 'none');
+      const vi = visible.indexOf(btn);
+      let target = null;
+      if (e.key === 'ArrowRight') target = visible[(vi + 1) % visible.length];
+      if (e.key === 'ArrowLeft')  target = visible[(vi - 1 + visible.length) % visible.length];
+      if (e.key === 'Home') target = visible[0];
+      if (e.key === 'End')  target = visible[visible.length - 1];
+      if (target) {
         e.preventDefault();
-        btns[next].focus();
+        target.focus();
         const prev = AppState.activeTab;
         readInstallFromTab(prev);
-        activateTab(btns[next].dataset.tab);
-        writeInstallToTab(btns[next].dataset.tab);
+        activateTab(target.dataset.tab);
+        writeInstallToTab(target.dataset.tab);
       }
     });
   });

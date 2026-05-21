@@ -58,10 +58,6 @@ function setLocation(key) {
   document.querySelectorAll('.preset-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.loc === key);
   });
-  // Commit git après changement de localisation (preset)
-  if (typeof gitAutoSave === 'function') {
-    gitAutoSave(`Localisation → ${loc.name}`);
-  }
 }
 
 // ── Définir localisation par coordonnées ────────────────────
@@ -93,10 +89,6 @@ function setLocationCoords(lat, lon) {
   }
   updateLocationUI();
   updateMapMarker();
-  // Commit git après changement de localisation (coordonnées / carte)
-  if (typeof gitAutoSave === 'function') {
-    gitAutoSave(`Localisation → ${AppState.location.name}`);
-  }
 }
 
 function updateMapMarker() {
@@ -121,12 +113,16 @@ function updateLocationUI() {
 
 // ── Bind coordonnées manuelles ───────────────────────────────
 function initLocationInputs() {
-  document.getElementById('btn-go-coords')?.addEventListener('click', () => {
-    const lat = parseFloat(document.getElementById('inp-lat').value);
-    const lon = parseFloat(document.getElementById('inp-lon').value);
+  const applyCoords = () => {
+    const lat = parseFloat(document.getElementById('inp-lat')?.value);
+    const lon = parseFloat(document.getElementById('inp-lon')?.value);
     if (isNaN(lat) || isNaN(lon)) return;
     setLocationCoords(lat, lon);
-  });
+  };
+
+  document.getElementById('btn-go-coords')?.addEventListener('click', applyCoords);
+  document.getElementById('inp-lat')?.addEventListener('keydown', e => { if (e.key === 'Enter') applyCoords(); });
+  document.getElementById('inp-lon')?.addEventListener('keydown', e => { if (e.key === 'Enter') applyCoords(); });
 
   document.getElementById('inp-address')?.addEventListener('keydown', e => {
     if (e.key === 'Enter') geocodeAddress();
@@ -143,24 +139,28 @@ function initLocationInputs() {
 async function geocodeAddress() {
   const address = document.getElementById('inp-address').value.trim();
   if (!address) return;
+  const btn = document.getElementById('btn-geocode');
+  if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
   try {
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
     const r = await fetch(url, { headers: { 'Accept-Language': 'fr' } });
     const data = await r.json();
     if (data.length > 0) {
       const { lat, lon, display_name } = data[0];
+      const flatLat = parseFloat(lat);
+      const flatLon = parseFloat(lon);
       const geocodedName = display_name.split(',').slice(0, 2).join(',');
-      setLocationCoords(parseFloat(lat), parseFloat(lon));
-      AppState.map.setView([lat, lon], 10);
-      // Restore geocoded name (setLocationCoords snaps to nearest demo city)
+      setLocationCoords(flatLat, flatLon);
+      AppState.map.setView([flatLat, flatLon], 10);
       AppState.location.name = geocodedName;
       updateLocationUI();
-      // Commit git après géocodage
-      if (typeof gitAutoSave === 'function') {
-        gitAutoSave(`Localisation → ${geocodedName}`);
-      }
+    } else {
+      if (typeof showToast === 'function') showToast(`Lieu introuvable : "${address}"`, 'warning');
     }
   } catch (e) {
     console.warn('Géocodage échoué', e);
+    if (typeof showToast === 'function') showToast('Géocodage indisponible (vérifiez la connexion)', 'error');
+  } finally {
+    if (btn) { btn.textContent = 'Aller !'; btn.disabled = false; }
   }
 }

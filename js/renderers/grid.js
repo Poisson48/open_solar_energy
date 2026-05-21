@@ -235,63 +235,6 @@ function renderGridResults(results, params) {
   }, 50);
 }
 
-// ── Hors réseau simple ──────────────────────────────────────────
-function calcOffgrid() {
-  if (!AppState.weatherData) return;
-  const params = {
-    lat:              AppState.location.lat,
-    weatherData:      AppState.weatherData,
-    Ppeak:            parseFloat(document.getElementById('og-ppeak')?.value) || 300,
-    battCap:          parseFloat(document.getElementById('og-batt')?.value) || 2400,
-    dod:              parseFloat(document.getElementById('og-dod')?.value) || 80,
-    dailyConsumption: parseFloat(document.getElementById('og-consumption')?.value) || 1000,
-    tilt:             parseFloat(document.getElementById('og-tilt')?.value) || 30,
-    azimuth:          0
-  };
-  const results = SolarMath.offgridSystem(params);
-  AppState.lastOffgridResult = results;
-  renderOffgridResults(results);
-}
-
-function renderOffgridResults(monthly) {
-  const el = document.getElementById('offgrid-results');
-  if (!el) return;
-  const chartId   = 'chart-offgrid-' + Date.now();
-  const tableRows = monthly.map(m => {
-    const cls = m.coverageRatio >= 80 ? '' : m.coverageRatio >= 50 ? 'medium' : 'low';
-    return `
-      <tr>
-        <td>${m.name}</td>
-        <td>${m.solarDaily}</td>
-        <td>
-          <div class="coverage-bar">
-            <div class="coverage-fill ${cls}" style="width:${m.coverageRatio}%"></div>
-            <span style="font-size:11px;min-width:30px">${m.coverageRatio}%</span>
-          </div>
-        </td>
-        <td>${m.autonomyDays}</td>
-        <td>${m.deficit > 0 ? m.deficit : '✓'}</td>
-      </tr>`;
-  }).join('');
-
-  el.innerHTML = `
-    <div class="card">
-      <div class="section-header">
-        <div class="card-title">Couverture solaire mensuelle</div>
-        <button class="btn btn-outline btn-sm" onclick="Exporter.exportOffgridCSV(AppState.lastOffgridResult)">CSV</button>
-      </div>
-      <div class="chart-container"><canvas id="${chartId}"></canvas></div>
-      <hr>
-      <table class="data-table" style="margin-top:10px">
-        <thead>
-          <tr><th>Mois</th><th>Prod.<br>kWh/j</th><th>Couverture</th><th>Autonomie<br>jours</th><th>Déficit<br>kWh</th></tr>
-        </thead>
-        <tbody>${tableRows}</tbody>
-      </table>
-    </div>`;
-
-  setTimeout(() => Charts.renderOffgridCoverage(chartId, monthly), 50);
-}
 
 // ── Données irradiation mensuelle ───────────────────────────────
 function renderIrradiationData() {
