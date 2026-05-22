@@ -164,7 +164,7 @@ function loadProject(id) {
 // ══════════════════════════════════════════════════════════════
 async function exportCurrentProject() {
   if (!AppState.currentProjectId) {
-    showToast('⚠ Sauvegardez d\'abord le projet', 'error');
+    showToast('Sauvegardez d\'abord le projet avant d\'exporter.', 'warning');
     return;
   }
   await ProjectManager.exportOneZip(AppState.currentProjectId);

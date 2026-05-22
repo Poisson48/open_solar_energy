@@ -47,7 +47,7 @@ function updateQuoteTotals() {
 function importSizingToQuote() {
   const rec = AppState.lastSizingResult;
   const inp = AppState.lastSizingInput;
-  if (!rec && !inp) { showToast('⚠ Lancez d\'abord un dimensionnement.', 'error'); return; }
+  if (!rec && !inp) { showToast('Lancez d\'abord un dimensionnement pour importer les données.', 'warning'); return; }
   const setVal = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
 
   if (rec?.Ppeak)       setVal('dv-sys-ppeak',   rec.Ppeak);

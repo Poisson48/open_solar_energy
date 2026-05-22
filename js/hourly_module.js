@@ -324,7 +324,7 @@ const HourlyModule = (() => {
    */
   function computeAllMonths() {
     if (!AppState.weatherData) {
-      showToast('⚠ Sélectionnez d\'abord un lieu avec des données météo.', 'error');
+      showToast('Sélectionnez d\'abord un lieu avec des données météo.', 'error');
       return;
     }
 

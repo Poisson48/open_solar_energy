@@ -186,7 +186,7 @@ const PVGISImport = (() => {
 
   async function doImportHourlyWeather() {
     const { lat, lon } = AppState.location;
-    if (!lat || !lon) { showToast('⚠ Sélectionnez un lieu d\'abord.', 'error'); return; }
+    if (!lat || !lon) { showToast('Sélectionnez un lieu d\'abord.', 'error'); return; }
 
     const btn = document.getElementById('btn-hourly-weather');
     if (btn) { btn.disabled = true; btn.classList.add('btn-loading'); }
@@ -203,7 +203,7 @@ const PVGISImport = (() => {
     } catch (err) {
       console.error(err);
       setStatus(`✗ Import horaire échoué : ${err.message}`, 'error');
-      showToast('✗ Import météo horaire échoué', 'error');
+      showToast('Import météo horaire échoué', 'error');
     } finally {
       if (btn) { btn.disabled = false; btn.classList.remove('btn-loading'); }
     }
@@ -369,7 +369,7 @@ const PVGISImport = (() => {
     } catch (err) {
       console.error(err);
       setStatus(`✗ Import météo échoué : ${err.message}`, 'error');
-      if (typeof showToast === 'function') showToast('✗ Import météo échoué', 'error');
+      if (typeof showToast === 'function') showToast('Import météo échoué', 'error');
     } finally {
       if (btn) { btn.disabled = false; btn.classList.remove('btn-loading'); }
     }

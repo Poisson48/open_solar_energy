@@ -194,7 +194,7 @@ function autoCalcOffgridPanelWp() {
     const wpMax = STANDARD_WP[STANDARD_WP.length - 1];
     const ppeak = +(nPanelsMax * wpMax / 1000).toFixed(2);
     chosen = { wp: wpMax, nPanels: nPanelsMax, ppeak };
-    showToast(`⚠ Surface insuffisante pour ${neededPpeak.toFixed(1)} kWc - max possible : ${ppeak} kWc avec ${nPanelsMax}× ${wpMax} Wc`, 'error');
+    showToast(`Surface insuffisante pour ${neededPpeak.toFixed(1)} kWc — max possible : ${ppeak} kWc avec ${nPanelsMax}× ${wpMax} Wc`, 'warning');
   } else {
     showToast(`✓ ${chosen.wp} Wc × ${chosen.nPanels} panneaux = ${chosen.ppeak} kWc pour ${targetPct}% de couverture annuelle`);
   }
