@@ -107,6 +107,7 @@ function handleEnedisCSV(input) {
     input.value = '';
     if (result.error) {
       setStatus('var(--color-danger)', '✗ ' + result.error);
+      showToast('✗ Import Enedis : ' + result.error, 'error');
       return;
     }
 

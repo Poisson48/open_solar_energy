@@ -346,6 +346,30 @@ const EnedisImport = (() => {
   const MONTHLY_KEYS    = ['ma-conso-mensuelle', 'ma-conso-quotidienne', 'mes-index-elec'];
   const HALFHOURLY_KEYS = ['mes-puissances-atteintes-30min', 'courbe_de_charge', 'courbe-de-charge', 'conso_heure', '30min'];
 
+  /** Parse un CSV du ZIP : parser dédié 30 min Enedis si le nom ou le contenu le suggère. */
+  function parseZipCsv(name, text) {
+    const lower = name.toLowerCase();
+    const try30min = () => {
+      const r = parsePuissances30min(text);
+      if (!r) return null;
+      return {
+        monthlyKwh:   r.monthlyKwh,
+        year:         r.year,
+        format:       'Données 30 min',
+        totalAnnual:  Math.round(r.monthlyKwh.reduce((s, v) => s + v, 0)),
+        halfHourlyData: { values: r.values, year: r.year, format: '30min' },
+        warnings:     []
+      };
+    };
+    if (HALFHOURLY_KEYS.some(k => lower.includes(k))) {
+      const r = try30min();
+      if (r) return r;
+    }
+    const parsed = parse(text);
+    if (!parsed.error) return parsed;
+    return try30min() || parsed;
+  }
+
   // ── Gestionnaire ZIP : parse TOUS les CSV, merge le meilleur ──
   function handleZip(file, onResult) {
     if (typeof JSZip === 'undefined') {
@@ -360,7 +384,7 @@ const EnedisImport = (() => {
 
       Promise.all(csvNames.map(name =>
         zip.files[name].async('arraybuffer')
-          .then(buf => ({ name: name.toLowerCase(), result: parse(decodeText(buf)) }))
+          .then(buf => ({ name: name.toLowerCase(), result: parseZipCsv(name, decodeText(buf)) }))
       )).then(parsed => {
         const ok = parsed.filter(p => !p.result.error);
         if (!ok.length) { onResult({ error: 'Aucun fichier CSV valide dans le ZIP.' }); return; }

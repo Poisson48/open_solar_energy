@@ -3,7 +3,7 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '1.8.6';
+const APP_VERSION = '2.0.0';
 // Historique :
 //   1.4.0 - Module devis professionnel
 //   1.5.0 - Refactoring multi-fichiers, modal démarrage, infos client,

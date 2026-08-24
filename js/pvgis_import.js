@@ -342,6 +342,7 @@ const PVGISImport = (() => {
   async function doImportWeather() {
     const { lat, lon } = AppState.location;
     const btn = document.getElementById('btn-pvgis-weather');
+    setStatus('⏳ Import météo en cours…', 'loading');
     if (btn) { btn.disabled = true; btn.classList.add('btn-loading'); }
 
     let weather = null;

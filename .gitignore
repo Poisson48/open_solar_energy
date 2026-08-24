@@ -1,10 +1,12 @@
 # Dependencies
 node_modules/
 
-# Build outputs (electron-builder)
+# Build outputs (electron-builder + Qt)
 dist/
 out/
 build/
+build-qt/
+build-android/
 release/
 *.AppImage
 *.deb
@@ -45,6 +47,7 @@ desktop.ini
 
 # Tests
 coverage/
+validation/
 
 # Local memory (claude context)
 memory/

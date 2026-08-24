@@ -219,15 +219,17 @@ const SolarMath = (() => {
       const month = i + 1;
       const Htilt = tiltedIrradiation(m.GHI, m.DHI, lat, tilt, azimuth, month);
       const days  = DAYS_IN_MONTH[i];
-      const solarDaily    = (Htilt / days) * Ppeak / 1000 * 0.8;
-      const coverageRatio = Math.min(1, solarDaily / (dailyConsumption / 1000));
-      const autonomyDays  = usable / 1000 / Math.max(0.01, (dailyConsumption / 1000 - solarDaily));
+      const prodMonthly = pvProduction(Htilt, Ppeak, 20, m.T_avg, 'crystSi', month, lat);
+      const solarDaily  = prodMonthly / days;
+      const dailyKwh    = dailyConsumption / 1000;
+      const coverageRatio = Math.min(1, solarDaily / dailyKwh);
+      const autonomyDays  = (usable / 1000) / Math.max(0.01, dailyKwh - solarDaily);
       return {
         month, name: m.name,
         solarDaily:    Math.round(solarDaily * 100) / 100,
         coverageRatio: Math.round(coverageRatio * 100),
         autonomyDays:  Math.max(0, Math.round(autonomyDays * 10) / 10),
-        deficit:       Math.max(0, Math.round((dailyConsumption / 1000 - solarDaily) * days * 100) / 100)
+        deficit:       Math.max(0, Math.round((dailyKwh - solarDaily) * days * 100) / 100)
       };
     });
   }

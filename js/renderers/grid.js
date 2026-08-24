@@ -272,7 +272,10 @@ function renderIrradiationData() {
 
 // ── Optimisation angle ──────────────────────────────────────────
 function calcOptimization() {
-  if (!AppState.weatherData) return;
+  if (!AppState.weatherData) {
+    showToast('Importez d\'abord les données météo (sidebar).', 'error');
+    return;
+  }
   const el      = document.getElementById('optimizer-results');
   const heatmap = SolarMath.tiltAzimuthHeatmap(AppState.location.lat, AppState.weatherData);
   const optTilt = SolarMath.optimalTilt(AppState.location.lat, AppState.weatherData, false);

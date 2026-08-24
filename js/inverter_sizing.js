@@ -245,7 +245,7 @@ const InverterSizing = (() => {
     // On majore de 15% pour les conditions hivernales
     const vocCorrected = vocPanel * 1.15;
     const maxSeries = Math.floor(maxVoc / vocCorrected);
-    const minSeries = Math.max(1, Math.floor(maxSeries * 0.6));  // MPPT window ~60–100% Vmax
+    const minSeries = 1;  // toutes les longueurs de chaîne valides jusqu'à maxSeries
 
     // Chercher la combinaison qui minimise le déséquilibre
     let best = null;

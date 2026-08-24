@@ -17,16 +17,20 @@
 
 | Plateforme | Fichier | Notes |
 |---|---|---|
-| **Linux x64** | `Open-Solar-Energy-*.AppImage` | [→ Dernière release](https://github.com/Poisson48/open_solar_energy/releases/latest) |
+| **Linux x64 (Qt)** | `OpenSolarEnergy-*-x86_64.AppImage` | [→ Dernière release](https://github.com/Poisson48/open_solar_energy/releases/latest) — **recommandé v2.0+** |
+| **Android arm64** | `opensolarenergy-*-arm64.apk` | Mise à jour in-app (comme Colo Course) |
+| **Linux x64 (Electron)** | `Open-Solar-Energy-*.AppImage` | Releases v1.x — conservé pour compatibilité |
 | Windows *(bientôt)* | `Open-Solar-Energy-*-Setup.exe` | - |
 
-**Linux - installation rapide :**
+**Linux Qt — installation rapide :**
 ```bash
-chmod +x Open-Solar-Energy-*.AppImage
-./Open-Solar-Energy-*.AppImage
+chmod +x OpenSolarEnergy-*.AppImage
+./OpenSolarEnergy-*.AppImage
 ```
 
-Les mises à jour sont automatiques : l'application vérifie et installe les nouvelles versions au démarrage.
+**Android :** installer l'APK depuis la release GitHub. Les versions suivantes sont proposées **dans l'app** (bandeau « Mettre à jour » → téléchargement → confirmation Android).
+
+Les mises à jour desktop ouvrent la page GitHub Release (AppImage) ; Android installe l'APK signé par-dessus.
 
 > **Utilisation sans installation** : cloner le dépôt et lancer `./serve.sh` (Linux/macOS) ou `serve.bat` (Windows).
 
