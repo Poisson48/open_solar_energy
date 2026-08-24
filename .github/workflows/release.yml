@@ -68,24 +68,30 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           APK="opensolarenergy-${GITHUB_REF_NAME}-arm64.apk"
-          APPIMAGE="$(ls OpenSolarEnergy-*-x86_64.AppImage | head -1)"
+          APPIMAGE="$(ls OpenSolarEnergy-*-x86_64.AppImage 2>/dev/null | head -1)"
+          [ -n "$APPIMAGE" ] || { echo "AppImage introuvable" >&2; exit 1; }
+          [ -f "$APK" ] || { echo "APK introuvable : $APK" >&2; exit 1; }
           {
-            printf '%s\n\n---\n\n' "$NOTES"
+            printf '%s\n\n' "$NOTES"
+            printf -- '---\n\n'
             cat <<'EOF'
           ## Installation
 
-          **Linux x86-64** — `chmod +x OpenSolarEnergy-*.AppImage && ./OpenSolarEnergy-*.AppImage`
+          **PC / Linux (x86-64)** — `chmod +x OpenSolarEnergy-*.AppImage && ./OpenSolarEnergy-*.AppImage`
 
-          **Android arm64** — installer l'APK (mise à jour in-app proposée automatiquement).
+          **Android (arm64)** — installer l'APK ; l'app propose les mises à jour automatiquement
+          (comme Colo Course), signature stable pour installer par-dessus sans désinstaller.
 
           L'AppImage Electron reste disponible sur les releases antérieures ; à partir de v2.0.0,
           l'AppImage Qt remplace le binaire desktop recommandé.
           EOF
           } > notes.md
           if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" "$APK" "$APPIMAGE" --clobber
+            gh release upload "$GITHUB_REF_NAME" "$APK" "$APPIMAGE" \
+              --repo "$GITHUB_REPOSITORY" --clobber
             exit 0
           fi
           gh release create "$GITHUB_REF_NAME" "$APK" "$APPIMAGE" \
+            --repo "$GITHUB_REPOSITORY" \
             --title "Open Solar Energy $GITHUB_REF_NAME" \
             --notes-file notes.md

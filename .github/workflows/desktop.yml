@@ -20,9 +20,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ninja-build cmake rsync wget file \
             libgl1-mesa-dev libfontconfig1 libfreetype6 \
-            libxkbcommon-dev libxcb-cursor0 libxcb-icccm4 libxcb-image0 \
+            libxkbcommon-dev libxkbcommon-x11-0 \
+            libxcb-cursor0 libxcb-icccm4 libxcb-image0 \
             libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 \
             libxcb-xinerama0 libxcb-xkb1 libxcb-util1
+          # libxkbcommon-x11 : dépendance du plugin xcb que linuxdeploy embarque.
       - name: Cache Qt
         id: cache-qt
         uses: actions/cache@v4
@@ -53,3 +55,4 @@ jobs:
         with:
           name: opensolarenergy-appimage
           path: OpenSolarEnergy-*-x86_64.AppImage
+          if-no-files-found: error
