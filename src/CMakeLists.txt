@@ -12,7 +12,11 @@ add_library(applib STATIC
     app/platform.cpp
 )
 target_include_directories(applib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(applib PUBLIC Qt6::Core Qt6::Network Qt6::Quick Qt6::Widgets)
+target_link_libraries(applib PUBLIC Qt6::Core Qt6::Network Qt6::Quick)
+if(TARGET Qt6::Widgets)
+    target_link_libraries(applib PUBLIC Qt6::Widgets)
+    target_compile_definitions(applib PUBLIC OSE_HAS_WIDGETS)
+endif()
 target_compile_options(applib PRIVATE ${OSE_WARN_FLAGS})
 target_compile_definitions(applib PUBLIC OSE_APP_VERSION="${OSE_VERSION_NAME}")
 

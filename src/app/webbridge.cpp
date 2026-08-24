@@ -3,7 +3,9 @@
 #include <QDesktopServices>
 #include <QDir>
 #include <QFile>
+#ifdef OSE_HAS_WIDGETS
 #include <QtWidgets/QFileDialog>
+#endif
 #include <QJsonDocument>
 #include <QProcess>
 #include <QRegularExpression>
@@ -60,10 +62,14 @@ void WebBridge::openExternal(const QString& url)
 
 QString WebBridge::openFileDialog()
 {
+#ifdef OSE_HAS_WIDGETS
     return QFileDialog::getOpenFileName(
         nullptr, QStringLiteral("Sélectionner un fichier"),
         QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation),
         QStringLiteral("Documents (*.pdf *.png *.jpg *.jpeg *.webp);;Tous (*.*)"));
+#else
+    return QString();
+#endif
 }
 
 QJsonObject WebBridge::gitSave(const QString& projectId, const QString& projectJson,
