@@ -3,8 +3,9 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.23';
+const APP_VERSION = '2.0.24';
 // Historique :
+//   2.0.24 - Prime d’État saisie manuelle (barème auto / montant / sans prime)
 //   2.0.23 - MAJ Android corrigée (permission apps inconnues, auto-install après
 //            téléchargement, fallback URL API GitHub, statut PackageInstaller
 //            dans le bandeau, téléchargement direct sans dialog bloquant)
@@ -134,6 +135,7 @@ const PROJECT_FIELDS = [
   'sz-panel-voc','sz-panel-isc','sz-panel-vmp','sz-panel-imp','sz-panel-bifacial',
   'sz-strategy','sz-target-coverage','sz-cost-kwp','sz-cost-total','sz-feedin',
   'sz-elec-escalation','sz-discount-rate','sz-panel-degradation','sz-finance-years',
+  'sz-incentive-mode','sz-incentive',
   // Batterie hybride (réseau + stockage)
   'sz-batt-tech','sz-batt-kwh',
   // Système réseau — mode panneaux

@@ -295,6 +295,26 @@ function bindSharedParamSync() {
     updateStrategy();
   }
 
+  // Prime d'État : afficher le champ montant seulement en mode manuel
+  window.syncIncentiveModeUI = function syncIncentiveModeUI() {
+    const mode = document.getElementById('sz-incentive-mode')?.value || 'auto';
+    const wrap = document.getElementById('sz-incentive-manual-wrap');
+    const help = document.getElementById('sz-incentive-help');
+    const inp = document.getElementById('sz-incentive');
+    if (wrap) wrap.style.display = mode === 'manual' ? '' : 'none';
+    if (help) {
+      if (mode === 'manual')
+        help.textContent = 'Saisissez le montant total de la prime (pas €/kWc) tel qu’indiqué sur votre devis ou l’arrêté en vigueur.';
+      else if (mode === 'none')
+        help.textContent = 'Aucune prise en compte dans le ROI / VAN / coût net.';
+      else
+        help.textContent = 'Barème indicatif (ex. ≤3 kWc → 300 €/kWc). Change chaque trimestre — utilisez « Montant manuel » pour coller à la réalité.';
+    }
+    if (mode === 'manual' && inp && !inp.value) inp.focus();
+  };
+  document.getElementById('sz-incentive-mode')?.addEventListener('change', window.syncIncentiveModeUI);
+  window.syncIncentiveModeUI();
+
   // Afficher / masquer les onglets avancés
   const advToggle = document.getElementById('btn-toggle-advanced-tabs');
   if (advToggle) {

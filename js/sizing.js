@@ -278,8 +278,16 @@ const SizingEngine = (() => {
       const systemCostBrut = sizing.realTotalCost > 0
         ? sizing.realTotalCost
         : Ppeak * (sizing.systemCostPerKwp || 900) + battSystemCost;
-      // Prime autoconso France (réduit le coût net pour rentabilité)
-      const incentive      = sizing.includeIncentive !== false ? FinanceCalc.calcFrenchIncentive(Ppeak) : 0;
+      // Prime autoconso France (barème auto / montant manuel / aucune)
+      const incentive = (() => {
+        const mode = sizing.incentiveMode || 'auto';
+        if (mode === 'none' || sizing.includeIncentive === false) return 0;
+        if (mode === 'manual') {
+          const v = Number(sizing.incentiveManual);
+          return (!isNaN(v) && v >= 0) ? Math.round(v) : 0;
+        }
+        return FinanceCalc.calcFrenchIncentive(Ppeak);
+      })();
       const systemCost     = Math.max(0, systemCostBrut - incentive);
       const ROI            = totalAnnualGain > 0 ? systemCost / totalAnnualGain : 99;
       const nPanels        = Math.ceil((Ppeak * 1000) / (site.panelWattPeak || 400));
@@ -303,6 +311,8 @@ const SizingEngine = (() => {
         surfaceNeeded: Math.round(surfaceNeeded * 10) / 10,
         systemCostBrut: Math.round(systemCostBrut),
         incentive:   Math.round(incentive),
+        incentiveMode: sizing.incentiveMode || 'auto',
+        incentiveAuto: Math.round(FinanceCalc.calcFrenchIncentive(Ppeak)),
         systemCost: Math.round(systemCost),
         battery: useBattery ? {
           type: sizing.battery.type,
@@ -413,6 +423,21 @@ const SizingEngine = (() => {
         includeIncentive:   typeof AppState !== 'undefined'
                               ? (AppState._includeIncentive ?? true)
                               : true,
+        incentiveMode: (() => {
+          const m = getStr('sz-incentive-mode') || 'auto';
+          if (m === 'none') {
+            if (typeof AppState !== 'undefined') AppState._includeIncentive = false;
+            return 'none';
+          }
+          if (typeof AppState !== 'undefined') AppState._includeIncentive = true;
+          return (m === 'manual') ? 'manual' : 'auto';
+        })(),
+        incentiveManual: (() => {
+          const el = document.getElementById('sz-incentive');
+          if (!el || el.value === '') return null;
+          const v = parseFloat(el.value);
+          return isNaN(v) ? null : Math.max(0, v);
+        })(),
         // Batterie hybride (réseau + stockage) — active seulement en mode 'hybrid'
         battery: {
           enabled:      (typeof AppState !== 'undefined' && AppState.installationType === 'hybrid'),

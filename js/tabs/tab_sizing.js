@@ -250,6 +250,21 @@ function initTabSizing() {
                 <label for="sz-cost-total">Coût réel total (optionnel)</label>
                 <div class="input-unit"><input type="number" id="sz-cost-total" value="" step="100" min="0" placeholder="ex : 8500"><span class="unit-tag">€ TTC</span></div>
               </div>
+              <div class="form-row" style="margin-top:8px">
+                <div class="form-group" style="flex:1.2">
+                  <label for="sz-incentive-mode">Prime d’État (autoconsommation)</label>
+                  <select id="sz-incentive-mode" onchange="typeof syncIncentiveModeUI==='function'&&syncIncentiveModeUI()">
+                    <option value="auto">Barème auto (indicatif)</option>
+                    <option value="manual">Montant manuel</option>
+                    <option value="none">Sans prime</option>
+                  </select>
+                  <p class="ose-field-help" id="sz-incentive-help">Le barème change chaque trimestre (energie.gouv.fr). Choisissez « Montant manuel » pour coller à votre devis / arrêté en vigueur.</p>
+                </div>
+                <div class="form-group" id="sz-incentive-manual-wrap" style="display:none;flex:1">
+                  <label for="sz-incentive">Montant de la prime</label>
+                  <div class="input-unit"><input type="number" id="sz-incentive" value="" min="0" step="50" placeholder="ex : 1200"><span class="unit-tag">€</span></div>
+                </div>
+              </div>
             </details>
           </div>
         </section>

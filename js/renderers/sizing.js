@@ -136,9 +136,12 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
 
   const costBlock = rec.incentive > 0
     ? `<div class="kpi-value accent">${costTxt} €</div>
-       <div class="kpi-label">À payer (après prime)<br><span class="kpi-unit">${rec.systemCostBrut.toLocaleString('fr')} € − ${rec.incentive.toLocaleString('fr')} € d’aide</span></div>`
+       <div class="kpi-label">À payer (après prime)<br><span class="kpi-unit">${rec.systemCostBrut.toLocaleString('fr')} € − ${rec.incentive.toLocaleString('fr')} € d’aide${
+         rec.incentiveMode === 'manual' ? ' (saisie manuelle)'
+         : (rec.incentiveMode === 'auto' ? ' (barème indicatif)' : '')
+       }</span></div>`
     : `<div class="kpi-value">${costTxt} €</div>
-       <div class="kpi-label">Coût estimé<br><span class="kpi-unit">€ HT</span></div>`;
+       <div class="kpi-label">Coût estimé<br><span class="kpi-unit">€ HT${rec.incentiveMode === 'none' ? ' · sans prime' : ''}</span></div>`;
 
   const battKpiCard = rec.battery ? `
         <div class="kpi-card" style="border-left:3px solid var(--color-info)">

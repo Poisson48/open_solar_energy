@@ -99,6 +99,28 @@ const AppAPI = (() => {
     // Prime autoconso : si non précisé, ne PAS toucher l'état existant
     if (params.includeIncentive !== undefined) {
       AppState._includeIncentive = params.includeIncentive;
+      const modeEl = document.getElementById('sz-incentive-mode');
+      if (modeEl && params.incentiveMode == null) {
+        modeEl.value = params.includeIncentive ? 'auto' : 'none';
+        modeEl.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+    if (params.incentiveMode !== undefined) {
+      const modeEl = document.getElementById('sz-incentive-mode');
+      if (modeEl) {
+        modeEl.value = params.incentiveMode;
+        modeEl.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      AppState._includeIncentive = params.incentiveMode !== 'none';
+    }
+    if (params.incentive !== undefined || params.incentiveManual !== undefined) {
+      const v = params.incentive ?? params.incentiveManual;
+      setField('sz-incentive', v);
+      const modeEl = document.getElementById('sz-incentive-mode');
+      if (modeEl && modeEl.value !== 'manual') {
+        modeEl.value = 'manual';
+        modeEl.dispatchEvent(new Event('change', { bubbles: true }));
+      }
     }
     return AppAPI;
   }
