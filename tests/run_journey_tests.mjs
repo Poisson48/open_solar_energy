@@ -87,7 +87,7 @@ console.log('\n═══ A. Hub démarrage ═══');
     };
   });
   check('hub ouvert au démarrage', hub.open === true);
-  check('APP_VERSION = 2.0.15', hub.version === '2.0.15', String(hub.version));
+  check('APP_VERSION définie', !!hub.version && /^\d+\.\d+\.\d+/.test(hub.version), String(hub.version));
   check('bouton Mises à jour présent', /mise/i.test(hub.majLabel || ''), hub.majLabel);
   note('cartes projets dans hub', String(hub.cards));
 
@@ -427,6 +427,7 @@ console.log('─'.repeat(60));
 
 // Rapport JSON pour le résumé agent
 const reportPath = join(ROOT, 'tests/journey-report.json');
-writeFileSync(reportPath, JSON.stringify({ fails, findings, version: '2.0.15', at: new Date().toISOString() }, null, 2));
+const verMatch = readFileSync(join(ROOT, 'js/app_state.js'), 'utf8').match(/APP_VERSION\s*=\s*'([^']+)'/);
+writeFileSync(reportPath, JSON.stringify({ fails, findings, version: verMatch?.[1] || null, at: new Date().toISOString() }, null, 2));
 
 process.exit(fails ? 1 : 0);

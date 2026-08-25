@@ -83,10 +83,13 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
     ? `environ ${rec.paybackYears} an${rec.paybackYears > 1 ? 's' : ''}`
     : 'plus de 40 ans';
   const costTxt = rec.systemCost.toLocaleString('fr');
+  const battTechLabel = rec.battery ? (OffgridSizing.BATTERY_TECH[rec.battery.type]?.label || rec.battery.type) : '';
   const summary = `Environ <strong>${rec.nPanels} panneau${rec.nPanels > 1 ? 'x' : ''}</strong> `
-    + `(<strong>${rec.Ppeak.toLocaleString('fr')} kWc</strong>) — `
+    + `(<strong>${rec.Ppeak.toLocaleString('fr')} kWc</strong>)`
+    + (rec.battery ? ` + <strong>batterie ${rec.battery.capacityKwh.toLocaleString('fr')} kWh</strong> (${battTechLabel})` : '')
+    + ` — `
     + `<strong>${rec.autoconsoRate.toLocaleString('fr')}&nbsp;%</strong> d’autoconsommation `
-    + `(production consommée sur place), `
+    + `(production consommée sur place${rec.battery ? ', directement ou via la batterie' : ''}), `
     + `<strong>${rec.coverageRate.toLocaleString('fr')}&nbsp;%</strong> de couverture de facture`
     + `, rentabilisé en <strong>${paybackTxt}</strong>`
     + (rec.systemCost > 0 ? `, pour environ <strong>${costTxt}&nbsp;€</strong> après aide` : '')
@@ -137,6 +140,12 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
     : `<div class="kpi-value">${costTxt} €</div>
        <div class="kpi-label">Coût estimé<br><span class="kpi-unit">€ HT</span></div>`;
 
+  const battKpiCard = rec.battery ? `
+        <div class="kpi-card" style="border-left:3px solid var(--color-info)">
+          <div class="kpi-value info">${rec.battery.capacityKwh.toLocaleString('fr')} <span class="kpi-unit">kWh</span></div>
+          <div class="kpi-label">Batterie hybride<br><span class="kpi-unit">${battTechLabel} · ${rec.battery.usableKwh} kWh utiles · +${rec.battery.cost.toLocaleString('fr')} €</span></div>
+        </div>` : '';
+
   el.innerHTML = `
     <div class="card ose-rec-card">
       <div class="card-title">
@@ -167,6 +176,7 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
         <div class="kpi-card">
           ${costBlock}
         </div>
+        ${battKpiCard}
       </div>
 
       <details class="ose-rec-details">
@@ -175,6 +185,9 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
           <li><span>Prod. annuelle</span><strong>${Math.round(rec.annualProd).toLocaleString('fr')} kWh</strong></li>
           <li><span>Conso. annuelle</span><strong>${Math.round(rec.annualConso).toLocaleString('fr')} kWh</strong></li>
           <li><span>Autoconso (kWh)</span><strong>${Math.round(rec.annualAutoconsoKwh).toLocaleString('fr')} kWh</strong></li>
+          ${rec.battery ? `
+          <li><span>Batterie</span><strong>${battTechLabel}</strong>
+            <em>${rec.battery.capacityKwh} kWh brut (${rec.battery.usableKwh} kWh utiles) · +${rec.battery.cost.toLocaleString('fr')} € inclus dans le coût système</em></li>` : ''}
           ${rec.npv25 != null && rec.systemCost > 0 ? `
           <li><span>Gain net sur ${years} ans (VAN)</span>
             <strong style="color:${rec.npv25 >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}">${rec.npv25 >= 0 ? '+' : ''}${rec.npv25.toLocaleString('fr')} €</strong>

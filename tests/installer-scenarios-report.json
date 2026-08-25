@@ -1,0 +1,47 @@
+{
+  "fails": 0,
+  "passed": 45,
+  "suiteResults": [
+    {
+      "scenario": "1. Grid sans batterie",
+      "ok": true
+    },
+    {
+      "scenario": "2. Hybride",
+      "ok": true
+    },
+    {
+      "scenario": "3. Offgrid",
+      "ok": true
+    },
+    {
+      "scenario": "4. Démo depuis hub",
+      "ok": true
+    },
+    {
+      "scenario": "5. Persistance port fixe 18765",
+      "ok": true
+    },
+    {
+      "scenario": "6. Hub sans bouton retour",
+      "ok": true
+    },
+    {
+      "scenario": "7. Mobile 390x844",
+      "ok": true
+    }
+  ],
+  "findings": [
+    {
+      "severity": "info",
+      "label": "option hybride détectée dans le hub",
+      "detail": "Hybride (réseau + batterie)\n          Raccordé au réseau, ba"
+    },
+    {
+      "severity": "info",
+      "label": "calcul auto lancé au chargement (simple info, pas une exigence)",
+      "detail": "false"
+    }
+  ],
+  "at": "2026-08-25T14:54:19.174Z"
+}

@@ -156,13 +156,6 @@ header .logo .logo-img {
   opacity: 0.8;
   margin-top: 2px;
 }
-.ose-hub-back {
-  flex-shrink: 0;
-  color: #fff !important;
-  border-color: rgba(255,255,255,0.45) !important;
-  background: rgba(255,255,255,0.12) !important;
-}
-.ose-hub-back[hidden] { display: none !important; }
 .ose-hub-body {
   flex: 1;
   overflow: auto;
@@ -1174,7 +1167,6 @@ details.card > summary:focus-visible {
     scrollbar-width: none;
   }
   .project-bar-actions::-webkit-scrollbar { display: none; }
-  #btn-git-history { display: none; }
   #project-bar .btn,
   #project-bar button {
     font-size: 11px;
@@ -1271,6 +1263,22 @@ details.card > summary:focus-visible {
 }
 .ose-wizard-intro strong { color: var(--color-primary); font-size: 14px; }
 .ose-wizard-intro span { color: var(--color-text-muted); font-size: 12px; }
+
+/* Rappel emplacement/météo — obligatoire avant tout calcul, mis en avant dès l'intro */
+.ose-wizard-location-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 7px 10px;
+  background: #e3f2fd;
+  border: 1px solid #90caf9;
+  border-radius: 6px;
+  color: #1565c0 !important;
+  font-weight: 600;
+  font-size: 12px !important;
+  line-height: 1.4;
+}
 
 .ose-step {
   margin-bottom: 12px;

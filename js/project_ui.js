@@ -672,5 +672,20 @@ function initProjectUI() {
     }
   });
 
+  // Android : sauver dès que l’app passe en arrière-plan / est tuée
+  const silentSave = () => {
+    if (!AppState.currentProjectId) return;
+    try {
+      const project = buildProjectData();
+      ProjectManager.save(project);
+    } catch (e) {
+      console.warn('silentSave:', e);
+    }
+  };
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') silentSave();
+  });
+  window.addEventListener('pagehide', silentSave);
+
   openStartupModal();
 }

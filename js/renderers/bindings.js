@@ -22,19 +22,25 @@ function bindOptimizeCheckboxes() {
   chkAz?.addEventListener('change', update);
 }
 
-function bindBatteryInfo() {
-  const sel = document.getElementById('og2-batt-tech');
+function bindBatteryInfo(prefix = 'og2') {
+  const sel = document.getElementById(`${prefix}-batt-tech`);
   if (!sel) return;
   function update() {
     const tech = OffgridSizing.BATTERY_TECH[sel.value];
     if (!tech) return;
-    const el = document.getElementById('og2-batt-info');
+    const el = document.getElementById(`${prefix}-batt-info`);
     if (!el) return;
     const bmsStr = tech.bmsFixed > 0 ? ` · BMS ~${tech.bmsFixed} €` : '';
     el.textContent = `DoD ${tech.dod * 100}% · η ${tech.eta * 100}% · ${tech.cycles} cycles · ~${tech.costPerKwh} €/kWh${bmsStr}`;
   }
   sel.addEventListener('change', update);
   update();
+}
+
+// ── Aide contextuelle batterie hybride (onglet Dimensionnement) ──
+function updateSizingBatteryHelp() {
+  if (typeof window.__oseUpdateSizingStrategyHelp === 'function')
+    window.__oseUpdateSizingStrategyHelp();
 }
 
 function bindSizingLiveTotal() {
@@ -232,10 +238,15 @@ function bindSharedParamSync() {
           ? 'Taux d’autoconsommation cible'
           : 'Taux de couverture de facture cible';
       }
+      const isHybrid = AppState.installationType === 'hybrid';
       if (help) {
-        help.textContent = v === 'autoconso_pct'
-          ? 'Sans batterie, 90 % d’autoconso est réaliste avec une petite puissance. Ce n’est pas la même chose que 90 % de couverture de facture.'
-          : 'Part de votre consommation annuelle couverte par l’électricité produite et consommée sur place.';
+        if (v === 'autoconso_pct') {
+          help.textContent = isHybrid
+            ? 'Avec batterie hybride, le surplus est stocké puis restitué le soir : 90 % d’autoconso est atteignable même avec une installation plus grande.'
+            : 'Sans batterie, 90 % d’autoconso est réaliste avec une petite puissance. Ce n’est pas la même chose que 90 % de couverture de facture.';
+        } else {
+          help.textContent = 'Part de votre consommation annuelle couverte par l’électricité produite et consommée sur place.';
+        }
       }
       if (goalCards) {
         goalCards.querySelectorAll('.ose-goal-card').forEach(btn => {
@@ -246,6 +257,7 @@ function bindSharedParamSync() {
       }
     };
     strategySel.addEventListener('change', updateStrategy);
+    window.__oseUpdateSizingStrategyHelp = updateStrategy;
     if (goalCards) {
       goalCards.querySelectorAll('.ose-goal-card').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -273,7 +285,7 @@ function bindSharedParamSync() {
       document.querySelectorAll('.tab-btn[data-tier="advanced"]').forEach(btn => {
         const type = AppState.installationType || 'grid';
         const tab = btn.dataset.tab;
-        const typeHide = (type === 'grid' && tab === 'offgrid')
+        const typeHide = ((type === 'grid' || type === 'hybrid') && tab === 'offgrid')
           || (type === 'offgrid' && ['sizing', 'grid', 'tracker', 'optimizer'].includes(tab));
         btn.style.display = (!showAdv || typeHide) ? 'none' : '';
       });

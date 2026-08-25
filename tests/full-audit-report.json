@@ -1,0 +1,178 @@
+{
+  "timestamp": "2026-08-25T14:53:59.533Z",
+  "fails": 0,
+  "checks": 34,
+  "passed": 34,
+  "report": [
+    {
+      "ok": true,
+      "label": "WebHost port fixe 18765",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "Manifest usesCleartextTraffic",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "network_security_config.xml présent",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "NSC autorise 127.0.0.1",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "Manifest référence NSC",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "Autosave visibilitychange",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "Autosave pagehide",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "Pas de bouton ← Retour dans le hub",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "Hub ouvert au démarrage",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "Aucun btn-hub-back dans le DOM",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "Bouton Mises à jour",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "Bouton Nouveau",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "Champ recherche",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "Liste projets non vide (démo)",
+      "detail": "1"
+    },
+    {
+      "ok": true,
+      "label": "Projet chargé",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "Hub rouvert sans bouton Retour",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "Sauvegarde projet audit",
+      "detail": "proj_1787669628796_97u6"
+    },
+    {
+      "ok": true,
+      "label": "Projet survit au reload (même port)",
+      "detail": "Audit Persist Test"
+    },
+    {
+      "ok": true,
+      "label": "Client intact",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "FormState intact",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "Rename persisté",
+      "detail": "Audit Persist Renamed"
+    },
+    {
+      "ok": true,
+      "label": "Deux ports distincts possibles",
+      "detail": "36867 vs 34845"
+    },
+    {
+      "ok": true,
+      "label": "Port différent → projet invisible (bug historique confirmé)",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "Étape type installation",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "Projet créé, hub fermé",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "Nom projet",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "Client",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "Présent dans localStorage",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "Météo dispo pour calcul",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "Projet encore actif après saisie",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "Projet mobile survit au kill simulé",
+      "detail": "Maison Audit Mobile"
+    },
+    {
+      "ok": true,
+      "label": "Consos sauvegardées (si autosave/form)",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "Back sur hub vide → toast quitter",
+      "detail": "Appuyez encore pour quitter"
+    },
+    {
+      "ok": true,
+      "label": "Back avec projet ouvert ferme le hub",
+      "detail": ""
+    }
+  ]
+}

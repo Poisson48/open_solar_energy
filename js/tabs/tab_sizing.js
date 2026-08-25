@@ -6,6 +6,7 @@ function initTabSizing() {
     <div class="ose-wizard-intro">
       <strong>Parcours dimensionnement</strong>
       <span>Suivez les étapes dans l’ordre. Un seul calcul à la fin — pas de chiffres dispersés.</span>
+      <span class="ose-wizard-location-note">📍 Avant de calculer : vérifiez le lieu et la météo dans la colonne de gauche — sans eux, le dimensionnement ne peut pas démarrer.</span>
       <span id="ose-demo-prefill-note" class="ose-demo-note" hidden>
         Projet démo : des valeurs sont préremplies (dont la surface). Modifiez-les ou créez un projet « Nouveau » pour partir de zéro.
       </span>
@@ -141,6 +142,38 @@ function initTabSizing() {
           </div>
         </section>
 
+        <!-- Étape batterie (hybride uniquement : réseau + stockage) -->
+        <section class="ose-step card" id="sz-battery-step" data-step="2b" style="display:none">
+          <div class="ose-step-head">
+            <span class="ose-step-num">🔋</span>
+            <div>
+              <h3 class="ose-step-title">Batterie (hybride)</h3>
+              <p class="ose-step-hint">Stocke le surplus produit dans la journée pour le restituer le soir, avant injection du reste au réseau.</p>
+            </div>
+          </div>
+          <div class="ose-step-body">
+            <div class="params-grid">
+              <div class="form-group">
+                <label for="sz-batt-tech">Technologie batterie</label>
+                <select id="sz-batt-tech">
+                  <option value="lfp">LFP — Lithium Fer Phosphate</option>
+                  <option value="lfp_diy">LFP DIY — cellules CATL / EVE</option>
+                  <option value="agm">AGM — plomb carbone</option>
+                  <option value="nmc_leaf">NMC — Nissan Leaf (recond.)</option>
+                  <option value="nmc_zoe">NMC — Renault Zoé (recond.)</option>
+                  <option value="nmc_tesla">NMC — Tesla (recond.)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="sz-batt-kwh">Capacité batterie</label>
+                <div class="input-unit"><input type="number" id="sz-batt-kwh" value="5" min="0" step="0.5"><span class="unit-tag">kWh</span></div>
+              </div>
+            </div>
+            <div id="sz-batt-info" class="alert alert-info" style="font-size:11px;margin-top:4px"></div>
+            <p class="ose-field-help">Capacité brute installée (avant DoD). Son coût est ajouté au coût système pour le calcul ROI/VAN.</p>
+          </div>
+        </section>
+
         <!-- Étape 3 : objectif -->
         <section class="ose-step card" data-step="3">
           <div class="ose-step-head">
@@ -223,7 +256,7 @@ function initTabSizing() {
             <span class="ose-step-num">4</span>
             <div>
               <h3 class="ose-step-title">Calculer</h3>
-              <p class="ose-step-hint">Vérifiez le lieu (colonne gauche) puis lancez le dimensionnement.</p>
+              <p class="ose-step-hint">Lieu + météo (colonne gauche) et étapes 1 → 3 validés ? Lancez le dimensionnement.</p>
             </div>
           </div>
           <button class="btn btn-accent" id="btn-calc-sizing" style="width:100%">
@@ -235,7 +268,7 @@ function initTabSizing() {
       <div id="sizing-results">
         <div class="result-placeholder">
           <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-          <p>Étapes 1 → 3, puis <strong>Dimensionner</strong>.<br>Les deux taux (autoconso et couverture) seront affichés clairement.</p>
+          <p>Lieu + météo à gauche, étapes 1 → 3 ci-contre, puis <strong>Dimensionner</strong>.<br>Les deux taux (autoconso et couverture) seront affichés clairement.</p>
         </div>
       </div>
     </div>`;

@@ -30,6 +30,7 @@ function restoreFormState(fields) {
   document.getElementById('sz-kwh-1')?.dispatchEvent(new Event('input'));
   document.getElementById('og2-day-1')?.dispatchEvent(new Event('input'));
   document.getElementById('og2-batt-tech')?.dispatchEvent(new Event('change'));
+  document.getElementById('sz-batt-tech')?.dispatchEvent(new Event('change'));
   // Restaurer les modes panneaux
   if (typeof setPanelMode === 'function') {
     setPanelMode('grid', fields['grid-panel-mode'] || 'surface');

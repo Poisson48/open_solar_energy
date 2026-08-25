@@ -21,13 +21,8 @@ function openStartupModal() {
   document.body.classList.add('ose-hub-active');
   const search = document.getElementById('projects-search');
   if (search) search.value = '';
-  const back = document.getElementById('btn-hub-back');
   const sub = document.getElementById('ose-hub-sub');
   const hasProject = !!(typeof AppState !== 'undefined' && AppState.currentProjectId);
-  if (back) {
-    if (hasProject) back.removeAttribute('hidden');
-    else back.setAttribute('hidden', '');
-  }
   if (sub) sub.textContent = hasProject
     ? 'Gérer vos projets ou en ouvrir un autre'
     : 'Choisissez un projet pour commencer';

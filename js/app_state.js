@@ -3,8 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.17';
+const APP_VERSION = '2.0.18';
 // Historique :
+//   2.0.18 - Type d'installation « hybride » (réseau + batterie) : 3e choix au hub,
+//            batterie dans le parcours dimensionnement, simulation charge/décharge
 //   2.0.17 - Fix build Android (JNI) + hub MAJ / export / import natifs
 //   2.0.16 - Fix hub Android : MAJ ne ferme plus le hub ; export/import natifs
 //   2.0.15 - Plus de calcul auto à l’ouverture ; surface obligatoire (plus de défaut 30 m²)
@@ -87,7 +89,7 @@ const AppState = {
   // Paramètre prime autoconso (modifiable via AppAPI)
   _includeIncentive: true,
 
-  // Type d'installation : 'grid' (raccordé réseau) | 'offgrid' (autonome)
+  // Type d'installation : 'grid' (raccordé réseau) | 'hybrid' (réseau + batterie) | 'offgrid' (autonome)
   installationType: 'grid',
 
   // Paramètres d'installation partagés entre onglets
@@ -112,6 +114,8 @@ const PROJECT_FIELDS = [
   'sz-tilt','sz-azimuth','sz-surface','sz-panel-model','sz-panel-wp','sz-panel-m2','sz-losses','sz-tech',
   'sz-strategy','sz-target-coverage','sz-cost-kwp','sz-cost-total','sz-feedin',
   'sz-elec-escalation','sz-discount-rate','sz-panel-degradation','sz-finance-years',
+  // Batterie hybride (réseau + stockage)
+  'sz-batt-tech','sz-batt-kwh',
   // Système réseau — mode panneaux
   'grid-panel-mode','grid-npanels-fixe',
   // Hors réseau

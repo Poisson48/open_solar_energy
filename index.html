@@ -41,7 +41,7 @@
     <button type="button" class="btn btn-outline btn-sm" id="btn-export-project" onclick="exportCurrentProject()" title="Télécharger le projet en fichier .zip">📤 Export</button>
     <button type="button" class="btn btn-outline btn-sm" id="btn-git-history" onclick="openGitHistoryModal()" title="Historique des versions">🕐 Historique</button>
     <button type="button" id="btn-open-projects" onclick="openProjectsModal()" title="Gérer mes projets">📁 Projets</button>
-    <button type="button" id="install-type-badge" onclick="toggleInstallationType()" title="Basculer entre installation réseau et hors-réseau"></button>
+    <button type="button" id="install-type-badge" onclick="toggleInstallationType()" title="Type d'installation — cliquer pour basculer réseau → hybride → autonome"></button>
   </div>
 </div>
 
@@ -58,7 +58,6 @@
           <div class="ose-hub-sub" id="ose-hub-sub">Choisissez un projet pour commencer</div>
         </div>
       </div>
-      <button type="button" id="btn-hub-back" class="btn btn-outline btn-sm ose-hub-back" onclick="closeStartupModal()" hidden>← Retour</button>
     </div>
 
     <!-- Liste projets (unique — accueil + bouton Projets) -->
@@ -88,17 +87,22 @@
         <button onclick="showStartupStep1()" style="background:none;border:none;cursor:pointer;color:var(--color-text-muted);font-size:18px">←</button>
         <div style="font-size:16px;font-weight:700">Type d'installation</div>
       </div>
-      <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 20px 32px">Ce choix détermine les onglets et les calculs disponibles.</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 20px 32px">Ce choix détermine les onglets et calculs activés pour ce projet — à faire correspondre au raccordement réel du site.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px">
         <button onclick="selectInstallationType('grid')" style="background:var(--color-bg);border:2px solid var(--color-border);border-radius:12px;padding:22px 16px;cursor:pointer;text-align:center;transition:border-color .2s" onmouseover="this.style.borderColor='var(--color-accent)'" onmouseout="this.style.borderColor='var(--color-border)'">
           <div style="font-size:36px;margin-bottom:10px">⚡</div>
-          <div style="font-size:14px;font-weight:700;color:var(--color-primary);margin-bottom:6px">Raccordée au réseau</div>
-          <div style="font-size:12px;color:var(--color-text-muted)">Panneaux avec injection ou autoconsommation. Facture EDF / Enedis.</div>
+          <div style="font-size:14px;font-weight:700;color:var(--color-primary);margin-bottom:6px">Réseau sans stockage</div>
+          <div style="font-size:12px;color:var(--color-text-muted)">Pas de batterie : le surplus est injecté au réseau. Active <strong>Dimensionnement</strong> + <strong>Système PV</strong>. Nécessite une facture EDF ou un export Enedis.</div>
+        </button>
+        <button onclick="selectInstallationType('hybrid')" style="background:var(--color-bg);border:2px solid var(--color-border);border-radius:12px;padding:22px 16px;cursor:pointer;text-align:center;transition:border-color .2s" onmouseover="this.style.borderColor='var(--color-accent)'" onmouseout="this.style.borderColor='var(--color-border)'">
+          <div style="font-size:36px;margin-bottom:10px">⚡🔋</div>
+          <div style="font-size:14px;font-weight:700;color:var(--color-primary);margin-bottom:6px">Hybride (réseau + batterie)</div>
+          <div style="font-size:12px;color:var(--color-text-muted)">Raccordé au réseau, batterie qui stocke le surplus du jour pour le soir. Ajoute une étape <strong>Batterie</strong> au Dimensionnement. Surplus restant injecté.</div>
         </button>
         <button onclick="selectInstallationType('offgrid')" style="background:var(--color-bg);border:2px solid var(--color-border);border-radius:12px;padding:22px 16px;cursor:pointer;text-align:center;transition:border-color .2s" onmouseover="this.style.borderColor='var(--color-accent)'" onmouseout="this.style.borderColor='var(--color-border)'">
           <div style="font-size:36px;margin-bottom:10px">🔋</div>
-          <div style="font-size:14px;font-weight:700;color:var(--color-primary);margin-bottom:6px">Autonome (hors réseau)</div>
-          <div style="font-size:12px;color:var(--color-text-muted)">Panneaux + batteries sans connexion au réseau. Cabane, van, maison isolée.</div>
+          <div style="font-size:14px;font-weight:700;color:var(--color-primary);margin-bottom:6px">Autonome hors réseau</div>
+          <div style="font-size:12px;color:var(--color-text-muted)">Aucun raccordement Enedis. Active l'onglet <strong>Hors réseau</strong> uniquement (panneaux + batteries). Cabane, van, site isolé.</div>
         </button>
       </div>
     </div>

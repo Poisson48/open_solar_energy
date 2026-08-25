@@ -1,5 +1,6 @@
 #include "webhost.h"
 
+#include <QDebug>
 #include <QFile>
 #include <QFileInfo>
 #include <QTcpSocket>
@@ -36,8 +37,13 @@ bool WebHost::start(const QString& webRoot)
     }
     if (m_server.isListening())
         return true;
-    if (!m_server.listen(QHostAddress::LocalHost))
+    // Port fixe obligatoire : localStorage WebView est lié à l’origine (hôte+port).
+    // Un port éphémère à chaque lancement effaçait tous les projets Android.
+    static constexpr quint16 kFixedPort = 18765;
+    if (!m_server.listen(QHostAddress::LocalHost, kFixedPort)) {
+        qCritical("WebHost: impossible d'écouter sur 127.0.0.1:%u", kFixedPort);
         return false;
+    }
     m_port = m_server.serverPort();
     return m_port > 0;
 }

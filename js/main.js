@@ -6,15 +6,24 @@
  */
 
 // ── Type d'installation : masque les onglets irrelevants ─────
+// 'grid'    = raccordé réseau, sans batterie
+// 'hybrid'  = raccordé réseau + batterie (autoconso maximisée, surplus injecté)
+// 'offgrid' = autonome, hors réseau
+// Hybride utilise les mêmes onglets que grid (sizing/grid/tracker/optimizer) :
+// la batterie hybride se configure directement dans l'onglet Dimensionnement.
 const TABS_GRID_ONLY    = ['sizing', 'grid', 'tracker', 'optimizer'];
 const TABS_OFFGRID_ONLY = ['offgrid'];
+const GRID_LIKE_TYPES   = ['grid', 'hybrid'];
+// Ordre de bascule + libellés lisibles installateur (badge barre projet + toggleInstallationType)
+const INSTALL_TYPE_ORDER  = ['grid', 'hybrid', 'offgrid'];
+const INSTALL_TYPE_LABELS = { grid: 'Réseau', hybrid: 'Hybride', offgrid: 'Autonome' };
 
 function applyInstallationType(type) {
   AppState.installationType = type;
 
   document.querySelectorAll('.tab-btn').forEach(btn => {
     const tab  = btn.dataset.tab;
-    const hide = (type === 'grid' && TABS_OFFGRID_ONLY.includes(tab))
+    const hide = (GRID_LIKE_TYPES.includes(type) && TABS_OFFGRID_ONLY.includes(tab))
               || (type === 'offgrid' && TABS_GRID_ONLY.includes(tab));
     if (hide) {
       btn.style.display = 'none';
@@ -41,10 +50,24 @@ function applyInstallationType(type) {
       first.click();
   }
 
-  // Badge dans la barre projet
+  // Afficher/masquer l'étape batterie du parcours dimensionnement (onglet sizing)
+  const battStep = document.getElementById('sz-battery-step');
+  if (battStep) battStep.style.display = (type === 'hybrid') ? '' : 'none';
+  if (typeof updateSizingBatteryHelp === 'function') updateSizingBatteryHelp();
+
+  // Rappel dans l'onglet Système PV : la batterie hybride se règle ailleurs (évite de la chercher ici)
+  const gridHybridNote = document.getElementById('grid-hybrid-note');
+  if (gridHybridNote) gridHybridNote.style.display = (type === 'hybrid') ? '' : 'none';
+
+  // Badge dans la barre projet — cliquable pour changer de type (voir toggleInstallationType)
   const badge = document.getElementById('install-type-badge');
   if (badge) {
-    if (type === 'grid') {
+    if (type === 'hybrid') {
+      badge.textContent = '⚡🔋 Hybride';
+      badge.style.color = 'var(--color-primary)';
+      badge.style.borderColor = 'var(--color-primary)';
+      badge.style.background = 'rgba(30,90,200,0.08)';
+    } else if (type === 'grid') {
       badge.textContent = '⚡ Réseau';
       badge.style.color = 'var(--color-accent)';
       badge.style.borderColor = 'var(--color-accent)';
@@ -55,11 +78,16 @@ function applyInstallationType(type) {
       badge.style.borderColor = 'var(--color-primary)';
       badge.style.background = 'rgba(30,90,200,0.08)';
     }
+    // Le titre annonce explicitement l'état suivant (clic = bascule), pas juste "changer le type"
+    const nextType = INSTALL_TYPE_ORDER[(INSTALL_TYPE_ORDER.indexOf(type) + 1) % INSTALL_TYPE_ORDER.length];
+    badge.title = `Type actuel : ${INSTALL_TYPE_LABELS[type]}. Cliquer pour passer en ${INSTALL_TYPE_LABELS[nextType]}.`;
+    badge.setAttribute('aria-label', badge.title);
   }
 }
 
 function toggleInstallationType() {
-  const newType = AppState.installationType === 'grid' ? 'offgrid' : 'grid';
+  const idx = INSTALL_TYPE_ORDER.indexOf(AppState.installationType);
+  const newType = INSTALL_TYPE_ORDER[(idx + 1 + INSTALL_TYPE_ORDER.length) % INSTALL_TYPE_ORDER.length] || 'grid';
   applyInstallationType(newType);
 }
 
@@ -191,7 +219,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   // 3. Bind les interactions des formulaires
   bindOptimizeCheckboxes();
   bindSizingLiveTotal();
-  bindBatteryInfo();
+  bindBatteryInfo('og2');
+  bindBatteryInfo('sz');
   bindOffgridLiveTotal();
   bindSharedParamSync();
   initQuoteTab();

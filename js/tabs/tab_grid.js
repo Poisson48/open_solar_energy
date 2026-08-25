@@ -10,6 +10,10 @@ function initTabGrid() {
         <div class="card">
           <div class="card-title">Paramètres système</div>
 
+          <div id="grid-hybrid-note" class="alert alert-info" style="font-size:11px;margin-bottom:12px;display:none">
+            <span>🔋 Batterie hybride réglée dans l'onglet <strong>Dimensionnement</strong> (étape « Batterie ») — son coût est déjà inclus dans la recommandation, pas ici.</span>
+          </div>
+
           <div class="form-group" style="margin-bottom:10px">
             <label for="sel-tech">Technologie PV</label>
             <select id="sel-tech">

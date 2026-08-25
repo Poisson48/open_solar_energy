@@ -459,5 +459,5 @@ const OffgridSizing = (() => {
     a.download = 'dimensionnement_hors_reseau.csv'; a.click();
   }
 
-  return { run, readFormInput, exportCSV, BATTERY_TECH, MONTH_NAMES };
+  return { run, readFormInput, exportCSV, BATTERY_TECH, MONTH_NAMES, simulateMonth, simulateYearSlots };
 })();

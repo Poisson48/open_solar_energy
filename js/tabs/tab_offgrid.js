@@ -3,6 +3,12 @@
  */
 function initTabOffgrid() {
   document.getElementById('tab-offgrid').innerHTML = `
+    <div class="ose-wizard-intro">
+      <strong>Parcours système autonome</strong>
+      <span>Consommation → batterie → toiture/objectif, puis un seul calcul.</span>
+      <span class="ose-wizard-location-note">📍 Avant de calculer : vérifiez le lieu et la météo dans la colonne de gauche — sans eux, le dimensionnement ne peut pas démarrer.</span>
+    </div>
+
     <div class="tab-form-col">
 
       <!-- Formulaire -->
@@ -11,7 +17,7 @@ function initTabOffgrid() {
         <!-- Consommation -->
         <details class="card" open>
           <summary class="card-title" style="cursor:pointer;user-select:none">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 0 0 8 20C19 20 22 3 22 3c-1 2-8 2-8 2 0-3.5 2.5-7 6-8-1 4-3 5-3 5 0 0-2-3-4-3H9c-.5 0-1 .5-1 1l-.5 4.5h.01c-.01.16-.01.33-.01.5C7.5 13 9.5 15 12 15c.5 0 1-.1 1.5-.2C15 14.2 16.4 12.5 17 11V8z"/></svg>
+            <span class="ose-step-num" style="width:20px;height:20px;font-size:11px;flex:0 0 auto">1</span>
             Consommation journalière
           </summary>
           <div style="margin-top:10px">
@@ -53,7 +59,7 @@ function initTabOffgrid() {
         <!-- Batterie -->
         <details class="card" open>
           <summary class="card-title" style="cursor:pointer;user-select:none">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+            <span class="ose-step-num" style="width:20px;height:20px;font-size:11px;flex:0 0 auto">2</span>
             Batterie
           </summary>
           <div style="margin-top:10px">
@@ -87,7 +93,7 @@ function initTabOffgrid() {
         <!-- Toiture & stratégie -->
         <details class="card" open>
           <summary class="card-title" style="cursor:pointer;user-select:none">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+            <span class="ose-step-num" style="width:20px;height:20px;font-size:11px;flex:0 0 auto">3</span>
             Toiture et objectif
           </summary>
           <div style="margin-top:10px">
@@ -176,6 +182,7 @@ function initTabOffgrid() {
           </div>
         </details>
 
+        <p class="ose-field-help" style="margin-bottom:6px">4 · Lieu + météo (colonne gauche) et étapes 1 → 3 validées ? Lancez le dimensionnement.</p>
         <button class="btn btn-accent" id="btn-calc-offgrid2" style="width:100%;margin-bottom:8px">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
           Dimensionner mon système autonome
@@ -186,7 +193,7 @@ function initTabOffgrid() {
       <div id="offgrid2-results">
         <div class="result-placeholder">
           <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
-          <p>Renseignez votre consommation et cliquez sur <strong>Dimensionner</strong></p>
+          <p>Lieu + météo à gauche, consommation/batterie/toiture ci-contre, puis <strong>Dimensionner</strong>.</p>
         </div>
       </div>
 

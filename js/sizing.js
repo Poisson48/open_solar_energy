@@ -83,6 +83,77 @@ const SizingEngine = (() => {
     return monthly;
   }
 
+  // ── Autoconsommation slot-à-slot AVEC batterie hybride (réseau + stockage) ──
+  // Même schéma que _calcSlotMetrics, mais le surplus PV charge la batterie
+  // avant export réseau, et le déficit est d'abord couvert par la batterie
+  // avant import réseau. Reprend le schéma de simulation de
+  // offgrid_sizing.js::simulateYearSlots (charge/décharge SOC slot-à-slot).
+  function _calcSlotMetricsWithBattery(pvSlotsFlat, Ppeak, enedis, C_usable, eta) {
+    const data    = enedis.halfHourly;
+    const daysArr = enedis.year ? getMonthlyDays(enedis.year) : DAYS;
+    const monthly = Array.from({length: 12}, (_, i) => ({
+      month: i + 1, name: MONTH_NAMES[i],
+      prod: 0, conso: 0, autoconsoKwh: 0, autoconsoDirect: 0, autoconsoBatt: 0,
+      surplus: 0, deficit: 0, battCharge: 0, battDischarge: 0
+    }));
+    let soc = C_usable * 0.5;
+    let dayIdx = 0;
+    for (let m = 0; m < 12; m++) {
+      const nDays = daysArr[m];
+      for (let d = 0; d < nDays; d++) {
+        for (let s = 0; s < 48; s++) {
+          const idx = dayIdx * 48 + s;
+          if (idx >= data.length) break;
+          const c = data[idx] || 0;
+          const p = (pvSlotsFlat[idx] || 0) * Ppeak;
+          monthly[m].prod  += p;
+          monthly[m].conso += c;
+          const direct = Math.min(p, c);
+          monthly[m].autoconsoDirect += direct;
+          const balance = p - c;
+          if (balance >= 0) {
+            // Surplus → charge batterie, le reste part au réseau (injection)
+            const room   = Math.max(0, C_usable - soc);
+            const stored = Math.min(balance * eta, room);
+            soc = Math.min(C_usable, soc + stored);
+            monthly[m].battCharge += stored;
+            monthly[m].surplus    += Math.max(0, balance - stored / eta);
+          } else {
+            // Déficit → décharge batterie, le reste vient du réseau
+            const needed    = -balance;
+            const fromBatt  = Math.min(needed, soc);
+            soc -= fromBatt;
+            monthly[m].battDischarge   += fromBatt;
+            monthly[m].autoconsoBatt   += fromBatt;
+            monthly[m].deficit         += needed - fromBatt;
+          }
+        }
+        dayIdx++;
+      }
+    }
+    monthly.forEach(mo => { mo.autoconsoKwh = mo.autoconsoDirect + mo.autoconsoBatt; });
+    return monthly;
+  }
+
+  // ── Fallback mensuel avec batterie (pas de données Enedis 30 min) ──
+  // Approxime la charge/décharge à partir des moyennes prod/conso du mois
+  // (même principe que simulateMonth() d'offgrid_sizing.js, réutilisé ici).
+  function _calcMonthlyMetricsWithBattery(monthlyProd, monthlyConso, C_usable, eta, daysArr) {
+    let soc = C_usable * 0.5;
+    return monthlyProd.map((prod, i) => {
+      const days        = daysArr[i] || 30;
+      const conso       = monthlyConso[i] || 0;
+      const e_prod_day  = prod  / days;
+      const e_conso_day = conso / days;
+      const sim = OffgridSizing.simulateMonth(e_prod_day, e_conso_day, C_usable, days, soc, eta);
+      soc = sim.soc_end;
+      const deficit      = Math.round(sim.deficit_kwh * 100) / 100;
+      const surplus      = Math.round(sim.surplus_kwh * 100) / 100;
+      const autoconsoKwh = Math.max(0, conso - deficit);
+      return { month: i + 1, name: MONTH_NAMES[i], prod, conso, autoconsoKwh, surplus, deficit };
+    });
+  }
+
   // ── Moteur principal ───────────────────────────────────────────
   /**
    * @param {object} input       Données saisies (bill, site, sizing)
@@ -130,9 +201,19 @@ const SizingEngine = (() => {
     // Priorité : météo horaire réelle (jour-à-jour) > profil mensuel moyen aplati
     const enedis = typeof AppState !== 'undefined' ? AppState.hourlyEnedisData : null;
     const hasEnedisSlots = !!(enedis?.halfHourly?.length >= 48 * 365);
+    const daysArrYear = enedis?.year ? getMonthlyDays(enedis.year) : DAYS;
+
+    // 4b. Batterie hybride (réseau + stockage) — optionnelle
+    const useBattery = !!(sizing.battery?.enabled && sizing.battery.capacityKwh > 0);
+    const battTech   = useBattery ? (OffgridSizing.BATTERY_TECH[sizing.battery.type] || OffgridSizing.BATTERY_TECH.lfp) : null;
+    const C_usable   = useBattery ? sizing.battery.capacityKwh * battTech.dod : 0;
+    const battSystemCost = useBattery
+      ? sizing.battery.capacityKwh * battTech.costPerKwh + (battTech.bmsFixed || 0)
+      : 0;
+
     let pvProfilesPerKwc = null;  // Float32Array(nHours×2) par kWc si dispo
     if (hasEnedisSlots) {
-      const daysArr = enedis.year ? getMonthlyDays(enedis.year) : DAYS;
+      const daysArr = daysArrYear;
       const hourlyWx = typeof AppState !== 'undefined' ? AppState.hourlyWeatherData : null;
       if (hourlyWx) {
         pvProfilesPerKwc = SolarMath.buildYearPvSlots(
@@ -154,20 +235,27 @@ const SizingEngine = (() => {
     for (let Ppeak = 0.5; Ppeak <= PpeakMax + 0.05; Ppeak = Math.round((Ppeak + 0.1) * 10) / 10) {
 
       // Métriques mensuelles : slot-à-slot si Enedis dispo, sinon mensuel agrégé
+      // Avec batterie hybride : simulation charge/décharge du surplus avant export/import réseau
       let monthlyMetrics;
       if (pvProfilesPerKwc) {
-        monthlyMetrics = _calcSlotMetrics(pvProfilesPerKwc, Ppeak, enedis);
+        monthlyMetrics = useBattery
+          ? _calcSlotMetricsWithBattery(pvProfilesPerKwc, Ppeak, enedis, C_usable, battTech.eta)
+          : _calcSlotMetrics(pvProfilesPerKwc, Ppeak, enedis);
       } else {
         const monthlyProd = monthlyHtilt.map((Htilt, i) =>
           SolarMath.pvProduction(Htilt, Ppeak, site.losses, weatherData[i].T_avg, site.tech, i + 1, lat)
         );
-        monthlyMetrics = monthlyProd.map((prod, i) => {
-          const conso       = bill.monthlyKwh[i];
-          const autoconsoKwh = Math.min(prod, conso);
-          const surplus      = Math.max(0, prod - conso);
-          const deficit      = Math.max(0, conso - prod);
-          return { month: i+1, name: MONTH_NAMES[i], prod, conso, autoconsoKwh, surplus, deficit };
-        });
+        if (useBattery) {
+          monthlyMetrics = _calcMonthlyMetricsWithBattery(monthlyProd, bill.monthlyKwh, C_usable, battTech.eta, DAYS);
+        } else {
+          monthlyMetrics = monthlyProd.map((prod, i) => {
+            const conso       = bill.monthlyKwh[i];
+            const autoconsoKwh = Math.min(prod, conso);
+            const surplus      = Math.max(0, prod - conso);
+            const deficit      = Math.max(0, conso - prod);
+            return { month: i+1, name: MONTH_NAMES[i], prod, conso, autoconsoKwh, surplus, deficit };
+          });
+        }
       }
 
       // Agrégation annuelle
@@ -189,7 +277,7 @@ const SizingEngine = (() => {
       const totalAnnualGain = savedOnBill + feedinRevenue;
       const systemCostBrut = sizing.realTotalCost > 0
         ? sizing.realTotalCost
-        : Ppeak * (sizing.systemCostPerKwp || 900);
+        : Ppeak * (sizing.systemCostPerKwp || 900) + battSystemCost;
       // Prime autoconso France (réduit le coût net pour rentabilité)
       const incentive      = sizing.includeIncentive !== false ? FinanceCalc.calcFrenchIncentive(Ppeak) : 0;
       const systemCost     = Math.max(0, systemCostBrut - incentive);
@@ -216,6 +304,14 @@ const SizingEngine = (() => {
         systemCostBrut: Math.round(systemCostBrut),
         incentive:   Math.round(incentive),
         systemCost: Math.round(systemCost),
+        battery: useBattery ? {
+          type: sizing.battery.type,
+          capacityKwh: sizing.battery.capacityKwh,
+          usableKwh: Math.round(C_usable * 10) / 10,
+          dod: battTech.dod,
+          eta: battTech.eta,
+          cost: Math.round(battSystemCost)
+        } : null,
         annualProd:  Math.round(annualProd),
         annualConso: Math.round(annualConsoReal),
         annualAutoconsoKwh: Math.round(annualAutoconsoKwh),
@@ -316,7 +412,13 @@ const SizingEngine = (() => {
         // _includeIncentive : positionné via API (AppState) ou UI si checkbox existe
         includeIncentive:   typeof AppState !== 'undefined'
                               ? (AppState._includeIncentive ?? true)
-                              : true
+                              : true,
+        // Batterie hybride (réseau + stockage) — active seulement en mode 'hybrid'
+        battery: {
+          enabled:      (typeof AppState !== 'undefined' && AppState.installationType === 'hybrid'),
+          type:         getStr('sz-batt-tech') || 'lfp',
+          capacityKwh:  getVal('sz-batt-kwh') || 0
+        }
       }
     };
   }
