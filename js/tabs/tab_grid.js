@@ -99,6 +99,7 @@ function initTabGrid() {
               <span style="color:var(--color-text-muted)">Puissance crête totale</span>
               <span id="grid-ppeak-display" style="font-weight:700;font-size:16px;color:var(--color-accent)">-</span>
             </div>
+            <div id="grid-chains-hint" style="display:none;margin-top:8px;padding-top:8px;border-top:1px dashed var(--color-border);font-size:11px;color:var(--color-text-muted)"></div>
           </div>
           <input type="hidden" id="inp-ppeak" value="3">
 

@@ -128,7 +128,7 @@ const InverterSizing = (() => {
         // Vérification MPPT (si données disponibles)
         let mpptNote = '';
         if (inv.nMppt && nPanels && vocPanel) {
-          const maxSeriesPerString = Math.floor((inv.maxVocInput || 1000) / (vocPanel * 1.15));
+          const maxSeriesPerString = maxSeriesFromVoc({ vocPanel, maxVoc: inv.maxVocInput || 1000 });
           const minStrings = Math.ceil(nPanels / maxSeriesPerString);
           if (minStrings > (inv.nMppt || 2)) {
             mpptNote = ` ⚠ ${minStrings} chaînes nécessaires, ${inv.nMppt} MPPT disponibles`;
@@ -232,6 +232,25 @@ const InverterSizing = (() => {
   }
 
   /**
+   * Nombre maximal de panneaux en série (chaîne) compatible avec la tension
+   * d'entrée max de l'onduleur, en tenant compte de la hausse de Voc par temps
+   * froid (majoration standard +15 % — cf. calcStringing / recommend ci-dessous).
+   * Formule partagée pour garder le hint "Chaînes" (onglet Système PV) et la
+   * recommandation d'onduleurs cohérents entre eux.
+   *
+   * @param {number} vocPanel   Voc unitaire panneau (V, datasheet)
+   * @param {number} maxVoc     Tension d'entrée max onduleur (V)
+   * @param {number} [tempFactor] Majoration froid (défaut 1.15)
+   * @returns {number} Nombre entier de panneaux max en série (0 si données invalides)
+   */
+  function maxSeriesFromVoc({ vocPanel, maxVoc, tempFactor = 1.15 }) {
+    const voc  = Math.max(0, vocPanel || 0);
+    const vMax = Math.max(0, maxVoc || 0);
+    if (voc <= 0 || vMax <= 0) return 0;
+    return Math.floor(vMax / (voc * tempFactor));
+  }
+
+  /**
    * Calcule le câblage optimal des panneaux en chaînes MPPT
    * @param {number} Ppeak     Puissance totale (kWc)
    * @param {number} panelWp   Puissance panneau (Wc)
@@ -245,9 +264,8 @@ const InverterSizing = (() => {
   function calcStringing({ Ppeak, panelWp, vocPanel, iscPanel, maxVoc = 1000, maxIsc = 12, nMppt = 2 }) {
     const nPanels = Math.ceil(Ppeak * 1000 / panelWp);
     // Correction température : Voc augmente de ~2.5%/10°C en-dessous de 25°C
-    // On majore de 15% pour les conditions hivernales
-    const vocCorrected = vocPanel * 1.15;
-    const maxSeries = Math.floor(maxVoc / vocCorrected);
+    // On majore de 15% pour les conditions hivernales (cf. maxSeriesFromVoc)
+    const maxSeries = maxSeriesFromVoc({ vocPanel, maxVoc });
     const minSeries = 1;  // toutes les longueurs de chaîne valides jusqu'à maxSeries
 
     // Chercher la combinaison qui minimise le déséquilibre
@@ -275,5 +293,8 @@ const InverterSizing = (() => {
     return best || { error: 'Aucune combinaison compatible trouvée' };
   }
 
-  return { recommend, renderRecommendations, calcStringing, CATALOG };
+  return { recommend, renderRecommendations, calcStringing, maxSeriesFromVoc, CATALOG };
 })();
+
+// Export Node (tests) si applicable, sans casser le contexte navigateur
+if (typeof module !== 'undefined' && module.exports) module.exports = InverterSizing;

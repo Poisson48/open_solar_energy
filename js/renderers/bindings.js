@@ -217,6 +217,15 @@ function bindSharedParamSync() {
     document.getElementById(id)?.addEventListener('input', () => calcPanelsForMode('og2'));
   });
 
+  // Système PV : hint "Chaînes" — se met à jour dès que Voc panneau ou modèle
+  // d'onduleur change (saisie manuelle ou application depuis une bibliothèque,
+  // qui déclenche un événement 'input' sur ces mêmes champs).
+  ['inp-panel-voc', 'inp-panel-model', 'inp-inverter-model'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', () => {
+      if (typeof updateChainsHint === 'function') updateChainsHint();
+    });
+  });
+
   // Sizing tab : changement de tarif → affichage/masquage des prix HP/HC
   const tariffSel = document.getElementById('sz-tariff');
   if (tariffSel) {

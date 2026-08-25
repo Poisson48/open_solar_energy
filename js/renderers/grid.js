@@ -102,6 +102,50 @@ function _estimateSpecificYield() {
 
 function calcGridPanels() {
   calcPanelsForMode('grid');
+  updateChainsHint();
+}
+
+// ── Hint "Chaînes" (Système PV) ──────────────────────────────────
+// Estime le nombre max de panneaux en série (Voc×1.15 ≤ maxVoc onduleur),
+// à partir des données déjà saisies (formulaire, bibliothèque panneaux/onduleurs).
+// N'affiche rien tant que les deux tensions (Voc panneau + maxVoc onduleur) ne
+// sont pas connues, pour ne pas donner un faux sentiment de précision.
+function _panelVocForChainsHint() {
+  const direct = parseFloat(document.getElementById('inp-panel-voc')?.value);
+  if (direct > 0) return { voc: direct, estimated: false };
+
+  if (typeof PanelDB !== 'undefined') {
+    const modelVal = (document.getElementById('inp-panel-model')?.value || '').trim().toLowerCase();
+    if (modelVal) {
+      const found = PanelDB.list().find(p => (p.model || '').trim().toLowerCase() === modelVal);
+      if (found?.voc > 0) return { voc: found.voc, estimated: false };
+    }
+  }
+  return null;
+}
+
+function _inverterMaxVocForChainsHint() {
+  const label = (document.getElementById('inp-inverter-model')?.value || '').trim().toLowerCase();
+  if (!label || typeof InverterDB === 'undefined') return null;
+  const found = InverterDB.list().find(i => `${i.brand} ${i.model}`.trim().toLowerCase() === label);
+  return found?.maxVocInput > 0 ? found.maxVocInput : null;
+}
+
+function updateChainsHint() {
+  const hintEl = document.getElementById('grid-chains-hint');
+  if (!hintEl) return;
+  if (typeof InverterSizing === 'undefined') { hintEl.style.display = 'none'; return; }
+
+  const panelVoc = _panelVocForChainsHint();
+  const maxVoc   = _inverterMaxVocForChainsHint();
+  if (!panelVoc || !maxVoc) { hintEl.style.display = 'none'; return; }
+
+  const maxSeries = InverterSizing.maxSeriesFromVoc({ vocPanel: panelVoc.voc, maxVoc });
+  hintEl.style.display = '';
+  hintEl.innerHTML = maxSeries > 0
+    ? `🔗 <strong>Chaînes</strong> : max <strong>${maxSeries}</strong> panneaux en série par string `
+      + `(Voc ${panelVoc.voc} V × 1,15 ≤ ${maxVoc} V max onduleur).`
+    : `⚠️ <strong>Chaînes</strong> : Voc ${panelVoc.voc} V × 1,15 dépasse déjà ${maxVoc} V — cet onduleur n'accepte aucune chaîne de ce panneau.`;
 }
 
 /** Système PV réseau → onglet Dimensionnement (toiture / panneaux). */

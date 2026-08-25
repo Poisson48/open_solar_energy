@@ -384,6 +384,81 @@ check('onglet onduleurs affiche le lien vers Panneaux', materiel.invHasTabBar);
 check('handleAndroidBack gère la modale onduleurs', materiel.backHandled === true);
 check('handleAndroidBack ferme la modale onduleurs', materiel.invClosedByBack);
 
+console.log('\n═══ 12. Chaînage installateur — préremplissage câbles depuis PanelDB + hint « Chaînes » (Système PV) ═══');
+const chainTest = await page.evaluate(() => {
+  const panel = PanelDB.save({
+    model: 'Test Chain Panel 410', fabricant: 'ChainCo', wp: 410, m2: 1.95,
+    voc: 42, isc: 13,
+  });
+  const inverter = InverterDB.save({
+    brand: 'ChainInv', model: 'X 5.0', type: 'string', phase: 1,
+    pnom: 5, maxVocInput: 600, nMppt: 2,
+  });
+
+  // Isole du test précédent (§9) qui a laissé des Voc/Isc dans le formulaire
+  // Dimensionnement (sz) — readPanelElectricalFromForms() le vérifie en priorité.
+  ['sz', 'inp', 'og2'].forEach(p => {
+    const iscEl = document.getElementById(`${p}-panel-isc`);
+    const vocEl = document.getElementById(`${p}-panel-voc`);
+    if (iscEl) iscEl.value = '';
+    if (vocEl) vocEl.value = '';
+  });
+
+  // Applique le panneau (Voc/Isc) au formulaire Système PV — comme le ferait
+  // un installateur depuis la bibliothèque PanelDB.
+  PanelDB.applyPanel(panel.id, 'inp');
+
+  // Hint « Chaînes » : nécessite Voc panneau + maxVoc onduleur → onduleur pas encore choisi
+  document.getElementById('inp-inverter-model').value = '';
+  updateChainsHint();
+  const hintHiddenBeforeInverter = document.getElementById('grid-chains-hint')?.style.display === 'none';
+
+  InverterDB.applyInverter(inverter.id, 'inp');
+  updateChainsHint();
+  const hintEl = document.getElementById('grid-chains-hint');
+  const hintVisible = hintEl?.style.display !== 'none';
+  const hintText = hintEl?.innerHTML || '';
+
+  // Préremplissage du calculateur de câblage (onglet Câbles) depuis ces mêmes champs
+  document.getElementById('cbl-dc-isc').value = '';
+  document.getElementById('cbl-dc-voc').value = '';
+  document.getElementById('cbl-dc-i').value = '';
+  CablesUI.prefill();
+  const cblIsc = document.getElementById('cbl-dc-isc')?.value;
+  const cblVoc = document.getElementById('cbl-dc-voc')?.value;
+
+  // Isole estimateStringCurrent (Isc × 1.25) d'éventuelles heuristiques de
+  // nombre de strings en parallèle déjà présentes dans le formulaire.
+  document.getElementById('cbl-dc-strings-parallel').value = '1';
+  document.getElementById('cbl-dc-i').value = '';
+  CablesUI.estimateDcElectrical();
+  const cblI = document.getElementById('cbl-dc-i')?.value;
+
+  const result = {
+    hintHiddenBeforeInverter,
+    hintVisible,
+    hintText,
+    expectedMaxSeries: InverterSizing.maxSeriesFromVoc({ vocPanel: 42, maxVoc: 600 }),
+    cblIsc, cblVoc, cblI,
+  };
+
+  PanelDB.remove(panel.id);
+  InverterDB.remove(inverter.id);
+  ['inp-panel-voc', 'inp-panel-isc', 'inp-panel-model', 'inp-inverter-model'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  updateChainsHint();
+  return result;
+});
+check('hint « Chaînes » masqué tant que l\'onduleur n\'est pas choisi', chainTest.hintHiddenBeforeInverter);
+check('hint « Chaînes » visible dès Voc panneau + maxVoc onduleur connus', chainTest.hintVisible);
+check('hint « Chaînes » annonce le bon nombre max de panneaux en série',
+  chainTest.hintText.includes(String(chainTest.expectedMaxSeries)), `attendu ${chainTest.expectedMaxSeries} — ${chainTest.hintText}`);
+check('prefill câbles reprend le Voc du panneau appliqué', chainTest.cblVoc === '42', chainTest.cblVoc);
+check('prefill câbles reprend l\'Isc du panneau appliqué', chainTest.cblIsc === '13', chainTest.cblIsc);
+check('estimateStringCurrent = Isc × 1,25 (13 × 1,25 = 16,25 A)', chainTest.cblI === '16.25', chainTest.cblI);
+
 await browser.close().catch(() => {});
 server.close();
 console.log(`\n${fails ? '✗' : '✓'} Projet tests — ${fails} échec(s)`);

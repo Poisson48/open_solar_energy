@@ -26,7 +26,7 @@ const CablesUI = (() => {
   function findMatchingPanel() {
     if (typeof PanelDB === 'undefined') return null;
     const modelCandidates = [
-      val('sz-panel-model'), val('inp-panel-model'), val('dv-sys-panel-model')
+      val('sz-panel-model'), val('inp-panel-model'), val('og2-panel-model'), val('dv-sys-panel-model')
     ].map(s => (s || '').trim().toLowerCase()).filter(Boolean);
     if (!modelCandidates.length) return null;
     const panels = PanelDB.list();

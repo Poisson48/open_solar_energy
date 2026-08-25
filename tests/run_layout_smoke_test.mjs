@@ -148,6 +148,31 @@ await page.waitForTimeout(200);
 const npanelsAfterSync = await page.inputValue('#lay-npanels').catch(() => null);
 check('synchronisation "Depuis Système PV" exécutée sans erreur', pageErrors.length === 0, `nPanels=${npanelsAfterSync}`);
 
+console.log('\n== Lien "Vers Câbles (longueur DC)" ==');
+await layoutTabBtn.click({ force: true });
+await page.waitForTimeout(150);
+await page.fill('#lay-npanels', '18');
+await page.locator('#lay-npanels').dispatchEvent('input');
+await page.fill('#lay-rows', '3');
+await page.locator('#lay-rows').dispatchEvent('input');
+await page.fill('#lay-panel-w', '1.1');
+await page.locator('#lay-panel-w').dispatchEvent('input');
+await page.waitForTimeout(150);
+await page.click('button:has-text("Vers Câbles")', { force: true }).catch(() => {});
+await page.waitForTimeout(250);
+const cablesLink = await page.evaluate(() => ({
+  activeTab: AppState.activeTab,
+  cblRows: document.getElementById('cbl-dc-rows')?.value,
+  cblNpanels: document.getElementById('cbl-dc-npanels')?.value,
+  cblL: parseFloat(document.getElementById('cbl-dc-l')?.value || '0'),
+}));
+check('activation de l\'onglet Câbles après le lien implantation', cablesLink.activeTab === 'cables', cablesLink.activeTab);
+check('rangées transmises à l\'onglet Câbles', cablesLink.cblRows === '3', cablesLink.cblRows);
+check('longueur DC estimée transmise (> 0)', cablesLink.cblL > 0, String(cablesLink.cblL));
+// 18 panneaux / 3 rangées = 6/rangée, pitch 1.1m, distance par défaut 10m, marge 1.15
+// → (6*1.1 + 10) * 1.15 ≈ 18.7 m
+check('longueur DC cohérente avec l\'implantation (~18.7 m)', Math.abs(cablesLink.cblL - 18.7) < 1, String(cablesLink.cblL));
+
 console.log('\n== Export image ==');
 const exportOk = await page.evaluate(() => {
   const c = document.getElementById('layout-canvas');

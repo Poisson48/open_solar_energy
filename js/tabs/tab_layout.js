@@ -83,6 +83,9 @@ function initTabLayout() {
             <button type="button" class="btn btn-outline" style="width:100%" onclick="syncPanelLayoutFrom('grid')" title="Reprendre le nombre de panneaux du Système PV">
               ↺ Depuis Système PV
             </button>
+            <button type="button" class="btn btn-outline" style="width:100%" onclick="syncLayoutToCableLength()" title="Estimer la longueur de câble DC à partir de cette implantation (rangées, panneaux/rangée)">
+              📏 Vers Câbles (longueur DC)
+            </button>
             <button type="button" class="btn btn-accent" style="width:100%" onclick="exportPanelLayoutImage()">
               📷 Exporter l'image
             </button>
@@ -231,6 +234,40 @@ function syncPanelLayoutFrom(source) {
   if (rowsEl && (!parseInt(rowsEl.value, 10) || parseInt(rowsEl.value, 10) < 1)) rowsEl.value = 1;
 
   renderPanelLayoutTab();
+}
+
+/**
+ * Envoie le nombre de panneaux / rangées de l'implantation vers le calculateur de
+ * câblage DC (onglet Câbles) et estime directement la longueur de string.
+ * Écrit cbl-dc-l en dur : CablesUI.prefill() ne la recalcule que si elle est vide,
+ * donc cette estimation "depuis l'implantation" survit au changement d'onglet.
+ */
+function syncLayoutToCableLength() {
+  const layout = readPanelLayoutConfig();
+  if (!layout.nPanels || layout.nPanels <= 0) {
+    if (typeof showToast === 'function') showToast('Renseignez d\'abord le nombre de panneaux de l\'implantation.', 'error');
+    return;
+  }
+  if (typeof CableCalc === 'undefined') return;
+
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+  const rows = Math.max(1, layout.rows || 1);
+
+  setVal('cbl-dc-npanels', layout.nPanels);
+  setVal('cbl-dc-rows', rows);
+  // Espacement le long de la rangée : largeur panneau de l'implantation si connue,
+  // sinon on garde la valeur déjà présente dans le formulaire câblage (ou 1.8m défaut).
+  const pitch = layout.panelW > 0 ? layout.panelW : (parseFloat(document.getElementById('cbl-dc-pitch')?.value) || 1.8);
+  setVal('cbl-dc-pitch', pitch);
+  const distanceToInverter = parseFloat(document.getElementById('cbl-dc-dist-inv')?.value) || 10;
+  setVal('cbl-dc-dist-inv', distanceToInverter);
+
+  const len = CableCalc.estimateDcLength({ nPanels: layout.nPanels, rows, pitch, distanceToInverter });
+  setVal('cbl-dc-l', len);
+
+  if (typeof showToast === 'function')
+    showToast(`📏 Longueur DC estimée depuis l'implantation : ${len} m (aller) — onglet Câbles`);
+  if (typeof activateTab === 'function') activateTab('cables');
 }
 
 /** Exporte le rendu courant en image PNG (utile pour joindre au devis / présentation client). */
