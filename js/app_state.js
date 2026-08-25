@@ -3,8 +3,9 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.7';
+const APP_VERSION = '2.0.8';
 // Historique :
+//   2.0.8 - Barre projet mobile compacte (plus de mur de boutons)
 //   2.0.7 - MAJ Android in-app + layout mobile (largeur)
 //   2.0.6 - Hub projets unique (plus de modal séparée)
 //   2.0.5 - Scripts sans ?v= + hardening hub

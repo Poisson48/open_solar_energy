@@ -48,7 +48,7 @@ function saveCurrentProject() {
     btn.style.borderColor = btn.style.background;
     btn.style.color = '#fff';
     setTimeout(() => {
-      btn.innerHTML = typeof emStr === 'function' ? emStr('💾 Sauvegarder') : '💾 Sauvegarder';
+      btn.innerHTML = typeof emStr === 'function' ? emStr('💾 Sauver') : '💾 Sauver';
       btn.style.background = btn.style.borderColor = btn.style.color = '';
     }, 2500);
   }

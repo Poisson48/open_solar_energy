@@ -272,6 +272,9 @@ header .badge {
   white-space: nowrap;
   flex-shrink: 0;
 }
+#btn-edit-project::after {
+  content: " Éditer";
+}
 .project-bar-actions {
   display: flex;
   align-items: center;
@@ -1048,48 +1051,64 @@ details.card > summary:focus-visible {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 8px;
-    padding: 8px 10px;
+    gap: 6px;
+    padding: 6px 8px;
     top: 48px;
   }
   .project-bar-meta {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    align-items: center;
     gap: 6px;
+    min-width: 0;
   }
   .project-bar-meta-row {
-    justify-content: space-between;
-    min-width: 0;
+    flex-shrink: 0;
+    gap: 4px;
   }
   #project-bar-client {
-    max-width: none;
-    flex: 1;
-    min-width: 0;
+    display: none; /* évite une 3e ligne — visible via Éditer */
   }
   #project-bar #project-name-input {
     max-width: none;
-    width: 100%;
-    font-size: 13px;
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    font-size: 12px;
+    padding: 5px 8px;
+  }
+  #btn-edit-project {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+  #btn-edit-project::after {
+    content: none; /* icône seule sur mobile */
   }
   .project-bar-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 4px;
     width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
   }
+  .project-bar-actions::-webkit-scrollbar { display: none; }
   #btn-git-history { display: none; }
   #project-bar .btn,
   #project-bar button {
-    font-size: 12px;
-    padding: 8px 6px;
+    font-size: 11px;
+    padding: 5px 8px;
     min-width: 0;
-    width: 100%;
+    width: auto;
+    flex: 1 1 0;
     justify-content: center;
+    white-space: nowrap;
   }
   #install-type-badge {
-    grid-column: 1 / -1;
-    padding: 8px 10px;
-    border-radius: 8px;
+    grid-column: unset;
+    padding: 5px 8px;
+    border-radius: 16px;
+    flex: 0 0 auto;
   }
 
   .tabs-bar {
