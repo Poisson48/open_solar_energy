@@ -52,38 +52,55 @@
     });
   };
 
-  /** Flux d'énergie empilés : autoconso + déficit + surplus */
+  /** Flux d'énergie empilés : autoconso + déficit + surplus (+ décharge batterie si hybride) */
   Charts.renderSizingEnergyFlow = function (canvasId, result) {
     Charts.destroy(canvasId);
     const labels = result.monthlyMetrics.map(m => m.name);
+    // Batterie hybride optionnelle : n'apparaît que si le dimensionnement a simulé
+    // une charge/décharge slot-à-slot (voir sizing.js::_calcSlotMetricsWithBattery).
+    // Reste absent (undefined) sans batterie ou en fallback mensuel — ne casse rien.
+    const hasBattData = result.battery && result.monthlyMetrics.some(m => (m.battDischarge || 0) > 0);
+    const datasets = [
+      {
+        label: 'Autoconsommé (kWh)',
+        data: result.monthlyMetrics.map(m => Math.round(m.autoconsoKwh)),
+        backgroundColor: 'rgba(26,107,60,0.80)',
+        borderRadius: 2,
+        stack: 'conso'
+      },
+      {
+        label: 'Acheté réseau (kWh)',
+        data: result.monthlyMetrics.map(m => Math.round(m.deficit)),
+        backgroundColor: 'rgba(198,40,40,0.60)',
+        borderRadius: 2,
+        stack: 'conso'
+      },
+      {
+        label: 'Surplus injecté (kWh)',
+        data: result.monthlyMetrics.map(m => Math.round(m.surplus)),
+        backgroundColor: 'rgba(245,166,35,0.75)',
+        borderRadius: 2,
+        stack: 'prod'
+      }
+    ];
+    if (hasBattData) {
+      datasets.push({
+        label: 'Dont batterie (kWh)',
+        data: result.monthlyMetrics.map(m => Math.round(m.battDischarge || 0)),
+        type: 'line',
+        borderColor: '#1e5ac8',
+        backgroundColor: 'rgba(30,90,200,0.1)',
+        borderWidth: 2,
+        borderDash: [3, 3],
+        pointRadius: 3,
+        fill: false,
+        tension: 0.3,
+        stack: undefined
+      });
+    }
     new Chart(document.getElementById(canvasId), {
       type: 'bar',
-      data: {
-        labels,
-        datasets: [
-          {
-            label: 'Autoconsommé (kWh)',
-            data: result.monthlyMetrics.map(m => Math.round(m.autoconsoKwh)),
-            backgroundColor: 'rgba(26,107,60,0.80)',
-            borderRadius: 2,
-            stack: 'conso'
-          },
-          {
-            label: 'Acheté réseau (kWh)',
-            data: result.monthlyMetrics.map(m => Math.round(m.deficit)),
-            backgroundColor: 'rgba(198,40,40,0.60)',
-            borderRadius: 2,
-            stack: 'conso'
-          },
-          {
-            label: 'Surplus injecté (kWh)',
-            data: result.monthlyMetrics.map(m => Math.round(m.surplus)),
-            backgroundColor: 'rgba(245,166,35,0.75)',
-            borderRadius: 2,
-            stack: 'prod'
-          }
-        ]
-      },
+      data: { labels, datasets },
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 10 } } },

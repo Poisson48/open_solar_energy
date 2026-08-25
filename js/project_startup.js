@@ -9,6 +9,9 @@
 const DEMO_PROJECT_ID = 'demo_ose_v2';
 const DEMO_SEED_VERSION = 5;
 
+const DEMO_HYBRID_PROJECT_ID = 'demo_ose_hybrid_v1';
+const DEMO_HYBRID_SEED_VERSION = 1;
+
 // ══════════════════════════════════════════════════════════════
 //  MODAL DE DÉMARRAGE = HUB PROJETS
 // ══════════════════════════════════════════════════════════════
@@ -217,6 +220,7 @@ function seedDemoInstaller() {
 function seedDemoProject() {
   seedDemoPanels();
   seedDemoInstaller();
+  seedDemoHybridProject();
 
   if (ProjectManager.get('demo_ose_v1')) ProjectManager.remove('demo_ose_v1');
 
@@ -403,7 +407,188 @@ function seedDemoProject() {
   ProjectManager.save(demo);
 }
 
+// ══════════════════════════════════════════════════════════════
+//  DÉMO HYBRIDE (réseau + batterie) — second projet démo
+// ══════════════════════════════════════════════════════════════
+function seedDemoHybridProject() {
+  const existing = ProjectManager.get(DEMO_HYBRID_PROJECT_ID);
+  if (existing && existing.demoSeedVersion === DEMO_HYBRID_SEED_VERSION) return;
+
+  const nice = AppState.demoData?.locations?.nice;
+  if (!nice) return;
+
+  const year = 2024;
+  // Conso un peu plus élevée que la démo réseau : ménage type avec plus d'usages
+  // le soir (justifie l'intérêt d'une batterie pour l'autoconsommation nocturne).
+  const monthlyKwh = demoMonthlyKwh().map(v => Math.round(v * 1.15));
+  const monthlyKwhHp = demoMonthlyKwhHp(monthlyKwh);
+  const halfHourly = buildSyntheticEnedis30min(monthlyKwh, year);
+  const days = demoMonthDays(year);
+
+  const dailyWhByMonth = monthlyKwh.map((kwh, i) =>
+    String(Math.round((kwh * 1000) / days[i]))
+  );
+
+  const panelModel = 'Longi Hi-MO 6 430W';
+  const panelWp = '430';
+  const panelM2 = '2.00';
+  const surface = '28';
+  const tilt = '28';
+  const azimuth = '0';
+  const losses = '12';
+  const nPanels = '14';
+  const battKwh = '7.5';
+
+  const formState = {
+    'sz-tariff': 'hphc',
+    'sz-price-base': '0.2516',
+    'sz-price-hp': '0.27',
+    'sz-price-hc': '0.2068',
+    'sz-subscription': '164.64',
+    ...Object.fromEntries(monthlyKwh.map((v, i) => [`sz-kwh-${i + 1}`, String(v)])),
+    'sz-tilt': tilt,
+    'sz-azimuth': azimuth,
+    'sz-surface': surface,
+    'sz-panel-model': panelModel,
+    'sz-panel-wp': panelWp,
+    'sz-panel-m2': panelM2,
+    'sz-losses': losses,
+    'sz-tech': 'crystSi',
+    'sz-strategy': 'bill_coverage_pct',
+    'sz-target-coverage': '80',
+    'sz-cost-kwp': '1800',
+    'sz-cost-total': '',
+    'sz-feedin': '0.13',
+    'sz-elec-escalation': '3',
+    'sz-discount-rate': '4',
+    'sz-panel-degradation': '0.5',
+    'sz-finance-years': '25',
+    'sz-batt-tech': 'lfp',
+    'sz-batt-kwh': battKwh,
+    'inp-surface': surface,
+    'inp-panel-model': panelModel,
+    'inp-panel-wp': panelWp,
+    'inp-panel-m2': panelM2,
+    'sel-tech': 'crystSi',
+    'inp-losses': losses,
+    'inp-tilt': tilt,
+    'inp-azimuth': azimuth,
+    'inp-cost': '13500',
+    'inp-kwh-price': '0.2516',
+    'inp-co2': '0.052',
+    'grid-panel-mode': 'fixe',
+    'grid-npanels-fixe': nPanels,
+    'dv-ins-company': 'Soleil Occitan SARL',
+    'dv-ins-siret': '812 345 678 00012',
+    'dv-ins-rge': 'E-E190909-4521',
+    'dv-ins-address': '18 avenue des Pyrénées\n31100 Toulouse',
+    'dv-ins-phone': '05 61 98 76 54',
+    'dv-ins-email': 'contact@soleil-occitan.fr',
+    'dv-cli-name': 'Famille Rossi',
+    'dv-cli-company': '',
+    'dv-cli-address': '22 boulevard de Cimiez\n06000 Nice',
+    'dv-cli-phone': '06 78 90 12 45',
+    'dv-cli-email': 'rossi.famille@example.fr',
+    'dv-site-address': '22 boulevard de Cimiez, 06000 Nice',
+    'dv-site-type': 'Tuiles plates',
+    'dv-site-surface': surface,
+    'dv-site-tilt': tilt,
+    'dv-site-azimuth': azimuth,
+    'dv-sys-ppeak': '',
+    'dv-sys-panels': nPanels,
+    'dv-sys-panel-model': panelModel,
+    'dv-sys-inverter': 'Growatt SPH 6000',
+    'dv-sys-batt': battKwh,
+    'dv-sys-prod': '',
+    'dv-sys-co2': '',
+    'dv-sys-autonomy': '',
+    'dv-line-panels-label': 'Panneaux photovoltaïques Longi 430W',
+    'dv-line-panels-qty': nPanels,
+    'dv-line-panels-unit': 'u',
+    'dv-line-panels-price': '98',
+    'dv-line-inverter-label': 'Onduleur hybride Growatt SPH 6000',
+    'dv-line-inverter-qty': '1',
+    'dv-line-inverter-unit': 'u',
+    'dv-line-inverter-price': '1850',
+    'dv-line-fixations-label': 'Fixations / structure toiture tuiles',
+    'dv-line-fixations-qty': '1',
+    'dv-line-fixations-unit': 'forfait',
+    'dv-line-fixations-price': '720',
+    'dv-line-cabling-label': 'Câblage DC/AC + protections + coffret',
+    'dv-line-cabling-qty': '1',
+    'dv-line-cabling-unit': 'forfait',
+    'dv-line-cabling-price': '580',
+    'dv-line-labor-label': "Main d'œuvre pose",
+    'dv-line-labor-qty': '3',
+    'dv-line-labor-unit': 'jours',
+    'dv-line-labor-price': '450',
+    'dv-line-admin-label': 'Démarches Consuel / Enedis / attestation',
+    'dv-line-admin-qty': '1',
+    'dv-line-admin-unit': 'forfait',
+    'dv-line-admin-price': '350',
+    'dv-line-misc-label': `Batterie LFP ${battKwh} kWh`,
+    'dv-line-misc-qty': '1',
+    'dv-line-misc-unit': 'u',
+    'dv-line-misc-price': '3000',
+    'dv-tva': '10',
+    'dv-remise': '0',
+    'dv-validity': '45',
+    'dv-notes': "Acompte 30 % à la commande, solde à la mise en service.\nGarantie panneaux 30 ans (producteur), main d'œuvre 10 ans, batterie 10 ans.\nDélai prévisionnel : 8 à 12 semaines après acceptation.",
+    'dv-date': new Date().toLocaleDateString('fr-FR'),
+    'dv-ref': 'DEV-DEMO-HYBRIDE'
+  };
+
+  const annualConso = monthlyKwh.reduce((s, v) => s + v, 0);
+
+  const demo = {
+    id: DEMO_HYBRID_PROJECT_ID,
+    name: 'Démo hybride — Villa Nice (réseau + batterie)',
+    isDemo: true,
+    demoSeedVersion: DEMO_HYBRID_SEED_VERSION,
+    installationType: 'hybrid',
+    client: {
+      nom: 'Famille Rossi',
+      adresse: '22 boulevard de Cimiez, 06000 Nice',
+      tel: '06 78 90 12 45',
+      email: 'rossi.famille@example.fr'
+    },
+    createdAt: existing?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    location: {
+      lat: nice.lat,
+      lon: nice.lon,
+      alt: nice.alt,
+      name: nice.name + ' (démo hybride)'
+    },
+    weatherData: nice.monthly,
+    hourlyEnedisData: {
+      halfHourly: Array.from(halfHourly),
+      year,
+      format: '30min'
+    },
+    monthlyKwhHp,
+    enedisYear: year,
+    formState,
+    summary: {
+      annualConso,
+      recommendedPpeak: null,
+      systemCost: null,
+      coverageRate: null,
+      locationName: nice.name,
+      hasEnedis30min: true,
+      note: 'Projet démo hybride : réseau + batterie, calculs lancés à l’ouverture'
+    }
+  };
+
+  ProjectManager.save(demo);
+}
+
 function openDemoProject() {
   seedDemoProject();
   loadProject(DEMO_PROJECT_ID);
+}
+
+function openDemoHybridProject() {
+  seedDemoHybridProject();
+  loadProject(DEMO_HYBRID_PROJECT_ID);
 }

@@ -56,6 +56,21 @@ function importSizingToQuote() {
   if (rec?.annualProd)  setVal('dv-sys-prod',    Math.round(rec.annualProd));
   if (rec?.co2Saved)    setVal('dv-sys-co2',     Math.round(rec.co2Saved));
 
+  // Batterie hybride (réseau + stockage) — importée si le dimensionnement en recommande une
+  if (rec?.battery?.capacityKwh) {
+    setVal('dv-sys-batt', rec.battery.capacityKwh);
+    const battLine = document.getElementById('dv-line-misc-label');
+    if (battLine && !battLine.value) {
+      const battTechLabel = (typeof OffgridSizing !== 'undefined'
+        && OffgridSizing.BATTERY_TECH[rec.battery.type]?.label) || rec.battery.type;
+      battLine.value = `Batterie ${battTechLabel} ${rec.battery.capacityKwh} kWh`;
+      setVal('dv-line-misc-qty', 1);
+      setVal('dv-line-misc-unit', 'u');
+      setVal('dv-line-misc-price', rec.battery.cost || 0);
+      if (typeof updateQuoteLine === 'function') updateQuoteLine('misc');
+    }
+  }
+
   // Propager le modele panneau depuis les onglets dimensionnement / réseau
   const panelModelEl = document.getElementById('dv-sys-panel-model');
   if (panelModelEl && !panelModelEl.value) {

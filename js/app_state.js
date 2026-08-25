@@ -3,8 +3,11 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.18';
+const APP_VERSION = '2.0.19';
 // Historique :
+//   2.0.19 - Devis : import batterie hybride (capacité + ligne de coût) depuis le
+//            dimensionnement ; graphique flux d'énergie : série décharge batterie ;
+//            2e projet démo « hybride » (réseau + batterie) dans le hub
 //   2.0.18 - Type d'installation « hybride » (réseau + batterie) : 3e choix au hub,
 //            batterie dans le parcours dimensionnement, simulation charge/décharge
 //   2.0.17 - Fix build Android (JNI) + hub MAJ / export / import natifs
