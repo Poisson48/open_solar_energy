@@ -332,7 +332,7 @@ function renderGridResults(results, params) {
         <div class="btn-group">
           <button class="btn btn-outline btn-sm" onclick="Exporter.exportGridCSV(AppState.lastGridResult, AppState.lastGridParams)">CSV</button>
           <button class="btn btn-outline btn-sm" onclick="Exporter.exportGridJSON(AppState.lastGridResult, AppState.lastGridParams)">JSON</button>
-          <button class="btn btn-outline btn-sm" onclick="Exporter.exportPDF()">PDF</button>
+          <button class="btn btn-outline btn-sm" onclick="Exporter.exportPDF()">📄 PDF rapport</button>
         </div>
       </div>
       <div class="chart-container"><canvas id="${chartId}"></canvas></div>

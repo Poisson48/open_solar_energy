@@ -23,7 +23,7 @@ mkdir -p "$APPDIR/usr/bin" \
 cp "$BIN" "$APPDIR/usr/bin/opensolarenergy"
 mkdir -p "$WEB_DST"
 rsync -a --exclude build --exclude build-qt --exclude build-android --exclude node_modules --exclude dist \
-  "$ROOT/index.html" "$ROOT/css" "$ROOT/js" "$ROOT/data" "$ROOT/packaging" "$ROOT/assets" "$WEB_DST/"
+  "$ROOT/index.html" "$ROOT/css" "$ROOT/js" "$ROOT/vendor" "$ROOT/data" "$ROOT/packaging" "$ROOT/assets" "$WEB_DST/"
 
 if [ -f "$ROOT/packaging/open-solar-energy.png" ]; then
   cp "$ROOT/packaging/open-solar-energy.png" \

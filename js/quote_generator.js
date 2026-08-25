@@ -132,6 +132,16 @@ const QuoteGen = (() => {
       d.chantier.tilt ? `Inclinaison : ${d.chantier.tilt}° / Azimut : ${d.chantier.azimuth}°` : '',
     ].filter(Boolean).join('<br>');
 
+    // Lieu projet (carte) si non déjà dans chantier
+    const locName = (typeof AppState !== 'undefined' && AppState.location?.name) || '';
+    const locExtra = (!d.chantier.address && locName)
+      ? `<br><span style="color:#666">Coordonnées carte : ${locName}</span>` : '';
+
+    const typeLabel = (typeof AppState !== 'undefined' && AppState.installationType === 'hybrid')
+      ? 'Hybride (réseau + batterie)'
+      : (typeof AppState !== 'undefined' && AppState.installationType === 'offgrid')
+        ? 'Autonome hors réseau' : 'Raccordé réseau';
+
     return `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -202,7 +212,7 @@ const QuoteGen = (() => {
   </div>
   <div class="dv-box">
     <h4>Site d'installation</h4>
-    <p>${chantierStr || '-'}</p>
+    <p>${chantierStr || '-'}${locExtra}<br><span style="font-size:9pt;color:#888">Type d'installation : ${typeLabel}</span></p>
   </div>
   <div class="dv-box">
     <h4>Système PV</h4>
@@ -252,9 +262,15 @@ ${d.notes ? `<div class="notes"><strong>Notes et conditions :</strong><br>${d.no
 </body></html>`;
   }
 
-  // ── Impression ────────────────────────────────────────────────
+  // ── Impression / PDF ──────────────────────────────────────────
   function print(data) {
-    const html = buildHTML(data || readForm());
+    if (typeof PdfExport !== 'undefined' && PdfExport.downloadQuotePdf) {
+      PdfExport.downloadQuotePdf();
+      return;
+    }
+    const html = (typeof PdfExport !== 'undefined' && PdfExport.buildCompleteQuoteHTML)
+      ? PdfExport.buildCompleteQuoteHTML(data)
+      : buildHTML(data || readForm());
     const win = window.open('', '_blank', 'width=900,height=700');
     if (!win) { if (typeof showToast === 'function') showToast('Autorisez les popups du navigateur pour imprimer le devis.', 'warning'); return; }
     win.document.write(html);
@@ -264,7 +280,9 @@ ${d.notes ? `<div class="notes"><strong>Notes et conditions :</strong><br>${d.no
 
   // ── Aperçu dans la page ───────────────────────────────────────
   function preview(data) {
-    const html = buildHTML(data || readForm());
+    const html = (typeof PdfExport !== 'undefined' && PdfExport.buildCompleteQuoteHTML)
+      ? PdfExport.buildCompleteQuoteHTML(data)
+      : buildHTML(data || readForm());
     const frame = document.getElementById('dv-preview-frame');
     if (!frame) return;
     frame.srcdoc = html;

@@ -62,6 +62,11 @@ const Exporter = (() => {
   }
 
   function exportPDF() {
+    if (typeof PdfExport !== 'undefined' && PdfExport.downloadSizingPdf) {
+      PdfExport.downloadSizingPdf();
+      return;
+    }
+    // Fallback historique (imprime toute la page — peu fiable)
     window.print();
   }
 

@@ -290,7 +290,7 @@ function initTabQuote() {
         <!-- Actions -->
         <div class="card" style="padding:12px 14px">
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <button class="btn btn-accent" onclick="printQuote()">🖨 Imprimer / PDF</button>
+            <button class="btn btn-accent" onclick="printQuote()">📄 Télécharger PDF</button>
             <button class="btn btn-outline" onclick="previewQuote()">👁 Aperçu</button>
             <button class="btn btn-outline btn-sm" onclick="saveInstallerData()">💾 Mémoriser installateur</button>
           </div>

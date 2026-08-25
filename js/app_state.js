@@ -3,8 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.24';
+const APP_VERSION = '2.0.25';
 // Historique :
+//   2.0.25 - PDF devis + rapport : vrai fichier PDF (html2pdf embarqué),
+//            contenu complet (annexe dimensionnement / bilan mensuel)
 //   2.0.24 - Prime d’État saisie manuelle (barème auto / montant / sans prime)
 //   2.0.23 - MAJ Android corrigée (permission apps inconnues, auto-install après
 //            téléchargement, fallback URL API GitHub, statut PackageInstaller

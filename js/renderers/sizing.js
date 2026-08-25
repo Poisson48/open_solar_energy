@@ -214,7 +214,7 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
         <div class="card-title">Analyse détaillée</div>
         <div class="btn-group">
           <button class="btn btn-outline btn-sm" onclick="SizingEngine.exportCSV(AppState.lastSizingResult)">CSV</button>
-          <button class="btn btn-outline btn-sm" onclick="Exporter.exportPDF()">PDF</button>
+          <button class="btn btn-outline btn-sm" onclick="Exporter.exportPDF()">📄 PDF rapport</button>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
