@@ -222,6 +222,10 @@ Item {
         interval: 350
         running: true
         repeat: true
-        onTriggered: webView.pollCmdQueue()
+        onTriggered: {
+            webView.pollCmdQueue()
+            if (root.updater)
+                root.updater.pollNativeInstallStatus()
+        }
     }
 }

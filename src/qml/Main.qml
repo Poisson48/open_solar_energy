@@ -169,12 +169,24 @@ ApplicationWindow {
                          : (Updater.canInstall ? "Mettre à jour" : "Télécharger"))
                     onClicked: {
                         if (Updater.state === 5) {
-                            Updater.check()
+                            // Échec : retenter install (APK déjà là) ou re-télécharger
+                            if (Updater.canInstall)
+                                Updater.install()
+                            else
+                                Updater.check()
                             return
                         }
-                        if (Updater.readyToInstall)
+                        if (Updater.readyToInstall) {
                             Updater.install()
-                        else if (Updater.releaseNotes.length > 0)
+                            return
+                        }
+                        // Android : télécharger tout de suite (pas de dialog notes
+                        // qui masque le bandeau / bloque le flux).
+                        if (Qt.platform.os === "android" && Updater.canInstall) {
+                            Updater.download()
+                            return
+                        }
+                        if (Updater.releaseNotes.length > 0)
                             changelogDialog.openPending()
                         else
                             Updater.download()

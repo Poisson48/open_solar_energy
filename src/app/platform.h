@@ -13,6 +13,8 @@ bool platformPickImportFile();
 /** null si rien ; sinon "ok\\tname\\tbase64" ou "err\\tmessage" */
 QString platformPollImportResult();
 bool platformInstallApk(const QString& apkPath);
+/** Dernier statut d'installation PackageInstaller (vide si rien). */
+QString platformPollInstallStatus();
 void platformVibrate(int ms);
 void platformKeepScreenOn(bool on);
 

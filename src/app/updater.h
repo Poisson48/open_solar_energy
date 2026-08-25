@@ -57,6 +57,8 @@ public slots:
     void install();
     void dismiss();
     void acknowledgeNotes();
+    /** À appeler périodiquement (Timer QML) pour remonter le statut PackageInstaller. */
+    void pollNativeInstallStatus();
 
 signals:
     void stateChanged();
@@ -68,6 +70,7 @@ private:
     void setState(State s);
     void setStatusMessage(const QString& msg);
     void rebuildDerivedNotes();
+    void startApkDownload(const QUrl& url, bool apiAsset);
     static QString formatEntries(const QVariantList& entries);
 
     QNetworkAccessManager m_net;
@@ -78,10 +81,12 @@ private:
     QString m_whatsNewNotes;
     QVariantList m_changelog;
     QString m_apkUrl;
+    QString m_apkApiUrl;   // fallback api.github.com/.../assets/ID
     QString m_releaseUrl;
     QString m_apkPath;
     QString m_statusMessage;
     qreal m_progress = 0.0;
+    bool m_triedApiDownload = false;
 };
 
 } // namespace app

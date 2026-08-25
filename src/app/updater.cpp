@@ -239,10 +239,14 @@ void Updater::check()
                 bestNewer = ver;
                 m_releaseUrl = obj.value(QStringLiteral("html_url")).toString();
                 m_apkUrl.clear();
+                m_apkApiUrl.clear();
                 for (const QJsonValue& a : obj.value(QStringLiteral("assets")).toArray()) {
-                    const QString name = a.toObject().value(QStringLiteral("name")).toString();
+                    const QJsonObject asset = a.toObject();
+                    const QString name = asset.value(QStringLiteral("name")).toString();
                     if (name.endsWith(QStringLiteral(".apk"), Qt::CaseInsensitive)) {
-                        m_apkUrl = a.toObject().value(QStringLiteral("browser_download_url")).toString();
+                        m_apkUrl = asset.value(QStringLiteral("browser_download_url")).toString();
+                        // URL API (Accept: octet-stream) — secours si le CDN échoue
+                        m_apkApiUrl = asset.value(QStringLiteral("url")).toString();
                         break;
                     }
                 }
@@ -256,7 +260,7 @@ void Updater::check()
             return;
         }
 
-        if (canInstall() && m_apkUrl.isEmpty()) {
+        if (canInstall() && m_apkUrl.isEmpty() && m_apkApiUrl.isEmpty()) {
             qWarning() << "[Updater] release" << bestNewer << "sans APK";
             m_statusMessage = QStringLiteral("Version %1 trouvée mais APK introuvable sur GitHub")
                                   .arg(bestNewer);
@@ -270,23 +274,14 @@ void Updater::check()
     });
 }
 
-void Updater::download()
+void Updater::startApkDownload(const QUrl& url, bool apiAsset)
 {
-    if (m_apkUrl.isEmpty()) {
-        install();
-        return;
-    }
-    if (m_state == Downloading)
-        return;
-
     const QString dir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
     QDir().mkpath(dir);
     m_apkPath = dir + QStringLiteral("/opensolarenergy-") + m_latestVersion
               + QStringLiteral(".apk");
     QFile::remove(m_apkPath);
 
-    // Écriture en flux : readAll() d’un APK ~25 Mo provoque souvent un OOM / échec
-    // silencieux sur Android (le bandeau « Échec du téléchargement »).
     auto* file = new QFile(m_apkPath);
     if (!file->open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         delete file;
@@ -295,11 +290,16 @@ void Updater::download()
         return;
     }
 
-    QNetworkRequest req{ QUrl(m_apkUrl) };
+    QNetworkRequest req{ url };
     req.setRawHeader("User-Agent", "OpenSolarEnergy");
-    req.setRawHeader("Accept", "application/octet-stream");
+    if (apiAsset) {
+        // Téléchargement via l’API GitHub (pas le CDN browser)
+        req.setRawHeader("Accept", "application/octet-stream");
+    }
+    // Suivre github.com → release-assets.githubusercontent.com (HTTPS)
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                      QNetworkRequest::NoLessSafeRedirectPolicy);
+    req.setTransferTimeout(120000);
 
     m_progress = 0.0;
     emit progressChanged();
@@ -316,7 +316,7 @@ void Updater::download()
         if (file->isOpen())
             file->write(reply->readAll());
     });
-    connect(reply, &QNetworkReply::finished, this, [this, reply, file]() {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, file, apiAsset]() {
         if (file->isOpen()) {
             file->write(reply->readAll());
             file->close();
@@ -325,29 +325,82 @@ void Updater::download()
         file->deleteLater();
         reply->deleteLater();
 
-        if (reply->error() != QNetworkReply::NoError || size <= 0) {
+        if (reply->error() != QNetworkReply::NoError || size < 10000) {
             QFile::remove(m_apkPath);
             qWarning() << "[Updater] download failed:" << reply->errorString()
-                       << "size=" << size << m_apkUrl;
+                       << "size=" << size << "api=" << apiAsset << reply->url();
+            // Secours : une seule fois via l’URL API GitHub
+            if (!apiAsset && !m_apkApiUrl.isEmpty() && !m_triedApiDownload) {
+                m_triedApiDownload = true;
+                setStatusMessage(QStringLiteral("Nouvel essai de téléchargement…"));
+                startApkDownload(QUrl(m_apkApiUrl), true);
+                return;
+            }
             m_statusMessage = reply->error() != QNetworkReply::NoError
                 ? QStringLiteral("Téléchargement impossible : %1").arg(reply->errorString())
-                : QStringLiteral("APK téléchargé vide ou incomplet");
+                : QStringLiteral("APK téléchargé vide ou incomplet (%1 Mo)")
+                      .arg(QString::number(size / 1e6, 'f', 1));
             setState(Failed);
             return;
         }
 
         qInfo() << "[Updater] APK téléchargé" << m_apkPath << size << "octets";
         setState(Ready);
+#ifdef Q_OS_ANDROID
+        // Enchaîner tout de suite : sinon l’utilisateur croit que ça a planté
+        // après le téléchargement (bandeau « prête » souvent ignoré).
+        install();
+#endif
     });
+}
+
+void Updater::download()
+{
+    if (m_apkUrl.isEmpty() && m_apkApiUrl.isEmpty()) {
+        install();
+        return;
+    }
+    if (m_state == Downloading)
+        return;
+
+    m_triedApiDownload = false;
+    if (!m_apkUrl.isEmpty())
+        startApkDownload(QUrl(m_apkUrl), false);
+    else
+        startApkDownload(QUrl(m_apkApiUrl), true);
 }
 
 void Updater::install()
 {
-    if (canInstall() && m_state == Ready && !m_apkPath.isEmpty()) {
-        if (platformInstallApk(m_apkPath))
+    // Autoriser une nouvelle tentative après Failed (permission « apps inconnues », etc.)
+    // si l’APK est déjà sur disque.
+    const bool apkReady = !m_apkPath.isEmpty() && QFile::exists(m_apkPath);
+    if (canInstall() && apkReady && (m_state == Ready || m_state == Failed)) {
+        if (m_state == Failed)
+            setState(Ready);
+        setStatusMessage(QStringLiteral("Lancement de l'installation…"));
+        if (platformInstallApk(m_apkPath)) {
             return;
-        m_statusMessage = QStringLiteral("Installation impossible — autorisez « sources inconnues »");
+        }
+        const QString st = platformPollInstallStatus();
+        if (st.startsWith(QLatin1String("need_perm\t"))) {
+            m_statusMessage = st.mid(10);
+            setState(Failed);
+            return;
+        }
+        if (st.startsWith(QLatin1String("err\t"))) {
+            m_statusMessage = st.mid(4);
+            setState(Failed);
+            return;
+        }
+        m_statusMessage = QStringLiteral(
+            "Installation impossible — autorisez « Installer des apps inconnues » pour Open Solar, puis réessayez");
         setState(Failed);
+        return;
+    }
+    // Pas d’APK local : (re)télécharger plutôt que d’ouvrir seulement GitHub
+    if (canInstall() && (!m_apkUrl.isEmpty() || !m_apkApiUrl.isEmpty())) {
+        download();
         return;
     }
     if (!m_releaseUrl.isEmpty())
@@ -368,6 +421,30 @@ void Updater::acknowledgeNotes()
     settings.setValue(QLatin1String(kSeenNotesKey), currentVersion());
     m_whatsNewNotes.clear();
     emit changelogChanged();
+}
+
+void Updater::pollNativeInstallStatus()
+{
+    const QString st = platformPollInstallStatus();
+    if (st.isEmpty())
+        return;
+    if (st.startsWith(QLatin1String("ok\t"))) {
+        setStatusMessage(st.mid(3));
+        return;
+    }
+    if (st.startsWith(QLatin1String("pending\t"))) {
+        setStatusMessage(st.mid(8));
+        return;
+    }
+    if (st.startsWith(QLatin1String("need_perm\t"))) {
+        m_statusMessage = st.mid(10);
+        setState(Failed);
+        return;
+    }
+    if (st.startsWith(QLatin1String("err\t"))) {
+        m_statusMessage = st.mid(4);
+        setState(Failed);
+    }
 }
 
 } // namespace app

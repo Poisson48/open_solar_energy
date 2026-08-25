@@ -106,6 +106,15 @@ bool platformInstallApk(const QString& apkPath)
         ctx.object(), jPath.object<jstring>());
 }
 
+QString platformPollInstallStatus()
+{
+    const QJniObject r = QJniObject::callStaticObjectMethod(
+        kPlatformClass, "pollInstallStatus", "()Ljava/lang/String;");
+    if (!r.isValid())
+        return {};
+    return r.toString();
+}
+
 void platformVibrate(int ms)
 {
     const QJniObject ctx = androidContext();
@@ -135,6 +144,7 @@ bool platformShareFile(const QString&, const QString&, const QByteArray&) { retu
 bool platformPickImportFile() { return false; }
 QString platformPollImportResult() { return {}; }
 bool platformInstallApk(const QString&) { return false; }
+QString platformPollInstallStatus() { return {}; }
 void platformVibrate(int) {}
 void platformKeepScreenOn(bool) {}
 

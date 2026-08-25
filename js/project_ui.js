@@ -657,7 +657,12 @@ async function checkForUpdates() {
     }
     const isAndroid = /Android/i.test(navigator.userAgent || '');
     if (isAndroid) {
-      showToast(`v${best.ver} disponible — installez l’APK depuis GitHub Releases`, 'warning');
+      // Dernier recours sans pont natif : ouvrir l’APK dans le navigateur système
+      const target = best.apk || best.url;
+      showToast(`v${best.ver} disponible — ouverture du téléchargement…`, 'warning');
+      if (target) {
+        try { window.open(target, '_blank'); } catch (_) {}
+      }
       return;
     }
     showToast(`Nouvelle version v${best.ver} disponible`, 'warning');

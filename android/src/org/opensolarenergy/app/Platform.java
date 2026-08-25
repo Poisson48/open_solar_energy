@@ -6,6 +6,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInstaller;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
@@ -14,6 +15,8 @@ import android.os.Vibrator;
 import android.os.VibratorManager;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
+import android.provider.Settings;
+import android.util.Log;
 import android.view.WindowManager;
 
 import java.io.ByteArrayOutputStream;
@@ -28,10 +31,14 @@ public class Platform {
     public static final String ACTION_INSTALL_STATUS = "org.opensolarenergy.app.INSTALL_STATUS";
     public static final int REQ_PICK_IMPORT = 0x05E1;
 
+    private static final String TAG = "OSE-Platform";
     private static final Object IMPORT_LOCK = new Object();
     private static String sImportName;
     private static String sImportBase64;
     private static String sImportError;
+
+    private static final Object INSTALL_LOCK = new Object();
+    private static String sInstallStatus;
 
     public static boolean shareText(Context ctx, String text) {
         if (ctx == null)
@@ -227,14 +234,39 @@ public class Platform {
         if (ctx == null || apkPath == null)
             return false;
         File apk = new File(apkPath);
-        if (!apk.isFile() || apk.length() == 0)
+        if (!apk.isFile() || apk.length() == 0) {
+            setInstallStatus("err\tAPK introuvable ou vide");
             return false;
+        }
+
+        // Android 8+ : sans cette autorisation, PackageInstaller échoue sans UI.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            PackageManager pm = ctx.getPackageManager();
+            if (pm != null && !pm.canRequestPackageInstalls()) {
+                try {
+                    Intent settings = new Intent(
+                            Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                            Uri.parse("package:" + ctx.getPackageName()));
+                    settings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    ctx.startActivity(settings);
+                    setInstallStatus("need_perm\tAutorisez « Installer des apps inconnues » pour Open Solar, puis retapez Installer");
+                } catch (Exception e) {
+                    Log.e(TAG, "open unknown-sources settings", e);
+                    setInstallStatus("err\tOuvrez Paramètres → Apps spéciales → Installer des apps inconnues");
+                }
+                return false;
+            }
+        }
 
         PackageInstaller.Session session = null;
         try {
             PackageInstaller installer = ctx.getPackageManager().getPackageInstaller();
             PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(
                     PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                params.setRequireUserAction(
+                        PackageInstaller.SessionParams.USER_ACTION_REQUIRED);
+            }
             int sessionId = installer.createSession(params);
             session = installer.openSession(sessionId);
 
@@ -255,33 +287,80 @@ public class Platform {
             android.app.PendingIntent pending = android.app.PendingIntent.getBroadcast(
                     ctx, sessionId, status, flags);
             session.commit(pending.getIntentSender());
+            setInstallStatus("pending\tConfirmation Android…");
             return true;
         } catch (Exception e) {
-            if (session != null)
-                session.abandon();
+            Log.e(TAG, "installApk", e);
+            if (session != null) {
+                try { session.abandon(); } catch (Exception ignored) {}
+            }
+            String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            setInstallStatus("err\t" + msg);
             return false;
         } finally {
-            if (session != null)
-                session.close();
+            if (session != null) {
+                try { session.close(); } catch (Exception ignored) {}
+            }
+        }
+    }
+
+    private static void setInstallStatus(String s) {
+        synchronized (INSTALL_LOCK) {
+            sInstallStatus = s;
+        }
+    }
+
+    /** @return null si rien ; "pending\\t…" / "ok\\t…" / "err\\t…" / "need_perm\\t…" */
+    public static String pollInstallStatus() {
+        synchronized (INSTALL_LOCK) {
+            if (sInstallStatus == null)
+                return null;
+            String s = sInstallStatus;
+            sInstallStatus = null;
+            return s;
         }
     }
 
     public static class InstallReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context ctx, Intent intent) {
+            if (intent == null)
+                return;
             int status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS,
                                             PackageInstaller.STATUS_FAILURE);
-            if (status != PackageInstaller.STATUS_PENDING_USER_ACTION)
+            String msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
+            Log.i(TAG, "InstallReceiver status=" + status + " msg=" + msg);
+
+            if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
+                Intent confirm;
+                if (Build.VERSION.SDK_INT >= 33)
+                    confirm = intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent.class);
+                else
+                    confirm = intent.getParcelableExtra(Intent.EXTRA_INTENT);
+                if (confirm == null) {
+                    setInstallStatus("err\tÉcran de confirmation Android manquant");
+                    return;
+                }
+                confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                try {
+                    ctx.startActivity(confirm);
+                    setInstallStatus("pending\tConfirmez l'installation sur l'écran Android");
+                } catch (Exception e) {
+                    Log.e(TAG, "start confirm", e);
+                    setInstallStatus("err\tImpossible d'ouvrir la confirmation Android");
+                }
                 return;
-            Intent confirm;
-            if (Build.VERSION.SDK_INT >= 33)
-                confirm = intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent.class);
-            else
-                confirm = intent.getParcelableExtra(Intent.EXTRA_INTENT);
-            if (confirm == null)
+            }
+            if (status == PackageInstaller.STATUS_SUCCESS) {
+                setInstallStatus("ok\tInstallation réussie — redémarrez l'app si besoin");
                 return;
-            confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            ctx.startActivity(confirm);
+            }
+            if (status == PackageInstaller.STATUS_FAILURE_ABORTED) {
+                setInstallStatus("err\tInstallation annulée");
+                return;
+            }
+            String detail = (msg != null && !msg.isEmpty()) ? msg : ("code " + status);
+            setInstallStatus("err\tÉchec installation : " + detail);
         }
     }
 

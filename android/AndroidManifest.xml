@@ -48,7 +48,8 @@
 
         <receiver
             android:name="org.opensolarenergy.app.Platform$InstallReceiver"
-            android:exported="false">
+            android:exported="true"
+            android:enabled="true">
             <intent-filter>
                 <action android:name="org.opensolarenergy.app.INSTALL_STATUS"/>
             </intent-filter>
