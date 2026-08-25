@@ -1,7 +1,7 @@
 set(OSE_WARN_FLAGS -Wall -Wextra -Wpedantic -Wno-unused-parameter)
 
-set(OSE_VERSION_NAME "2.0.6" CACHE STRING "Version affichée")
-set(OSE_VERSION_CODE "206" CACHE STRING "versionCode Android")
+set(OSE_VERSION_NAME "2.0.7" CACHE STRING "Version affichée")
+set(OSE_VERSION_CODE "207" CACHE STRING "versionCode Android")
 
 add_library(applib STATIC
     app/theme.cpp
@@ -60,7 +60,7 @@ set(OSE_QML_FILES
     qml/WebContainerMobile.qml
     qml/OseDialog.qml
     qml/ChangelogDialog.qml
-    qml/ColoTextField.qml
+    qml/OseTextField.qml
 )
 if(TARGET Qt6::WebEngineQuick)
     list(APPEND OSE_QML_FILES qml/WebContainerDesktop.qml)

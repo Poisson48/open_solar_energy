@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Clé de publication Android — une fois pour toutes (comme Colo Course).
+# Clé de publication Android — une fois pour toutes (signature stable).
 set -euo pipefail
 
 OUT="${OUT:-$HOME/opensolarenergy-release.jks}"

@@ -270,6 +270,7 @@ function seedDemoProject() {
     'sz-cost-kwp': '1800',
     'sz-cost-total': '',
     'sz-feedin': '0.13',
+    'sz-elec-escalation': '3',
     'inp-surface': surface,
     'inp-panel-model': panelModel,
     'inp-panel-wp': panelWp,

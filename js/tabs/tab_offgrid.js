@@ -92,9 +92,9 @@ function initTabOffgrid() {
           </summary>
           <div style="margin-top:10px">
             <div class="form-group" style="margin-bottom:6px">
-              <label style="display:flex;align-items:center;justify-content:space-between">
+              <label style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
                 <span for="og2-panel-model">Modèle de panneau</span>
-                <span style="display:inline-flex;gap:4px">
+                <span style="display:inline-flex;gap:4px;flex-wrap:wrap">
                   <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.saveFromForm('og2')" style="padding:2px 8px;font-size:10px" title="Enregistrer dans la bibliothèque">💾 Enregistrer</button>
                   <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.openLibraryModal('og2')" style="padding:2px 8px;font-size:10px" title="Choisir dans la bibliothèque">📋 Bibliothèque</button>
                 </span>

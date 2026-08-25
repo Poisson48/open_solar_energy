@@ -38,9 +38,9 @@ function initTabGrid() {
           </div>
 
           <div class="form-group" style="margin-bottom:6px">
-            <label style="display:flex;align-items:center;justify-content:space-between">
+            <label style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
               <span for="inp-panel-model">Modèle de panneau</span>
-              <span style="display:inline-flex;gap:4px">
+              <span style="display:inline-flex;gap:4px;flex-wrap:wrap">
                 <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.saveFromForm('inp')" style="padding:2px 8px;font-size:10px" title="Enregistrer dans la bibliothèque">💾 Enregistrer</button>
                 <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.openLibraryModal('inp')" style="padding:2px 8px;font-size:10px" title="Choisir dans la bibliothèque">📋 Bibliothèque</button>
               </span>
@@ -148,9 +148,12 @@ function initTabGrid() {
             </div>
           </div>
 
-          <button class="btn btn-accent" id="btn-calc-grid" style="width:100%">
+          <button class="btn btn-accent" id="btn-calc-grid" style="width:100%;margin-bottom:8px">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4 8h-2v2h-2v-2H9v-2h2V7h2v2h2v2z"/></svg>
             Calculer
+          </button>
+          <button type="button" class="btn btn-outline" style="width:100%" onclick="applyGridToSizing()">
+            → Appliquer au Dimensionnement
           </button>
         </div>
       </div>

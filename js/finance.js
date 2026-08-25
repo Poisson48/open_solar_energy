@@ -54,15 +54,18 @@ const FinanceCalc = (() => {
   /**
    * Payback actualisé (DCF, années) — flux nets actualisés au DISCOUNT_RATE.
    * Inclut dégradation panneaux, hausse prix électricité, O&M, remplacement onduleur.
+   * @param {number} [elecEscalation] fraction/an (défaut ELEC_ESCALATION = 3 %)
    */
-  function calcPayback(systemCost, firstYearGain) {
+  function calcPayback(systemCost, firstYearGain, elecEscalation) {
     if (firstYearGain <= 0 || systemCost <= 0) return null;
+    const esc = (elecEscalation != null && !isNaN(elecEscalation))
+      ? elecEscalation : ELEC_ESCALATION;
     const omCost      = systemCost * 0.005;
     const inverterRpl = systemCost * 0.12;
     let cum = 0;
     for (let y = 1; y <= 40; y++) {
       const gain = firstYearGain
-                 * Math.pow(1 + ELEC_ESCALATION,   y - 1)
+                 * Math.pow(1 + esc,               y - 1)
                  * Math.pow(1 - PANEL_DEGRADATION, y - 1);
       const netGain = gain - omCost - (y === 15 ? inverterRpl : 0);
       cum += netGain / Math.pow(1 + DISCOUNT_RATE, y);
@@ -75,16 +78,19 @@ const FinanceCalc = (() => {
    * Valeur Actuelle Nette (€) sur SYSTEM_LIFETIME ans.
    * VAN > 0 → investissement rentable au taux d'actualisation DISCOUNT_RATE.
    * Inclut O&M (0,5 %/an) et remplacement onduleur (12 % à 15 ans) - cohérent avec LCOE.
+   * @param {number} [elecEscalation] fraction/an (défaut ELEC_ESCALATION = 3 %)
    */
-  function calcNPV(systemCost, firstYearGain) {
+  function calcNPV(systemCost, firstYearGain, elecEscalation) {
     if (systemCost <= 0) return 0;
     if (firstYearGain <= 0) return -systemCost;
+    const esc = (elecEscalation != null && !isNaN(elecEscalation))
+      ? elecEscalation : ELEC_ESCALATION;
     const omCost      = systemCost * 0.005;
     const inverterRpl = systemCost * 0.12;
     let npv = -systemCost;
     for (let y = 1; y <= SYSTEM_LIFETIME; y++) {
       const gain = firstYearGain
-                 * Math.pow(1 + ELEC_ESCALATION,   y - 1)
+                 * Math.pow(1 + esc,               y - 1)
                  * Math.pow(1 - PANEL_DEGRADATION, y - 1);
       const netGain = gain - omCost - (y === 15 ? inverterRpl : 0);
       npv += netGain / Math.pow(1 + DISCOUNT_RATE, y);

@@ -63,6 +63,12 @@ const AppAPI = (() => {
     if (params.strategy          !== undefined) setField('sz-strategy',        params.strategy);
     if (params.targetCoverage    !== undefined) setField('sz-target-coverage', params.targetCoverage);
     if (params.feedin            !== undefined) setField('sz-feedin',          params.feedin);
+    if (params.elecEscalation    !== undefined) {
+      // Accepte fraction (0.03) ou pourcentage (3)
+      const v = Number(params.elecEscalation);
+      const pct = (!isNaN(v) && v > 0 && v <= 1) ? v * 100 : v;
+      setField('sz-elec-escalation', pct);
+    }
     if (params.surface           !== undefined) setField('sz-surface',         params.surface);
     if (params.tech              !== undefined) {
       setField('sz-tech', params.tech);
@@ -517,6 +523,7 @@ AppAPI.setSizing({
   strategy,                    // 'autoconso_max' | 'roi_optimal' | 'bill_coverage_pct'
   targetCoverage,              // % couverture cible
   feedin,                      // tarif rachat surplus €/kWh
+  elecEscalation,              // hausse élec %/an (ex: 3) ou fraction (0.03)
   surface, tech,
   includeIncentive,            // true|false - prime autoconso France (ne change pas si omis)
 })

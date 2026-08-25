@@ -25,7 +25,7 @@ function showToast(msg, type = 'ok') {
 function updateProjectBar() {
   const clientEl = document.getElementById('project-bar-client');
   const c = AppState.currentClient;
-  if (clientEl) clientEl.textContent = c.nom ? `· ${c.nom}` : '';
+  if (clientEl) clientEl.textContent = c.nom ? `Projet · ${c.nom}` : '';
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -450,7 +450,7 @@ function newProjectBlank() {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  MISES À JOUR (GitHub Releases — comme Colo Course)
+//  MISES À JOUR (GitHub Releases — APK in-app via shell Qt)
 // ══════════════════════════════════════════════════════════════
 function _versionParts(v) {
   const s = String(v || '').replace(/^[vV]/, '');
@@ -466,13 +466,22 @@ function _isNewerVersion(candidate, current) {
   }
   return false;
 }
+function _apkAssetUrl(release) {
+  const assets = release?.assets || [];
+  for (const a of assets) {
+    const name = String(a.name || '');
+    if (/\.apk$/i.test(name) && a.browser_download_url)
+      return a.browser_download_url;
+  }
+  return null;
+}
 
 async function checkForUpdates() {
   const btn = document.getElementById('btn-check-updates');
   const label = typeof emStr === 'function' ? emStr('↻ Mises à jour') : '↻ Mises à jour';
   if (btn) { btn.disabled = true; btn.innerHTML = '…'; }
   try {
-    // Pont Qt natif (AppImage / APK) si exposé
+    // Shell Qt (AppImage WebChannel / APK ose://) → bannière + téléchargement APK
     const bridge = typeof getNativeBridge === 'function' ? getNativeBridge() : (window.webBridge || null);
     if (bridge?.checkForUpdates) {
       bridge.checkForUpdates();
@@ -493,7 +502,7 @@ async function checkForUpdates() {
       const ver = String(r.tag_name || '').replace(/^[vV]/, '');
       if (!ver) continue;
       if (_isNewerVersion(ver, current) && (!best || _isNewerVersion(ver, best.ver)))
-        best = { ver, url: r.html_url, name: r.name };
+        best = { ver, url: r.html_url, apk: _apkAssetUrl(r), name: r.name };
     }
     if (!best) {
       showToast(`✓ Vous avez la dernière version (v${current})`);
@@ -502,9 +511,13 @@ async function checkForUpdates() {
     showToast(`Nouvelle version v${best.ver} disponible`, 'warning');
     const open = (bridge?.openExternal)
       ? ((u) => bridge.openExternal(u))
-      : ((u) => window.open(u, '_blank', 'noopener'));
-    if (confirm(`Open Solar Energy v${best.ver} est disponible.\nVous avez la v${current}.\n\nOuvrir la page de téléchargement ?`))
-      open(best.url);
+      : ((u) => { window.location.href = u; });
+    const target = best.apk || best.url;
+    const prompt = best.apk
+      ? `Open Solar Energy v${best.ver} est disponible.\nVous avez la v${current}.\n\nTélécharger l'APK ?`
+      : `Open Solar Energy v${best.ver} est disponible.\nVous avez la v${current}.\n\nOuvrir la page de téléchargement ?`;
+    if (confirm(prompt))
+      open(target);
   } catch (e) {
     showToast('Impossible de vérifier les mises à jour : ' + (e.message || e), 'error');
   } finally {

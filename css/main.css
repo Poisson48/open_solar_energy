@@ -29,12 +29,18 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+html {
+  max-width: 100%;
+  overflow-x: clip;
+}
 body {
   font-family: var(--font-main);
   background: var(--color-bg);
   color: var(--color-text);
   font-size: 14px;
   line-height: 1.5;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 /* Emojis Android (Noto) figés — même rendu PC / mobile */
@@ -223,32 +229,59 @@ header .badge {
 #project-bar {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   padding: 5px 16px;
   background: var(--color-primary-light, #1a4a7a);
   border-bottom: 1px solid rgba(255,255,255,0.12);
   position: sticky;
   top: 54px;
   z-index: 99;
+  min-width: 0;
+  max-width: 100%;
 }
-
-.project-bar-sep {
-  width: 1px;
-  height: 20px;
-  background: rgba(255,255,255,0.2);
+.project-bar-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.project-bar-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   flex-shrink: 0;
-  margin: 0 2px;
 }
-#project-bar-label {
+#project-bar-client {
   font-size: 12px;
-  color: rgba(255,255,255,0.9);
+  color: rgba(255,255,255,0.7);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+#btn-edit-project {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 3px 8px;
+  color: rgba(255,255,255,0.85);
+  line-height: 1.35;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.project-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   flex-shrink: 0;
 }
 #project-bar #project-name-input {
   flex: 1;
   max-width: 280px;
-  min-width: 100px;
+  min-width: 0;
   padding: 4px 10px;
   border: 1px solid rgba(255,255,255,0.3);
   border-radius: 6px;
@@ -269,6 +302,21 @@ header .badge {
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
+}
+#btn-export-project, #btn-git-history {
+  border-color: rgba(255,255,255,0.3);
+  color: rgba(255,255,255,0.85);
+}
+#install-type-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1.5px solid;
+  cursor: pointer;
+  transition: all .2s;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 #btn-save-project:hover, #btn-open-projects:hover { background: rgba(255,255,255,0.22); }
 #btn-save-project.saved { background: var(--color-success); border-color: var(--color-success); }
@@ -298,6 +346,8 @@ header .badge {
   display: grid;
   grid-template-columns: 320px 1fr;
   height: calc(100vh - 54px - 34px); /* header 54px + project-bar ~34px */
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* ── PANNEAU GAUCHE (localisation) ── */
@@ -334,10 +384,12 @@ header .badge {
   gap: 8px;
   align-items: flex-end;
   margin-bottom: 8px;
+  min-width: 0;
 }
 
 .form-group {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -398,9 +450,13 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   align-items: center;
   gap: 0;
+  min-width: 0;
+  width: 100%;
 }
 
 .input-unit input {
+  flex: 1;
+  min-width: 0;
   border-radius: var(--radius) 0 0 var(--radius);
   border-right: none;
 }
@@ -416,6 +472,7 @@ input:focus, select:focus, textarea:focus {
   line-height: 1;
   display: flex;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .checkbox-row {
@@ -494,6 +551,8 @@ input:focus, select:focus, textarea:focus {
   flex-direction: column;
   overflow: hidden;
   background: var(--color-bg);
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* ── TABS ── */
@@ -551,7 +610,10 @@ input:focus, select:focus, textarea:focus {
 .tabs-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 20px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .tab-pane { display: none; }
@@ -565,6 +627,8 @@ input:focus, select:focus, textarea:focus {
   padding: 18px;
   margin-bottom: 16px;
   box-shadow: var(--shadow-sm);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .card-title {
@@ -631,11 +695,15 @@ input:focus, select:focus, textarea:focus {
   position: relative;
   height: 260px;
   margin-bottom: 6px;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .chart-container-sm {
   position: relative;
   height: 200px;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 /* ── TABLE ── */
@@ -977,24 +1045,51 @@ details.card > summary:focus-visible {
   header .logo .logo-img { width: 28px; height: 28px; }
 
   #project-bar {
-    flex-wrap: wrap;
-    gap: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
     padding: 8px 10px;
     top: 48px;
   }
-  #project-bar #project-name-input {
-    max-width: 100%;
-    width: 100%;
-    order: -1;
-    font-size: 12px;
-    text-overflow: ellipsis;
+  .project-bar-meta {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
   }
-  .project-bar-sep { display: none; }
+  .project-bar-meta-row {
+    justify-content: space-between;
+    min-width: 0;
+  }
+  #project-bar-client {
+    max-width: none;
+    flex: 1;
+    min-width: 0;
+  }
+  #project-bar #project-name-input {
+    max-width: none;
+    width: 100%;
+    font-size: 13px;
+  }
+  .project-bar-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    width: 100%;
+  }
   #btn-git-history { display: none; }
   #project-bar .btn,
   #project-bar button {
     font-size: 12px;
-    padding: 6px 8px;
+    padding: 8px 6px;
+    min-width: 0;
+    width: 100%;
+    justify-content: center;
+  }
+  #install-type-badge {
+    grid-column: 1 / -1;
+    padding: 8px 10px;
+    border-radius: 8px;
   }
 
   .tabs-bar {
@@ -1011,14 +1106,52 @@ details.card > summary:focus-visible {
     flex: 0 0 auto;
   }
   .tab-btn .tab-number { display: none; }
-  .tabs-content { padding: 12px; }
-  .params-grid { grid-template-columns: 1fr 1fr; }
-  .kpi-grid { grid-template-columns: 1fr 1fr; }
+  .tabs-content { padding: 10px; }
+  .card { padding: 12px; }
+  .card-title { font-size: 13px; gap: 6px; }
+
+  .form-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .params-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .kpi-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .kpi-value { font-size: 18px; }
+  .unit-tag { font-size: 10px; padding: 6px 5px; }
+  label { overflow-wrap: break-word; }
+  .data-table { font-size: 11px; }
+  .data-table th, .data-table td { padding: 5px 6px; }
+
+  .chart-container { height: 220px; }
+  .coord-display { grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
+
+  /* Grilles inline 3 cols → 2 cols */
+  .tab-pane [style*="grid-template-columns:1fr 1fr 1fr"],
+  .tab-pane [style*="grid-template-columns: 1fr 1fr 1fr"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
 
   #startup-step-type > div[style*="grid-template-columns"] {
     grid-template-columns: 1fr !important;
   }
   #startup-step-new [style*="grid-template-columns:1fr 1fr"] {
     grid-template-columns: 1fr !important;
+  }
+
+  #ose-toast {
+    left: 12px;
+    right: 12px;
+    bottom: 16px;
+  }
+}
+
+/* Très petits écrans : une seule colonne pour les champs */
+@media (max-width: 380px) {
+  .params-grid,
+  .kpi-grid {
+    grid-template-columns: 1fr;
   }
 }

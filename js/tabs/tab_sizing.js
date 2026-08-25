@@ -42,7 +42,7 @@ function initTabSizing() {
                 <div class="input-unit"><input type="number" id="sz-price-hc" value="0.1860" step="0.001"><span class="unit-tag">€</span></div>
               </div>
             </div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap">
               <div style="font-size:12px;font-weight:700;color:var(--color-primary)">Consommation mensuelle (kWh)</div>
               <button type="button" class="btn btn-outline btn-sm" onclick="event.stopPropagation();openEnedisModal()">
                 📂 Importer depuis Enedis
@@ -76,9 +76,9 @@ function initTabSizing() {
           </summary>
           <div style="margin-top:10px">
             <div class="form-group" style="margin-bottom:6px">
-              <label style="display:flex;align-items:center;justify-content:space-between">
+              <label style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
                 <span for="sz-panel-model">Modèle de panneau</span>
-                <span style="display:inline-flex;gap:4px">
+                <span style="display:inline-flex;gap:4px;flex-wrap:wrap">
                   <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.saveFromForm('sz')" style="padding:2px 8px;font-size:10px" title="Enregistrer dans la bibliothèque">💾 Enregistrer</button>
                   <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.openLibraryModal('sz')" style="padding:2px 8px;font-size:10px" title="Choisir dans la bibliothèque">📋 Bibliothèque</button>
                 </span>
@@ -157,9 +157,15 @@ function initTabSizing() {
                 <div class="input-unit"><input type="number" id="sz-feedin" value="0.13" step="0.01"><span class="unit-tag">€/kWh</span></div>
               </div>
             </div>
-            <div class="form-group">
-              <label for="sz-cost-total">Coût réel total <span style="font-weight:400;font-size:10px;color:var(--color-text-muted)">(optionnel)</span></label>
-              <div class="input-unit"><input type="number" id="sz-cost-total" value="" step="100" min="0" placeholder="ex : 8500"><span class="unit-tag">€ TTC</span></div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="sz-elec-escalation">Hausse prix électricité</label>
+                <div class="input-unit"><input type="number" id="sz-elec-escalation" value="3" min="0" max="20" step="0.5"><span class="unit-tag">%/an</span></div>
+              </div>
+              <div class="form-group">
+                <label for="sz-cost-total">Coût réel total <span style="font-weight:400;font-size:10px;color:var(--color-text-muted)">(optionnel)</span></label>
+                <div class="input-unit"><input type="number" id="sz-cost-total" value="" step="100" min="0" placeholder="ex : 8500"><span class="unit-tag">€ TTC</span></div>
+              </div>
             </div>
           </div>
         </details>

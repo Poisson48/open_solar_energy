@@ -88,7 +88,7 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
         </div>
         <div class="kpi-card">
           <div class="kpi-value accent">${rec.paybackYears ? rec.paybackYears + ' ans' : '> 40 ans'}</div>
-          <div class="kpi-label">Retour invest. actualisé<br><span class="kpi-unit">avec +3 %/an électricité</span></div>
+          <div class="kpi-label">Retour invest. actualisé<br><span class="kpi-unit">avec +${((rec.elecEscalation ?? ELEC_ESCALATION) * 100).toFixed(1).replace(/\.0$/, '')} %/an électricité</span></div>
         </div>
         <div class="kpi-card">
           ${rec.incentive > 0
@@ -112,9 +112,12 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
           <div class="kpi-label">LCOE nominal<br><span class="kpi-unit">€/kWh produit (25 ans)</span></div>
         </div>` : ''}
       </div>
-      <div style="font-size:11px;color:var(--color-text-muted);margin-top:-8px;margin-bottom:4px">
-        Hypothèses financières : dégradation panneau ${(PANEL_DEGRADATION * 100).toFixed(1)} %/an · hausse électricité ${(ELEC_ESCALATION * 100).toFixed(0)} %/an · taux actualisation ${(DISCOUNT_RATE * 100).toFixed(0)} %
+      <div style="font-size:11px;color:var(--color-text-muted);margin-top:-8px;margin-bottom:8px">
+        Hypothèses financières : dégradation panneau ${(PANEL_DEGRADATION * 100).toFixed(1)} %/an · hausse électricité ${((rec.elecEscalation ?? ELEC_ESCALATION) * 100).toFixed(1).replace(/\.0$/, '')} %/an · taux actualisation ${(DISCOUNT_RATE * 100).toFixed(0)} %
       </div>
+      <button type="button" class="btn btn-primary" style="width:100%" onclick="applySizingToGrid()">
+        → Appliquer au Système PV réseau (${rec.nPanels} panneaux · ${rec.Ppeak} kWc)
+      </button>
     </div>
 
     <div class="card">
@@ -155,4 +158,59 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
     Charts.renderSizingRoiCurve(c3, allCandidates, rec.Ppeak);
     Charts.renderSizingDonut(c4, rec);
   }, 50);
+}
+
+/** Reco Dimensionnement → onglet Système PV réseau (mode Fixe + calcul). */
+function applySizingToGrid() {
+  const rec = AppState.lastSizingResult;
+  if (!rec || !rec.nPanels) {
+    showToast('Lancez d\'abord un dimensionnement.', 'warning');
+    return;
+  }
+
+  const copy = (fromId, toId) => {
+    const from = document.getElementById(fromId);
+    const to   = document.getElementById(toId);
+    if (from && to && from.value !== '') to.value = from.value;
+  };
+
+  copy('sz-tilt', 'inp-tilt');
+  copy('sz-azimuth', 'inp-azimuth');
+  copy('sz-surface', 'inp-surface');
+  copy('sz-panel-wp', 'inp-panel-wp');
+  copy('sz-panel-m2', 'inp-panel-m2');
+  copy('sz-losses', 'inp-losses');
+  copy('sz-panel-model', 'inp-panel-model');
+  copy('sz-tech', 'sel-tech');
+  copy('sz-feedin', 'inp-kwh-price');
+
+  if (rec.systemCost > 0) {
+    const costEl = document.getElementById('inp-cost');
+    if (costEl) costEl.value = rec.systemCost;
+  }
+
+  // Surface au moins égale à l'emprise des panneaux recommandés
+  const panelM2 = parseFloat(document.getElementById('inp-panel-m2')?.value) || 1.96;
+  const surfEl  = document.getElementById('inp-surface');
+  const needM2  = Math.round(rec.nPanels * panelM2 * 10) / 10;
+  if (surfEl) {
+    const cur = parseFloat(surfEl.value) || 0;
+    if (cur < needM2) surfEl.value = needM2;
+  }
+
+  if (typeof readInstallFromTab === 'function') readInstallFromTab('sizing');
+  if (typeof writeInstallToTab === 'function') writeInstallToTab('grid');
+
+  if (typeof setPanelMode === 'function') setPanelMode('grid', 'fixe');
+  const nEl = document.getElementById('grid-npanels-fixe');
+  if (nEl) nEl.value = rec.nPanels;
+  if (typeof calcGridPanels === 'function') calcGridPanels();
+
+  if (typeof activateTab === 'function') activateTab('grid');
+
+  if (AppState.weatherData && typeof calcGridSystem === 'function') {
+    calcGridSystem();
+  }
+
+  showToast(`✓ Appliqué au système réseau : ${rec.nPanels} panneaux (${rec.Ppeak} kWc)`);
 }

@@ -104,6 +104,66 @@ function calcGridPanels() {
   calcPanelsForMode('grid');
 }
 
+/** Système PV réseau → onglet Dimensionnement (toiture / panneaux). */
+function applyGridToSizing() {
+  if (typeof calcGridPanels === 'function') calcGridPanels();
+
+  const copy = (fromId, toId) => {
+    const from = document.getElementById(fromId);
+    const to   = document.getElementById(toId);
+    if (from && to && from.value !== '') to.value = from.value;
+  };
+
+  copy('inp-tilt', 'sz-tilt');
+  copy('inp-azimuth', 'sz-azimuth');
+  copy('inp-panel-wp', 'sz-panel-wp');
+  copy('inp-panel-m2', 'sz-panel-m2');
+  copy('inp-losses', 'sz-losses');
+  copy('inp-panel-model', 'sz-panel-model');
+  copy('sel-tech', 'sz-tech');
+  copy('inp-kwh-price', 'sz-feedin');
+
+  const panelWp = parseFloat(document.getElementById('inp-panel-wp')?.value) || 400;
+  const panelM2 = parseFloat(document.getElementById('inp-panel-m2')?.value) || 1.96;
+  const mode    = (typeof _panelMode !== 'undefined' && _panelMode.grid) || document.getElementById('grid-panel-mode')?.value || 'surface';
+
+  let nPanels = 0;
+  if (mode === 'fixe') {
+    nPanels = parseInt(document.getElementById('grid-npanels-fixe')?.value, 10) || 0;
+  } else {
+    const label = document.getElementById('grid-npanels')?.textContent || '';
+    const m = label.match(/(\d+)/);
+    nPanels = m ? parseInt(m[1], 10) : 0;
+  }
+
+  const surfEl = document.getElementById('sz-surface');
+  const inpSurf = parseFloat(document.getElementById('inp-surface')?.value) || 0;
+  if (surfEl) {
+    if (mode === 'fixe' && nPanels > 0) {
+      // Emprise des panneaux choisis → surface max côté dimensionnement
+      surfEl.value = Math.round(nPanels * panelM2 * 10) / 10;
+    } else if (inpSurf > 0) {
+      surfEl.value = inpSurf;
+    }
+  }
+
+  const cost = parseFloat(document.getElementById('inp-cost')?.value) || 0;
+  if (cost > 0) {
+    const totalEl = document.getElementById('sz-cost-total');
+    if (totalEl) totalEl.value = cost;
+  }
+
+  if (typeof readInstallFromTab === 'function') readInstallFromTab('grid');
+  if (typeof writeInstallToTab === 'function') writeInstallToTab('sizing');
+
+  if (typeof activateTab === 'function') activateTab('sizing');
+
+  const detail = nPanels > 0
+    ? `${nPanels} panneaux · ${(nPanels * panelWp / 1000).toFixed(2)} kWc`
+    : 'paramètres toiture';
+  showToast(`✓ Appliqué au Dimensionnement (${detail}) — recliquez Dimensionner`);
+}
+
 function calcGridSystem() {
   if (!AppState.weatherData) {
     showToast('Sélectionnez un lieu avec des données météo.', 'error');

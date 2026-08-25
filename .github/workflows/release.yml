@@ -50,7 +50,7 @@ jobs:
           git fetch --force --tags origin "refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
           NOTES="$(git tag -l --format='%(contents)' "$GITHUB_REF_NAME")"
           if [ -z "$(printf '%s' "$NOTES" | tr -d '[:space:]')" ]; then
-            NOTES="Port Qt natif, mises à jour auto comme Colo Course."
+            NOTES="Port Qt natif, mises à jour automatiques via GitHub Releases."
           fi
           {
             echo "NOTES<<OSE_EOF"
@@ -80,7 +80,7 @@ jobs:
           **PC / Linux (x86-64)** — `chmod +x OpenSolarEnergy-*.AppImage && ./OpenSolarEnergy-*.AppImage`
 
           **Android (arm64)** — installer l'APK ; l'app propose les mises à jour automatiquement
-          (comme Colo Course), signature stable pour installer par-dessus sans désinstaller.
+          (téléchargement + installation in-app), signature stable pour installer par-dessus.
 
           L'AppImage Qt est le binaire desktop recommandé à partir de v2.0.0.
           EOF

@@ -28,21 +28,21 @@
 
 <!-- ═══ BARRE PROJET ═════════════════════════════════════════ -->
 <div id="project-bar">
-  <span id="project-bar-label">Projet</span>
-  <input type="text" id="project-name-input" placeholder="Nom du projet…" aria-label="Nom du projet">
-  <span id="project-bar-client" style="font-size:12px;color:rgba(255,255,255,0.7);padding:0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px"></span>
-  <button onclick="openEditProjectModal()" title="Modifier le nom et les informations client" aria-label="Modifier le projet" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:var(--radius);cursor:pointer;font-size:12px;padding:3px 8px;color:rgba(255,255,255,0.85);line-height:1;white-space:nowrap;flex-shrink:0">✏️ Éditer</button>
+  <div class="project-bar-meta">
+    <input type="text" id="project-name-input" placeholder="Nom du projet…" aria-label="Nom du projet">
+    <div class="project-bar-meta-row">
+      <span id="project-bar-client"></span>
+      <button type="button" id="btn-edit-project" onclick="openEditProjectModal()" title="Modifier le nom et les informations client" aria-label="Modifier le projet">✏️ Éditer</button>
+    </div>
+  </div>
 
-  <div class="project-bar-sep"></div>
-
-  <button id="btn-save-project" onclick="saveCurrentProject()" title="Sauvegarder (Ctrl+S)">💾 Sauvegarder</button>
-  <button class="btn btn-outline btn-sm" onclick="exportCurrentProject()" title="Télécharger le projet en fichier .zip" style="border-color:rgba(255,255,255,0.3);color:rgba(255,255,255,0.85)">📤 Exporter</button>
-  <button class="btn btn-outline btn-sm" id="btn-git-history" onclick="openGitHistoryModal()" title="Historique des versions" style="border-color:rgba(255,255,255,0.3);color:rgba(255,255,255,0.85)">🕐 Historique</button>
-
-  <div class="project-bar-sep"></div>
-
-  <button id="btn-open-projects" onclick="openProjectsModal()" title="Gérer mes projets">📁 Projets</button>
-  <button id="install-type-badge" onclick="toggleInstallationType()" title="Basculer entre installation réseau et hors-réseau" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1.5px solid;cursor:pointer;transition:all .2s;flex-shrink:0"></button>
+  <div class="project-bar-actions">
+    <button type="button" id="btn-save-project" onclick="saveCurrentProject()" title="Sauvegarder (Ctrl+S)">💾 Sauvegarder</button>
+    <button type="button" class="btn btn-outline btn-sm" id="btn-export-project" onclick="exportCurrentProject()" title="Télécharger le projet en fichier .zip">📤 Exporter</button>
+    <button type="button" class="btn btn-outline btn-sm" id="btn-git-history" onclick="openGitHistoryModal()" title="Historique des versions">🕐 Historique</button>
+    <button type="button" id="btn-open-projects" onclick="openProjectsModal()" title="Gérer mes projets">📁 Projets</button>
+    <button type="button" id="install-type-badge" onclick="toggleInstallationType()" title="Basculer entre installation réseau et hors-réseau"></button>
+  </div>
 </div>
 
 <!-- ═══ HUB PROJETS (écran d’accueil plein écran — visible dès le HTML) ════════════ -->

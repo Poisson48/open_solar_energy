@@ -168,8 +168,9 @@ const SizingEngine = (() => {
       const newAnnualBill  = Math.max(0, currentBill - savedOnBill);
 
       // Métriques financières avancées (sur coût net après prime)
-      const paybackYears   = FinanceCalc.calcPayback(systemCost, totalAnnualGain);
-      const npv25          = Math.round(FinanceCalc.calcNPV(systemCost, totalAnnualGain));
+      const elecEsc = sizing.elecEscalation ?? ELEC_ESCALATION;
+      const paybackYears   = FinanceCalc.calcPayback(systemCost, totalAnnualGain, elecEsc);
+      const npv25          = Math.round(FinanceCalc.calcNPV(systemCost, totalAnnualGain, elecEsc));
       const lcoe           = Math.round(FinanceCalc.calcLCOE(systemCostBrut, annualProd) * 10000) / 10000;
 
       allCandidates.push({
@@ -194,6 +195,7 @@ const SizingEngine = (() => {
         paybackYears,
         npv25,
         lcoe,
+        elecEscalation: elecEsc,
         co2Saved:       Math.round(annualAutoconsoKwh * 0.052),
         slotLevel:      hasEnedisSlots,
         monthlyMetrics
@@ -248,6 +250,12 @@ const SizingEngine = (() => {
         feedinTariff:       getVal('sz-feedin')   || 0,
         systemCostPerKwp:   getVal('sz-cost-kwp') || 900,
         realTotalCost:      getVal('sz-cost-total') || 0,
+        elecEscalation: (() => {
+          const el = document.getElementById('sz-elec-escalation');
+          const pct = parseFloat(el?.value);
+          if (el == null || el.value === '' || isNaN(pct)) return ELEC_ESCALATION;
+          return Math.max(0, Math.min(0.20, pct / 100));
+        })(),
         // _includeIncentive : positionné via API (AppState) ou UI si checkbox existe
         includeIncentive:   typeof AppState !== 'undefined'
                               ? (AppState._includeIncentive ?? true)

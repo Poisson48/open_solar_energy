@@ -24,7 +24,7 @@ Téléchargez la dernière version — **[⬇️ Releases](https://github.com/Po
 | **Android** (arm64) | `opensolarenergy-*-arm64.apk` | Ouvrir l’APK sur le téléphone (autoriser l’installation), ou `adb install -r opensolarenergy-*-arm64.apk` |
 
 L’AppImage embarque Qt et l’interface web : un fichier, aucune dépendance système à installer.
-L’APK est signé avec la clé de publication du projet — les versions suivantes s’installent **par-dessus**, et l’app vous les propose d’elle-même (comme Colo Course).
+L’APK est signé avec la clé de publication du projet — les versions suivantes s’installent **par-dessus**, et l’app vous les propose d’elle-même (téléchargement + installation).
 
 | Autre | Notes |
 |---|---|
@@ -277,7 +277,7 @@ Pour un site réel, importer les données météo via **« Importer météo (Ope
 | **2.0.3** | Hub plein écran, emojis Android figés, logo adaptive, suppression Electron (Qt only), correctifs MAJ |
 | **2.0.2** | Hub projets au démarrage (liste + recherche nom/client/lieu/date), bouton vérifier les MAJ, capacité batterie saisie manuellement |
 | **2.0.1** | Logo Android/PC, projet démo complet (Enedis 30 min synthétique cohérent HP/HC, devis, panneaux) |
-| **2.0.0** | Port Qt natif (Linux AppImage + Android APK), mises à jour auto via GitHub Releases (comme Colo Course), corrections P0 (import Enedis ZIP 30 min, production hors-réseau, câblage onduleur), tests math unitaires |
+| **2.0.0** | Port Qt natif (Linux AppImage + Android APK), mises à jour auto via GitHub Releases, corrections P0 (import Enedis ZIP 30 min, production hors-réseau, câblage onduleur), tests math unitaires |
 | **1.8.x** | Anciennes releases desktop (remplacées par Qt depuis v2.0) |
 | **1.7.0** | Repasse physique et financière : Rb numérique (Braun & Mitchell), HDKR anisotrope, NOCT avec durée réelle, hourlyIrradiance exact, payback actualisé, VAN 25 ans, LCOE |
 | **1.6.1** | Script `serve.sh` (Python, port libre, ouverture navigateur) |

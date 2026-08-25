@@ -3,8 +3,9 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.6';
+const APP_VERSION = '2.0.7';
 // Historique :
+//   2.0.7 - MAJ Android in-app + layout mobile (largeur)
 //   2.0.6 - Hub projets unique (plus de modal séparée)
 //   2.0.5 - Scripts sans ?v= + hardening hub
 //   2.0.4 - Fix WebHost ?v= (hub + boutons morts sur Android)
@@ -99,7 +100,7 @@ const PROJECT_FIELDS = [
   'sz-tariff','sz-price-base','sz-price-hp','sz-price-hc','sz-subscription',
   ...Array.from({length:12}, (_,i) => `sz-kwh-${i+1}`),
   'sz-tilt','sz-azimuth','sz-surface','sz-panel-model','sz-panel-wp','sz-panel-m2','sz-losses','sz-tech',
-  'sz-strategy','sz-target-coverage','sz-cost-kwp','sz-cost-total','sz-feedin',
+  'sz-strategy','sz-target-coverage','sz-cost-kwp','sz-cost-total','sz-feedin','sz-elec-escalation',
   // Système réseau — mode panneaux
   'grid-panel-mode','grid-npanels-fixe',
   // Hors réseau
