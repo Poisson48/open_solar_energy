@@ -232,7 +232,7 @@ const hub = await page.evaluate(() => {
   const modal = document.getElementById('startup-modal');
   const list = document.getElementById('startup-projects-list');
   const search = document.getElementById('startup-project-search');
-  const visible = modal && getComputedStyle(modal).display === 'flex';
+  const visible = !!(modal && !modal.hidden && modal.classList.contains('ose-hub-open'));
   const htmlBefore = list?.innerHTML || '';
   search.value = 'Martin';
   renderProjectsList('startup-projects-list', 'Martin');
@@ -250,8 +250,8 @@ const hub = await page.evaluate(() => {
     filteredLoc,
     empty,
     hasCheckBtn: !!document.getElementById('btn-check-updates'),
-    // openStartupModal ne charge pas de projet (pas de loadProject)
-    listOnly: typeof openStartupModal === 'function' && !htmlBefore.includes('(actif)'),
+    // openStartupModal ne charge pas de projet
+    listOnly: AppState.currentProjectId == null,
   };
 });
 check('modal hub visible au démarrage', hub.visible);
@@ -260,7 +260,7 @@ check('filtre par client', hub.filteredMartin);
 check('filtre par lieu', hub.filteredLoc);
 check('filtre sans résultat', hub.empty);
 check('bouton mises à jour', hub.hasCheckBtn);
-check('hub = liste seule (pas d’actif auto)', hub.listOnly);
+check('aucun projet ouvert auto', hub.listOnly);
 
 await browser.close().catch(() => {});
 server.close();
