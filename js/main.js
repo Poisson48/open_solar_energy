@@ -23,7 +23,10 @@ function applyInstallationType(type) {
   const activeBtn = document.querySelector('.tab-btn.active');
   if (activeBtn && activeBtn.style.display === 'none') {
     const first = document.querySelector('.tab-btn:not([style*="display: none"])');
-    if (first) first.click();
+    if (first?.dataset?.tab && typeof activateTab === 'function')
+      activateTab(first.dataset.tab);
+    else if (first)
+      first.click();
   }
 
   // Badge dans la barre projet

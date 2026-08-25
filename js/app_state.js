@@ -3,8 +3,9 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.10';
+const APP_VERSION = '2.0.11';
 // Historique :
+//   2.0.11 - Fix sync réseau→dimensionnement (surface mode Fixe) + emoji/type install
 //   2.0.10 - Hypothèses financières réglables (élec / actualisation / dégradation / horizon)
 //   2.0.9 - MAJ Android fiable (pont + téléchargement flux + install auto)
 //   2.0.8 - Barre projet mobile compacte (plus de mur de boutons)

@@ -103,6 +103,7 @@
     const t = node.nodeValue;
     if (!t || !RE.test(t)) { RE.lastIndex = 0; return; }
     RE.lastIndex = 0;
+    if (!node.parentNode) return;
     const wrap = document.createElement('span');
     wrap.className = 'ose-em-wrap';
     wrap.innerHTML = emStr(t);

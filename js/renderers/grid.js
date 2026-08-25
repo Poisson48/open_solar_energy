@@ -125,7 +125,9 @@ function applyGridToSizing() {
 
   const panelWp = parseFloat(document.getElementById('inp-panel-wp')?.value) || 400;
   const panelM2 = parseFloat(document.getElementById('inp-panel-m2')?.value) || 1.96;
-  const mode    = (typeof _panelMode !== 'undefined' && _panelMode.grid) || document.getElementById('grid-panel-mode')?.value || 'surface';
+  const mode    = (typeof _panelMode !== 'undefined' && _panelMode.grid)
+    || document.getElementById('grid-panel-mode')?.value
+    || 'surface';
 
   let nPanels = 0;
   if (mode === 'fixe') {
@@ -136,15 +138,12 @@ function applyGridToSizing() {
     nPanels = m ? parseInt(m[1], 10) : 0;
   }
 
-  const surfEl = document.getElementById('sz-surface');
-  const inpSurf = parseFloat(document.getElementById('inp-surface')?.value) || 0;
-  if (surfEl) {
-    if (mode === 'fixe' && nPanels > 0) {
-      // Emprise des panneaux choisis → surface max côté dimensionnement
-      surfEl.value = Math.round(nPanels * panelM2 * 10) / 10;
-    } else if (inpSurf > 0) {
-      surfEl.value = inpSurf;
-    }
+  // Surface : en mode Fixe = emprise des panneaux ; sinon surface saisie réseau
+  let surfaceM2 = parseFloat(document.getElementById('inp-surface')?.value) || 0;
+  if (mode === 'fixe' && nPanels > 0) {
+    surfaceM2 = Math.round(nPanels * panelM2 * 10) / 10;
+    const inpSurf = document.getElementById('inp-surface');
+    if (inpSurf) inpSurf.value = surfaceM2;
   }
 
   const cost = parseFloat(document.getElementById('inp-cost')?.value) || 0;
@@ -155,6 +154,12 @@ function applyGridToSizing() {
 
   if (typeof readInstallFromTab === 'function') readInstallFromTab('grid');
   if (typeof writeInstallToTab === 'function') writeInstallToTab('sizing');
+
+  // Reposer surface après sync install (sinon AppState.install.surface écrase)
+  const surfEl = document.getElementById('sz-surface');
+  if (surfEl && surfaceM2 > 0) surfEl.value = surfaceM2;
+  if (typeof AppState !== 'undefined' && surfaceM2 > 0)
+    AppState.install.surface = surfaceM2;
 
   if (typeof activateTab === 'function') activateTab('sizing');
 

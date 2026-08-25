@@ -1,0 +1,42 @@
+{
+  "fails": 0,
+  "findings": [
+    {
+      "severity": "info",
+      "label": "cartes projets dans hub",
+      "detail": "0"
+    },
+    {
+      "severity": "info",
+      "label": "onglets visibles (réseau)",
+      "detail": "sizing, grid, tracker, irradiation, daily, optimizer, quote"
+    },
+    {
+      "severity": "info",
+      "label": "onglets visibles (hors-réseau)",
+      "detail": "offgrid, irradiation, daily, quote"
+    },
+    {
+      "severity": "info",
+      "label": "pont Qt absent en navigateur (attendu)",
+      "detail": "false"
+    },
+    {
+      "severity": "info",
+      "label": "boutons barre",
+      "detail": "(31x27) | Sauver(91x27) | Export(91x32) | Historique(0x0) | Projets(91x27) | ⚡ Réseau(91x27)"
+    },
+    {
+      "severity": "info",
+      "label": "Limitation : MAJ in-app non testable en Chromium (pas de shell Qt)",
+      "detail": ""
+    },
+    {
+      "severity": "info",
+      "label": "Limitation : PackageInstaller / permission « apps inconnues » non testable ici",
+      "detail": ""
+    }
+  ],
+  "version": "2.0.11",
+  "at": "2026-08-25T07:47:18.652Z"
+}
