@@ -3,12 +3,12 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.22';
+const APP_VERSION = '2.0.23';
 // Historique :
-//   2.0.22 - MAJ Android corrigée (permission apps inconnues, auto-install après
+//   2.0.23 - MAJ Android corrigée (permission apps inconnues, auto-install après
 //            téléchargement, fallback URL API GitHub, statut PackageInstaller
-//            dans le bandeau, téléchargement direct sans dialog bloquant) ;
-//            chaîne installateur : Voc/Isc → câbles, hint « Chaînes » Système PV,
+//            dans le bandeau, téléchargement direct sans dialog bloquant)
+//   2.0.22 - Chaîne installateur : Voc/Isc → câbles, hint « Chaînes » Système PV,
 //            lien Implantation → estimation longueur DC
 //   2.0.21 - Outils pro installateur : calculateur câbles DC/AC (section, chute
 //            de tension, pertes), bibliothèques matériel (panneaux STC Voc/Isc/
