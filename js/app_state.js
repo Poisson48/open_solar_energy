@@ -3,8 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.26';
+const APP_VERSION = '2.0.27';
 // Historique :
+//   2.0.27 - Historique versions : snapshots locaux (Android/navigateur), plus
+//            d’erreur gitLog ; git natif conservé sur AppImage desktop
 //   2.0.26 - Site / ombrage : carte verrouillée hors édition lieu, diagramme
 //            solaire manuel + photo/boussole, calibration, terrain 3D → tilt/az
 //   2.0.25 - PDF devis + rapport : vrai fichier PDF (html2pdf embarqué),
