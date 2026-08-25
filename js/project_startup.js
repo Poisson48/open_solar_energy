@@ -31,6 +31,8 @@ function openStartupModal() {
     : 'Choisissez un projet pour commencer';
   if (typeof renderProjectsList === 'function')
     renderProjectsList('');
+  if (typeof refreshHubNews === 'function')
+    refreshHubNews();
 }
 
 function closeStartupModal() {

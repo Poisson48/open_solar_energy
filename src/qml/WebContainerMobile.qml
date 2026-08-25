@@ -115,12 +115,19 @@ Item {
         const st = root.updater.state
         const msg = JSON.stringify(String(root.updater.statusMessage || ""))
         const ver = JSON.stringify(String(root.updater.currentVersion || ""))
+        const latest = JSON.stringify(String(root.updater.latestVersion || ""))
+        const notes = JSON.stringify(String(root.updater.releaseNotes || "").slice(0, 4000))
+        const avail = root.updater.updateAvailable ? "true" : "false"
         webView.runJavaScript(
             "(function(){"
             + "window.__oseNativeVersion=" + ver + ";"
             + "window.__oseUpdaterState=" + st + ";"
+            + "window.__oseUpdaterLatest=" + latest + ";"
+            + "window.__oseUpdaterNotes=" + notes + ";"
+            + "window.__oseUpdaterAvailable=" + avail + ";"
             + "if(typeof window.__oseOnUpdaterState==='function')"
             + "window.__oseOnUpdaterState(" + st + "," + msg + ");"
+            + "if(typeof refreshHubNews==='function')try{refreshHubNews(false);}catch(e){}"
             + "})();"
         )
     }

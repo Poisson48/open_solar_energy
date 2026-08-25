@@ -605,6 +605,180 @@ function _apkAssetUrl(release) {
   return null;
 }
 
+function _notesFromReleaseBody(body) {
+  if (!body) return '';
+  const lines = String(body).split('\n');
+  const kept = [];
+  for (const line of lines) {
+    if (line.trim() === '---') break;
+    let clean = line.replace(/^#+\s*/, '').trim();
+    kept.push(clean);
+  }
+  while (kept.length && !kept[kept.length - 1]) kept.pop();
+  return kept.join('\n').trim();
+}
+
+function _escHtml(s) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function _fmtReleaseDate(iso) {
+  if (!iso) return '';
+  try {
+    return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+  } catch { return ''; }
+}
+
+let _hubNewsCache = null;
+let _hubNewsFetching = false;
+
+/**
+ * Affiche les nouveautés / MAJ sur le hub projets.
+ * Utilise le cache GitHub + l’état updater natif si présent.
+ */
+async function refreshHubNews(force) {
+  const box = document.getElementById('ose-hub-news');
+  if (!box) return;
+
+  const current = (typeof window.__oseNativeVersion === 'string' && window.__oseNativeVersion)
+    || (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '0.0.0');
+
+  // État natif Qt (bandeau MAJ déjà connu)
+  const nativeLatest = window.__oseUpdaterLatest || '';
+  const nativeNotes = window.__oseUpdaterNotes || '';
+  const nativeState = window.__oseUpdaterState;
+
+  if (!force && _hubNewsCache && (Date.now() - _hubNewsCache.at) < 5 * 60 * 1000) {
+    _renderHubNews(box, current, _hubNewsCache.releases, {
+      nativeLatest, nativeNotes, nativeState
+    });
+    return;
+  }
+
+  if (_hubNewsFetching && !force) return;
+  _hubNewsFetching = true;
+  if (!_hubNewsCache)
+    box.innerHTML = '<div class="ose-hub-news-loading">Chargement des nouveautés…</div>';
+
+  try {
+    const res = await fetch(
+      'https://api.github.com/repos/Poisson48/open_solar_energy/releases?per_page=12',
+      { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'OpenSolarEnergy' } }
+    );
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const raw = await res.json();
+    const releases = (Array.isArray(raw) ? raw : [])
+      .filter(r => r && !r.draft && !r.prerelease)
+      .map(r => ({
+        ver: String(r.tag_name || '').replace(/^[vV]/, ''),
+        name: r.name || r.tag_name || '',
+        notes: _notesFromReleaseBody(r.body),
+        date: r.published_at || '',
+        url: r.html_url || '',
+        apk: _apkAssetUrl(r),
+      }))
+      .filter(r => r.ver);
+    _hubNewsCache = { at: Date.now(), releases };
+    _renderHubNews(box, current, releases, { nativeLatest, nativeNotes, nativeState });
+  } catch (e) {
+    console.warn('[hub-news]', e);
+    if (_hubNewsCache?.releases) {
+      _renderHubNews(box, current, _hubNewsCache.releases, {
+        nativeLatest, nativeNotes, nativeState
+      });
+    } else {
+      box.innerHTML = `<div class="ose-hub-news-card">
+        <div class="ose-hub-news-kicker">Nouveautés</div>
+        <h4>Impossible de charger les news</h4>
+        <p class="ose-hub-news-meta">${_escHtml(e.message || e)}</p>
+        <div class="ose-hub-news-actions">
+          <button type="button" class="btn btn-outline btn-sm" onclick="refreshHubNews(true)">Réessayer</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="checkForUpdates()">Vérifier les MAJ</button>
+        </div>
+      </div>`;
+    }
+  } finally {
+    _hubNewsFetching = false;
+  }
+}
+
+function _renderHubNews(box, current, releases, native = {}) {
+  if (!box) return;
+  const list = Array.isArray(releases) ? releases : [];
+  let newer = list.filter(r => _isNewerVersion(r.ver, current));
+  // Prefer native latest if updater already found one
+  if (native.nativeLatest && _isNewerVersion(native.nativeLatest, current)) {
+    const hit = list.find(r => r.ver === native.nativeLatest);
+    if (hit) newer = [hit, ...newer.filter(r => r.ver !== hit.ver)];
+    else newer = [{
+      ver: native.nativeLatest,
+      name: 'v' + native.nativeLatest,
+      notes: native.nativeNotes || '',
+      date: '',
+      url: '',
+      apk: null,
+    }, ...newer];
+  }
+
+  const parts = [];
+
+  if (newer.length) {
+    const top = newer[0];
+    const notes = (top.notes || native.nativeNotes || '').trim()
+      || 'Correctifs et améliorations — touchez Mettre à jour pour installer.';
+    parts.push(`<div class="ose-hub-news-card update">
+      <div class="ose-hub-news-kicker">Nouvelle version disponible</div>
+      <h4>v${_escHtml(top.ver)} — vous avez v${_escHtml(current)}</h4>
+      ${top.date ? `<div class="ose-hub-news-meta">Publiée le ${_escHtml(_fmtReleaseDate(top.date))}</div>` : ''}
+      <div class="ose-hub-news-body" id="ose-hub-news-update-body">${_escHtml(notes)}</div>
+      <div class="ose-hub-news-actions">
+        <button type="button" class="btn btn-accent btn-sm" onclick="checkForUpdates()">⬇ Mettre à jour</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('ose-hub-news-update-body')?.classList.toggle('expanded')">Voir plus</button>
+        ${top.url ? `<a class="btn btn-outline btn-sm" href="${_escHtml(top.url)}" target="_blank" rel="noopener">Notes GitHub</a>` : ''}
+      </div>
+    </div>`);
+  } else {
+    parts.push(`<div class="ose-hub-news-card">
+      <div class="ose-hub-news-kicker">À jour</div>
+      <div class="ose-hub-news-ok">✓ Vous avez la dernière version (v${_escHtml(current)})</div>
+    </div>`);
+  }
+
+  // News : 3 dernières versions (y compris courante / antérieures)
+  const news = list.slice(0, 3);
+  if (news.length) {
+    const items = news.map(r => {
+      const isNew = _isNewerVersion(r.ver, current);
+      const isCur = r.ver === String(current).replace(/^[vV]/, '');
+      const badge = isNew ? ' · à installer' : (isCur ? ' · installée' : '');
+      const preview = (r.notes || 'Voir les notes de version.').split('\n').filter(Boolean).slice(0, 4).join('\n');
+      return `<div class="ose-hub-news-card">
+        <div class="ose-hub-news-kicker">Nouveautés</div>
+        <h4>v${_escHtml(r.ver)}${_escHtml(badge)}</h4>
+        ${r.date ? `<div class="ose-hub-news-meta">${_escHtml(_fmtReleaseDate(r.date))}</div>` : ''}
+        <div class="ose-hub-news-body">${_escHtml(preview)}</div>
+      </div>`;
+    }).join('');
+    parts.push(items);
+  }
+
+  box.innerHTML = parts.join('') || '<div class="ose-hub-news-loading">Pas de news pour le moment.</div>';
+}
+
+// Callback depuis le shell Qt (WebContainerMobile.notifyWebUpdaterState)
+window.__oseOnUpdaterState = function __oseOnUpdaterState(state, msg) {
+  try {
+    if (typeof msg === 'string' && msg && typeof showToast === 'function') {
+      // toast déjà géré côté QML la plupart du temps — ne pas doubler
+    }
+    // Rafraîchir la carte hub si visible
+    const hub = document.getElementById('startup-modal');
+    if (hub && hub.classList.contains('ose-hub-open') && typeof refreshHubNews === 'function')
+      refreshHubNews(false);
+  } catch (_) {}
+};
+
 async function checkForUpdates() {
   const btn = document.getElementById('btn-check-updates');
   const label = typeof emStr === 'function' ? emStr('↻ Mises à jour') : '↻ Mises à jour';
@@ -638,6 +812,7 @@ async function checkForUpdates() {
       // Ne pas fermer le hub : la bannière Qt s’affiche au-dessus.
       bridge.checkForUpdates();
       showToast('Vérification des mises à jour…');
+      setTimeout(() => { if (typeof refreshHubNews === 'function') refreshHubNews(true); }, 1200);
       return;
     }
 
