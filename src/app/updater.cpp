@@ -193,8 +193,18 @@ void Updater::check()
 
         if (reply->error() != QNetworkReply::NoError) {
             qWarning() << "[Updater] check failed:" << reply->errorString();
-            m_statusMessage = QStringLiteral("Impossible de contacter GitHub : %1")
-                                  .arg(reply->errorString());
+            const QString err = QStringLiteral("Impossible de contacter GitHub : %1")
+                                    .arg(reply->errorString());
+            // Pas de maj en cours → toast, pas de bandeau rouge trompeur
+            if (m_apkUrl.isEmpty() && m_latestVersion.isEmpty()) {
+                if (m_state != Idle) {
+                    m_state = Idle;
+                    emit stateChanged();
+                }
+                setStatusMessage(err);
+                return;
+            }
+            m_statusMessage = err;
             setState(Failed);
             return;
         }
@@ -275,8 +285,19 @@ void Updater::download()
               + QStringLiteral(".apk");
     QFile::remove(m_apkPath);
 
+    // Écriture en flux : readAll() d’un APK ~25 Mo provoque souvent un OOM / échec
+    // silencieux sur Android (le bandeau « Échec du téléchargement »).
+    auto* file = new QFile(m_apkPath);
+    if (!file->open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        delete file;
+        m_statusMessage = QStringLiteral("Impossible d'écrire l'APK");
+        setState(Failed);
+        return;
+    }
+
     QNetworkRequest req{ QUrl(m_apkUrl) };
     req.setRawHeader("User-Agent", "OpenSolarEnergy");
+    req.setRawHeader("Accept", "application/octet-stream");
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                      QNetworkRequest::NoLessSafeRedirectPolicy);
 
@@ -291,35 +312,31 @@ void Updater::download()
         m_progress = total > 0 ? qreal(received) / qreal(total) : 0.0;
         emit progressChanged();
     });
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+    connect(reply, &QNetworkReply::readyRead, this, [reply, file]() {
+        if (file->isOpen())
+            file->write(reply->readAll());
+    });
+    connect(reply, &QNetworkReply::finished, this, [this, reply, file]() {
+        if (file->isOpen()) {
+            file->write(reply->readAll());
+            file->close();
+        }
+        const qint64 size = file->size();
+        file->deleteLater();
         reply->deleteLater();
 
-        if (reply->error() != QNetworkReply::NoError) {
-            qWarning() << "[Updater] download failed:" << reply->errorString() << m_apkUrl;
-            m_statusMessage = QStringLiteral("Téléchargement impossible : %1")
-                                  .arg(reply->errorString());
-            setState(Failed);
-            return;
-        }
-
-        QFile out(m_apkPath);
-        if (!out.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-            m_statusMessage = QStringLiteral("Impossible d'écrire l'APK");
-            setState(Failed);
-            return;
-        }
-        const QByteArray body = reply->readAll();
-        const qint64 written = out.write(body);
-        out.close();
-
-        if (written != body.size() || body.isEmpty()) {
+        if (reply->error() != QNetworkReply::NoError || size <= 0) {
             QFile::remove(m_apkPath);
-            m_statusMessage = QStringLiteral("APK téléchargé incomplet");
+            qWarning() << "[Updater] download failed:" << reply->errorString()
+                       << "size=" << size << m_apkUrl;
+            m_statusMessage = reply->error() != QNetworkReply::NoError
+                ? QStringLiteral("Téléchargement impossible : %1").arg(reply->errorString())
+                : QStringLiteral("APK téléchargé vide ou incomplet");
             setState(Failed);
             return;
         }
 
-        qInfo() << "[Updater] APK téléchargé" << m_apkPath << written << "octets";
+        qInfo() << "[Updater] APK téléchargé" << m_apkPath << size << "octets";
         setState(Ready);
     });
 }

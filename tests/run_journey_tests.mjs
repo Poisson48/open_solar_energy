@@ -87,7 +87,7 @@ console.log('\n═══ A. Hub démarrage ═══');
     };
   });
   check('hub ouvert au démarrage', hub.open === true);
-  check('APP_VERSION = 2.0.13', hub.version === '2.0.13', String(hub.version));
+  check('APP_VERSION = 2.0.14', hub.version === '2.0.14', String(hub.version));
   check('bouton Mises à jour présent', /mise/i.test(hub.majLabel || ''), hub.majLabel);
   note('cartes projets dans hub', String(hub.cards));
 
@@ -247,13 +247,13 @@ console.log('\n═══ D. Onglets / type installation ═══');
     seedDemoProject();
     loadProject(DEMO_PROJECT_ID);
     closeStartupModal();
-    const tabsGrid = [...document.querySelectorAll('.tab-btn')].map(b => ({
+    const tabsGrid = [...document.querySelectorAll('.tab-btn[data-tab]')].map(b => ({
       tab: b.dataset.tab,
       visible: b.style.display !== 'none' && getComputedStyle(b).display !== 'none',
       text: b.textContent.trim().slice(0, 40),
     }));
     applyInstallationType('offgrid');
-    const tabsOff = [...document.querySelectorAll('.tab-btn')].map(b => ({
+    const tabsOff = [...document.querySelectorAll('.tab-btn[data-tab]')].map(b => ({
       tab: b.dataset.tab,
       visible: b.style.display !== 'none' && getComputedStyle(b).display !== 'none',
     }));
@@ -409,7 +409,7 @@ console.log('\n═══ H. Revue code — points de vigilance connus ═══'
   check('Android back : handleAndroidBack JS', /function handleAndroidBack/.test(fs.readFileSync(join(ROOT, 'js/project_ui.js'), 'utf8')));
   check('CSS overflow-x clip (anti débordement)', /overflow-x:\s*clip/.test(css));
   check('pont mobile : file d’attente + Timer', /__oseCmdQueue/.test(mobile) && /Timer/.test(mobile));
-  check('Updater : téléchargement APK (finished + readAll)', /readAll\(\)/.test(upd));
+  check('Updater : téléchargement APK en flux (readyRead)', /readyRead/.test(upd));
   check('Updater : checkFromUser délègue à check', /checkFromUser\(\)\s*\{\s*check\(\)/s.test(updH));
   check('Updater : retours natifs → web (mobile)', /notifyWebToast/.test(mobile) && /onStateChanged/.test(mobile));
   check('Updater : statusMessage pour retours UI', /statusMessage/.test(upd));
@@ -427,6 +427,6 @@ console.log('─'.repeat(60));
 
 // Rapport JSON pour le résumé agent
 const reportPath = join(ROOT, 'tests/journey-report.json');
-writeFileSync(reportPath, JSON.stringify({ fails, findings, version: '2.0.13', at: new Date().toISOString() }, null, 2));
+writeFileSync(reportPath, JSON.stringify({ fails, findings, version: '2.0.14', at: new Date().toISOString() }, null, 2));
 
 process.exit(fails ? 1 : 0);

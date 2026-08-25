@@ -104,7 +104,7 @@ ApplicationWindow {
         Rectangle {
             id: updateBanner
             Layout.fillWidth: true
-            Layout.preferredHeight: visible ? (Qt.platform.os === "android" ? 64 : 56) : 0
+            Layout.preferredHeight: visible ? (Qt.platform.os === "android" ? 72 : 56) : 0
             visible: Updater.updateAvailable || Updater.downloading || Updater.readyToInstall || Updater.state === 5
             color: Updater.state === 5 ? "#fdecea" : Theme.surfaceHigh
             z: 10
@@ -127,9 +127,13 @@ ApplicationWindow {
                             if (Updater.readyToInstall)
                                 return "Version " + Updater.latestVersion + " prête"
                             if (Updater.state === 5)
-                                return "Échec du téléchargement"
+                                return (Updater.statusMessage.length > 0
+                                        ? Updater.statusMessage
+                                        : "Échec de la mise à jour")
                             return "Version " + Updater.latestVersion + " disponible"
                         }
+                        wrapMode: Text.WordWrap
+                        maximumLineCount: 2
                     }
                     Rectangle {
                         Layout.fillWidth: true
@@ -146,7 +150,7 @@ ApplicationWindow {
                     }
                     Label {
                         Layout.fillWidth: true
-                        visible: !Updater.downloading
+                        visible: !Updater.downloading && Updater.state !== 5
                         color: Theme.textDim
                         font.pixelSize: 12
                         text: Updater.readyToInstall
@@ -160,9 +164,14 @@ ApplicationWindow {
                 Button {
                     flat: true
                     visible: !Updater.downloading
-                    text: Updater.readyToInstall ? "Installer"
-                         : (Updater.canInstall ? "Mettre à jour" : "Télécharger")
+                    text: Updater.state === 5 ? "Réessayer"
+                         : (Updater.readyToInstall ? "Installer"
+                         : (Updater.canInstall ? "Mettre à jour" : "Télécharger"))
                     onClicked: {
+                        if (Updater.state === 5) {
+                            Updater.check()
+                            return
+                        }
                         if (Updater.readyToInstall)
                             Updater.install()
                         else if (Updater.releaseNotes.length > 0)

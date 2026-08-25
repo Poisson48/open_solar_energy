@@ -9,12 +9,12 @@
     {
       "severity": "info",
       "label": "onglets visibles (réseau)",
-      "detail": "sizing, grid, quote, "
+      "detail": "sizing, grid, quote"
     },
     {
       "severity": "info",
       "label": "onglets visibles (hors-réseau)",
-      "detail": "quote, offgrid, "
+      "detail": "quote, offgrid"
     },
     {
       "severity": "info",
@@ -37,6 +37,6 @@
       "detail": ""
     }
   ],
-  "version": "2.0.13",
-  "at": "2026-08-25T08:29:02.688Z"
+  "version": "2.0.14",
+  "at": "2026-08-25T08:38:21.519Z"
 }
