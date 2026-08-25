@@ -24,6 +24,7 @@ class Updater : public QObject {
     Q_PROPERTY(bool downloading READ downloading NOTIFY stateChanged)
     Q_PROPERTY(bool readyToInstall READ readyToInstall NOTIFY stateChanged)
     Q_PROPERTY(bool canInstall READ canInstall CONSTANT)
+    Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY statusMessageChanged)
 
 public:
     enum State { Idle, Checking, Available, Downloading, Ready, Failed };
@@ -43,14 +44,15 @@ public:
     bool updateAvailable() const { return m_state == Available; }
     bool downloading() const { return m_state == Downloading; }
     bool readyToInstall() const { return m_state == Ready; }
+    QString statusMessage() const { return m_statusMessage; }
 
     static bool isNewer(const QString& candidate, const QString& current);
     static QString notesFromBody(const QString& body);
 
 public slots:
     void check();
-    /** Depuis le bouton hub : sur Android enchaîne check → téléchargement → install. */
-    void checkFromUser();
+    /** Alias explicite pour le bouton hub web (même comportement que check). */
+    void checkFromUser() { check(); }
     void download();
     void install();
     void dismiss();
@@ -60,9 +62,11 @@ signals:
     void stateChanged();
     void progressChanged();
     void changelogChanged();
+    void statusMessageChanged();
 
 private:
     void setState(State s);
+    void setStatusMessage(const QString& msg);
     void rebuildDerivedNotes();
     static QString formatEntries(const QVariantList& entries);
 
@@ -76,8 +80,8 @@ private:
     QString m_apkUrl;
     QString m_releaseUrl;
     QString m_apkPath;
+    QString m_statusMessage;
     qreal m_progress = 0.0;
-    bool m_userFlow = false;
 };
 
 } // namespace app

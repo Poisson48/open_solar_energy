@@ -43,7 +43,7 @@ bool AppController::init()
     m_webUrl = m_host.baseUrl();
     emit webUrlChanged();
     QObject::connect(&m_bridge, &WebBridge::checkUpdatesRequested,
-                     &m_updater, &Updater::checkFromUser);
+                     &m_updater, &Updater::check);
     m_updater.check();
     return true;
 }

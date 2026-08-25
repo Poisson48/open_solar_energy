@@ -480,17 +480,40 @@ async function checkForUpdates() {
   const btn = document.getElementById('btn-check-updates');
   const label = typeof emStr === 'function' ? emStr('↻ Mises à jour') : '↻ Mises à jour';
   if (btn) { btn.disabled = true; btn.innerHTML = '…'; }
+
+  function finish() {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = label;
+    }
+  }
+
+  function waitNativeBridge(ms) {
+    return new Promise(resolve => {
+      const t0 = Date.now();
+      (function poll() {
+        const b = (typeof getNativeBridge === 'function' ? getNativeBridge() : null)
+               || window.webBridge || null;
+        if (b?.checkForUpdates && (window.__oseNativeInjected || b.nativeReady))
+          return resolve(b);
+        if (Date.now() - t0 >= ms)
+          return resolve(b?.checkForUpdates ? b : null);
+        setTimeout(poll, 80);
+      })();
+    });
+  }
+
   try {
-    // Shell Qt (AppImage WebChannel / APK ose://) → bannière + téléchargement APK
-    const bridge = typeof getNativeBridge === 'function' ? getNativeBridge() : (window.webBridge || null);
+    const bridge = await waitNativeBridge(2500);
     if (bridge?.checkForUpdates) {
+      if (typeof closeStartupModal === 'function')
+        closeStartupModal();
       bridge.checkForUpdates();
-      showToast('Vérification des mises à jour…');
+      // Retour utilisateur via shell Qt (bannière + toast natif injecté)
       return;
     }
 
     // Sans pont Qt (navigateur) : info seulement — pas de nav WebView vers l’APK
-    // (ça n’installe rien sur Android).
     const res = await fetch(
       'https://api.github.com/repos/Poisson48/open_solar_energy/releases?per_page=15',
       { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'OpenSolarEnergy' } }
@@ -512,7 +535,7 @@ async function checkForUpdates() {
     }
     const isAndroid = /Android/i.test(navigator.userAgent || '');
     if (isAndroid) {
-      showToast(`v${best.ver} dispo — utilisez la bannière en haut de l’écran`, 'warning');
+      showToast(`v${best.ver} disponible — installez l’APK depuis GitHub Releases`, 'warning');
       return;
     }
     showToast(`Nouvelle version v${best.ver} disponible`, 'warning');
@@ -523,10 +546,7 @@ async function checkForUpdates() {
   } catch (e) {
     showToast('Impossible de vérifier les mises à jour : ' + (e.message || e), 'error');
   } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = label;
-    }
+    finish();
   }
 }
 

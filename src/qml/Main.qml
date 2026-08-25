@@ -159,6 +159,8 @@ ApplicationWindow {
             onLoaded: {
                 item.webUrl = AppController.webUrl
                 item.bridge = AppController.bridge
+                if (item.updater !== undefined)
+                    item.updater = Updater
             }
         }
     }

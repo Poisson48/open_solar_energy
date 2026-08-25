@@ -3,8 +3,9 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.11';
+const APP_VERSION = '2.0.12';
 // Historique :
+//   2.0.12 - MAJ Android fiable (flux Colo Course : bannière + retours natifs)
 //   2.0.11 - Fix sync réseau→dimensionnement (surface mode Fixe) + emoji/type install
 //   2.0.10 - Hypothèses financières réglables (élec / actualisation / dégradation / horizon)
 //   2.0.9 - MAJ Android fiable (pont + téléchargement flux + install auto)

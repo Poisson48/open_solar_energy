@@ -87,7 +87,7 @@ console.log('\n═══ A. Hub démarrage ═══');
     };
   });
   check('hub ouvert au démarrage', hub.open === true);
-  check('APP_VERSION = 2.0.11', hub.version === '2.0.11', String(hub.version));
+  check('APP_VERSION = 2.0.12', hub.version === '2.0.12', String(hub.version));
   check('bouton Mises à jour présent', /mise/i.test(hub.majLabel || ''), hub.majLabel);
   note('cartes projets dans hub', String(hub.cards));
 
@@ -364,11 +364,14 @@ console.log('\n═══ H. Revue code — points de vigilance connus ═══'
   const css = fs.readFileSync(join(ROOT, 'css/main.css'), 'utf8');
   const mobile = fs.readFileSync(join(ROOT, 'src/qml/WebContainerMobile.qml'), 'utf8');
   const upd = fs.readFileSync(join(ROOT, 'src/app/updater.cpp'), 'utf8');
+  const updH = fs.readFileSync(join(ROOT, 'src/app/updater.h'), 'utf8');
   const man = fs.readFileSync(join(ROOT, 'android/AndroidManifest.xml'), 'utf8');
   check('CSS overflow-x clip (anti débordement)', /overflow-x:\s*clip/.test(css));
   check('pont mobile : file d’attente + Timer', /__oseCmdQueue/.test(mobile) && /Timer/.test(mobile));
-  check('Updater : téléchargement en flux (readyRead)', /readyRead/.test(upd));
-  check('Updater : checkFromUser auto-download', /checkFromUser/.test(upd) && /m_userFlow/.test(upd));
+  check('Updater : téléchargement APK (finished + readAll)', /readAll\(\)/.test(upd));
+  check('Updater : checkFromUser délègue à check', /checkFromUser\(\)\s*\{\s*check\(\)/s.test(updH));
+  check('Updater : retours natifs → web (mobile)', /notifyWebToast/.test(mobile) && /onStateChanged/.test(mobile));
+  check('Updater : statusMessage pour retours UI', /statusMessage/.test(upd));
   check('Android InstallReceiver déclaré', /InstallReceiver/.test(man) && /REQUEST_INSTALL_PACKAGES/.test(man));
   note('Limitation : MAJ in-app non testable en Chromium (pas de shell Qt)');
   note('Limitation : PackageInstaller / permission « apps inconnues » non testable ici');
@@ -383,6 +386,6 @@ console.log('─'.repeat(60));
 
 // Rapport JSON pour le résumé agent
 const reportPath = join(ROOT, 'tests/journey-report.json');
-writeFileSync(reportPath, JSON.stringify({ fails, findings, version: '2.0.11', at: new Date().toISOString() }, null, 2));
+writeFileSync(reportPath, JSON.stringify({ fails, findings, version: '2.0.12', at: new Date().toISOString() }, null, 2));
 
 process.exit(fails ? 1 : 0);
