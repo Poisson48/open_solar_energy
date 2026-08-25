@@ -107,6 +107,12 @@ function loadProject(id) {
 
   updateLocationUI();
   updateMapMarker();
+  if (typeof setMapEditEnabled === 'function') setMapEditEnabled(false);
+
+  AppState.siteSurvey = project.siteSurvey
+    ? JSON.parse(JSON.stringify(project.siteSurvey))
+    : null;
+  if (typeof SiteSurvey !== 'undefined') SiteSurvey.loadFromAppState();
 
   restoreFormState(project.formState);
 

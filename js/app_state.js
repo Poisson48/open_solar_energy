@@ -3,8 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.25';
+const APP_VERSION = '2.0.26';
 // Historique :
+//   2.0.26 - Site / ombrage : carte verrouillée hors édition lieu, diagramme
+//            solaire manuel + photo/boussole, calibration, terrain 3D → tilt/az
 //   2.0.25 - PDF devis + rapport : vrai fichier PDF (html2pdf embarqué),
 //            contenu complet (annexe dimensionnement / bilan mensuel)
 //   2.0.24 - Prime d’État saisie manuelle (barème auto / montant / sans prime)
@@ -122,7 +124,13 @@ const AppState = {
     panelM2: 1.96,
     losses:  14,
     tech:    'crystSi',
-  }
+  },
+
+  // Profil d'horizon / ombrage / terrain (onglet Site)
+  siteSurvey: null,
+
+  // Édition carte (location.js) — false = lieu verrouillé
+  mapEditEnabled: false,
 };
 
 // Champs de formulaire persistés dans un projet

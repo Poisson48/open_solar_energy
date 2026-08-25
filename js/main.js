@@ -204,6 +204,10 @@ function activateTab(tab) {
   if (tab === 'irradiation') renderIrradiationData();
   if (tab === 'daily') HourlyModule.autoComputeIfReady();
   if (tab === 'layout' && typeof renderPanelLayoutTab === 'function') renderPanelLayoutTab();
+  if (tab === 'site' && typeof SiteSurvey !== 'undefined') {
+    SiteSurvey.loadFromAppState();
+    SiteSurvey.redraw();
+  }
   if (tab === 'sizing' && typeof updateDemoPrefillNote === 'function')
     updateDemoPrefillNote();
   if (tab === 'cables' && typeof CablesUI !== 'undefined') CablesUI.prefill();
@@ -257,6 +261,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   initTabDaily();
   initTabOptimizer();
   initTabLayout();
+  initTabSite();
   initTabQuote();
   initTabCables();
 
@@ -269,6 +274,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   writeInstallToTab('sizing');
   applyInstallationType(AppState.installationType);
   initLocationInputs();
+  if (typeof SiteSurvey !== 'undefined') SiteSurvey.init();
 
   // 3. Bind les interactions des formulaires
   bindOptimizeCheckboxes();

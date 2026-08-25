@@ -82,6 +82,7 @@ function buildProjectData() {
     monthlyKwhHp:     AppState.monthlyKwhHp ? AppState.monthlyKwhHp.slice() : null,
     enedisYear:       AppState.enedisYear || null,
     formState:        captureFormState(),
+    siteSurvey:       AppState.siteSurvey ? JSON.parse(JSON.stringify(AppState.siteSurvey)) : null,
     summary,
     // Préserver les métadonnées démo à la re-sauvegarde
     isDemo:           existing?.isDemo || false,
@@ -124,6 +125,13 @@ function resetForNewProject() {
   AppState.monthlyKwhHp            = null;
   AppState.enedisYear              = null;
   AppState._includeIncentive       = true;
+  AppState.siteSurvey              = null;
+  if (typeof SiteSurvey !== 'undefined') {
+    SiteSurvey.clearPoints();
+    SiteSurvey.getState().terrain = null;
+    SiteSurvey.persist();
+  }
+  if (typeof setMapEditEnabled === 'function') setMapEditEnabled(true);
 
   // 4. Remettre à zéro les labels et statuts secondaires
   const szTotal = document.getElementById('sz-annual-total');

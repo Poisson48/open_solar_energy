@@ -261,31 +261,38 @@
   <!-- ─── SIDEBAR ──────────────────────────────────────────── -->
   <aside class="sidebar">
 
-    <!-- Localisation -->
+    <!-- Localisation (étape 1 — édition carte uniquement ici) -->
     <div class="sidebar-section">
-      <h3>Localisation</h3>
+      <h3>Localisation <span id="map-lock-badge" class="map-lock-badge">🔒 Lieu verrouillé</span></h3>
+      <p id="map-edit-hint" style="font-size:11px;color:var(--color-text-muted);margin:0 0 8px;line-height:1.45">
+        Lieu verrouillé — cliquez « Modifier le lieu » pour déplacer le point.
+      </p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        <button type="button" class="btn btn-primary btn-sm" id="btn-map-edit">✏️ Modifier le lieu</button>
+        <button type="button" class="btn btn-accent btn-sm" id="btn-map-lock" style="display:none">✓ Valider le lieu</button>
+      </div>
       <div class="form-row">
         <div class="form-group" style="flex:1">
           <label for="inp-address">Adresse</label>
-          <input type="text" id="inp-address" placeholder="Ex: Toulouse, France">
+          <input type="text" id="inp-address" data-loc-edit placeholder="Ex: Toulouse, France" disabled>
         </div>
-        <button class="btn btn-primary btn-sm" id="btn-geocode" style="margin-bottom:1px">Aller !</button>
+        <button class="btn btn-primary btn-sm" id="btn-geocode" data-loc-edit style="margin-bottom:1px" disabled>Aller !</button>
       </div>
       <div class="form-row">
         <div class="form-group">
           <label for="inp-lat">Latitude</label>
-          <input type="number" id="inp-lat" step="0.0001" value="48.8566" min="-90" max="90">
+          <input type="number" id="inp-lat" data-loc-edit step="0.0001" value="48.8566" min="-90" max="90" disabled>
         </div>
         <div class="form-group">
           <label for="inp-lon">Longitude</label>
-          <input type="number" id="inp-lon" step="0.0001" value="2.3522" min="-180" max="180">
+          <input type="number" id="inp-lon" data-loc-edit step="0.0001" value="2.3522" min="-180" max="180" disabled>
         </div>
-        <button class="btn btn-primary btn-sm" id="btn-go-coords" style="margin-bottom:1px">OK</button>
+        <button class="btn btn-primary btn-sm" id="btn-go-coords" data-loc-edit style="margin-bottom:1px" disabled>OK</button>
       </div>
       <div class="form-row">
         <div class="form-group">
           <label for="inp-alt">Altitude (m)</label>
-          <input type="number" id="inp-alt" value="35" min="0" max="5000" style="max-width:80px">
+          <input type="number" id="inp-alt" data-loc-edit value="35" min="0" max="5000" style="max-width:80px" disabled>
         </div>
       </div>
       <div class="coord-display">
@@ -363,7 +370,7 @@
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-offgrid" data-tab="offgrid" data-tier="primary">
         <span class="tab-number" aria-hidden="true">🔋</span>Hors réseau
       </button>
-      <button type="button" id="btn-toggle-advanced-tabs" class="tab-btn tab-btn-more" aria-expanded="false" title="Météo, analyse horaire, suiveur, optimisation">
+      <button type="button" id="btn-toggle-advanced-tabs" class="tab-btn tab-btn-more" aria-expanded="false" title="Site, câbles, météo, implantation, outils">
         Outils avancés
       </button>
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-cables" data-tab="cables" data-tier="advanced" style="display:none">
@@ -384,6 +391,9 @@
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-layout" data-tab="layout" data-tier="advanced" style="display:none">
         Implantation
       </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-site" data-tab="site" data-tier="advanced" style="display:none">
+        Site / Ombrage
+      </button>
     </nav>
 
     <!-- Contenu onglets - rempli dynamiquement par les fichiers js/tabs/*.js -->
@@ -397,6 +407,7 @@
       <div class="tab-pane" id="tab-daily" role="tabpanel" aria-label="Données horaires"></div>
       <div class="tab-pane" id="tab-optimizer" role="tabpanel" aria-label="Optimisation"></div>
       <div class="tab-pane" id="tab-layout" role="tabpanel" aria-label="Implantation"></div>
+      <div class="tab-pane" id="tab-site" role="tabpanel" aria-label="Site et ombrage"></div>
       <div class="tab-pane" id="tab-quote" role="tabpanel" aria-label="Devis"></div>
     </div>
 
@@ -485,8 +496,10 @@
 <script src="js/tabs/tab_daily.js"></script>
 <script src="js/tabs/tab_optimizer.js"></script>
 <script src="js/tabs/tab_layout.js"></script>
+<script src="js/tabs/tab_site.js"></script>
 <script src="js/tabs/tab_quote.js"></script>
 <script src="js/tabs/tab_cables.js"></script>
+<script src="js/site_survey.js"></script>
 
 <!-- Logique applicative -->
 <script src="js/location.js"></script>

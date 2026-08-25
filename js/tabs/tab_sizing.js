@@ -87,7 +87,7 @@ function initTabSizing() {
             <span class="ose-step-num">2</span>
             <div>
               <h3 class="ose-step-title">Toiture et panneaux</h3>
-              <p class="ose-step-hint">Surface dispo + orientation. Le lieu se règle dans la colonne de gauche.</p>
+              <p class="ose-step-hint">Surface dispo + orientation. Lieu = colonne gauche (« Modifier le lieu »). Terrain / ombrage = onglet <strong>Site / Ombrage</strong>.</p>
             </div>
           </div>
           <div class="ose-step-body">

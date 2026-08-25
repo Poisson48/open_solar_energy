@@ -14,6 +14,57 @@ async function loadDemoData() {
   }
 }
 
+// Édition du lieu : uniquement en mode « Modifier le lieu » (étape localisation).
+// Par défaut verrouillé pour éviter de déplacer le point par accident.
+AppState.mapEditEnabled = false;
+
+function _syncMapEditUI() {
+  const unlocked = !!AppState.mapEditEnabled;
+  const hint = document.getElementById('map-edit-hint');
+  const btnEdit = document.getElementById('btn-map-edit');
+  const btnOk = document.getElementById('btn-map-lock');
+  const badge = document.getElementById('map-lock-badge');
+  if (hint) {
+    hint.textContent = unlocked
+      ? 'Mode édition : cliquez la carte ou glissez le marqueur, puis validez.'
+      : 'Lieu verrouillé — cliquez « Modifier le lieu » pour déplacer le point.';
+  }
+  if (btnEdit) btnEdit.style.display = unlocked ? 'none' : '';
+  if (btnOk) btnOk.style.display = unlocked ? '' : 'none';
+  if (badge) {
+    badge.textContent = unlocked ? '✏️ Édition lieu' : '🔒 Lieu verrouillé';
+    badge.classList.toggle('map-lock-open', unlocked);
+  }
+  document.querySelectorAll('[data-loc-edit]').forEach(el => {
+    if ('disabled' in el) el.disabled = !unlocked;
+  });
+  const mapEl = document.getElementById('map');
+  if (mapEl) mapEl.classList.toggle('map-editing', unlocked);
+}
+
+function setMapEditEnabled(on) {
+  AppState.mapEditEnabled = !!on;
+  if (AppState.marker) {
+    if (AppState.marker.dragging) {
+      if (on) AppState.marker.dragging.enable();
+      else AppState.marker.dragging.disable();
+    }
+    // Leaflet <1.x fallback
+    try { AppState.marker.options.draggable = !!on; } catch (_) {}
+  }
+  _syncMapEditUI();
+  if (AppState.map) setTimeout(() => AppState.map.invalidateSize(), 50);
+}
+
+function toggleMapEdit(force) {
+  const next = (typeof force === 'boolean') ? force : !AppState.mapEditEnabled;
+  setMapEditEnabled(next);
+  if (next && typeof showToast === 'function')
+    showToast('Déplacez le point sur la carte, puis validez le lieu.', 'ok');
+  if (!next && typeof showToast === 'function')
+    showToast('Lieu verrouillé.', 'ok');
+}
+
 // ── Initialisation carte Leaflet ─────────────────────────────
 function initMap() {
   AppState.map = L.map('map', { zoomControl: true, attributionControl: false }).setView(
@@ -33,17 +84,29 @@ function initMap() {
     iconAnchor: [10, 10]
   });
 
-  AppState.marker = L.marker([AppState.location.lat, AppState.location.lon], { icon, draggable: true })
-    .addTo(AppState.map);
+  AppState.marker = L.marker([AppState.location.lat, AppState.location.lon], {
+    icon,
+    draggable: false
+  }).addTo(AppState.map);
 
   AppState.marker.on('dragend', e => {
+    if (!AppState.mapEditEnabled) return;
     const { lat, lng } = e.target.getLatLng();
     setLocationCoords(lat, lng);
   });
 
   AppState.map.on('click', e => {
+    if (!AppState.mapEditEnabled) {
+      if (typeof showToast === 'function')
+        showToast('Lieu verrouillé — utilisez « Modifier le lieu » dans Localisation.', 'warning');
+      return;
+    }
     setLocationCoords(e.latlng.lat, e.latlng.lng);
   });
+
+  document.getElementById('btn-map-edit')?.addEventListener('click', () => toggleMapEdit(true));
+  document.getElementById('btn-map-lock')?.addEventListener('click', () => toggleMapEdit(false));
+  setMapEditEnabled(false);
 }
 
 // ── Définir localisation par preset ─────────────────────────
@@ -114,6 +177,11 @@ function updateLocationUI() {
 // ── Bind coordonnées manuelles ───────────────────────────────
 function initLocationInputs() {
   const applyCoords = () => {
+    if (!AppState.mapEditEnabled) {
+      if (typeof showToast === 'function')
+        showToast('Activez « Modifier le lieu » pour changer les coordonnées.', 'warning');
+      return;
+    }
     const lat = parseFloat(document.getElementById('inp-lat')?.value);
     const lon = parseFloat(document.getElementById('inp-lon')?.value);
     if (isNaN(lat) || isNaN(lon)) return;
@@ -125,14 +193,25 @@ function initLocationInputs() {
   document.getElementById('inp-lon')?.addEventListener('keydown', e => { if (e.key === 'Enter') applyCoords(); });
 
   document.getElementById('inp-address')?.addEventListener('keydown', e => {
-    if (e.key === 'Enter') geocodeAddress();
+    if (e.key === 'Enter') {
+      if (!AppState.mapEditEnabled) toggleMapEdit(true);
+      geocodeAddress();
+    }
   });
 
-  document.getElementById('btn-geocode')?.addEventListener('click', geocodeAddress);
+  document.getElementById('btn-geocode')?.addEventListener('click', () => {
+    if (!AppState.mapEditEnabled) toggleMapEdit(true);
+    geocodeAddress();
+  });
 
   document.querySelectorAll('.preset-btn').forEach(btn => {
-    btn.addEventListener('click', () => setLocation(btn.dataset.loc));
+    btn.addEventListener('click', () => {
+      if (!AppState.mapEditEnabled) toggleMapEdit(true);
+      setLocation(btn.dataset.loc);
+    });
   });
+
+  _syncMapEditUI();
 }
 
 // ── Géocodage Nominatim ──────────────────────────────────────
