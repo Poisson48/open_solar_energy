@@ -3,8 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.28';
+const APP_VERSION = '2.0.29';
 // Historique :
+//   2.0.29 - Git complet téléphone + PC (isomorphic-git / IndexedDB) :
+//            commits, branches, restauration — même UX partout
 //   2.0.28 - Hub projets : carte Nouveautés / MAJ (notes GitHub + bouton Mettre à jour)
 //   2.0.27 - Historique versions : snapshots locaux (Android/navigateur), plus
 //            d’erreur gitLog ; git natif conservé sur AppImage desktop
