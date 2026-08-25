@@ -1,22 +1,24 @@
 /**
- * project_startup.js - Modal de démarrage et projet démo complet
+ * project_startup.js - Modal de démarrage (hub projets) et projet démo
  * Dépend de : app_state.js, project_manager.js, project_forms.js
  *
- * Le projet démo n'embarque PAS de résultats hardcodés : consommation
- * mensuelle + profil 30 min Enedis synthétique cohérents, météo Toulouse,
- * formulaires remplis. Au chargement, loadProject() recalcule via les
- * moteurs sizing / grid / offgrid / horaire.
+ * Au lancement : liste des projets + recherche (pas d'ouverture auto).
+ * Le projet démo est seedé dans localStorage et apparaît dans la liste.
  */
 
 const DEMO_PROJECT_ID = 'demo_ose_v2';
-const DEMO_SEED_VERSION = 2;
+const DEMO_SEED_VERSION = 3;
 
 // ══════════════════════════════════════════════════════════════
-//  MODAL DE DÉMARRAGE
+//  MODAL DE DÉMARRAGE = HUB PROJETS
 // ══════════════════════════════════════════════════════════════
 function openStartupModal() {
   showStartupStep1();
   document.getElementById('startup-modal').style.display = 'flex';
+  const search = document.getElementById('startup-project-search');
+  if (search) search.value = '';
+  renderProjectsList('startup-projects-list', '');
+  setTimeout(() => search?.focus(), 50);
 }
 
 function closeStartupModal() {
@@ -27,14 +29,24 @@ function showStartupStep1() {
   document.getElementById('startup-step-1').style.display    = 'block';
   document.getElementById('startup-step-type').style.display = 'none';
   document.getElementById('startup-step-new').style.display  = 'none';
-  document.getElementById('startup-step-load').style.display = 'none';
+  const load = document.getElementById('startup-step-load');
+  if (load) load.style.display = 'none';
+  renderProjectsList('startup-projects-list', document.getElementById('startup-project-search')?.value || '');
 }
 
 function showInstallationTypeStep() {
   document.getElementById('startup-step-1').style.display    = 'none';
   document.getElementById('startup-step-type').style.display = 'block';
   document.getElementById('startup-step-new').style.display  = 'none';
-  document.getElementById('startup-step-load').style.display = 'none';
+  const load = document.getElementById('startup-step-load');
+  if (load) load.style.display = 'none';
+}
+
+/** Depuis la modal Projets : ouvrir le flux nouveau projet */
+function startNewProjectFlow() {
+  closeProjectsModal();
+  openStartupModal();
+  showInstallationTypeStep();
 }
 
 function selectInstallationType(type) {
@@ -47,16 +59,13 @@ function showNewProjectForm() {
   document.getElementById('startup-step-1').style.display    = 'none';
   document.getElementById('startup-step-type').style.display = 'none';
   document.getElementById('startup-step-new').style.display  = 'block';
-  document.getElementById('startup-step-load').style.display = 'none';
-  document.getElementById('startup-project-name').focus();
+  const load = document.getElementById('startup-step-load');
+  if (load) load.style.display = 'none';
+  document.getElementById('startup-project-name')?.focus();
 }
 
 function showLoadProjectList() {
-  document.getElementById('startup-step-1').style.display    = 'none';
-  document.getElementById('startup-step-type').style.display = 'none';
-  document.getElementById('startup-step-new').style.display  = 'none';
-  document.getElementById('startup-step-load').style.display = 'block';
-  renderProjectsList('startup-projects-list');
+  showStartupStep1();
 }
 
 function createNewProject(event) {
@@ -85,29 +94,24 @@ function createNewProject(event) {
 //  GÉNÉRATEURS DÉMO (cohérents, pas de résultats figés)
 // ══════════════════════════════════════════════════════════════
 
-/** Jours par mois (non bissextile sauf si year % 4 === 0). */
 function demoMonthDays(year) {
   const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
   return [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 }
 
-/**
- * Profil 30 min typique résidentiel (somme = 1.0 sur 48 créneaux).
- * Pics matin (7h–9h) et soir (18h–22h), bas la nuit.
- */
 function demoHalfHourWeights() {
   const w = new Float64Array(48);
   for (let s = 0; s < 48; s++) {
     const h = s / 2;
-    if (h >= 0 && h < 6)       w[s] = 0.35;   // nuit
+    if (h >= 0 && h < 6)       w[s] = 0.35;
     else if (h >= 6 && h < 7)  w[s] = 0.8;
-    else if (h >= 7 && h < 9)  w[s] = 2.4;    // matin
+    else if (h >= 7 && h < 9)  w[s] = 2.4;
     else if (h >= 9 && h < 12) w[s] = 1.1;
-    else if (h >= 12 && h < 14) w[s] = 1.4;   // midi
+    else if (h >= 12 && h < 14) w[s] = 1.4;
     else if (h >= 14 && h < 17) w[s] = 1.0;
     else if (h >= 17 && h < 18) w[s] = 1.6;
-    else if (h >= 18 && h < 22) w[s] = 2.6;   // soir
-    else                        w[s] = 0.9;   // tard
+    else if (h >= 18 && h < 22) w[s] = 2.6;
+    else                        w[s] = 0.9;
   }
   let sum = 0;
   for (let i = 0; i < 48; i++) sum += w[i];
@@ -115,10 +119,6 @@ function demoHalfHourWeights() {
   return w;
 }
 
-/**
- * Construit un Float32Array (nJours × 48) en kWh/créneau, tel que
- * la somme mensuelle ≈ monthlyKwh[m].
- */
 function buildSyntheticEnedis30min(monthlyKwh, year) {
   const days = demoMonthDays(year);
   const nDays = days.reduce((a, b) => a + b, 0);
@@ -126,15 +126,13 @@ function buildSyntheticEnedis30min(monthlyKwh, year) {
   const weights = demoHalfHourWeights();
   let dayIndex = 0;
   for (let m = 0; m < 12; m++) {
-    const monthTotal = monthlyKwh[m]; // kWh
+    const monthTotal = monthlyKwh[m];
     const dCount = days[m];
-    // Légère variation jour de semaine / weekend (+15 % samedi-dimanche)
     const dayFactors = [];
     let factorSum = 0;
     for (let d = 0; d < dCount; d++) {
-      // 1 jan year → weekday
       const date = new Date(Date.UTC(year, m, d + 1));
-      const wd = date.getUTCDay(); // 0=dim
+      const wd = date.getUTCDay();
       const f = (wd === 0 || wd === 6) ? 1.12 : 0.96;
       dayFactors.push(f);
       factorSum += f;
@@ -150,13 +148,10 @@ function buildSyntheticEnedis30min(monthlyKwh, year) {
   return out;
 }
 
-/** Conso mensuelle maison familiale Toulouse (~3 325 kWh/an). */
 function demoMonthlyKwh() {
-  // Jan→Déc — chauffe électrique partielle en hiver
   return [385, 345, 310, 268, 228, 192, 182, 188, 222, 278, 335, 392];
 }
 
-/** Part HP (~58 %) pour tarif HP/HC. */
 function demoMonthlyKwhHp(monthly) {
   return monthly.map(v => Math.round(v * 0.58 * 10) / 10);
 }
@@ -206,15 +201,10 @@ function seedDemoInstaller() {
   });
 }
 
-/**
- * Insère / met à jour le projet démo complet.
- * Résultats (Ppeak, ROI…) calculés au chargement — pas stockés figés.
- */
 function seedDemoProject() {
   seedDemoPanels();
   seedDemoInstaller();
 
-  // Retirer l'ancienne démo v1
   if (ProjectManager.get('demo_ose_v1')) ProjectManager.remove('demo_ose_v1');
 
   const existing = ProjectManager.get(DEMO_PROJECT_ID);
@@ -229,7 +219,6 @@ function seedDemoProject() {
   const halfHourly = buildSyntheticEnedis30min(monthlyKwh, year);
   const days = demoMonthDays(year);
 
-  // Wh/j moyen par mois (pour hors-réseau) dérivé de la conso mensuelle
   const dailyWhByMonth = monthlyKwh.map((kwh, i) =>
     String(Math.round((kwh * 1000) / days[i]))
   );
@@ -239,12 +228,11 @@ function seedDemoProject() {
   const panelM2 = '2.00';
   const surface = '24';
   const tilt = '32';
-  const azimuth = '-15'; // légèrement Est-Sud-Est
+  const azimuth = '-15';
   const losses = '12';
-  const nPanels = '12'; // 12 × 425 W ≈ 5,1 kWc
+  const nPanels = '12';
 
   const formState = {
-    // ── Dimensionnement réseau (HP/HC) ──
     'sz-tariff': 'hphc',
     'sz-price-base': '0.2516',
     'sz-price-hp': '0.27',
@@ -264,8 +252,6 @@ function seedDemoProject() {
     'sz-cost-kwp': '1800',
     'sz-cost-total': '',
     'sz-feedin': '0.13',
-
-    // ── Système PV réseau (simulation) ──
     'inp-surface': surface,
     'inp-panel-model': panelModel,
     'inp-panel-wp': panelWp,
@@ -279,11 +265,10 @@ function seedDemoProject() {
     'inp-co2': '0.052',
     'grid-panel-mode': 'fixe',
     'grid-npanels-fixe': nPanels,
-
-    // ── Hors réseau ──
     'og2-daily-default': '0',
     ...Object.fromEntries(dailyWhByMonth.map((v, i) => [`og2-day-${i + 1}`, v])),
     'og2-batt-tech': 'lfp_diy',
+    'og2-batt-kwh': '15',
     'og2-tilt': tilt,
     'og2-azimuth': azimuth,
     'og2-surface': surface,
@@ -296,8 +281,6 @@ function seedDemoProject() {
     'og2-bos-cost': '800',
     'og2-panel-mode': 'fixe',
     'og2-npanels-fixe': nPanels,
-
-    // ── Devis (prérempli ; prod/Ppeak mis à jour après calc via importSizing) ──
     'dv-ins-company': 'Soleil Occitan SARL',
     'dv-ins-siret': '812 345 678 00012',
     'dv-ins-rge': 'E-E190909-4521',
@@ -314,7 +297,7 @@ function seedDemoProject() {
     'dv-site-surface': surface,
     'dv-site-tilt': tilt,
     'dv-site-azimuth': azimuth,
-    'dv-sys-ppeak': '', // rempli après dimensionnement
+    'dv-sys-ppeak': '',
     'dv-sys-panels': nPanels,
     'dv-sys-panel-model': panelModel,
     'dv-sys-inverter': 'Fronius Symo 5.0-3-M',
@@ -389,7 +372,6 @@ function seedDemoProject() {
     monthlyKwhHp,
     enedisYear: year,
     formState,
-    // Pas de Ppeak/ROI figés — recalculés au chargement
     summary: {
       annualConso,
       recommendedPpeak: null,
@@ -404,7 +386,6 @@ function seedDemoProject() {
   ProjectManager.save(demo);
 }
 
-/** Bouton démarrage : assure la seed puis charge. */
 function openDemoProject() {
   seedDemoProject();
   loadProject(DEMO_PROJECT_ID);

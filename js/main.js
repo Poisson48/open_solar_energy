@@ -190,13 +190,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (typeof PVGISImport !== 'undefined') PVGISImport.init();
   }, 100);
 
-  // 7. Calculs initiaux
+  // 7. Calculs initiaux (sans ouvrir de projet — hub projets déjà affiché)
   setTimeout(() => {
     renderIrradiationData();
-    calcSizing();
     HourlyModule.updateSourceStatus();
-    // Si l'onglet daily est actif dès le démarrage, déclencher l'analyse
-    if (AppState.activeTab === 'daily') HourlyModule.autoComputeIfReady();
   }, 350);
 
 });

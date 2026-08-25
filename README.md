@@ -32,6 +32,7 @@ L’APK est signé avec la clé de publication du projet — les versions suivan
 | Linux Electron (v1.x) | `Open-Solar-Energy-*.AppImage` | Anciennes releases — conservé pour compatibilité |
 
 **Mises à jour**
+- Bouton **↻ Mises à jour** (header, hub projets, barre Qt) pour vérifier à la demande.
 - **Android** : détection → téléchargement APK → installation in-app.
 - **PC / Linux** : détection d’une version plus récente → ouverture de la page GitHub Release.
 
@@ -71,13 +72,14 @@ L’APK est signé avec la clé de publication du projet — les versions suivan
 
 | Technologie | DoD | η | Cycles | Coût |
 |---|---|---|---|---|
-| LFP standard (neuf) | 80 % | 97 % | 3 000 | 400 €/kWh |
-| LFP DIY CATL/EVE 280Ah | 90 % | 97 % | 3 000 | 100 €/kWh + BMS 200 € |
+| LFP (Lithium Fer Phosphate) | 80 % | 97 % | 3 000 | 400 €/kWh |
+| LFP DIY CATL/EVE | 90 % | 97 % | 3 000 | 100 €/kWh + BMS 200 € |
 | AGM plomb carbone | 50 % | 85 % | 600 | 120 €/kWh |
-| NMC recondit. Nissan Leaf | 80 % | 96 % | 800 | 45 €/kWh + BMS 150 € |
-| NMC recondit. Renault Zoé | 80 % | 96 % | 900 | 50 €/kWh + BMS 150 € |
-| NMC recondit. Tesla | 85 % | 97 % | 1 000 | 65 €/kWh + BMS 200 € |
+| NMC Nissan Leaf (recond.) | 80 % | 96 % | 800 | 45 €/kWh + BMS 150 € |
+| NMC Renault Zoé (recond.) | 80 % | 96 % | 900 | 50 €/kWh + BMS 150 € |
+| NMC Tesla (recond.) | 85 % | 97 % | 1 000 | 65 €/kWh + BMS 200 € |
 
+- Capacité batterie **saisie par l’utilisateur** (kWh brut) ; type = paramètres DoD / η / coût
 - Matrice de couverture (heatmap PV × batterie), jours de déficit, surplus mensuel
 
 ### Devis professionnel
@@ -99,11 +101,13 @@ L’APK est signé avec la clé de publication du projet — les versions suivan
 - Carte Leaflet interactive (clic ou glissé pour placer le site)
 
 ### Gestion de projets
-- **Modal démarrage** : nouveau projet ou chargement d’un projet existant à chaque démarrage
+- **Hub au démarrage** : liste des projets (démo incluse), **sans ouverture automatique**
+- **Recherche** : filtre par nom de projet, client, localisation ou date
 - **Infos client** saisies à la création (nom, adresse, téléphone, email) — pré-remplies dans le devis
-- **Export fichier** : chaque projet exportable en `.json` local
+- **Projet démo complet** : Enedis 30 min synthétique cohérent, HP/HC, devis, hors-réseau
+- **Export fichier** : chaque projet exportable en `.json` / `.zip` (avec Enedis 30 min)
 - Sauvegarde locale (localStorage), pas de serveur requis
-- Capture de 60+ champs de formulaire + localisation + météo
+- Capture de 60+ champs de formulaire + localisation + météo + devis
 - Clonage pour comparer plusieurs scénarios (orientation, technologie batterie, surface…)
 - Export / import JSON (partage entre machines)
 - Raccourci `Ctrl+S` pour sauvegarder
@@ -169,21 +173,21 @@ cmake --build build --target opensolarenergy
 # Binaire : build/src/opensolarenergy
 
 # AppImage local
-VERSION_NAME=2.0.0 QT_ROOT="$HOME/Qt/6.8.2/gcc_64" bash scripts/build-appimage.sh
+VERSION_NAME=2.0.2 QT_ROOT="$HOME/Qt/6.8.2/gcc_64" bash scripts/build-appimage.sh
 ```
 
 ### Android (arm64)
 
 ```bash
 # Une fois : SDK/NDK + Qt Android (voir scripts/)
-VERSION_NAME=2.0.0 VERSION_CODE=200 bash scripts/build-android.sh
+VERSION_NAME=2.0.2 VERSION_CODE=202 bash scripts/build-android.sh
 # → opensolarenergy-arm64.apk (signé debug, ou release si ANDROID_KEYSTORE_B64 est défini)
 ```
 
 ### Publier une version
 
 ```bash
-git tag -a v2.0.1 -m "Notes affichées dans l’app avant MAJ" && git push origin v2.0.1
+git tag -a v2.0.2 -m "Notes affichées dans l’app avant MAJ" && git push origin v2.0.2
 ```
 
 Le workflow **Release** construit l’APK Android **et** l’AppImage Linux Qt, puis les publie sur GitHub Releases.
@@ -196,6 +200,7 @@ Clé de signature Android (une fois) : `bash scripts/make-release-key.sh` puis s
 
 ```bash
 node tests/run_math_tests.js
+node tests/run_project_tests.mjs
 bash scripts/validate-app.sh
 ```
 
@@ -267,6 +272,7 @@ Pour un site réel, importer les données météo via **« Importer météo (Ope
 
 | Version | Changements |
 |---|---|
+| **2.0.2** | Hub projets au démarrage (liste + recherche nom/client/lieu/date), bouton vérifier les MAJ, capacité batterie saisie manuellement |
 | **2.0.1** | Logo Android/PC, projet démo complet (Enedis 30 min synthétique cohérent HP/HC, devis, panneaux) |
 | **2.0.0** | Port Qt natif (Linux AppImage + Android APK), mises à jour auto via GitHub Releases (comme Colo Course), corrections P0 (import Enedis ZIP 30 min, production hors-réseau, câblage onduleur), tests math unitaires |
 | **1.8.x** | Releases Electron AppImage (auto-update electron-updater) |

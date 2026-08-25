@@ -15,6 +15,7 @@ public:
 public slots:
     void openExternal(const QString& url);
     QString openFileDialog();
+    void checkForUpdates();
     QJsonObject gitSave(const QString& projectId, const QString& projectJson, const QString& message);
     QJsonArray gitLog(const QString& projectId);
     QString gitCheckout(const QString& projectId, const QString& hash);
@@ -22,6 +23,9 @@ public slots:
     QJsonArray gitBranches(const QString& projectId);
     QJsonObject gitCreateBranch(const QString& projectId, const QString& branchName);
     QJsonObject gitSwitchBranch(const QString& projectId, const QString& branchName);
+
+signals:
+    void checkUpdatesRequested();
 
 private:
     QString projectDir(const QString& projectId) const;

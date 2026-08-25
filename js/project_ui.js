@@ -222,22 +222,67 @@ function saveEditProject(event) {
 //  MODAL PROJETS (liste)
 // ══════════════════════════════════════════════════════════════
 function openProjectsModal() {
-  renderProjectsList();
+  const search = document.getElementById('projects-modal-search');
+  if (search) search.value = '';
+  renderProjectsList('projects-list-container', '');
   document.getElementById('projects-modal').style.display = 'block';
+  setTimeout(() => search?.focus(), 50);
 }
 function closeProjectsModal() {
   document.getElementById('projects-modal').style.display = 'none';
 }
 
-function renderProjectsList(containerId = 'projects-list-container') {
+function _escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/** Filtre projets : nom, client, localisation, date (texte libre). */
+function filterProjects(projects, query) {
+  const q = (query || '').trim().toLowerCase();
+  if (!q) return projects;
+  return projects.filter(p => {
+    const dateFr = p.updatedAt
+      ? new Date(p.updatedAt).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' })
+      : '';
+    const dateIso = (p.updatedAt || '').slice(0, 10);
+    const hay = [
+      p.name,
+      p.client?.nom,
+      p.client?.adresse,
+      p.client?.email,
+      p.summary?.locationName,
+      p.location?.name,
+      dateFr,
+      dateIso,
+      p.isDemo ? 'demo démo' : '',
+    ].join(' ').toLowerCase();
+    return q.split(/\s+/).every(token => hay.includes(token));
+  });
+}
+
+function renderProjectsList(containerId = 'projects-list-container', query = '') {
   const container = document.getElementById(containerId);
   if (!container) return;
-  const projects = ProjectManager.list();
   const isStartup = containerId === 'startup-projects-list';
+  const all = ProjectManager.list();
+  // Démo toujours en tête si présente
+  const sorted = [...all].sort((a, b) => {
+    if (a.isDemo && !b.isDemo) return -1;
+    if (!a.isDemo && b.isDemo) return 1;
+    return new Date(b.updatedAt) - new Date(a.updatedAt);
+  });
+  const projects = filterProjects(sorted, query);
 
-  if (projects.length === 0) {
+  if (all.length === 0) {
     container.innerHTML = `<div style="text-align:center;padding:32px;color:var(--color-text-muted)">
       Aucun projet sauvegardé. Créez-en un nouveau pour commencer.
+    </div>`;
+    return;
+  }
+
+  if (projects.length === 0) {
+    container.innerHTML = `<div style="text-align:center;padding:28px;color:var(--color-text-muted)">
+      Aucun projet ne correspond à « ${_escHtml(query)} ».
     </div>`;
     return;
   }
@@ -245,7 +290,7 @@ function renderProjectsList(containerId = 'projects-list-container') {
   container.innerHTML = projects.map(p => {
     const date = new Date(p.updatedAt).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' });
     const isCurrent = p.id === AppState.currentProjectId;
-    const clientName = p.client?.nom ? ` · ${p.client.nom}` : '';
+    const clientName = p.client?.nom ? ` · ${_escHtml(p.client.nom)}` : '';
     const kwh   = p.summary?.annualConso ? `${p.summary.annualConso.toLocaleString('fr')} kWh/an` : '';
     const ppeak = p.summary?.recommendedPpeak ? ` · ${p.summary.recommendedPpeak} kWc` : '';
     const cost  = p.summary?.systemCost ? ` · ${p.summary.systemCost.toLocaleString('fr')} €` : '';
@@ -260,8 +305,8 @@ function renderProjectsList(containerId = 'projects-list-container') {
     return `
     <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 0;border-bottom:1px solid var(--color-border)${isCurrent?';background:var(--color-surface2);margin:0 -22px;padding:12px 22px':''}" >
       <div style="flex:1;min-width:0">
-        <div style="font-weight:600;font-size:14px${isCurrent?';color:var(--color-accent)':''}">${p.name}${demoTag}${clientName}${activeTag}</div>
-        <div style="font-size:11px;color:var(--color-text-muted);margin-top:3px">${loc ? loc + ' · ' : ''}${date}${kwh ? ' · ' + kwh : ''}${ppeak}${cost}</div>
+        <div style="font-weight:600;font-size:14px${isCurrent?';color:var(--color-accent)':''}">${_escHtml(p.name)}${demoTag}${clientName}${activeTag}</div>
+        <div style="font-size:11px;color:var(--color-text-muted);margin-top:3px">${loc ? _escHtml(loc) + ' · ' : ''}${date}${kwh ? ' · ' + kwh : ''}${ppeak}${cost}</div>
         <div id="project-actions-${p.id}" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">
           ${isStartup ? _startupProjectActionsHTML(p) : _projectActionsHTML(p)}
         </div>
@@ -315,8 +360,7 @@ function submitCloneProject(id) {
   const copy = ProjectManager.clone(id, name || src.name + ' (copie)');
   if (copy) {
     showToast(`✓ Clone "${copy.name}" créé`);
-    renderProjectsList();
-    renderProjectsList('startup-projects-list');
+    _refreshProjectLists();
   }
 }
 
@@ -342,8 +386,12 @@ function deleteProject(id) {
     updateProjectBar();
   }
   showToast(`✓ Projet "${p.name}" supprimé`);
-  renderProjectsList();
-  renderProjectsList('startup-projects-list');
+  _refreshProjectLists();
+}
+
+function _refreshProjectLists() {
+  renderProjectsList('projects-list-container', document.getElementById('projects-modal-search')?.value || '');
+  renderProjectsList('startup-projects-list', document.getElementById('startup-project-search')?.value || '');
 }
 
 async function importProjectsFile(input) {
@@ -374,8 +422,7 @@ async function importProjectsFile(input) {
       const result = ProjectManager.importOne(jsonText);
       if (result.error) { showToast('Erreur import ZIP : ' + result.error, 'error'); return; }
       showToast(`✓ Projet "${result.project.name}" importé depuis ZIP`);
-      renderProjectsList();
-      renderProjectsList('startup-projects-list');
+      _refreshProjectLists();
     } catch(e) { showToast('Erreur lecture ZIP : ' + e.message, 'error'); }
     return;
   }
@@ -397,8 +444,7 @@ async function importProjectsFile(input) {
     if (result.error) { showToast('Erreur import : ' + result.error, 'error'); }
     else {
       showToast(result._msg);
-      renderProjectsList();
-      renderProjectsList('startup-projects-list');
+      _refreshProjectLists();
     }
   };
   reader.readAsText(file, 'UTF-8');
@@ -408,18 +454,76 @@ async function importProjectsFile(input) {
 //  NOUVEAU PROJET VIERGE (depuis la modal projets)
 // ══════════════════════════════════════════════════════════════
 function newProjectBlank() {
-  AppState.currentProjectId = null;
-  AppState.currentClient = { nom: '', adresse: '', tel: '', email: '' };
-  const nameEl = document.getElementById('project-name-input');
-  if (nameEl) { nameEl.value = ''; nameEl.focus(); }
-  updateProjectBar();
-  resetForNewProject();
-  closeProjectsModal();
-  showToast('Nouveau projet vierge — entrez un nom de projet puis Ctrl+S', 'warning');
+  startNewProjectFlow();
 }
 
 // ══════════════════════════════════════════════════════════════
-//  INIT : afficher le modal au démarrage si besoin
+//  MISES À JOUR (GitHub Releases — comme Colo Course)
+// ══════════════════════════════════════════════════════════════
+function _versionParts(v) {
+  const s = String(v || '').replace(/^[vV]/, '');
+  return s.split('.').map(p => parseInt(p, 10) || 0);
+}
+function _isNewerVersion(candidate, current) {
+  const a = _versionParts(candidate);
+  const b = _versionParts(current);
+  const n = Math.max(a.length, b.length);
+  for (let i = 0; i < n; i++) {
+    const x = a[i] || 0, y = b[i] || 0;
+    if (x !== y) return x > y;
+  }
+  return false;
+}
+
+async function checkForUpdates() {
+  const btn = document.getElementById('btn-check-updates');
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    // Pont Qt natif (AppImage / APK) si exposé
+    if (window.webBridge?.checkForUpdates) {
+      window.webBridge.checkForUpdates();
+      showToast('Vérification des mises à jour…');
+      return;
+    }
+    if (window.electronAPI?.checkForUpdates) {
+      await window.electronAPI.checkForUpdates();
+      showToast('Vérification des mises à jour…');
+      return;
+    }
+
+    const res = await fetch(
+      'https://api.github.com/repos/Poisson48/open_solar_energy/releases?per_page=15',
+      { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'OpenSolarEnergy' } }
+    );
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const releases = await res.json();
+    const current = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '0.0.0';
+    let best = null;
+    for (const r of releases) {
+      if (r.draft || r.prerelease) continue;
+      const ver = String(r.tag_name || '').replace(/^[vV]/, '');
+      if (!ver) continue;
+      if (_isNewerVersion(ver, current) && (!best || _isNewerVersion(ver, best.ver)))
+        best = { ver, url: r.html_url, name: r.name };
+    }
+    if (!best) {
+      showToast(`✓ Vous avez la dernière version (v${current})`);
+      return;
+    }
+    showToast(`Nouvelle version v${best.ver} disponible`, 'warning');
+    const open = window.electronAPI?.openExternal
+      || ((u) => window.open(u, '_blank', 'noopener'));
+    if (confirm(`Open Solar Energy v${best.ver} est disponible.\nVous avez la v${current}.\n\nOuvrir la page de téléchargement ?`))
+      open(best.url);
+  } catch (e) {
+    showToast('Impossible de vérifier les mises à jour : ' + (e.message || e), 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '↻ Mises à jour'; }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  INIT : hub projets au démarrage (pas d'ouverture auto)
 // ══════════════════════════════════════════════════════════════
 function initProjectUI() {
   document.getElementById('projects-modal')?.addEventListener('click', e => {
@@ -443,5 +547,6 @@ function initProjectUI() {
     }
   });
 
+  // Toujours atterrir sur la liste (démo incluse), sans ouvrir un projet
   openStartupModal();
 }

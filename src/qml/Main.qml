@@ -42,8 +42,38 @@ ApplicationWindow {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: updateBanner.visible ? 56 : 0
-            visible: updateBanner.visible
+            Layout.preferredHeight: 40
+            color: Theme.surface
+            border.color: Theme.outline
+            border.width: 0
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 12
+                anchors.rightMargin: 8
+                spacing: 8
+
+                Label {
+                    text: "Open Solar Energy  ·  v" + Updater.currentVersion
+                    color: Theme.textDim
+                    font.pixelSize: 12
+                }
+                Item { Layout.fillWidth: true }
+                Button {
+                    flat: true
+                    text: Updater.downloading ? "Téléchargement…"
+                         : (Updater.state === 1 ? "Vérification…" : "Vérifier les mises à jour")
+                    enabled: !Updater.downloading && Updater.state !== 1
+                    onClicked: Updater.check()
+                }
+            }
+        }
+
+        Rectangle {
+            id: updateBanner
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible ? 56 : 0
+            visible: Updater.updateAvailable || Updater.downloading || Updater.readyToInstall || Updater.state === 5
             color: Theme.surfaceHigh
             clip: true
 
@@ -63,6 +93,8 @@ ApplicationWindow {
                             if (Updater.downloading) return "Téléchargement…"
                             if (Updater.readyToInstall)
                                 return "Version " + Updater.latestVersion + " prête"
+                            if (Updater.state === 5)
+                                return "Échec du téléchargement"
                             return "Version " + Updater.latestVersion + " disponible"
                         }
                     }

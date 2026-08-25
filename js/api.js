@@ -91,6 +91,7 @@ const AppAPI = (() => {
   function setOffgrid(params = {}) {
     if (params.dailyDefault   !== undefined) setField('og2-daily-default',    params.dailyDefault);
     if (params.battTech       !== undefined) setField('og2-batt-tech',         params.battTech);
+    if (params.battKwh        !== undefined) setField('og2-batt-kwh',          params.battKwh);
     if (params.targetCoverage !== undefined) setField('og2-target-coverage',   params.targetCoverage);
     if (params.pvCostKwp      !== undefined) setField('og2-pv-cost-kwp',       params.pvCostKwp);
     if (params.surface        !== undefined) setField('og2-surface',           params.surface);
@@ -526,6 +527,7 @@ AppAPI.setOffgrid({
   dailyDefault,                // Wh/j uniforme
   dailyByMonth:[...12],        // Wh/j par mois
   battTech,                    // 'lfp'|'lfp_diy'|'agm'|'nmc_leaf'|'nmc_zoe'|'nmc_tesla'
+  battKwh,                     // capacité brute kWh (0/omis = recherche auto)
   targetCoverage,              // % autonomie cible (90 = défaut)
   pvCostKwp, bosCost,          // null/omis → 500€, 0 → pas de BOS
   nPanelsFixed, surface,

@@ -63,6 +63,10 @@ function buildProjectData() {
     ? { ...AppState.hourlyEnedisData, halfHourly: Array.from(AppState.hourlyEnedisData.halfHourly) }
     : null;
 
+  const existing = AppState.currentProjectId
+    ? ProjectManager.get(AppState.currentProjectId)
+    : null;
+
   return {
     id:               AppState.currentProjectId || ProjectManager.newId(),
     name,
@@ -77,6 +81,9 @@ function buildProjectData() {
     enedisYear:       AppState.enedisYear || null,
     formState:        captureFormState(),
     summary,
+    // Préserver les métadonnées démo à la re-sauvegarde
+    isDemo:           existing?.isDemo || false,
+    demoSeedVersion:  existing?.demoSeedVersion,
   };
 }
 

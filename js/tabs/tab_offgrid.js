@@ -54,23 +54,32 @@ function initTabOffgrid() {
         <details class="card" open>
           <summary class="card-title" style="cursor:pointer;user-select:none">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
-            Technologie batterie
+            Batterie
           </summary>
           <div style="margin-top:10px">
-            <div class="form-group" style="margin-bottom:10px">
-              <label for="og2-batt-tech">Type de batterie</label>
-              <select id="og2-batt-tech">
-                <option value="lfp">LFP standard - Lithium Fer Phosphate (neuf, recommandé)</option>
-                <option value="lfp_diy">LFP DIY - Cellules CATL/EVE 280Ah (meilleur rapport qualité/prix)</option>
-                <option value="agm">AGM - Plomb Carbone (économique)</option>
-                <option value="nmc_leaf">NMC recondit. - Nissan Leaf</option>
-                <option value="nmc_zoe">NMC recondit. - Renault Zoé</option>
-                <option value="nmc_tesla">NMC recondit. - Tesla</option>
-              </select>
+            <div class="params-grid">
+              <div class="form-group">
+                <label for="og2-batt-tech">Type de batterie</label>
+                <select id="og2-batt-tech">
+                  <option value="lfp">LFP — Lithium Fer Phosphate</option>
+                  <option value="lfp_diy">LFP DIY — cellules CATL / EVE</option>
+                  <option value="agm">AGM — plomb carbone</option>
+                  <option value="nmc_leaf">NMC — Nissan Leaf (recond.)</option>
+                  <option value="nmc_zoe">NMC — Renault Zoé (recond.)</option>
+                  <option value="nmc_tesla">NMC — Tesla (recond.)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="og2-batt-kwh">Capacité</label>
+                <div class="input-unit">
+                  <input type="number" id="og2-batt-kwh" value="" min="0.5" step="0.5" placeholder="ex : 15">
+                  <span class="unit-tag">kWh</span>
+                </div>
+              </div>
             </div>
-            <div id="og2-batt-info" class="alert alert-info" style="font-size:11px"></div>
+            <div id="og2-batt-info" class="alert alert-info" style="font-size:11px;margin-top:8px"></div>
             <div style="font-size:11px;color:var(--color-text-muted);margin-top:6px">
-              La capacité optimale est calculée automatiquement selon votre consommation.
+              Indiquez la capacité brute de votre parc (kWh). Si vide, une capacité optimale est recherchée automatiquement.
             </div>
           </div>
         </details>

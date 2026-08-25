@@ -18,12 +18,12 @@ const OffgridSizing = (() => {
   const DAYS = DAYS_IN_MONTH;
 
   const BATTERY_TECH = {
-    lfp:       { label:'LFP standard (neuf)',             dod:0.80, eta:0.97, cycles:3000, costPerKwh:400, bmsFixed:0,   color:'#2d9e5c' },
-    lfp_diy:   { label:'LFP DIY cellules CATL/EVE 280Ah', dod:0.90, eta:0.97, cycles:3000, costPerKwh:100, bmsFixed:200, color:'#1a6b3c' },
-    agm:       { label:'AGM (plomb carbone)',              dod:0.50, eta:0.85, cycles:600,  costPerKwh:120, bmsFixed:0,   color:'#1565c0' },
-    nmc_leaf:  { label:'NMC recondit. Nissan Leaf',        dod:0.80, eta:0.96, cycles:800,  costPerKwh:45,  bmsFixed:150, color:'#7b1fa2' },
-    nmc_zoe:   { label:'NMC recondit. Renault Zoé',        dod:0.80, eta:0.96, cycles:900,  costPerKwh:50,  bmsFixed:150, color:'#e91e63' },
-    nmc_tesla: { label:'NMC recondit. Tesla',              dod:0.85, eta:0.97, cycles:1000, costPerKwh:65,  bmsFixed:200, color:'#d32f2f' }
+    lfp:       { label:'LFP (Lithium Fer Phosphate)', dod:0.80, eta:0.97, cycles:3000, costPerKwh:400, bmsFixed:0,   color:'#2d9e5c' },
+    lfp_diy:   { label:'LFP DIY (CATL / EVE)',         dod:0.90, eta:0.97, cycles:3000, costPerKwh:100, bmsFixed:200, color:'#1a6b3c' },
+    agm:       { label:'AGM (plomb carbone)',          dod:0.50, eta:0.85, cycles:600,  costPerKwh:120, bmsFixed:0,   color:'#1565c0' },
+    nmc_leaf:  { label:'NMC Nissan Leaf (recond.)',    dod:0.80, eta:0.96, cycles:800,  costPerKwh:45,  bmsFixed:150, color:'#7b1fa2' },
+    nmc_zoe:   { label:'NMC Renault Zoé (recond.)',    dod:0.80, eta:0.96, cycles:900,  costPerKwh:50,  bmsFixed:150, color:'#e91e63' },
+    nmc_tesla: { label:'NMC Tesla (recond.)',          dod:0.85, eta:0.97, cycles:1000, costPerKwh:65,  bmsFixed:200, color:'#d32f2f' }
   };
 
   const PV_COST_PER_KWP = 650; // €HT pro/kWc (panneau + pose)
@@ -312,7 +312,11 @@ const OffgridSizing = (() => {
     const ceiling    = fullAutonomy ? 300 : 50;
     const battCeil   = Math.min(ceiling, Math.max(10, Math.ceil(maxDailyKwh * multiplier)));
     const fullBatts  = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50, 60, 75, 100, 125, 150, 200, 250, 300];
-    const batts      = fullBatts.filter(b => b <= battCeil);
+    // Capacité saisie par l'utilisateur → une seule valeur ; sinon recherche auto
+    const fixedBatt  = battery.capacityKwh > 0 ? battery.capacityKwh : null;
+    const batts      = fixedBatt
+      ? [Math.round(fixedBatt * 10) / 10]
+      : fullBatts.filter(b => b <= battCeil);
 
     const allCandidates = [];
 
@@ -433,7 +437,8 @@ const OffgridSizing = (() => {
       },
       conso: { dailyWh },
       battery: {
-        type: getStr('og2-batt-tech') || 'lfp'
+        type: getStr('og2-batt-tech') || 'lfp',
+        capacityKwh: getVal('og2-batt-kwh') || 0
       },
       sizing: {
         targetCoveragePct: getVal('og2-target-coverage') || 90,

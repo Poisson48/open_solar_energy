@@ -1,5 +1,8 @@
 #include "appcontroller.h"
 
+#include "webbridge.h"
+#include "updater.h"
+
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
@@ -39,6 +42,8 @@ bool AppController::init()
         return false;
     m_webUrl = m_host.baseUrl();
     emit webUrlChanged();
+    QObject::connect(&m_bridge, &WebBridge::checkUpdatesRequested,
+                     &m_updater, &Updater::check);
     m_updater.check();
     return true;
 }

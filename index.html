@@ -32,6 +32,10 @@
   </div>
   <div class="spacer"></div>
   <span class="badge" id="version-badge">v… - Open Source</span>
+  <button id="btn-check-updates" onclick="checkForUpdates()" title="Vérifier les mises à jour"
+    style="margin-left:8px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.28);color:#fff;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;white-space:nowrap">
+    ↻ Mises à jour
+  </button>
 </header>
 
 <!-- ═══ BARRE PROJET ═════════════════════════════════════════ -->
@@ -69,34 +73,32 @@
       <button onclick="closeStartupModal()" aria-label="Fermer" style="background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:18px;width:32px;height:32px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
     </div>
 
-    <!-- Étape 1 : choisir -->
-    <div id="startup-step-1" style="padding:28px">
-      <p style="text-align:center;color:var(--color-text-muted);margin-bottom:24px;font-size:14px">
-        Que souhaitez-vous faire ?
-      </p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px">
-        <button onclick="showInstallationTypeStep()" style="background:var(--color-bg);border:2px solid var(--color-border);border-radius:10px;padding:20px 16px;cursor:pointer;text-align:center;transition:border-color .2s" onmouseover="this.style.borderColor='var(--color-accent)'" onmouseout="this.style.borderColor='var(--color-border)'">
-          <div style="font-size:32px;margin-bottom:8px">＋</div>
-          <div style="font-size:14px;font-weight:700;color:var(--color-primary);margin-bottom:4px">Nouveau projet</div>
-          <div style="font-size:12px;color:var(--color-text-muted)">Démarrer un nouveau dimensionnement pour un client</div>
-        </button>
-        <button onclick="showLoadProjectList()" style="background:var(--color-bg);border:2px solid var(--color-border);border-radius:10px;padding:20px 16px;cursor:pointer;text-align:center;transition:border-color .2s" onmouseover="this.style.borderColor='var(--color-accent)'" onmouseout="this.style.borderColor='var(--color-border)'">
-          <div style="font-size:32px;margin-bottom:8px">📂</div>
-          <div style="font-size:14px;font-weight:700;color:var(--color-primary);margin-bottom:4px">Continuer un projet</div>
-          <div style="font-size:12px;color:var(--color-text-muted)">Charger un projet existant depuis la liste ou un fichier</div>
-        </button>
-      </div>
-      <button onclick="openDemoProject()" style="width:100%;background:linear-gradient(135deg,var(--color-accent) 0%,var(--color-accent-dark) 100%);border:none;border-radius:10px;padding:14px 20px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px;margin-bottom:14px;color:#fff">
-        <div style="font-size:28px">☀️</div>
-        <div>
-          <div style="font-size:14px;font-weight:700;margin-bottom:2px">Découvrir avec le projet démo complet</div>
-          <div style="font-size:12px;opacity:0.85">Maison Toulouse · Enedis 30 min · HP/HC · devis · hors-réseau · ~3 300 kWh/an</div>
+    <!-- Étape 1 : hub projets (écran d’accueil) -->
+    <div id="startup-step-1" style="padding:20px 24px 24px">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="font-size:15px;font-weight:700;color:var(--color-primary)">Mes projets</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <button class="btn btn-outline btn-sm" onclick="checkForUpdates()" title="Interroger GitHub Releases">↻ Mises à jour</button>
+          <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Importer JSON ou ZIP">
+            📥 Importer
+            <input type="file" accept=".json,.zip" style="display:none" onchange="importProjectsFile(this)">
+          </label>
+          <button class="btn btn-accent btn-sm" onclick="showInstallationTypeStep()">＋ Nouveau</button>
         </div>
-        <div style="margin-left:auto;font-size:18px;opacity:0.8">→</div>
-      </button>
-      <div style="text-align:center">
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label for="startup-project-search" style="font-size:12px">Rechercher</label>
+        <input type="search" id="startup-project-search" placeholder="Nom du projet, client, lieu, date…"
+               oninput="renderProjectsList('startup-projects-list', this.value)"
+               style="width:100%;font-size:14px" autocomplete="off">
+        <div style="font-size:11px;color:var(--color-text-muted);margin-top:4px">
+          Filtre sur le nom, le client, la localisation ou la date de modification.
+        </div>
+      </div>
+      <div id="startup-projects-list" style="min-height:120px;max-height:min(48vh,420px);overflow-y:auto"></div>
+      <div style="text-align:center;margin-top:14px">
         <button onclick="closeStartupModal()" style="background:none;border:1px solid var(--color-border);border-radius:6px;color:var(--color-text-muted);cursor:pointer;font-size:13px;padding:6px 14px">
-          Passer et continuer sans projet
+          Continuer sans projet
         </button>
       </div>
     </div>
@@ -166,25 +168,8 @@
       </form>
     </div>
 
-    <!-- Étape 2b : charger un projet -->
-    <div id="startup-step-load" style="display:none;padding:24px 28px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <button onclick="showStartupStep1()" style="background:none;border:none;cursor:pointer;color:var(--color-text-muted);font-size:18px">←</button>
-          <div style="font-size:16px;font-weight:700">Continuer un projet</div>
-        </div>
-        <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Importer un projet depuis un fichier JSON ou ZIP">
-          📥 Importer un fichier
-          <input type="file" accept=".json,.zip" style="display:none" onchange="importProjectsFile(this)">
-        </label>
-      </div>
-      <div id="startup-projects-list" style="min-height:80px"></div>
-      <div style="text-align:center;margin-top:12px">
-        <button onclick="closeStartupModal()" style="background:none;border:1px solid var(--color-border);border-radius:6px;color:var(--color-text-muted);cursor:pointer;font-size:13px;padding:6px 14px">
-          Passer
-        </button>
-      </div>
-    </div>
+    <!-- Étape 2b : (conservée pour compat, masquée — hub = step-1) -->
+    <div id="startup-step-load" style="display:none"></div>
 
   </div>
 </div>
@@ -269,19 +254,25 @@
 <!-- ═══ MODAL PROJETS ═════════════════════════════════════════ -->
 <div id="projects-modal" role="dialog" aria-modal="true" aria-labelledby="projects-modal-title" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);overflow-y:auto" onclick="if(event.target===this)closeProjectsModal()">
   <div style="max-width:760px;margin:40px auto;background:var(--color-surface);border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.35);overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--color-border)">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--color-border);gap:10px;flex-wrap:wrap">
       <div id="projects-modal-title" style="font-weight:700;font-size:16px">📁 Mes projets</div>
-      <div style="display:flex;gap:8px;align-items:center">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" onclick="checkForUpdates()">↻ Mises à jour</button>
         <button class="btn btn-outline btn-sm" onclick="ProjectManager.exportAll()" title="Exporter tous les projets en JSON">⬇ Export tout</button>
         <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Importer des projets depuis un fichier JSON ou ZIP">
           📥 Importer
           <input type="file" accept=".json,.zip" style="display:none" onchange="importProjectsFile(this)">
         </label>
-        <button class="btn btn-outline btn-sm" onclick="newProjectBlank()" style="color:var(--color-success);border-color:var(--color-success)">+ Nouveau</button>
+        <button class="btn btn-outline btn-sm" onclick="startNewProjectFlow()" style="color:var(--color-success);border-color:var(--color-success)">+ Nouveau</button>
         <button onclick="closeProjectsModal()" aria-label="Fermer" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--color-text-muted);line-height:1">✕</button>
       </div>
     </div>
-    <div id="projects-list-container" style="padding:16px 22px;min-height:120px"></div>
+    <div style="padding:12px 22px 0">
+      <input type="search" id="projects-modal-search" placeholder="Rechercher : nom, client, lieu, date…"
+             oninput="renderProjectsList('projects-list-container', this.value)"
+             style="width:100%;font-size:14px;padding:8px 10px;border:1px solid var(--color-border);border-radius:8px" autocomplete="off">
+    </div>
+    <div id="projects-list-container" style="padding:12px 22px 16px;min-height:120px"></div>
   </div>
 </div>
 

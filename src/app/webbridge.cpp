@@ -60,6 +60,11 @@ void WebBridge::openExternal(const QString& url)
         QDesktopServices::openUrl(QUrl(url));
 }
 
+void WebBridge::checkForUpdates()
+{
+    emit checkUpdatesRequested();
+}
+
 QString WebBridge::openFileDialog()
 {
 #ifdef OSE_HAS_WIDGETS

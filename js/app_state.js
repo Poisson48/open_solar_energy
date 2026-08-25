@@ -3,8 +3,9 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.1';
+const APP_VERSION = '2.0.2';
 // Historique :
+//   2.0.2 - Hub projets + recherche + bouton MAJ, capacité batterie saisie
 //   2.0.1 - Logo Android/PC, projet démo complet (Enedis 30 min synthétique cohérent)
 //   2.0.0 - Port Qt natif, APK + AppImage, mises à jour GitHub Releases
 //   1.4.0 - Module devis professionnel
@@ -100,7 +101,7 @@ const PROJECT_FIELDS = [
   // Hors réseau
   'og2-daily-default',
   ...Array.from({length:12}, (_,i) => `og2-day-${i+1}`),
-  'og2-batt-tech','og2-tilt','og2-azimuth','og2-surface',
+  'og2-batt-tech','og2-batt-kwh','og2-tilt','og2-azimuth','og2-surface',
   'og2-panel-model','og2-panel-wp','og2-panel-m2','og2-losses','og2-target-coverage',
   'og2-pv-cost-kwp','og2-bos-cost',
   // Hors réseau — mode panneaux

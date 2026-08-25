@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Open Solar Energy - Beta publique</title>
-  <meta name="description" content="Simulateur PV open-source en beta. Dimensionnement solaire, import Enedis, simulation batterie. On cherche des testeurs pour remonter les bugs.">
+  <title>Open Solar Energy — simulateur PV open-source</title>
+  <meta name="description" content="Dimensionnement photovoltaïque open-source. AppImage Linux Qt + APK Android. Import Enedis, hors-réseau, devis, hub projets, mises à jour GitHub.">
   <style>
     :root {
       --sun: #f59e0b;
@@ -306,21 +306,21 @@
 <!-- HERO -->
 <section class="hero">
   <div class="hero-badge">
-    🧪 Beta publique - on cherche des testeurs
+    ☀️ v2.0 — Qt natif · Linux + Android
   </div>
-  <h1>Un simulateur PV<br><em>open-source</em>,<br>en cours de route</h1>
-  <p>Application desktop Linux pour dimensionner des installations solaires. Encore jeune, probablement buguée par endroits - tes retours et rapports de bugs sont ce dont on a besoin.</p>
+  <h1>Un simulateur PV<br><em>open-source</em>,<br>100 % local</h1>
+  <p>Dimensionnement photovoltaïque réseau et hors-réseau, import Enedis, devis, projet démo. AppImage Linux et APK Android — mises à jour via GitHub Releases.</p>
   <div class="hero-cta">
     <a class="btn-primary" href="https://github.com/Poisson48/open_solar_energy/releases/latest">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
-      Essayer la beta Linux
+      Télécharger v2.0
     </a>
     <a class="btn-secondary" href="https://github.com/Poisson48/open_solar_energy/issues/new">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
       Signaler un bug
     </a>
   </div>
-  <div class="hero-meta">v1.7.0 beta · Linux x64 · Mises à jour automatiques</div>
+  <div class="hero-meta">v2.0.2 · Linux AppImage Qt · Android APK · Hub projets + MAJ in-app</div>
 
   <div class="hero-screenshot">
     <img src="screenshots/app-dimensionnement.jpg" alt="Open Solar Energy - onglet dimensionnement avec résultats ROI et graphiques mensuels" loading="eager">
@@ -417,8 +417,8 @@
           <li>Import Enedis direct (ZIP ou CSV) dans l'onglet hors réseau</li>
           <li>Simulation horaire si données 30min disponibles</li>
           <li>SOC mensuel porté sur 12 mois - bilan annuel réaliste</li>
-          <li>Matrice heatmap PV × batterie, jours de déficit</li>
-          <li>LFP, AGM, NMC recondit. (Leaf, Zoé, Tesla)</li>
+          <li>Capacité batterie saisie en kWh ; type = DoD / η / coût</li>
+          <li>LFP, AGM, NMC (Leaf, Zoé, Tesla) — paramètres techniques</li>
         </ul>
       </div>
 
@@ -451,10 +451,10 @@
         <h3>Gestion de projets</h3>
         <p>Plusieurs scénarios, zéro cloud.</p>
         <ul>
-          <li>Sauvegarde locale (localStorage), pas de compte requis</li>
-          <li>Clonage pour comparer orientations, technologies, surfaces</li>
-          <li>Export / import JSON - partage entre machines</li>
-          <li>Ctrl+S pour sauvegarder à tout moment</li>
+          <li>Hub au démarrage : liste + recherche (nom, client, lieu, date)</li>
+          <li>Projet démo complet (Enedis 30 min, HP/HC, devis)</li>
+          <li>Sauvegarde locale, clonage, export/import JSON &amp; ZIP</li>
+          <li>Bouton « Vérifier les mises à jour » (GitHub Releases)</li>
         </ul>
       </div>
     </div>
@@ -472,71 +472,57 @@
       <div class="install-card">
         <h3>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          Linux x64
-          <span class="os-badge">Disponible</span>
+          Linux x64 (Qt)
+          <span class="os-badge">v2.0+</span>
         </h3>
         <div class="install-step">
           <div class="step-num">1</div>
           <div>
             <strong>Télécharger</strong>
-            <p>Récupérer <code>Open-Solar-Energy-*.AppImage</code> depuis la <a href="https://github.com/Poisson48/open_solar_energy/releases/latest" style="color:var(--sun)">page Releases</a>.</p>
+            <p>Récupérer <code>OpenSolarEnergy-*-x86_64.AppImage</code> depuis la <a href="https://github.com/Poisson48/open_solar_energy/releases/latest" style="color:var(--sun)">page Releases</a>.</p>
           </div>
         </div>
         <div class="install-step">
           <div class="step-num">2</div>
           <div>
-            <strong>Rendre exécutable</strong>
+            <strong>Rendre exécutable et lancer</strong>
             <div class="code-block">
-              <code>chmod +x Open-Solar-Energy-*.AppImage</code>
+              <code>chmod +x OpenSolarEnergy-*.AppImage
+./OpenSolarEnergy-*.AppImage</code>
             </div>
           </div>
         </div>
-        <div class="install-step">
-          <div class="step-num">3</div>
-          <div>
-            <strong>Lancer</strong>
-            <div class="code-block">
-              <code>./Open-Solar-Energy-*.AppImage</code>
-            </div>
-          </div>
-        </div>
-        <p class="install-note">Les mises à jour sont automatiques - l'application vérifie les nouvelles versions au démarrage et propose le redémarrage.</p>
+        <p class="install-note">Bouton « Vérifier les mises à jour » dans l’app. Au démarrage : hub projets (liste + recherche), démo incluse.</p>
       </div>
 
       <div class="install-card">
         <h3>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          Windows
-          <span class="os-badge" style="background:rgba(100,116,139,0.15);color:#64748b">Bientôt</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+          Android arm64
+          <span class="os-badge" style="background:rgba(22,163,74,0.15);color:#16a34a">Disponible</span>
         </h3>
         <div class="install-step">
           <div class="step-num">1</div>
           <div>
-            <strong>Télécharger</strong>
-            <p>Le fichier <code>Open-Solar-Energy-*-Setup.exe</code> sera disponible dans les <a href="https://github.com/Poisson48/open_solar_energy/releases" style="color:var(--sun)">releases</a>.</p>
+            <strong>Télécharger l’APK</strong>
+            <p><code>opensolarenergy-*-arm64.apk</code> sur la <a href="https://github.com/Poisson48/open_solar_energy/releases/latest" style="color:var(--sun)">page Releases</a>.</p>
           </div>
         </div>
         <div class="install-step">
           <div class="step-num">2</div>
           <div>
             <strong>Installer</strong>
-            <p>Double-clic sur le fichier <code>.exe</code> et suivre l'assistant.</p>
+            <p>Ouvrir l’APK (autoriser la source) ou <code>adb install -r …</code>. Signature stable : les versions suivantes s’installent par-dessus.</p>
           </div>
         </div>
         <div class="install-step">
           <div class="step-num">3</div>
           <div>
-            <strong>Alternative - navigateur</strong>
-            <div class="code-block">
-              <code><span class="c"># Cloner le dépôt :</span>
-git clone https://github.com/Poisson48/open_solar_energy.git
-cd open_solar_energy
-<span class="c"># Lancer :</span>
-serve.bat</code>
-            </div>
+            <strong>Mises à jour</strong>
+            <p>Proposées dans l’app (téléchargement + installation), comme Colo Course.</p>
           </div>
         </div>
-        <p class="install-note">La version navigateur fonctionne sur tout OS avec Python 3 installé.</p>
+        <p class="install-note">Navigateur sans install : cloner le dépôt puis <code>./serve.sh</code> / <code>serve.bat</code>.</p>
       </div>
     </div>
   </div>
@@ -547,26 +533,25 @@ serve.bat</code>
   <div class="section-inner">
     <div class="section-tag">Stockage</div>
     <h2 class="section-title">6 technologies de batterie</h2>
-    <p class="section-sub">Coûts HT pro intégrés - comparez les options pour trouver le meilleur rapport coût/durabilité.</p>
+    <p class="section-sub">Choisissez un type (DoD, rendement, coût) et indiquez vous-même la capacité en kWh.</p>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Technologie</th>
+            <th>Type</th>
             <th>DoD</th>
             <th>Rendement</th>
             <th>Cycles</th>
             <th>Coût</th>
-            <th>Profil</th>
           </tr>
         </thead>
         <tbody>
-          <tr><td>LFP standard (neuf)</td><td>80 %</td><td>97 %</td><td>3 000</td><td>400 €/kWh</td><td><span class="tag-good">Fiable</span></td></tr>
-          <tr><td>LFP DIY CATL/EVE 280Ah</td><td>90 %</td><td>97 %</td><td>3 000</td><td>100 €/kWh + BMS 200 €</td><td><span class="tag-good">Économique</span></td></tr>
-          <tr><td>AGM plomb carbone</td><td>50 %</td><td>85 %</td><td>600</td><td>120 €/kWh</td><td><span class="tag-mid">Budget</span></td></tr>
-          <tr><td>NMC recondit. Nissan Leaf</td><td>80 %</td><td>96 %</td><td>800</td><td>45 €/kWh + BMS 150 €</td><td><span class="tag-good">Économique</span></td></tr>
-          <tr><td>NMC recondit. Renault Zoé</td><td>80 %</td><td>96 %</td><td>900</td><td>50 €/kWh + BMS 150 €</td><td><span class="tag-good">Économique</span></td></tr>
-          <tr><td>NMC recondit. Tesla</td><td>85 %</td><td>97 %</td><td>1 000</td><td>65 €/kWh + BMS 200 €</td><td><span class="tag-good">Haute densité</span></td></tr>
+          <tr><td>LFP — Lithium Fer Phosphate</td><td>80 %</td><td>97 %</td><td>3 000</td><td>400 €/kWh</td></tr>
+          <tr><td>LFP DIY — CATL / EVE</td><td>90 %</td><td>97 %</td><td>3 000</td><td>100 €/kWh + BMS 200 €</td></tr>
+          <tr><td>AGM — plomb carbone</td><td>50 %</td><td>85 %</td><td>600</td><td>120 €/kWh</td></tr>
+          <tr><td>NMC — Nissan Leaf (recond.)</td><td>80 %</td><td>96 %</td><td>800</td><td>45 €/kWh + BMS 150 €</td></tr>
+          <tr><td>NMC — Renault Zoé (recond.)</td><td>80 %</td><td>96 %</td><td>900</td><td>50 €/kWh + BMS 150 €</td></tr>
+          <tr><td>NMC — Tesla (recond.)</td><td>85 %</td><td>97 %</td><td>1 000</td><td>65 €/kWh + BMS 200 €</td></tr>
         </tbody>
       </table>
     </div>
