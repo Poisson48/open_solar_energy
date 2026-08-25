@@ -94,6 +94,10 @@ function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, hour
       </div>
     </div>
 
+    <button type="button" class="btn btn-primary" style="width:100%;margin-bottom:16px" onclick="activateTab('quote')">
+      ✓ Étape suivante : préparer le Devis client →
+    </button>
+
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
       <div class="card">
         <div class="section-header">

@@ -438,11 +438,15 @@ const EnedisImport = (() => {
       if (text.includes('�')) {
         const r2 = new FileReader();
         r2.onload = e2 => onResult(parse(e2.target.result));
+        r2.onerror = () => onResult({ error: 'Impossible de relire le fichier (encodage).' });
         r2.readAsText(file, 'ISO-8859-1');
         return;
       }
       onResult(parse(text));
     };
+    // Sans ce handler, un échec de lecture (fichier verrouillé/déplacé, permissions…)
+    // laissait le statut bloqué indéfiniment sur "Lecture du fichier…" sans retour utilisateur.
+    reader.onerror = () => onResult({ error: 'Impossible de lire le fichier : ' + (reader.error?.message || 'erreur inconnue') });
     reader.readAsText(file, 'UTF-8');
   }
 

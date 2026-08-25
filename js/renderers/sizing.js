@@ -201,8 +201,9 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
       </details>
 
       <button type="button" class="btn btn-primary" style="width:100%;margin-top:12px" onclick="applySizingToGrid()">
-        → Étape suivante : Système PV (${rec.nPanels} panneaux · ${rec.Ppeak.toLocaleString('fr')} kWc)
+        ✓ Appliquer au système (${rec.nPanels} panneaux · ${rec.Ppeak.toLocaleString('fr')} kWc) → onglet Système PV
       </button>
+      <p class="ose-field-help" style="text-align:center">Puis <strong>Système PV</strong> calcule le détail technique, et l'onglet <strong>Devis</strong> génère le document client.</p>
     </div>
 
     <div class="card">

@@ -58,6 +58,9 @@ function initTabSizing() {
                 📂 Importer depuis Enedis
               </button>
             </div>
+            <div id="sz-hybrid-enedis-note" class="alert alert-info" style="font-size:11px;margin-bottom:6px;display:none">
+              🔋 Batterie hybride : importez si possible le fichier Enedis <strong>30 min</strong> (courbe de charge) plutôt qu'une facture mensuelle — la simulation charge/décharge de la batterie est bien plus précise qu'avec une moyenne mensuelle.
+            </div>
             <div id="sz-csv-status" style="font-size:11px;margin-bottom:6px;display:none"></div>
             <div id="hourly-data-status" style="font-size:11px;color:var(--color-success);margin-bottom:4px"></div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
@@ -170,7 +173,7 @@ function initTabSizing() {
               </div>
             </div>
             <div id="sz-batt-info" class="alert alert-info" style="font-size:11px;margin-top:4px"></div>
-            <p class="ose-field-help">Capacité brute installée (avant DoD). Son coût est ajouté au coût système pour le calcul ROI/VAN.</p>
+            <p class="ose-field-help">Capacité <strong>brute</strong> installée. La capacité réellement <strong>utile</strong> (après DoD, calculée ci-dessus) sert à la simulation. Son coût est ajouté au coût système pour le calcul ROI/VAN. Contrairement au hors-réseau, cette capacité est fixe (pas de recherche automatique).</p>
           </div>
         </section>
 

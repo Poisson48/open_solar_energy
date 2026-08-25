@@ -24,7 +24,7 @@
     {
       "severity": "info",
       "label": "boutons barre",
-      "detail": "(31x27) | Sauver(72x27) | Export(72x32) | Historique(72x32) | Projets(72x27) | ⚡ Réseau(72x27)"
+      "detail": "(31x27) | Sauver(69x27) | Export(69x32) | Historique(69x32) | Projets(69x27) | ⚡ Réseau(83x27) | RéseauSans batterie, sur(0x0) | HybrideRéseau + batterie(0x0) | AutonomeHors réseau(0x0)"
     },
     {
       "severity": "info",
@@ -37,6 +37,6 @@
       "detail": ""
     }
   ],
-  "version": "2.0.18",
-  "at": "2026-08-25T15:03:51.801Z"
+  "version": "2.0.20",
+  "at": "2026-08-25T15:29:41.489Z"
 }

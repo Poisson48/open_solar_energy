@@ -1,6 +1,6 @@
 {
   "name": "open-solar-energy",
-  "version": "2.0.19",
+  "version": "2.0.20",
   "private": true,
   "description": "Alternative open-source à PVGIS — shell Qt (Linux AppImage + Android APK)",
   "scripts": {

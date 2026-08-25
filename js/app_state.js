@@ -3,8 +3,14 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.19';
+const APP_VERSION = '2.0.20';
 // Historique :
+//   2.0.20 - UX 2e passe : menu déroulant du type d'installation (remplace le
+//            cycle de badge opaque), cohérence des champs batterie hybride/hors-
+//            réseau (libellés + capacité utile en direct après DoD), CTA plus
+//            clairs après dimensionnement (« Appliquer au système » → Devis),
+//            aide sur les données Enedis 30 min pour la batterie hybride, fix
+//            lecture fichier Enedis bloquée sans message en cas d'échec
 //   2.0.19 - Devis : import batterie hybride (capacité + ligne de coût) depuis le
 //            dimensionnement ; graphique flux d'énergie : série décharge batterie ;
 //            2e projet démo « hybride » (réseau + batterie) dans le hub

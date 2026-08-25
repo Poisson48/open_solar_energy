@@ -279,6 +279,9 @@ function renderGridResults(results, params) {
 
   el.innerHTML = `
     ${kpiHtml}
+    <button type="button" class="btn btn-primary" style="width:100%;margin:12px 0" onclick="activateTab('quote')">
+      ✓ Étape suivante : préparer le Devis client →
+    </button>
     <div class="card">
       <div class="section-header">
         <div class="card-title">Production mensuelle</div>

@@ -14,8 +14,7 @@
 const TABS_GRID_ONLY    = ['sizing', 'grid', 'tracker', 'optimizer'];
 const TABS_OFFGRID_ONLY = ['offgrid'];
 const GRID_LIKE_TYPES   = ['grid', 'hybrid'];
-// Ordre de bascule + libellés lisibles installateur (badge barre projet + toggleInstallationType)
-const INSTALL_TYPE_ORDER  = ['grid', 'hybrid', 'offgrid'];
+// Libellés lisibles installateur (badge + menu déroulant barre projet)
 const INSTALL_TYPE_LABELS = { grid: 'Réseau', hybrid: 'Hybride', offgrid: 'Autonome' };
 
 function applyInstallationType(type) {
@@ -55,11 +54,16 @@ function applyInstallationType(type) {
   if (battStep) battStep.style.display = (type === 'hybrid') ? '' : 'none';
   if (typeof updateSizingBatteryHelp === 'function') updateSizingBatteryHelp();
 
+  // Rappel : la batterie hybride profite particulièrement des données Enedis 30 min
+  const hybridEnedisNote = document.getElementById('sz-hybrid-enedis-note');
+  if (hybridEnedisNote) hybridEnedisNote.style.display = (type === 'hybrid') ? '' : 'none';
+
   // Rappel dans l'onglet Système PV : la batterie hybride se règle ailleurs (évite de la chercher ici)
   const gridHybridNote = document.getElementById('grid-hybrid-note');
   if (gridHybridNote) gridHybridNote.style.display = (type === 'hybrid') ? '' : 'none';
 
-  // Badge dans la barre projet — cliquable pour changer de type (voir toggleInstallationType)
+  // Badge dans la barre projet — ouvre un menu pour choisir le type directement
+  // (voir toggleInstallTypeMenu / chooseInstallationType, plus clair qu'un cycle à l'aveugle)
   const badge = document.getElementById('install-type-badge');
   if (badge) {
     if (type === 'hybrid') {
@@ -78,17 +82,63 @@ function applyInstallationType(type) {
       badge.style.borderColor = 'var(--color-primary)';
       badge.style.background = 'rgba(30,90,200,0.08)';
     }
-    // Le titre annonce explicitement l'état suivant (clic = bascule), pas juste "changer le type"
-    const nextType = INSTALL_TYPE_ORDER[(INSTALL_TYPE_ORDER.indexOf(type) + 1) % INSTALL_TYPE_ORDER.length];
-    badge.title = `Type actuel : ${INSTALL_TYPE_LABELS[type]}. Cliquer pour passer en ${INSTALL_TYPE_LABELS[nextType]}.`;
+    badge.title = `Type actuel : ${INSTALL_TYPE_LABELS[type]}. Cliquer pour changer de type d'installation.`;
     badge.setAttribute('aria-label', badge.title);
+  }
+
+  // Coche l'option active dans le menu déroulant (voir toggleInstallTypeMenu)
+  document.querySelectorAll('#install-type-menu .ose-type-menu-item').forEach(btn => {
+    const on = btn.dataset.type === type;
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-current', on ? 'true' : 'false');
+  });
+}
+
+// ── Menu déroulant du type d'installation (barre projet) ────────
+// Remplace l'ancien cycle "cliquer pour basculer" par un choix direct et
+// explicite des 3 options — plus clair qu'un badge dont le clic était opaque.
+function toggleInstallTypeMenu(evt) {
+  evt?.stopPropagation();
+  const menu = document.getElementById('install-type-menu');
+  const badge = document.getElementById('install-type-badge');
+  if (!menu || !badge) return;
+  if (!menu.hidden) { closeInstallTypeMenu(); return; }
+
+  // Positionnement en `position:fixed` calculé en JS : évite que le menu soit
+  // rogné par les conteneurs `overflow-x:auto` de la barre projet (mobile).
+  const rect = badge.getBoundingClientRect();
+  menu.style.top   = `${Math.round(rect.bottom + 6)}px`;
+  menu.style.right = `${Math.round(window.innerWidth - rect.right)}px`;
+  menu.hidden = false;
+  badge.setAttribute('aria-expanded', 'true');
+
+  const onDocClick = (e) => {
+    if (menu.hidden) return;
+    if (!menu.contains(e.target) && e.target !== badge) closeInstallTypeMenu();
+  };
+  const onKeyDown = (e) => { if (e.key === 'Escape') closeInstallTypeMenu(); };
+  // Écouteurs one-shot nettoyés dans closeInstallTypeMenu (évite l'accumulation)
+  document.addEventListener('click', onDocClick);
+  document.addEventListener('keydown', onKeyDown);
+  window.__oseTypeMenuCleanup = () => {
+    document.removeEventListener('click', onDocClick);
+    document.removeEventListener('keydown', onKeyDown);
+  };
+}
+
+function closeInstallTypeMenu() {
+  const menu = document.getElementById('install-type-menu');
+  if (menu) menu.hidden = true;
+  document.getElementById('install-type-badge')?.setAttribute('aria-expanded', 'false');
+  if (typeof window.__oseTypeMenuCleanup === 'function') {
+    window.__oseTypeMenuCleanup();
+    window.__oseTypeMenuCleanup = null;
   }
 }
 
-function toggleInstallationType() {
-  const idx = INSTALL_TYPE_ORDER.indexOf(AppState.installationType);
-  const newType = INSTALL_TYPE_ORDER[(idx + 1 + INSTALL_TYPE_ORDER.length) % INSTALL_TYPE_ORDER.length] || 'grid';
-  applyInstallationType(newType);
+function chooseInstallationType(type) {
+  closeInstallTypeMenu();
+  if (type !== AppState.installationType) applyInstallationType(type);
 }
 
 // ── Synchronisation des paramètres d'installation partagés ──

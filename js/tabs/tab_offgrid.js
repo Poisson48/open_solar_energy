@@ -76,7 +76,7 @@ function initTabOffgrid() {
                 </select>
               </div>
               <div class="form-group">
-                <label for="og2-batt-kwh">Capacité</label>
+                <label for="og2-batt-kwh">Capacité batterie</label>
                 <div class="input-unit">
                   <input type="number" id="og2-batt-kwh" value="" min="0.5" step="0.5" placeholder="ex : 15">
                   <span class="unit-tag">kWh</span>
@@ -84,9 +84,7 @@ function initTabOffgrid() {
               </div>
             </div>
             <div id="og2-batt-info" class="alert alert-info" style="font-size:11px;margin-top:8px"></div>
-            <div style="font-size:11px;color:var(--color-text-muted);margin-top:6px">
-              Indiquez la capacité brute de votre parc (kWh). Si vide, une capacité optimale est recherchée automatiquement.
-            </div>
+            <p class="ose-field-help">Capacité <strong>brute</strong> de votre parc. La capacité réellement <strong>utile</strong> (après DoD, calculée ci-dessus) sert à la simulation. Laissez le champ vide pour rechercher automatiquement la capacité optimale (contrairement au mode hybride, où elle est fixe).</p>
           </div>
         </details>
 

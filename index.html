@@ -41,7 +41,26 @@
     <button type="button" class="btn btn-outline btn-sm" id="btn-export-project" onclick="exportCurrentProject()" title="Télécharger le projet en fichier .zip">📤 Export</button>
     <button type="button" class="btn btn-outline btn-sm" id="btn-git-history" onclick="openGitHistoryModal()" title="Historique des versions">🕐 Historique</button>
     <button type="button" id="btn-open-projects" onclick="openProjectsModal()" title="Gérer mes projets">📁 Projets</button>
-    <button type="button" id="install-type-badge" onclick="toggleInstallationType()" title="Type d'installation — cliquer pour basculer réseau → hybride → autonome"></button>
+    <div class="ose-type-switcher" id="ose-type-switcher">
+      <button type="button" id="install-type-badge" onclick="toggleInstallTypeMenu(event)" aria-haspopup="true" aria-expanded="false" title="Type d'installation — cliquer pour changer"></button>
+      <div id="install-type-menu" class="ose-type-menu" role="menu" aria-label="Choisir le type d'installation" hidden>
+        <button type="button" class="ose-type-menu-item" data-type="grid" onclick="chooseInstallationType('grid')" role="menuitem">
+          <span class="ose-type-menu-icon">⚡</span>
+          <span class="ose-type-menu-text"><strong>Réseau</strong><small>Sans batterie, surplus injecté</small></span>
+          <span class="ose-type-menu-check" aria-hidden="true">✓</span>
+        </button>
+        <button type="button" class="ose-type-menu-item" data-type="hybrid" onclick="chooseInstallationType('hybrid')" role="menuitem">
+          <span class="ose-type-menu-icon">⚡🔋</span>
+          <span class="ose-type-menu-text"><strong>Hybride</strong><small>Réseau + batterie</small></span>
+          <span class="ose-type-menu-check" aria-hidden="true">✓</span>
+        </button>
+        <button type="button" class="ose-type-menu-item" data-type="offgrid" onclick="chooseInstallationType('offgrid')" role="menuitem">
+          <span class="ose-type-menu-icon">🔋</span>
+          <span class="ose-type-menu-text"><strong>Autonome</strong><small>Hors réseau</small></span>
+          <span class="ose-type-menu-check" aria-hidden="true">✓</span>
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 

@@ -22,8 +22,12 @@ function bindOptimizeCheckboxes() {
   chkAz?.addEventListener('change', update);
 }
 
+// Affiche les specs techno + la capacité utile en direct (brut × DoD) — même
+// présentation pour l'onglet hybride (sz-) et hors-réseau (og2-), pour que
+// « brut » vs « utile » soit compris de la même façon partout dans l'appli.
 function bindBatteryInfo(prefix = 'og2') {
   const sel = document.getElementById(`${prefix}-batt-tech`);
+  const kwhInput = document.getElementById(`${prefix}-batt-kwh`);
   if (!sel) return;
   function update() {
     const tech = OffgridSizing.BATTERY_TECH[sel.value];
@@ -31,9 +35,14 @@ function bindBatteryInfo(prefix = 'og2') {
     const el = document.getElementById(`${prefix}-batt-info`);
     if (!el) return;
     const bmsStr = tech.bmsFixed > 0 ? ` · BMS ~${tech.bmsFixed} €` : '';
-    el.textContent = `DoD ${tech.dod * 100}% · η ${tech.eta * 100}% · ${tech.cycles} cycles · ~${tech.costPerKwh} €/kWh${bmsStr}`;
+    const capacity = parseFloat(kwhInput?.value);
+    const usableStr = capacity > 0
+      ? ` · <strong>${Math.round(capacity * tech.dod * 10) / 10} kWh utiles</strong> sur ${capacity} kWh brut`
+      : '';
+    el.innerHTML = `DoD ${tech.dod * 100}% · η ${tech.eta * 100}% · ${tech.cycles} cycles · ~${tech.costPerKwh} €/kWh${bmsStr}${usableStr}`;
   }
   sel.addEventListener('change', update);
+  kwhInput?.addEventListener('input', update);
   update();
 }
 
