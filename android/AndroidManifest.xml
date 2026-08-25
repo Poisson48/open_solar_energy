@@ -2,8 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="org.opensolarenergy.app"
     android:installLocation="auto"
-    android:versionCode="200"
-    android:versionName="2.0.0">
+    android:versionCode="201"
+    android:versionName="2.0.1">
 
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
@@ -19,6 +19,8 @@
     <application
         android:name="org.qtproject.qt.android.bindings.QtApplication"
         android:label="Open Solar Energy"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:hardwareAccelerated="true"
         android:allowBackup="true"
         android:allowNativeHeapPointerTagging="false">
@@ -26,6 +28,7 @@
         <activity
             android:name="org.qtproject.qt.android.bindings.QtActivity"
             android:label="Open Solar Energy"
+            android:icon="@mipmap/ic_launcher"
             android:launchMode="singleTop"
             android:screenOrientation="unspecified"
             android:exported="true"

@@ -3,8 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.0';
+const APP_VERSION = '2.0.1';
 // Historique :
+//   2.0.1 - Logo Android/PC, projet démo complet (Enedis 30 min synthétique cohérent)
+//   2.0.0 - Port Qt natif, APK + AppImage, mises à jour GitHub Releases
 //   1.4.0 - Module devis professionnel
 //   1.5.0 - Refactoring multi-fichiers, modal démarrage, infos client,
 //            module horaire EDF, dimensionnement onduleurs
@@ -102,5 +104,19 @@ const PROJECT_FIELDS = [
   'og2-panel-model','og2-panel-wp','og2-panel-m2','og2-losses','og2-target-coverage',
   'og2-pv-cost-kwp','og2-bos-cost',
   // Hors réseau — mode panneaux
-  'og2-panel-mode','og2-npanels-fixe'
+  'og2-panel-mode','og2-npanels-fixe',
+  // Devis professionnel
+  'dv-ins-company','dv-ins-siret','dv-ins-rge','dv-ins-address','dv-ins-phone','dv-ins-email',
+  'dv-cli-name','dv-cli-company','dv-cli-address','dv-cli-phone','dv-cli-email',
+  'dv-site-address','dv-site-type','dv-site-surface','dv-site-tilt','dv-site-azimuth',
+  'dv-sys-ppeak','dv-sys-panels','dv-sys-panel-model','dv-sys-inverter','dv-sys-batt',
+  'dv-sys-prod','dv-sys-co2','dv-sys-autonomy',
+  'dv-line-panels-label','dv-line-panels-qty','dv-line-panels-unit','dv-line-panels-price',
+  'dv-line-inverter-label','dv-line-inverter-qty','dv-line-inverter-unit','dv-line-inverter-price',
+  'dv-line-fixations-label','dv-line-fixations-qty','dv-line-fixations-unit','dv-line-fixations-price',
+  'dv-line-cabling-label','dv-line-cabling-qty','dv-line-cabling-unit','dv-line-cabling-price',
+  'dv-line-labor-label','dv-line-labor-qty','dv-line-labor-unit','dv-line-labor-price',
+  'dv-line-admin-label','dv-line-admin-qty','dv-line-admin-unit','dv-line-admin-price',
+  'dv-line-misc-label','dv-line-misc-qty','dv-line-misc-unit','dv-line-misc-price',
+  'dv-tva','dv-remise','dv-validity','dv-notes','dv-date','dv-ref'
 ];

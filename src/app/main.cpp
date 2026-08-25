@@ -1,5 +1,6 @@
 #include <QApplication>
 #include <QGuiApplication>
+#include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
@@ -13,6 +14,8 @@ int main(int argc, char* argv[])
     QApplication app(argc, argv);
     app.setOrganizationName(QStringLiteral("OpenSolarEnergy"));
     app.setApplicationName(QStringLiteral("OpenSolarEnergy"));
+    app.setApplicationVersion(QStringLiteral(OSE_APP_VERSION));
+    app.setWindowIcon(QIcon(QStringLiteral(":/web/packaging/open-solar-energy.png")));
     QQuickStyle::setStyle(QStringLiteral("Material"));
 
     app::initNotifications();

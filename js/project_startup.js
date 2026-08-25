@@ -1,9 +1,15 @@
 /**
- * project_startup.js - Modal de démarrage et projet démo
+ * project_startup.js - Modal de démarrage et projet démo complet
  * Dépend de : app_state.js, project_manager.js, project_forms.js
+ *
+ * Le projet démo n'embarque PAS de résultats hardcodés : consommation
+ * mensuelle + profil 30 min Enedis synthétique cohérents, météo Toulouse,
+ * formulaires remplis. Au chargement, loadProject() recalcule via les
+ * moteurs sizing / grid / offgrid / horaire.
  */
 
-const DEMO_PROJECT_ID = 'demo_ose_v1';
+const DEMO_PROJECT_ID = 'demo_ose_v2';
+const DEMO_SEED_VERSION = 2;
 
 // ══════════════════════════════════════════════════════════════
 //  MODAL DE DÉMARRAGE
@@ -71,98 +77,335 @@ function createNewProject(event) {
   resetForNewProject();
   closeStartupModal();
   prefillClientInQuote();
-  // Persistance immédiate — l'utilisateur ne perd pas son projet s'il oublie Ctrl+S
   if (typeof saveCurrentProject === 'function') saveCurrentProject();
   else showToast(`✓ Projet "${name}" créé`);
 }
 
 // ══════════════════════════════════════════════════════════════
-//  PROJET DÉMO
+//  GÉNÉRATEURS DÉMO (cohérents, pas de résultats figés)
 // ══════════════════════════════════════════════════════════════
+
+/** Jours par mois (non bissextile sauf si year % 4 === 0). */
+function demoMonthDays(year) {
+  const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+  return [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+}
+
 /**
- * Insère le projet démo dans localStorage si absent.
- * Utilise les données météo Toulouse depuis AppState.demoData.
+ * Profil 30 min typique résidentiel (somme = 1.0 sur 48 créneaux).
+ * Pics matin (7h–9h) et soir (18h–22h), bas la nuit.
+ */
+function demoHalfHourWeights() {
+  const w = new Float64Array(48);
+  for (let s = 0; s < 48; s++) {
+    const h = s / 2;
+    if (h >= 0 && h < 6)       w[s] = 0.35;   // nuit
+    else if (h >= 6 && h < 7)  w[s] = 0.8;
+    else if (h >= 7 && h < 9)  w[s] = 2.4;    // matin
+    else if (h >= 9 && h < 12) w[s] = 1.1;
+    else if (h >= 12 && h < 14) w[s] = 1.4;   // midi
+    else if (h >= 14 && h < 17) w[s] = 1.0;
+    else if (h >= 17 && h < 18) w[s] = 1.6;
+    else if (h >= 18 && h < 22) w[s] = 2.6;   // soir
+    else                        w[s] = 0.9;   // tard
+  }
+  let sum = 0;
+  for (let i = 0; i < 48; i++) sum += w[i];
+  for (let i = 0; i < 48; i++) w[i] /= sum;
+  return w;
+}
+
+/**
+ * Construit un Float32Array (nJours × 48) en kWh/créneau, tel que
+ * la somme mensuelle ≈ monthlyKwh[m].
+ */
+function buildSyntheticEnedis30min(monthlyKwh, year) {
+  const days = demoMonthDays(year);
+  const nDays = days.reduce((a, b) => a + b, 0);
+  const out = new Float32Array(nDays * 48);
+  const weights = demoHalfHourWeights();
+  let dayIndex = 0;
+  for (let m = 0; m < 12; m++) {
+    const monthTotal = monthlyKwh[m]; // kWh
+    const dCount = days[m];
+    // Légère variation jour de semaine / weekend (+15 % samedi-dimanche)
+    const dayFactors = [];
+    let factorSum = 0;
+    for (let d = 0; d < dCount; d++) {
+      // 1 jan year → weekday
+      const date = new Date(Date.UTC(year, m, d + 1));
+      const wd = date.getUTCDay(); // 0=dim
+      const f = (wd === 0 || wd === 6) ? 1.12 : 0.96;
+      dayFactors.push(f);
+      factorSum += f;
+    }
+    for (let d = 0; d < dCount; d++) {
+      const dayKwh = monthTotal * (dayFactors[d] / factorSum);
+      for (let s = 0; s < 48; s++) {
+        out[dayIndex * 48 + s] = dayKwh * weights[s];
+      }
+      dayIndex++;
+    }
+  }
+  return out;
+}
+
+/** Conso mensuelle maison familiale Toulouse (~3 325 kWh/an). */
+function demoMonthlyKwh() {
+  // Jan→Déc — chauffe électrique partielle en hiver
+  return [385, 345, 310, 268, 228, 192, 182, 188, 222, 278, 335, 392];
+}
+
+/** Part HP (~58 %) pour tarif HP/HC. */
+function demoMonthlyKwhHp(monthly) {
+  return monthly.map(v => Math.round(v * 0.58 * 10) / 10);
+}
+
+function seedDemoPanels() {
+  if (typeof PanelDB === 'undefined' || !PanelDB.save) return;
+  const existing = PanelDB.list();
+  if (existing.some(p => p.model && p.model.includes('Tiger Neo 425'))) return;
+  PanelDB.save({
+    model: 'Jinko Tiger Neo N-type 425W',
+    fabricant: 'JinkoSolar',
+    wp: 425,
+    largeur: 1.134,
+    hauteur: 1.762,
+    tech: 'mono',
+    coef_temp: -0.29,
+    prix: 95,
+    garantie_p: 30,
+    url: 'https://www.jinkosolar.com/',
+    notes: 'Panneau démo Open Solar Energy'
+  });
+  PanelDB.save({
+    model: 'Longi Hi-MO 6 430W',
+    fabricant: 'LONGi',
+    wp: 430,
+    largeur: 1.134,
+    hauteur: 1.722,
+    tech: 'mono',
+    coef_temp: -0.28,
+    prix: 98,
+    garantie_p: 25,
+    notes: 'Panneau démo Open Solar Energy'
+  });
+}
+
+function seedDemoInstaller() {
+  if (typeof QuoteGen === 'undefined') return;
+  const cur = QuoteGen.loadInstaller();
+  if (cur && cur.company) return;
+  QuoteGen.saveInstaller({
+    company: 'Soleil Occitan SARL',
+    siret: '812 345 678 00012',
+    rge: 'E-E190909-4521',
+    address: '18 avenue des Pyrénées\n31100 Toulouse',
+    phone: '05 61 98 76 54',
+    email: 'contact@soleil-occitan.fr'
+  });
+}
+
+/**
+ * Insère / met à jour le projet démo complet.
+ * Résultats (Ppeak, ROI…) calculés au chargement — pas stockés figés.
  */
 function seedDemoProject() {
-  if (ProjectManager.get(DEMO_PROJECT_ID)) return;
+  seedDemoPanels();
+  seedDemoInstaller();
+
+  // Retirer l'ancienne démo v1
+  if (ProjectManager.get('demo_ose_v1')) ProjectManager.remove('demo_ose_v1');
+
+  const existing = ProjectManager.get(DEMO_PROJECT_ID);
+  if (existing && existing.demoSeedVersion === DEMO_SEED_VERSION) return;
 
   const toulouse = AppState.demoData?.locations?.toulouse;
   if (!toulouse) return;
 
+  const year = 2024;
+  const monthlyKwh = demoMonthlyKwh();
+  const monthlyKwhHp = demoMonthlyKwhHp(monthlyKwh);
+  const halfHourly = buildSyntheticEnedis30min(monthlyKwh, year);
+  const days = demoMonthDays(year);
+
+  // Wh/j moyen par mois (pour hors-réseau) dérivé de la conso mensuelle
+  const dailyWhByMonth = monthlyKwh.map((kwh, i) =>
+    String(Math.round((kwh * 1000) / days[i]))
+  );
+
+  const panelModel = 'Jinko Tiger Neo N-type 425W';
+  const panelWp = '425';
+  const panelM2 = '2.00';
+  const surface = '24';
+  const tilt = '32';
+  const azimuth = '-15'; // légèrement Est-Sud-Est
+  const losses = '12';
+  const nPanels = '12'; // 12 × 425 W ≈ 5,1 kWc
+
   const formState = {
-    // Dimensionnement réseau
-    'sz-tariff':           'base',
-    'sz-price-base':       '0.2516',
-    'sz-subscription':     '147',
-    'sz-kwh-1':  '385', 'sz-kwh-2':  '345', 'sz-kwh-3':  '310',
-    'sz-kwh-4':  '268', 'sz-kwh-5':  '228', 'sz-kwh-6':  '192',
-    'sz-kwh-7':  '182', 'sz-kwh-8':  '188', 'sz-kwh-9':  '222',
-    'sz-kwh-10': '278', 'sz-kwh-11': '335', 'sz-kwh-12': '392',
-    'sz-tilt':           '32',
-    'sz-azimuth':        '0',
-    'sz-surface':        '22',
-    'sz-panel-wp':       '400',
-    'sz-panel-m2':       '1.96',
-    'sz-losses':         '14',
-    'sz-tech':           'crystSi',
-    'sz-strategy':       'autoconso_max',
-    'sz-target-coverage':'60',
-    'sz-cost-kwp':       '900',
-    'sz-cost-total':     '',
-    'sz-feedin':         '0.13',
-    // Système réseau (simulation directe)
-    'inp-surface':   '22',
-    'inp-panel-wp':  '400',
-    'inp-panel-m2':  '1.96',
-    'sel-tech':      'crystSi',
-    'inp-losses':    '14',
-    'inp-tilt':      '32',
-    'inp-azimuth':   '0',
-    'inp-cost':      '4400',
-    'inp-kwh-price': '0.13',
-    'inp-co2':       '0.052',
-    // Hors réseau
-    'og2-daily-default': '850',
-    'og2-batt-tech':     'lfp',
-    'og2-tilt':          '32',
-    'og2-azimuth':       '0',
-    'og2-surface':       '12',
-    'og2-panel-wp':      '400',
-    'og2-panel-m2':      '1.96',
-    'og2-losses':        '14',
-    'og2-target-coverage':'90',
-    'og2-pv-cost-kwp':   '650',
-    'og2-bos-cost':      '500',
-    ...Object.fromEntries(Array.from({length:12}, (_,i) => [`og2-day-${i+1}`, '0']))
+    // ── Dimensionnement réseau (HP/HC) ──
+    'sz-tariff': 'hphc',
+    'sz-price-base': '0.2516',
+    'sz-price-hp': '0.27',
+    'sz-price-hc': '0.2068',
+    'sz-subscription': '164.64',
+    ...Object.fromEntries(monthlyKwh.map((v, i) => [`sz-kwh-${i + 1}`, String(v)])),
+    'sz-tilt': tilt,
+    'sz-azimuth': azimuth,
+    'sz-surface': surface,
+    'sz-panel-model': panelModel,
+    'sz-panel-wp': panelWp,
+    'sz-panel-m2': panelM2,
+    'sz-losses': losses,
+    'sz-tech': 'crystSi',
+    'sz-strategy': 'roi_optimal',
+    'sz-target-coverage': '70',
+    'sz-cost-kwp': '1800',
+    'sz-cost-total': '',
+    'sz-feedin': '0.13',
+
+    // ── Système PV réseau (simulation) ──
+    'inp-surface': surface,
+    'inp-panel-model': panelModel,
+    'inp-panel-wp': panelWp,
+    'inp-panel-m2': panelM2,
+    'sel-tech': 'crystSi',
+    'inp-losses': losses,
+    'inp-tilt': tilt,
+    'inp-azimuth': azimuth,
+    'inp-cost': '9200',
+    'inp-kwh-price': '0.2516',
+    'inp-co2': '0.052',
+    'grid-panel-mode': 'fixe',
+    'grid-npanels-fixe': nPanels,
+
+    // ── Hors réseau ──
+    'og2-daily-default': '0',
+    ...Object.fromEntries(dailyWhByMonth.map((v, i) => [`og2-day-${i + 1}`, v])),
+    'og2-batt-tech': 'lfp_diy',
+    'og2-tilt': tilt,
+    'og2-azimuth': azimuth,
+    'og2-surface': surface,
+    'og2-panel-model': panelModel,
+    'og2-panel-wp': panelWp,
+    'og2-panel-m2': panelM2,
+    'og2-losses': losses,
+    'og2-target-coverage': '90',
+    'og2-pv-cost-kwp': '1200',
+    'og2-bos-cost': '800',
+    'og2-panel-mode': 'fixe',
+    'og2-npanels-fixe': nPanels,
+
+    // ── Devis (prérempli ; prod/Ppeak mis à jour après calc via importSizing) ──
+    'dv-ins-company': 'Soleil Occitan SARL',
+    'dv-ins-siret': '812 345 678 00012',
+    'dv-ins-rge': 'E-E190909-4521',
+    'dv-ins-address': '18 avenue des Pyrénées\n31100 Toulouse',
+    'dv-ins-phone': '05 61 98 76 54',
+    'dv-ins-email': 'contact@soleil-occitan.fr',
+    'dv-cli-name': 'Famille Martin',
+    'dv-cli-company': '',
+    'dv-cli-address': '7 chemin des Coteaux\n31400 Toulouse',
+    'dv-cli-phone': '06 45 78 12 33',
+    'dv-cli-email': 'martin.famille@example.fr',
+    'dv-site-address': '7 chemin des Coteaux, 31400 Toulouse',
+    'dv-site-type': 'Tuiles mécaniques',
+    'dv-site-surface': surface,
+    'dv-site-tilt': tilt,
+    'dv-site-azimuth': azimuth,
+    'dv-sys-ppeak': '', // rempli après dimensionnement
+    'dv-sys-panels': nPanels,
+    'dv-sys-panel-model': panelModel,
+    'dv-sys-inverter': 'Fronius Symo 5.0-3-M',
+    'dv-sys-batt': '0',
+    'dv-sys-prod': '',
+    'dv-sys-co2': '',
+    'dv-sys-autonomy': '',
+    'dv-line-panels-label': 'Panneaux photovoltaïques Jinko 425W',
+    'dv-line-panels-qty': nPanels,
+    'dv-line-panels-unit': 'u',
+    'dv-line-panels-price': '95',
+    'dv-line-inverter-label': 'Onduleur Fronius Symo 5.0-3-M',
+    'dv-line-inverter-qty': '1',
+    'dv-line-inverter-unit': 'u',
+    'dv-line-inverter-price': '1450',
+    'dv-line-fixations-label': 'Fixations / structure toiture tuiles',
+    'dv-line-fixations-qty': '1',
+    'dv-line-fixations-unit': 'forfait',
+    'dv-line-fixations-price': '680',
+    'dv-line-cabling-label': 'Câblage DC/AC + protections + coffret',
+    'dv-line-cabling-qty': '1',
+    'dv-line-cabling-unit': 'forfait',
+    'dv-line-cabling-price': '520',
+    'dv-line-labor-label': "Main d'œuvre pose",
+    'dv-line-labor-qty': '2',
+    'dv-line-labor-unit': 'jours',
+    'dv-line-labor-price': '450',
+    'dv-line-admin-label': 'Démarches Consuel / Enedis / attestation',
+    'dv-line-admin-qty': '1',
+    'dv-line-admin-unit': 'forfait',
+    'dv-line-admin-price': '350',
+    'dv-line-misc-label': 'Monitoring Solar.web',
+    'dv-line-misc-qty': '1',
+    'dv-line-misc-unit': 'u',
+    'dv-line-misc-price': '120',
+    'dv-tva': '10',
+    'dv-remise': '0',
+    'dv-validity': '45',
+    'dv-notes': "Acompte 30 % à la commande, solde à la mise en service.\nGarantie panneaux 30 ans (producteur), main d'œuvre 10 ans.\nDélai prévisionnel : 8 à 12 semaines après acceptation.",
+    'dv-date': new Date().toLocaleDateString('fr-FR'),
+    'dv-ref': 'DEV-DEMO-OSE'
   };
 
-  const annualConso = Object.entries(formState)
-    .filter(([k]) => k.startsWith('sz-kwh-'))
-    .reduce((s, [, v]) => s + parseFloat(v), 0);
+  const annualConso = monthlyKwh.reduce((s, v) => s + v, 0);
 
   const demo = {
-    id:        DEMO_PROJECT_ID,
-    name:      'Démo - Maison Toulouse',
-    isDemo:    true,
+    id: DEMO_PROJECT_ID,
+    name: 'Démo complète — Maison Toulouse',
+    isDemo: true,
+    demoSeedVersion: DEMO_SEED_VERSION,
+    installationType: 'grid',
     client: {
-      nom:     'Famille Dupont',
-      adresse: '12 allée des Capucines, 31000 Toulouse',
-      tel:     '06 12 34 56 78',
-      email:   'dupont@example.fr'
+      nom: 'Famille Martin',
+      adresse: '7 chemin des Coteaux, 31400 Toulouse',
+      tel: '06 45 78 12 33',
+      email: 'martin.famille@example.fr'
     },
-    createdAt: new Date().toISOString(),
+    createdAt: existing?.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    location:  { lat: toulouse.lat, lon: toulouse.lon, alt: toulouse.alt, name: toulouse.name },
+    location: {
+      lat: toulouse.lat,
+      lon: toulouse.lon,
+      alt: toulouse.alt,
+      name: toulouse.name + ' (démo)'
+    },
     weatherData: toulouse.monthly,
+    hourlyEnedisData: {
+      halfHourly: Array.from(halfHourly),
+      year,
+      format: '30min'
+    },
+    monthlyKwhHp,
+    enedisYear: year,
     formState,
+    // Pas de Ppeak/ROI figés — recalculés au chargement
     summary: {
       annualConso,
-      recommendedPpeak: 4.4,
-      systemCost:       3960,
-      coverageRate:     62,
-      locationName:     toulouse.name
+      recommendedPpeak: null,
+      systemCost: null,
+      coverageRate: null,
+      locationName: toulouse.name,
+      hasEnedis30min: true,
+      note: 'Projet démo : calculs lancés à l’ouverture'
     }
   };
 
   ProjectManager.save(demo);
+}
+
+/** Bouton démarrage : assure la seed puis charge. */
+function openDemoProject() {
+  seedDemoProject();
+  loadProject(DEMO_PROJECT_ID);
 }

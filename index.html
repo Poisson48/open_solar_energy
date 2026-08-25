@@ -4,7 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Open Solar Energy - PVGIS Open Source</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><circle cx='12' cy='12' r='5' fill='%23f5a623'/><g stroke='%23fff' stroke-width='1.8' stroke-linecap='round'><line x1='12' y1='2' x2='12' y2='4.5'/><line x1='12' y1='19.5' x2='12' y2='22'/><line x1='2' y1='12' x2='4.5' y2='12'/><line x1='19.5' y1='12' x2='22' y2='12'/></g></svg>">
+  <link rel="icon" type="image/png" sizes="32x32" href="packaging/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="packaging/icon-192.png">
+  <link rel="apple-touch-icon" href="packaging/icon-192.png">
   <script>document.addEventListener('DOMContentLoaded',function(){var b=document.getElementById('version-badge');if(b&&typeof APP_VERSION!=='undefined')b.textContent='v'+APP_VERSION+' - Open Source';});</script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="css/main.css">
@@ -84,11 +86,11 @@
           <div style="font-size:12px;color:var(--color-text-muted)">Charger un projet existant depuis la liste ou un fichier</div>
         </button>
       </div>
-      <button onclick="loadProject(DEMO_PROJECT_ID)" style="width:100%;background:linear-gradient(135deg,var(--color-accent) 0%,var(--color-accent-dark) 100%);border:none;border-radius:10px;padding:14px 20px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px;margin-bottom:14px;color:#fff">
+      <button onclick="openDemoProject()" style="width:100%;background:linear-gradient(135deg,var(--color-accent) 0%,var(--color-accent-dark) 100%);border:none;border-radius:10px;padding:14px 20px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px;margin-bottom:14px;color:#fff">
         <div style="font-size:28px">☀️</div>
         <div>
-          <div style="font-size:14px;font-weight:700;margin-bottom:2px">Découvrir avec le projet démo</div>
-          <div style="font-size:12px;opacity:0.85">Maison Toulouse · 22 m² · ~3 700 kWh/an · données météo réelles</div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:2px">Découvrir avec le projet démo complet</div>
+          <div style="font-size:12px;opacity:0.85">Maison Toulouse · Enedis 30 min · HP/HC · devis · hors-réseau · ~3 300 kWh/an</div>
         </div>
         <div style="margin-left:auto;font-size:18px;opacity:0.8">→</div>
       </button>

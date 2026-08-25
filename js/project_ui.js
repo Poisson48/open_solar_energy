@@ -156,6 +156,19 @@ function loadProject(id) {
     if (typeof calcSizing            === 'function') calcSizing();
     if (installType === 'offgrid' && typeof calcOffgridSizing === 'function') calcOffgridSizing();
     if (typeof renderIrradiationData === 'function') renderIrradiationData();
+    if (typeof HourlyModule?.computeAllMonths === 'function' && AppState.hourlyEnedisData)
+      HourlyModule.computeAllMonths();
+    // Devis : totaux + import résultats dimensionnement si dispo
+    ['panels','inverter','fixations','cabling','labor','admin','misc'].forEach(k => {
+      if (typeof updateQuoteLine === 'function') updateQuoteLine(k);
+    });
+    if (typeof updateQuoteTotals === 'function') updateQuoteTotals();
+    if (typeof importSizingToQuote === 'function' && AppState.lastSizingResult)
+      importSizingToQuote();
+    // Rafraîchir le résumé projet après calculs réels
+    if (project.isDemo && typeof saveCurrentProject === 'function') {
+      try { saveCurrentProject(); } catch (_) { /* ignore */ }
+    }
   }, 100);
 }
 

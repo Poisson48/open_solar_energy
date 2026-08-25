@@ -35,6 +35,11 @@ function restoreFormState(fields) {
     setPanelMode('grid', fields['grid-panel-mode'] || 'surface');
     setPanelMode('og2',  fields['og2-panel-mode']  || 'surface');
   }
+  // Totaux devis après restauration des lignes
+  ['panels','inverter','fixations','cabling','labor','admin','misc'].forEach(k => {
+    if (typeof updateQuoteLine === 'function') updateQuoteLine(k);
+  });
+  if (typeof updateQuoteTotals === 'function') updateQuoteTotals();
 }
 
 // ══════════════════════════════════════════════════════════════
