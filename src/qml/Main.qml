@@ -75,9 +75,10 @@ ApplicationWindow {
         Rectangle {
             id: updateBanner
             Layout.fillWidth: true
-            Layout.preferredHeight: visible ? 56 : 0
+            Layout.preferredHeight: visible ? (Qt.platform.os === "android" ? 64 : 56) : 0
             visible: Updater.updateAvailable || Updater.downloading || Updater.readyToInstall || Updater.state === 5
-            color: Theme.surfaceHigh
+            color: Updater.state === 5 ? "#fdecea" : Theme.surfaceHigh
+            z: 10
             clip: true
 
             RowLayout {

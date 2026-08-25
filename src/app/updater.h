@@ -49,6 +49,8 @@ public:
 
 public slots:
     void check();
+    /** Depuis le bouton hub : sur Android enchaîne check → téléchargement → install. */
+    void checkFromUser();
     void download();
     void install();
     void dismiss();
@@ -75,6 +77,7 @@ private:
     QString m_releaseUrl;
     QString m_apkPath;
     qreal m_progress = 0.0;
+    bool m_userFlow = false;
 };
 
 } // namespace app

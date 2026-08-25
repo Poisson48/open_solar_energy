@@ -489,6 +489,8 @@ async function checkForUpdates() {
       return;
     }
 
+    // Sans pont Qt (navigateur) : info seulement — pas de nav WebView vers l’APK
+    // (ça n’installe rien sur Android).
     const res = await fetch(
       'https://api.github.com/repos/Poisson48/open_solar_energy/releases?per_page=15',
       { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'OpenSolarEnergy' } }
@@ -508,15 +510,15 @@ async function checkForUpdates() {
       showToast(`✓ Vous avez la dernière version (v${current})`);
       return;
     }
+    const isAndroid = /Android/i.test(navigator.userAgent || '');
+    if (isAndroid) {
+      showToast(`v${best.ver} dispo — utilisez la bannière en haut de l’écran`, 'warning');
+      return;
+    }
     showToast(`Nouvelle version v${best.ver} disponible`, 'warning');
-    const open = (bridge?.openExternal)
-      ? ((u) => bridge.openExternal(u))
-      : ((u) => { window.location.href = u; });
+    const open = (u) => window.open(u, '_blank', 'noopener');
     const target = best.apk || best.url;
-    const prompt = best.apk
-      ? `Open Solar Energy v${best.ver} est disponible.\nVous avez la v${current}.\n\nTélécharger l'APK ?`
-      : `Open Solar Energy v${best.ver} est disponible.\nVous avez la v${current}.\n\nOuvrir la page de téléchargement ?`;
-    if (confirm(prompt))
+    if (confirm(`Open Solar Energy v${best.ver} est disponible.\nVous avez la v${current}.\n\nOuvrir le téléchargement ?`))
       open(target);
   } catch (e) {
     showToast('Impossible de vérifier les mises à jour : ' + (e.message || e), 'error');

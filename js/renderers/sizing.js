@@ -59,64 +59,73 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
       <td style="color:var(--color-accent-dark)">${Math.round(m.surplus)}</td>
     </tr>`).join('');
 
+  const escPct = ((rec.elecEscalation ?? ELEC_ESCALATION) * 100).toFixed(1).replace(/\.0$/, '');
+  const paybackTxt = rec.paybackYears
+    ? `environ ${rec.paybackYears} an${rec.paybackYears > 1 ? 's' : ''}`
+    : 'plus de 40 ans';
+  const costTxt = rec.systemCost.toLocaleString('fr');
+  const summary = `Environ <strong>${rec.nPanels} panneau${rec.nPanels > 1 ? 'x' : ''}</strong> `
+    + `(<strong>${rec.Ppeak.toLocaleString('fr')} kWc</strong>) pour couvrir `
+    + `<strong>~${rec.coverageRate.toLocaleString('fr')}&nbsp;%</strong> de votre consommation, `
+    + `rentabilisé en <strong>${paybackTxt}</strong>`
+    + (rec.systemCost > 0 ? `, pour environ <strong>${costTxt}&nbsp;€</strong> après aide` : '')
+    + '.';
+
   const slotBadge = rec.slotLevel
-    ? `<span style="font-size:11px;background:#e8f5e9;color:var(--color-success);padding:2px 8px;border-radius:10px;margin-left:8px">Simulation 30min Enedis</span>`
-    : `<span style="font-size:11px;background:var(--color-bg);color:var(--color-text-muted);padding:2px 8px;border-radius:10px;margin-left:8px">Profil mensuel agrégé</span>`;
+    ? `<span class="ose-rec-badge ose-rec-badge-ok">Données Enedis 30 min</span>`
+    : `<span class="ose-rec-badge">Profil mensuel</span>`;
+
+  const costBlock = rec.incentive > 0
+    ? `<div class="kpi-value accent">${costTxt} €</div>
+       <div class="kpi-label">À payer (après prime)<br><span class="kpi-unit">${rec.systemCostBrut.toLocaleString('fr')} € − ${rec.incentive.toLocaleString('fr')} € d’aide</span></div>`
+    : `<div class="kpi-value">${costTxt} €</div>
+       <div class="kpi-label">Coût estimé<br><span class="kpi-unit">€ HT</span></div>`;
 
   el.innerHTML = `
-    <div class="card" style="border-left:4px solid var(--color-accent);margin-bottom:16px">
+    <div class="card ose-rec-card">
       <div class="card-title">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-        Installation recommandée - ${AppState.location.name}${slotBadge}
+        Recommandation — ${AppState.location.name}
+        ${slotBadge}
       </div>
-      <div class="kpi-grid">
+      <p class="ose-rec-summary">${summary}</p>
+      <div class="kpi-grid ose-rec-kpis">
         <div class="kpi-card" style="border-left:3px solid var(--color-accent)">
-          <div class="kpi-value accent">${rec.Ppeak}</div>
-          <div class="kpi-label">Puissance recommandée<br><span class="kpi-unit">kWc</span></div>
+          <div class="kpi-value accent">${rec.Ppeak.toLocaleString('fr')} <span class="kpi-unit">kWc</span></div>
+          <div class="kpi-label">${rec.nPanels} panneau${rec.nPanels > 1 ? 'x' : ''}</div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-value">${rec.nPanels}</div>
-          <div class="kpi-label">Nombre de panneaux<br><span class="kpi-unit">unités</span></div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-value" style="color:var(--color-success)">${rec.coverageRate} %</div>
-          <div class="kpi-label">Taux de couverture<br><span class="kpi-unit">autoconso / conso totale</span></div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-value">${rec.autoconsoRate} %</div>
-          <div class="kpi-label">Autoconsommation<br><span class="kpi-unit">% produit consommé</span></div>
+          <div class="kpi-value" style="color:var(--color-success)">${rec.coverageRate.toLocaleString('fr')} %</div>
+          <div class="kpi-label">de votre conso couverte<br><span class="kpi-unit">par l’électricité produite et consommée sur place</span></div>
         </div>
         <div class="kpi-card">
           <div class="kpi-value accent">${rec.paybackYears ? rec.paybackYears + ' ans' : '> 40 ans'}</div>
-          <div class="kpi-label">Retour invest. actualisé<br><span class="kpi-unit">avec +${((rec.elecEscalation ?? ELEC_ESCALATION) * 100).toFixed(1).replace(/\.0$/, '')} %/an électricité</span></div>
+          <div class="kpi-label">pour rentabiliser<br><span class="kpi-unit">hausse élec. +${escPct} %/an prise en compte</span></div>
         </div>
         <div class="kpi-card">
-          ${rec.incentive > 0
-            ? `<div class="kpi-value" style="color:var(--color-text-muted);font-size:1rem;text-decoration:line-through">${rec.systemCostBrut.toLocaleString('fr')}</div>
-               <div class="kpi-value accent">${rec.systemCost.toLocaleString('fr')} €</div>
-               <div class="kpi-label">Coût net après prime<br><span class="kpi-unit">Prime autoconso −${rec.incentive.toLocaleString('fr')} €</span></div>`
-            : `<div class="kpi-value">${rec.systemCost.toLocaleString('fr')}</div>
-               <div class="kpi-label">Coût système<br><span class="kpi-unit">€ HT estimé</span></div>`
-          }
+          ${costBlock}
         </div>
-        ${rec.npv25 != null && rec.systemCost > 0 ? `
-        <div class="kpi-card" style="border-left:3px solid ${rec.npv25 >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}">
-          <div class="kpi-value" style="color:${rec.npv25 >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}">
-            ${rec.npv25 >= 0 ? '+' : ''}${rec.npv25.toLocaleString('fr')} €
-          </div>
-          <div class="kpi-label">VAN 25 ans (4 %)<br><span class="kpi-unit">gain net actualisé</span></div>
-        </div>` : ''}
-        ${rec.lcoe > 0 ? `
-        <div class="kpi-card">
-          <div class="kpi-value info">${rec.lcoe.toFixed(3)}</div>
-          <div class="kpi-label">LCOE nominal<br><span class="kpi-unit">€/kWh produit (25 ans)</span></div>
-        </div>` : ''}
       </div>
-      <div style="font-size:11px;color:var(--color-text-muted);margin-top:-8px;margin-bottom:8px">
-        Hypothèses financières : dégradation panneau ${(PANEL_DEGRADATION * 100).toFixed(1)} %/an · hausse électricité ${((rec.elecEscalation ?? ELEC_ESCALATION) * 100).toFixed(1).replace(/\.0$/, '')} %/an · taux actualisation ${(DISCOUNT_RATE * 100).toFixed(0)} %
-      </div>
-      <button type="button" class="btn btn-primary" style="width:100%" onclick="applySizingToGrid()">
-        → Appliquer au Système PV réseau (${rec.nPanels} panneaux · ${rec.Ppeak} kWc)
+
+      <details class="ose-rec-details">
+        <summary>Détails techniques et financiers</summary>
+        <ul class="ose-rec-dl">
+          <li><span>Autoconsommation</span><strong>${rec.autoconsoRate.toLocaleString('fr')} %</strong>
+            <em>part de la production consommée sur place (le reste est injecté / revendu)</em></li>
+          ${rec.npv25 != null && rec.systemCost > 0 ? `
+          <li><span>Gain net sur 25 ans (VAN)</span>
+            <strong style="color:${rec.npv25 >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}">${rec.npv25 >= 0 ? '+' : ''}${rec.npv25.toLocaleString('fr')} €</strong>
+            <em>après actualisation ${(DISCOUNT_RATE * 100).toFixed(0)} %/an — positif = rentable</em></li>` : ''}
+          ${rec.lcoe > 0 ? `
+          <li><span>Coût du kWh produit (LCOE)</span><strong>${rec.lcoe.toLocaleString('fr', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} €/kWh</strong>
+            <em>coût moyen de production sur 25 ans</em></li>` : ''}
+          <li><span>Hypothèses</span><strong>—</strong>
+            <em>dégradation panneaux ${(PANEL_DEGRADATION * 100).toFixed(1)} %/an · hausse électricité +${escPct} %/an · actualisation ${(DISCOUNT_RATE * 100).toFixed(0)} %</em></li>
+        </ul>
+      </details>
+
+      <button type="button" class="btn btn-primary" style="width:100%;margin-top:12px" onclick="applySizingToGrid()">
+        → Appliquer au Système PV réseau (${rec.nPanels} panneaux · ${rec.Ppeak.toLocaleString('fr')} kWc)
       </button>
     </div>
 

@@ -3,8 +3,9 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.8';
+const APP_VERSION = '2.0.9';
 // Historique :
+//   2.0.9 - MAJ Android fiable (pont + téléchargement flux + install auto)
 //   2.0.8 - Barre projet mobile compacte (plus de mur de boutons)
 //   2.0.7 - MAJ Android in-app + layout mobile (largeur)
 //   2.0.6 - Hub projets unique (plus de modal séparée)

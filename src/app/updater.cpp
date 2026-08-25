@@ -7,6 +7,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QMetaObject>
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QSettings>
@@ -144,9 +145,27 @@ void Updater::setState(State s)
     m_state = s;
     if (s == Available)
         qInfo() << "[Updater] version" << m_latestVersion << "disponible";
-    else if (s == Failed)
+    else if (s == Failed) {
         qWarning() << "[Updater] échec téléchargement" << m_apkUrl;
+        m_userFlow = false;
+    } else if (s == Idle) {
+        m_userFlow = false;
+    }
     emit stateChanged();
+
+    // Bouton hub Android : enchaîner sans dépendre de la bannière / du dialog.
+    if (s == Available && m_userFlow && canInstall() && !m_apkUrl.isEmpty()) {
+        QMetaObject::invokeMethod(this, &Updater::download, Qt::QueuedConnection);
+    } else if (s == Ready && m_userFlow && canInstall()) {
+        m_userFlow = false;
+        QMetaObject::invokeMethod(this, &Updater::install, Qt::QueuedConnection);
+    }
+}
+
+void Updater::checkFromUser()
+{
+    m_userFlow = canInstall();
+    check();
 }
 
 void Updater::check()
@@ -229,8 +248,18 @@ void Updater::download()
     QDir().mkpath(dir);
     m_apkPath = dir + QStringLiteral("/opensolarenergy-") + m_latestVersion
               + QStringLiteral(".apk");
+    QFile::remove(m_apkPath);
+
+    auto* file = new QFile(m_apkPath);
+    if (!file->open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        delete file;
+        setState(Failed);
+        return;
+    }
+
     QNetworkRequest req{ QUrl(m_apkUrl) };
     req.setRawHeader("User-Agent", "OpenSolarEnergy");
+    req.setRawHeader("Accept", "application/octet-stream");
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                      QNetworkRequest::NoLessSafeRedirectPolicy);
     m_progress = 0.0;
@@ -243,24 +272,24 @@ void Updater::download()
         m_progress = total > 0 ? qreal(received) / qreal(total) : 0.0;
         emit progressChanged();
     });
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+    connect(reply, &QNetworkReply::readyRead, this, [reply, file]() {
+        if (file->isOpen())
+            file->write(reply->readAll());
+    });
+    connect(reply, &QNetworkReply::finished, this, [this, reply, file]() {
+        if (file->isOpen()) {
+            file->write(reply->readAll());
+            file->close();
+        }
+        const qint64 size = file->size();
+        file->deleteLater();
         reply->deleteLater();
-        if (reply->error() != QNetworkReply::NoError) {
-            setState(Failed);
-            return;
-        }
-        QFile out(m_apkPath);
-        if (!out.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-            setState(Failed);
-            return;
-        }
-        const QByteArray body = reply->readAll();
-        if (out.write(body) != body.size() || body.isEmpty()) {
+        if (reply->error() != QNetworkReply::NoError || size <= 0) {
             QFile::remove(m_apkPath);
             setState(Failed);
             return;
         }
-        out.close();
+        qInfo() << "[Updater] APK téléchargé" << m_apkPath << size << "octets";
         setState(Ready);
     });
 }
@@ -279,6 +308,7 @@ void Updater::install()
 
 void Updater::dismiss()
 {
+    m_userFlow = false;
     if (m_reply)
         m_reply->abort();
     setState(Idle);
