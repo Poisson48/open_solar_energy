@@ -168,10 +168,15 @@ const SizingEngine = (() => {
       const newAnnualBill  = Math.max(0, currentBill - savedOnBill);
 
       // Métriques financières avancées (sur coût net après prime)
-      const elecEsc = sizing.elecEscalation ?? ELEC_ESCALATION;
-      const paybackYears   = FinanceCalc.calcPayback(systemCost, totalAnnualGain, elecEsc);
-      const npv25          = Math.round(FinanceCalc.calcNPV(systemCost, totalAnnualGain, elecEsc));
-      const lcoe           = Math.round(FinanceCalc.calcLCOE(systemCostBrut, annualProd) * 10000) / 10000;
+      const finOpts = {
+        elecEscalation:   sizing.elecEscalation   ?? ELEC_ESCALATION,
+        discountRate:     sizing.discountRate     ?? DISCOUNT_RATE,
+        panelDegradation: sizing.panelDegradation ?? PANEL_DEGRADATION,
+        lifetime:         sizing.financeYears     ?? SYSTEM_LIFETIME
+      };
+      const paybackYears   = FinanceCalc.calcPayback(systemCost, totalAnnualGain, finOpts);
+      const npv25          = Math.round(FinanceCalc.calcNPV(systemCost, totalAnnualGain, finOpts));
+      const lcoe           = Math.round(FinanceCalc.calcLCOE(systemCostBrut, annualProd, finOpts) * 10000) / 10000;
 
       allCandidates.push({
         Ppeak: Math.round(Ppeak * 10) / 10,
@@ -195,7 +200,10 @@ const SizingEngine = (() => {
         paybackYears,
         npv25,
         lcoe,
-        elecEscalation: elecEsc,
+        elecEscalation:   finOpts.elecEscalation,
+        discountRate:     finOpts.discountRate,
+        panelDegradation: finOpts.panelDegradation,
+        financeYears:     finOpts.lifetime,
         co2Saved:       Math.round(annualAutoconsoKwh * 0.052),
         slotLevel:      hasEnedisSlots,
         monthlyMetrics
@@ -255,6 +263,24 @@ const SizingEngine = (() => {
           const pct = parseFloat(el?.value);
           if (el == null || el.value === '' || isNaN(pct)) return ELEC_ESCALATION;
           return Math.max(0, Math.min(0.20, pct / 100));
+        })(),
+        discountRate: (() => {
+          const el = document.getElementById('sz-discount-rate');
+          const pct = parseFloat(el?.value);
+          if (el == null || el.value === '' || isNaN(pct)) return DISCOUNT_RATE;
+          return Math.max(0, Math.min(0.20, pct / 100));
+        })(),
+        panelDegradation: (() => {
+          const el = document.getElementById('sz-panel-degradation');
+          const pct = parseFloat(el?.value);
+          if (el == null || el.value === '' || isNaN(pct)) return PANEL_DEGRADATION;
+          return Math.max(0, Math.min(0.05, pct / 100));
+        })(),
+        financeYears: (() => {
+          const el = document.getElementById('sz-finance-years');
+          const y = parseInt(el?.value, 10);
+          if (el == null || el.value === '' || isNaN(y)) return SYSTEM_LIFETIME;
+          return Math.max(5, Math.min(40, y));
         })(),
         // _includeIncentive : positionné via API (AppState) ou UI si checkbox existe
         includeIncentive:   typeof AppState !== 'undefined'

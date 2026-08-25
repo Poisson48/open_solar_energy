@@ -52,63 +52,84 @@ const FinanceCalc = (() => {
   // DISCOUNT_RATE, SYSTEM_LIFETIME
 
   /**
-   * Payback actualisé (DCF, années) — flux nets actualisés au DISCOUNT_RATE.
-   * Inclut dégradation panneaux, hausse prix électricité, O&M, remplacement onduleur.
-   * @param {number} [elecEscalation] fraction/an (défaut ELEC_ESCALATION = 3 %)
+   * @param {object|number} [opts]
+   * @param {number} [opts.elecEscalation]
+   * @param {number} [opts.discountRate]
+   * @param {number} [opts.panelDegradation]
+   * @param {number} [opts.lifetime]
    */
-  function calcPayback(systemCost, firstYearGain, elecEscalation) {
+  function _finOpts(opts) {
+    if (typeof opts === 'number') {
+      return {
+        esc: opts,
+        disc: DISCOUNT_RATE,
+        deg: PANEL_DEGRADATION,
+        life: SYSTEM_LIFETIME
+      };
+    }
+    const o = (opts && typeof opts === 'object') ? opts : {};
+    return {
+      esc:  (o.elecEscalation   != null && !isNaN(o.elecEscalation))   ? o.elecEscalation   : ELEC_ESCALATION,
+      disc: (o.discountRate     != null && !isNaN(o.discountRate))     ? o.discountRate     : DISCOUNT_RATE,
+      deg:  (o.panelDegradation != null && !isNaN(o.panelDegradation)) ? o.panelDegradation : PANEL_DEGRADATION,
+      life: (o.lifetime != null && !isNaN(o.lifetime) && o.lifetime > 0)
+        ? Math.round(o.lifetime) : SYSTEM_LIFETIME
+    };
+  }
+
+  /**
+   * Payback actualisé (DCF, années).
+   * Inclut dégradation panneaux, hausse prix électricité, O&M, remplacement onduleur.
+   */
+  function calcPayback(systemCost, firstYearGain, opts) {
     if (firstYearGain <= 0 || systemCost <= 0) return null;
-    const esc = (elecEscalation != null && !isNaN(elecEscalation))
-      ? elecEscalation : ELEC_ESCALATION;
+    const { esc, disc, deg } = _finOpts(opts);
     const omCost      = systemCost * 0.005;
     const inverterRpl = systemCost * 0.12;
     let cum = 0;
     for (let y = 1; y <= 40; y++) {
       const gain = firstYearGain
-                 * Math.pow(1 + esc,               y - 1)
-                 * Math.pow(1 - PANEL_DEGRADATION, y - 1);
+                 * Math.pow(1 + esc, y - 1)
+                 * Math.pow(1 - deg, y - 1);
       const netGain = gain - omCost - (y === 15 ? inverterRpl : 0);
-      cum += netGain / Math.pow(1 + DISCOUNT_RATE, y);
+      cum += netGain / Math.pow(1 + disc, y);
       if (cum >= systemCost) return y;
     }
     return null;
   }
 
   /**
-   * Valeur Actuelle Nette (€) sur SYSTEM_LIFETIME ans.
-   * VAN > 0 → investissement rentable au taux d'actualisation DISCOUNT_RATE.
-   * Inclut O&M (0,5 %/an) et remplacement onduleur (12 % à 15 ans) - cohérent avec LCOE.
-   * @param {number} [elecEscalation] fraction/an (défaut ELEC_ESCALATION = 3 %)
+   * Valeur Actuelle Nette (€) sur l'horizon choisi.
+   * VAN > 0 → investissement rentable au taux d'actualisation.
    */
-  function calcNPV(systemCost, firstYearGain, elecEscalation) {
+  function calcNPV(systemCost, firstYearGain, opts) {
     if (systemCost <= 0) return 0;
     if (firstYearGain <= 0) return -systemCost;
-    const esc = (elecEscalation != null && !isNaN(elecEscalation))
-      ? elecEscalation : ELEC_ESCALATION;
+    const { esc, disc, deg, life } = _finOpts(opts);
     const omCost      = systemCost * 0.005;
     const inverterRpl = systemCost * 0.12;
     let npv = -systemCost;
-    for (let y = 1; y <= SYSTEM_LIFETIME; y++) {
+    for (let y = 1; y <= life; y++) {
       const gain = firstYearGain
-                 * Math.pow(1 + esc,               y - 1)
-                 * Math.pow(1 - PANEL_DEGRADATION, y - 1);
+                 * Math.pow(1 + esc, y - 1)
+                 * Math.pow(1 - deg, y - 1);
       const netGain = gain - omCost - (y === 15 ? inverterRpl : 0);
-      npv += netGain / Math.pow(1 + DISCOUNT_RATE, y);
+      npv += netGain / Math.pow(1 + disc, y);
     }
     return npv;
   }
 
   /**
    * LCOE (€/kWh) avec dégradation + maintenance annuelle + remplacement onduleur.
-   * O&M ≈ 0.5 %/an du coût install, onduleur remplacé à 15 ans (~300 €/kWc).
    */
-  function calcLCOE(systemCost, annualProd) {
+  function calcLCOE(systemCost, annualProd, opts) {
     if (annualProd <= 0 || systemCost <= 0) return 0;
-    const omRate       = 0.005; // 0.5 %/an
-    const inverterRepl = systemCost * 0.12; // ~12 % du coût (onduleur) remplacé à 15 ans
+    const { deg, life } = _finOpts(opts);
+    const omRate       = 0.005; // 0.5 %/an O&M
+    const inverterRepl = systemCost * 0.12;
     let cumProd = 0, cumCost = systemCost;
-    for (let y = 1; y <= SYSTEM_LIFETIME; y++) {
-      cumProd += annualProd * Math.pow(1 - PANEL_DEGRADATION, y - 1);
+    for (let y = 1; y <= life; y++) {
+      cumProd += annualProd * Math.pow(1 - deg, y - 1);
       cumCost += systemCost * omRate;
       if (y === 15) cumCost += inverterRepl;
     }

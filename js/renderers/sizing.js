@@ -60,6 +60,9 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
     </tr>`).join('');
 
   const escPct = ((rec.elecEscalation ?? ELEC_ESCALATION) * 100).toFixed(1).replace(/\.0$/, '');
+  const discPct = ((rec.discountRate ?? DISCOUNT_RATE) * 100).toFixed(1).replace(/\.0$/, '');
+  const degPct = ((rec.panelDegradation ?? PANEL_DEGRADATION) * 100).toFixed(1).replace(/\.0$/, '');
+  const years = rec.financeYears ?? SYSTEM_LIFETIME;
   const paybackTxt = rec.paybackYears
     ? `environ ${rec.paybackYears} an${rec.paybackYears > 1 ? 's' : ''}`
     : 'plus de 40 ans';
@@ -113,14 +116,14 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
           <li><span>Autoconsommation</span><strong>${rec.autoconsoRate.toLocaleString('fr')} %</strong>
             <em>part de la production consommée sur place (le reste est injecté / revendu)</em></li>
           ${rec.npv25 != null && rec.systemCost > 0 ? `
-          <li><span>Gain net sur 25 ans (VAN)</span>
+          <li><span>Gain net sur ${years} ans (VAN)</span>
             <strong style="color:${rec.npv25 >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}">${rec.npv25 >= 0 ? '+' : ''}${rec.npv25.toLocaleString('fr')} €</strong>
-            <em>après actualisation ${(DISCOUNT_RATE * 100).toFixed(0)} %/an — positif = rentable</em></li>` : ''}
+            <em>après actualisation ${discPct} %/an — positif = rentable</em></li>` : ''}
           ${rec.lcoe > 0 ? `
           <li><span>Coût du kWh produit (LCOE)</span><strong>${rec.lcoe.toLocaleString('fr', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} €/kWh</strong>
-            <em>coût moyen de production sur 25 ans</em></li>` : ''}
+            <em>coût moyen de production sur ${years} ans</em></li>` : ''}
           <li><span>Hypothèses</span><strong>—</strong>
-            <em>dégradation panneaux ${(PANEL_DEGRADATION * 100).toFixed(1)} %/an · hausse électricité +${escPct} %/an · actualisation ${(DISCOUNT_RATE * 100).toFixed(0)} %</em></li>
+            <em>dégradation panneaux ${degPct} %/an · hausse électricité +${escPct} %/an · actualisation ${discPct} %/an · horizon ${years} ans</em></li>
         </ul>
       </details>
 

@@ -163,9 +163,23 @@ function initTabSizing() {
                 <div class="input-unit"><input type="number" id="sz-elec-escalation" value="3" min="0" max="20" step="0.5"><span class="unit-tag">%/an</span></div>
               </div>
               <div class="form-group">
-                <label for="sz-cost-total">Coût réel total <span style="font-weight:400;font-size:10px;color:var(--color-text-muted)">(optionnel)</span></label>
-                <div class="input-unit"><input type="number" id="sz-cost-total" value="" step="100" min="0" placeholder="ex : 8500"><span class="unit-tag">€ TTC</span></div>
+                <label for="sz-discount-rate">Taux d’actualisation</label>
+                <div class="input-unit"><input type="number" id="sz-discount-rate" value="4" min="0" max="20" step="0.5"><span class="unit-tag">%/an</span></div>
               </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="sz-panel-degradation">Dégradation panneaux</label>
+                <div class="input-unit"><input type="number" id="sz-panel-degradation" value="0.5" min="0" max="5" step="0.1"><span class="unit-tag">%/an</span></div>
+              </div>
+              <div class="form-group">
+                <label for="sz-finance-years">Horizon d’analyse</label>
+                <div class="input-unit"><input type="number" id="sz-finance-years" value="25" min="5" max="40" step="1"><span class="unit-tag">ans</span></div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="sz-cost-total">Coût réel total <span style="font-weight:400;font-size:10px;color:var(--color-text-muted)">(optionnel)</span></label>
+              <div class="input-unit"><input type="number" id="sz-cost-total" value="" step="100" min="0" placeholder="ex : 8500"><span class="unit-tag">€ TTC</span></div>
             </div>
           </div>
         </details>

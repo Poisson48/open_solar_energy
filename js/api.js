@@ -69,6 +69,17 @@ const AppAPI = (() => {
       const pct = (!isNaN(v) && v > 0 && v <= 1) ? v * 100 : v;
       setField('sz-elec-escalation', pct);
     }
+    if (params.discountRate !== undefined) {
+      const v = Number(params.discountRate);
+      const pct = (!isNaN(v) && v > 0 && v <= 1) ? v * 100 : v;
+      setField('sz-discount-rate', pct);
+    }
+    if (params.panelDegradation !== undefined) {
+      const v = Number(params.panelDegradation);
+      const pct = (!isNaN(v) && v > 0 && v < 1) ? v * 100 : v;
+      setField('sz-panel-degradation', pct);
+    }
+    if (params.financeYears !== undefined) setField('sz-finance-years', params.financeYears);
     if (params.surface           !== undefined) setField('sz-surface',         params.surface);
     if (params.tech              !== undefined) {
       setField('sz-tech', params.tech);
@@ -524,6 +535,9 @@ AppAPI.setSizing({
   targetCoverage,              // % couverture cible
   feedin,                      // tarif rachat surplus €/kWh
   elecEscalation,              // hausse élec %/an (ex: 3) ou fraction (0.03)
+  discountRate,                // actualisation %/an (ex: 4) ou fraction (0.04)
+  panelDegradation,            // dégradation %/an (ex: 0.5) ou fraction (0.005)
+  financeYears,                // horizon VAN/LCOE (ex: 25)
   surface, tech,
   includeIncentive,            // true|false - prime autoconso France (ne change pas si omis)
 })

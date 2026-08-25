@@ -3,8 +3,9 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.9';
+const APP_VERSION = '2.0.10';
 // Historique :
+//   2.0.10 - Hypothèses financières réglables (élec / actualisation / dégradation / horizon)
 //   2.0.9 - MAJ Android fiable (pont + téléchargement flux + install auto)
 //   2.0.8 - Barre projet mobile compacte (plus de mur de boutons)
 //   2.0.7 - MAJ Android in-app + layout mobile (largeur)
@@ -102,7 +103,8 @@ const PROJECT_FIELDS = [
   'sz-tariff','sz-price-base','sz-price-hp','sz-price-hc','sz-subscription',
   ...Array.from({length:12}, (_,i) => `sz-kwh-${i+1}`),
   'sz-tilt','sz-azimuth','sz-surface','sz-panel-model','sz-panel-wp','sz-panel-m2','sz-losses','sz-tech',
-  'sz-strategy','sz-target-coverage','sz-cost-kwp','sz-cost-total','sz-feedin','sz-elec-escalation',
+  'sz-strategy','sz-target-coverage','sz-cost-kwp','sz-cost-total','sz-feedin',
+  'sz-elec-escalation','sz-discount-rate','sz-panel-degradation','sz-finance-years',
   // Système réseau — mode panneaux
   'grid-panel-mode','grid-npanels-fixe',
   // Hors réseau
