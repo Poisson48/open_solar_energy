@@ -3,8 +3,9 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.5';
+const APP_VERSION = '2.0.6';
 // Historique :
+//   2.0.6 - Hub projets unique (plus de modal séparée)
 //   2.0.5 - Scripts sans ?v= + hardening hub
 //   2.0.4 - Fix WebHost ?v= (hub + boutons morts sur Android)
 //   2.0.3 - Hub plein écran, emojis Noto, logo adaptive, Qt only (plus Electron)

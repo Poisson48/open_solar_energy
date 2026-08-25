@@ -172,21 +172,21 @@ cmake --build build --target opensolarenergy
 # Binaire : build/src/opensolarenergy
 
 # AppImage local
-VERSION_NAME=2.0.5 QT_ROOT="$HOME/Qt/6.8.2/gcc_64" bash scripts/build-appimage.sh
+VERSION_NAME=2.0.6 QT_ROOT="$HOME/Qt/6.8.2/gcc_64" bash scripts/build-appimage.sh
 ```
 
 ### Android (arm64)
 
 ```bash
 # Une fois : SDK/NDK + Qt Android (voir scripts/)
-VERSION_NAME=2.0.5 VERSION_CODE=205 bash scripts/build-android.sh
+VERSION_NAME=2.0.6 VERSION_CODE=206 bash scripts/build-android.sh
 # → opensolarenergy-arm64.apk (signé debug, ou release si ANDROID_KEYSTORE_B64 est défini)
 ```
 
 ### Publier une version
 
 ```bash
-git tag -a v2.0.5 -m "Notes affichées dans l’app avant MAJ" && git push origin v2.0.5
+git tag -a v2.0.6 -m "Notes affichées dans l’app avant MAJ" && git push origin v2.0.6
 ```
 
 Le workflow **Release** construit l’APK Android **et** l’AppImage Linux Qt, puis les publie sur GitHub Releases.
@@ -271,6 +271,7 @@ Pour un site réel, importer les données météo via **« Importer météo (Ope
 
 | Version | Changements |
 |---|---|
+| **2.0.6** | Écran projets unique (accueil = bouton Projets), plus de double fenêtre |
 | **2.0.5** | Scripts locaux sans `?v=` (défense en profondeur), hub HTML dès le chargement |
 | **2.0.4** | Fix serveur web embarqué (`?v=` → 404) : hub + boutons projet fonctionnent sur Android |
 | **2.0.3** | Hub plein écran, emojis Android figés, logo adaptive, suppression Electron (Qt only), correctifs MAJ |

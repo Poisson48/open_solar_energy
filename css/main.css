@@ -150,6 +150,13 @@ header .logo .logo-img {
   opacity: 0.8;
   margin-top: 2px;
 }
+.ose-hub-back {
+  flex-shrink: 0;
+  color: #fff !important;
+  border-color: rgba(255,255,255,0.45) !important;
+  background: rgba(255,255,255,0.12) !important;
+}
+.ose-hub-back[hidden] { display: none !important; }
 .ose-hub-body {
   flex: 1;
   overflow: auto;

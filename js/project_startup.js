@@ -19,10 +19,20 @@ function openStartupModal() {
   hub.classList.add('ose-hub-open');
   hub.removeAttribute('hidden');
   document.body.classList.add('ose-hub-active');
-  const search = document.getElementById('startup-project-search');
+  const search = document.getElementById('projects-search');
   if (search) search.value = '';
+  const back = document.getElementById('btn-hub-back');
+  const sub = document.getElementById('ose-hub-sub');
+  const hasProject = !!(typeof AppState !== 'undefined' && AppState.currentProjectId);
+  if (back) {
+    if (hasProject) back.removeAttribute('hidden');
+    else back.setAttribute('hidden', '');
+  }
+  if (sub) sub.textContent = hasProject
+    ? 'Gérer vos projets ou en ouvrir un autre'
+    : 'Choisissez un projet pour commencer';
   if (typeof renderProjectsList === 'function')
-    renderProjectsList('startup-projects-list', '');
+    renderProjectsList('');
 }
 
 function closeStartupModal() {
@@ -39,7 +49,8 @@ function showStartupStep1() {
   document.getElementById('startup-step-new').style.display  = 'none';
   const load = document.getElementById('startup-step-load');
   if (load) load.style.display = 'none';
-  renderProjectsList('startup-projects-list', document.getElementById('startup-project-search')?.value || '');
+  if (typeof renderProjectsList === 'function')
+    renderProjectsList(document.getElementById('projects-search')?.value || '');
 }
 
 function showInstallationTypeStep() {
@@ -50,9 +61,8 @@ function showInstallationTypeStep() {
   if (load) load.style.display = 'none';
 }
 
-/** Depuis la modal Projets : ouvrir le flux nouveau projet */
+/** Nouveau projet : même hub, étape type d'installation */
 function startNewProjectFlow() {
-  closeProjectsModal();
   openStartupModal();
   showInstallationTypeStep();
 }

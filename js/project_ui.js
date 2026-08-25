@@ -220,17 +220,13 @@ function saveEditProject(event) {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  MODAL PROJETS (liste)
+//  HUB PROJETS (unique — accueil + bouton « Projets »)
 // ══════════════════════════════════════════════════════════════
 function openProjectsModal() {
-  const search = document.getElementById('projects-modal-search');
-  if (search) search.value = '';
-  renderProjectsList('projects-list-container', '');
-  document.getElementById('projects-modal').style.display = 'block';
-  setTimeout(() => search?.focus(), 50);
+  openStartupModal();
 }
 function closeProjectsModal() {
-  document.getElementById('projects-modal').style.display = 'none';
+  closeStartupModal();
 }
 
 function _escHtml(s) {
@@ -261,16 +257,16 @@ function filterProjects(projects, query) {
   });
 }
 
-function renderProjectsList(containerId = 'projects-list-container', query = '') {
-  const container = document.getElementById(containerId);
+/** Affiche la liste unique du hub. Legacy : renderProjectsList(containerId, query). */
+function renderProjectsList(queryOrId = '', maybeQuery) {
+  const query = (arguments.length >= 2) ? String(maybeQuery ?? '') : String(queryOrId ?? '');
+  const container = document.getElementById('projects-list');
   if (!container) return;
-  const isStartup = containerId === 'startup-projects-list';
   const all = ProjectManager.list();
-  // Démo toujours en tête si présente
-  const sorted = [...all].sort((a, b) => {
-    if (a.isDemo && !b.isDemo) return -1;
-    if (!a.isDemo && b.isDemo) return 1;
-    return new Date(b.updatedAt) - new Date(a.updatedAt);
+  const sorted = [...all].sort((x, y) => {
+    if (x.isDemo && !y.isDemo) return -1;
+    if (!x.isDemo && y.isDemo) return 1;
+    return new Date(y.updatedAt) - new Date(x.updatedAt);
   });
   const projects = filterProjects(sorted, query);
 
@@ -304,24 +300,20 @@ function renderProjectsList(containerId = 'projects-list-container', query = '')
       ? `<span style="font-size:11px;font-weight:400;color:var(--color-text-muted);margin-left:4px">(actif)</span>`
       : '';
     return `
-    <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 0;border-bottom:1px solid var(--color-border)${isCurrent?';background:var(--color-surface2);margin:0 -22px;padding:12px 22px':''}" >
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 0;border-bottom:1px solid var(--color-border)${isCurrent ? ';background:var(--color-surface2);margin:0 -8px;padding:12px 8px;border-radius:8px' : ''}">
       <div style="flex:1;min-width:0">
-        <div style="font-weight:600;font-size:14px${isCurrent?';color:var(--color-accent)':''}">${_escHtml(p.name)}${demoTag}${clientName}${activeTag}</div>
+        <div style="font-weight:600;font-size:14px${isCurrent ? ';color:var(--color-accent)' : ''}">${_escHtml(p.name)}${demoTag}${clientName}${activeTag}</div>
         <div style="font-size:11px;color:var(--color-text-muted);margin-top:3px">${loc ? _escHtml(loc) + ' · ' : ''}${date}${kwh ? ' · ' + kwh : ''}${ppeak}${cost}</div>
         <div id="project-actions-${p.id}" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">
-          ${isStartup ? _startupProjectActionsHTML(p) : _projectActionsHTML(p)}
+          ${_projectActionsHTML(p)}
         </div>
       </div>
     </div>`;
   }).join('');
 }
 
-function _startupProjectActionsHTML(p) {
-  return `<button class="btn btn-primary btn-sm" onclick="loadProject('${p.id}')">Ouvrir</button>`;
-}
-
 function _projectActionsHTML(p) {
-  return `<button class="btn btn-primary btn-sm" onclick="loadProject('${p.id}')">Charger</button>
+  return `<button class="btn btn-primary btn-sm" onclick="loadProject('${p.id}')">Ouvrir</button>
           <button class="btn btn-outline btn-sm" onclick="startCloneProject('${p.id}')">Cloner</button>
           <button class="btn btn-outline btn-sm" onclick="ProjectManager.exportOne('${p.id}')" title="Exporter en fichier JSON">📤 Export</button>
           ${p.isDemo ? '' : `<button class="btn btn-outline btn-sm" style="color:var(--color-danger);border-color:var(--color-danger)" onclick="confirmDeleteProject('${p.id}')">✕ Supprimer</button>`}`;
@@ -391,8 +383,7 @@ function deleteProject(id) {
 }
 
 function _refreshProjectLists() {
-  renderProjectsList('projects-list-container', document.getElementById('projects-modal-search')?.value || '');
-  renderProjectsList('startup-projects-list', document.getElementById('startup-project-search')?.value || '');
+  renderProjectsList(document.getElementById('projects-search')?.value || '');
 }
 
 async function importProjectsFile(input) {
@@ -528,21 +519,17 @@ async function checkForUpdates() {
 //  INIT : hub projets au démarrage (pas d'ouverture auto)
 // ══════════════════════════════════════════════════════════════
 function initProjectUI() {
-  document.getElementById('projects-modal')?.addEventListener('click', e => {
-    if (e.target === e.currentTarget) closeProjectsModal();
-  });
-  // Hub plein écran : pas de fermeture par clic extérieur
+  // Hub unique : pas de fermeture par clic extérieur
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-      closeProjectsModal();
       closeEditProjectModal();
       closeGitHistoryModal();
       if (typeof closeEnedisModal === 'function') closeEnedisModal();
-      // Escape sur le hub : revenir à la liste (pas fermer l’app sans projet)
       const hub = document.getElementById('startup-modal');
       if (hub && hub.classList.contains('ose-hub-open')) {
         const onList = document.getElementById('startup-step-1')?.style.display !== 'none';
         if (!onList) showStartupStep1();
+        else if (AppState.currentProjectId) closeStartupModal();
       }
       return;
     }
@@ -552,6 +539,5 @@ function initProjectUI() {
     }
   });
 
-  // Toujours atterrir sur la liste (démo incluse), sans ouvrir un projet
   openStartupModal();
 }

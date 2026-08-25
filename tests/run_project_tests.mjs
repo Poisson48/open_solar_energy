@@ -230,19 +230,20 @@ const hub = await page.evaluate(() => {
   seedDemoProject();
   openStartupModal();
   const modal = document.getElementById('startup-modal');
-  const list = document.getElementById('startup-projects-list');
-  const search = document.getElementById('startup-project-search');
+  const list = document.getElementById('projects-list');
+  const search = document.getElementById('projects-search');
   const visible = !!(modal && modal.classList.contains('ose-hub-open'));
   const htmlBefore = list?.innerHTML || '';
   search.value = 'Martin';
-  renderProjectsList('startup-projects-list', 'Martin');
-  const filteredMartin = (document.getElementById('startup-projects-list')?.innerHTML || '').includes('Martin');
+  renderProjectsList('Martin');
+  const filteredMartin = (document.getElementById('projects-list')?.innerHTML || '').includes('Martin');
   search.value = 'Toulouse';
-  renderProjectsList('startup-projects-list', 'Toulouse');
-  const filteredLoc = (document.getElementById('startup-projects-list')?.innerHTML || '').includes('Toulouse');
+  renderProjectsList('Toulouse');
+  const filteredLoc = (document.getElementById('projects-list')?.innerHTML || '').includes('Toulouse');
   search.value = 'zzzz-inexistant';
-  renderProjectsList('startup-projects-list', 'zzzz-inexistant');
-  const empty = (document.getElementById('startup-projects-list')?.textContent || '').includes('Aucun projet');
+  renderProjectsList('zzzz-inexistant');
+  const empty = (document.getElementById('projects-list')?.textContent || '').includes('Aucun projet');
+  const noDupModal = !document.getElementById('projects-modal');
   return {
     visible,
     hasDemo: htmlBefore.includes('DÉMO') || htmlBefore.includes('Démo'),
@@ -250,8 +251,9 @@ const hub = await page.evaluate(() => {
     filteredLoc,
     empty,
     hasCheckBtn: !!document.getElementById('btn-check-updates'),
-    // openStartupModal ne charge pas de projet
     listOnly: AppState.currentProjectId == null,
+    noDupModal,
+    openProjectsIsHub: openProjectsModal === openStartupModal || (openProjectsModal(), document.getElementById('startup-modal')?.classList.contains('ose-hub-open')),
   };
 });
 check('modal hub visible au démarrage', hub.visible);
@@ -261,6 +263,8 @@ check('filtre par lieu', hub.filteredLoc);
 check('filtre sans résultat', hub.empty);
 check('bouton mises à jour', hub.hasCheckBtn);
 check('aucun projet ouvert auto', hub.listOnly);
+check('plus de modal projets séparée', hub.noDupModal);
+check('bouton Projets = même hub', hub.openProjectsIsHub);
 
 await browser.close().catch(() => {});
 server.close();
