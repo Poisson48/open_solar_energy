@@ -531,8 +531,8 @@ AppAPI.setSizing({
   priceBase, priceHp, priceHc, // €/kWh
   subscription,                // abonnement €/an (0 = pas d'abo)
   costKwp, costTotal,          // coût €/kWc ou coût total fixe
-  strategy,                    // 'autoconso_max' | 'roi_optimal' | 'bill_coverage_pct'
-  targetCoverage,              // % couverture cible
+  strategy,                    // 'autoconso_max' | 'autoconso_pct' | 'roi_optimal' | 'bill_coverage_pct'
+  targetCoverage,              // % (autoconso ou couverture selon strategy)
   feedin,                      // tarif rachat surplus €/kWh
   elecEscalation,              // hausse élec %/an (ex: 3) ou fraction (0.03)
   discountRate,                // actualisation %/an (ex: 4) ou fraction (0.04)

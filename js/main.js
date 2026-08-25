@@ -16,13 +16,25 @@ function applyInstallationType(type) {
     const tab  = btn.dataset.tab;
     const hide = (type === 'grid' && TABS_OFFGRID_ONLY.includes(tab))
               || (type === 'offgrid' && TABS_GRID_ONLY.includes(tab));
-    btn.style.display = hide ? 'none' : '';
+    if (hide) {
+      btn.style.display = 'none';
+      return;
+    }
+    // Les onglets « avancés » restent masqués sauf si l’utilisateur les a ouverts
+    if (btn.dataset.tier === 'advanced') {
+      if (typeof window.__oseSyncAdvancedTabs === 'function')
+        window.__oseSyncAdvancedTabs();
+      else
+        btn.style.display = 'none';
+      return;
+    }
+    btn.style.display = '';
   });
 
   // Si l'onglet actif est masqué, aller au premier onglet visible
   const activeBtn = document.querySelector('.tab-btn.active');
   if (activeBtn && activeBtn.style.display === 'none') {
-    const first = document.querySelector('.tab-btn:not([style*="display: none"])');
+    const first = document.querySelector('.tab-btn[data-tab]:not([style*="display: none"])');
     if (first?.dataset?.tab && typeof activateTab === 'function')
       activateTab(first.dataset.tab);
     else if (first)
@@ -95,7 +107,8 @@ function bindInstallSync(tab) {
 
 // ── Gestion des onglets ──────────────────────────────────────
 function activateTab(tab) {
-  document.querySelectorAll('.tab-btn').forEach(b => {
+  if (!tab) return;
+  document.querySelectorAll('.tab-btn[data-tab]').forEach(b => {
     b.classList.remove('active');
     b.setAttribute('aria-selected', 'false');
     b.setAttribute('tabindex', '-1');
@@ -111,13 +124,12 @@ function activateTab(tab) {
   if (pane) pane.classList.add('active');
   AppState.activeTab = tab;
   if (tab === 'irradiation') renderIrradiationData();
-  // Auto-affichage onglet horaire si données disponibles
   if (tab === 'daily') HourlyModule.autoComputeIfReady();
 }
 
 function initTabs() {
-  const btns = [...document.querySelectorAll('.tab-btn')];
-  btns.forEach((btn, idx) => {
+  const btns = [...document.querySelectorAll('.tab-btn[data-tab]')];
+  btns.forEach((btn) => {
     btn.setAttribute('tabindex', btn.classList.contains('active') ? '0' : '-1');
     btn.addEventListener('click', () => {
       const prev = AppState.activeTab;

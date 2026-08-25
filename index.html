@@ -327,30 +327,33 @@
   <main class="main-panel">
 
     <!-- Barre d'onglets -->
-    <nav class="tabs-bar" role="tablist" aria-label="Modules de calcul">
-      <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-sizing" data-tab="sizing">
-        <span class="tab-number" style="background:#f5a623;color:#fff" aria-hidden="true">⚡</span>Dimensionnement
+    <nav class="tabs-bar" role="tablist" aria-label="Parcours de calcul">
+      <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-sizing" data-tab="sizing" data-tier="primary">
+        <span class="tab-number" aria-hidden="true">1</span>Dimensionnement
       </button>
-      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-grid" data-tab="grid">
-        <span class="tab-number" aria-hidden="true">1</span>Système PV réseau
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-grid" data-tab="grid" data-tier="primary">
+        <span class="tab-number" aria-hidden="true">2</span>Système PV
       </button>
-      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-tracker" data-tab="tracker">
-        <span class="tab-number" aria-hidden="true">2</span>Suiveur PV
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-quote" data-tab="quote" data-tier="primary">
+        <span class="tab-number" aria-hidden="true">3</span>Devis
       </button>
-      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-offgrid" data-tab="offgrid">
-        <span class="tab-number" aria-hidden="true">3</span>Hors réseau
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-offgrid" data-tab="offgrid" data-tier="primary">
+        <span class="tab-number" aria-hidden="true">🔋</span>Hors réseau
       </button>
-      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-irradiation" data-tab="irradiation">
-        <span class="tab-number" aria-hidden="true">4</span>Météo mensuelle
+      <button type="button" id="btn-toggle-advanced-tabs" class="tab-btn tab-btn-more" aria-expanded="false" title="Météo, analyse horaire, suiveur, optimisation">
+        Outils avancés
       </button>
-      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-daily" data-tab="daily">
-        <span class="tab-number" aria-hidden="true">5</span>Analyse horaire
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-irradiation" data-tab="irradiation" data-tier="advanced" style="display:none">
+        Météo mensuelle
       </button>
-      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-optimizer" data-tab="optimizer">
-        <span class="tab-number" aria-hidden="true">6</span>Optimisation
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-daily" data-tab="daily" data-tier="advanced" style="display:none">
+        Analyse horaire
       </button>
-      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-quote" data-tab="quote">
-        <span class="tab-number" aria-hidden="true">📄</span>Devis
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-tracker" data-tab="tracker" data-tier="advanced" style="display:none">
+        Suiveur PV
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-optimizer" data-tab="optimizer" data-tier="advanced" style="display:none">
+        Optimisation
       </button>
     </nav>
 

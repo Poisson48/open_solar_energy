@@ -216,14 +216,75 @@ function bindSharedParamSync() {
     updateTariff();
   }
 
-  // Sizing tab : stratégie → affiche taux cible seulement si pertinent
+  // Sizing : cartes objectif + champ cible selon stratégie
   const strategySel = document.getElementById('sz-strategy');
+  const goalCards = document.getElementById('sz-goal-cards');
   if (strategySel) {
     const updateStrategy = () => {
+      const v = strategySel.value;
       const group = document.getElementById('sz-target-coverage-group');
-      if (group) group.style.display = strategySel.value === 'bill_coverage_pct' ? '' : 'none';
+      const label = document.getElementById('sz-target-coverage-label');
+      const help = document.getElementById('sz-target-help');
+      const needsTarget = v === 'bill_coverage_pct' || v === 'autoconso_pct';
+      if (group) group.style.display = needsTarget ? '' : 'none';
+      if (label) {
+        label.textContent = v === 'autoconso_pct'
+          ? 'Taux d’autoconsommation cible'
+          : 'Taux de couverture de facture cible';
+      }
+      if (help) {
+        help.textContent = v === 'autoconso_pct'
+          ? 'Sans batterie, 90 % d’autoconso est réaliste avec une petite puissance. Ce n’est pas la même chose que 90 % de couverture de facture.'
+          : 'Part de votre consommation annuelle couverte par l’électricité produite et consommée sur place.';
+      }
+      if (goalCards) {
+        goalCards.querySelectorAll('.ose-goal-card').forEach(btn => {
+          const on = btn.dataset.strategy === v;
+          btn.classList.toggle('active', on);
+          btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+      }
     };
     strategySel.addEventListener('change', updateStrategy);
+    if (goalCards) {
+      goalCards.querySelectorAll('.ose-goal-card').forEach(btn => {
+        btn.addEventListener('click', () => {
+          strategySel.value = btn.dataset.strategy;
+          strategySel.dispatchEvent(new Event('change'));
+          if (btn.dataset.strategy === 'autoconso_pct') {
+            const t = document.getElementById('sz-target-coverage');
+            if (t && (!t.value || Number(t.value) < 50)) t.value = '90';
+          }
+          if (btn.dataset.strategy === 'bill_coverage_pct') {
+            const t = document.getElementById('sz-target-coverage');
+            if (t && Number(t.value) > 85) t.value = '70';
+          }
+        });
+      });
+    }
     updateStrategy();
+  }
+
+  // Afficher / masquer les onglets avancés
+  const advToggle = document.getElementById('btn-toggle-advanced-tabs');
+  if (advToggle) {
+    let showAdv = false;
+    const syncAdv = () => {
+      document.querySelectorAll('.tab-btn[data-tier="advanced"]').forEach(btn => {
+        const type = AppState.installationType || 'grid';
+        const tab = btn.dataset.tab;
+        const typeHide = (type === 'grid' && tab === 'offgrid')
+          || (type === 'offgrid' && ['sizing', 'grid', 'tracker', 'optimizer'].includes(tab));
+        btn.style.display = (!showAdv || typeHide) ? 'none' : '';
+      });
+      advToggle.textContent = showAdv ? 'Masquer outils avancés' : 'Outils avancés';
+      advToggle.setAttribute('aria-expanded', showAdv ? 'true' : 'false');
+    };
+    advToggle.addEventListener('click', () => {
+      showAdv = !showAdv;
+      syncAdv();
+    });
+    window.__oseSyncAdvancedTabs = syncAdv;
+    syncAdv();
   }
 }

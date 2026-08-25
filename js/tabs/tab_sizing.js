@@ -1,20 +1,26 @@
 /**
- * tab_sizing.js - HTML de l'onglet Dimensionnement EDF
+ * tab_sizing.js - HTML de l'onglet Dimensionnement (parcours étape par étape)
  */
 function initTabSizing() {
   document.getElementById('tab-sizing').innerHTML = `
-    <div class="tab-form-col">
+    <div class="ose-wizard-intro">
+      <strong>Parcours dimensionnement</strong>
+      <span>Suivez les étapes dans l’ordre. Un seul calcul à la fin — pas de chiffres dispersés.</span>
+    </div>
 
-      <!-- Formulaire -->
+    <div class="tab-form-col">
       <div>
 
-        <!-- Facture EDF -->
-        <details class="card" open>
-          <summary class="card-title" style="cursor:pointer;user-select:none">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>
-            Facture EDF / Enedis
-          </summary>
-          <div style="margin-top:10px">
+        <!-- Étape 1 : consommation -->
+        <section class="ose-step card" data-step="1">
+          <div class="ose-step-head">
+            <span class="ose-step-num">1</span>
+            <div>
+              <h3 class="ose-step-title">Votre consommation</h3>
+              <p class="ose-step-hint">Facture EDF ou export Enedis — base de tout le calcul.</p>
+            </div>
+          </div>
+          <div class="ose-step-body">
             <div class="form-group" style="margin-bottom:8px">
               <label for="sz-tariff">Type de tarif</label>
               <select id="sz-tariff">
@@ -66,21 +72,24 @@ function initTabSizing() {
             </div>
             <p id="sz-annual-total" style="font-size:12px;font-weight:700;color:var(--color-primary);margin-top:6px;text-align:right"></p>
           </div>
-        </details>
+        </section>
 
-        <!-- Toiture -->
-        <details class="card" open>
-          <summary class="card-title" style="cursor:pointer;user-select:none">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-            Toiture et installation
-          </summary>
-          <div style="margin-top:10px">
+        <!-- Étape 2 : toiture -->
+        <section class="ose-step card" data-step="2">
+          <div class="ose-step-head">
+            <span class="ose-step-num">2</span>
+            <div>
+              <h3 class="ose-step-title">Toiture et panneaux</h3>
+              <p class="ose-step-hint">Surface dispo + orientation. Le lieu se règle dans la colonne de gauche.</p>
+            </div>
+          </div>
+          <div class="ose-step-body">
             <div class="form-group" style="margin-bottom:6px">
               <label style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
-                <span for="sz-panel-model">Modèle de panneau</span>
+                <span>Modèle de panneau</span>
                 <span style="display:inline-flex;gap:4px;flex-wrap:wrap">
-                  <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.saveFromForm('sz')" style="padding:2px 8px;font-size:10px" title="Enregistrer dans la bibliothèque">💾 Enregistrer</button>
-                  <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.openLibraryModal('sz')" style="padding:2px 8px;font-size:10px" title="Choisir dans la bibliothèque">📋 Bibliothèque</button>
+                  <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.saveFromForm('sz')" style="padding:2px 8px;font-size:10px">💾 Enregistrer</button>
+                  <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.openLibraryModal('sz')" style="padding:2px 8px;font-size:10px">📋 Bibliothèque</button>
                 </span>
               </label>
               <input type="text" id="sz-panel-model" placeholder="ex : Jinko Tiger Neo 415W" style="width:100%">
@@ -126,77 +135,104 @@ function initTabSizing() {
               </select>
             </div>
           </div>
-        </details>
+        </section>
 
-        <!-- Stratégie -->
-        <details class="card" open>
-          <summary class="card-title" style="cursor:pointer;user-select:none">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
-            Stratégie et économie
-          </summary>
-          <div style="margin-top:10px">
-            <div class="form-group" style="margin-bottom:8px">
-              <label for="sz-strategy">Objectif</label>
-              <select id="sz-strategy">
-                <option value="autoconso_max">Maximiser l'autoconsommation</option>
-                <option value="roi_optimal">Meilleur retour sur investissement</option>
-                <option value="bill_coverage_pct">Atteindre un taux de couverture cible</option>
-              </select>
-            </div>
-            <div class="form-group" style="margin-bottom:8px" id="sz-target-coverage-group">
-              <label for="sz-target-coverage">Taux de couverture cible</label>
-              <div class="input-unit"><input type="number" id="sz-target-coverage" value="60" min="10" max="100"><span class="unit-tag">%</span></div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label for="sz-cost-kwp">Coût estimé <span style="font-weight:400;font-size:10px;color:var(--color-text-muted)">(si pas de coût réel)</span></label>
-                <div class="input-unit"><input type="number" id="sz-cost-kwp" value="900" step="50"><span class="unit-tag">€/kWc HT</span></div>
-              </div>
-              <div class="form-group">
-                <label for="sz-feedin">Tarif rachat surplus</label>
-                <div class="input-unit"><input type="number" id="sz-feedin" value="0.13" step="0.01"><span class="unit-tag">€/kWh</span></div>
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label for="sz-elec-escalation">Hausse prix électricité</label>
-                <div class="input-unit"><input type="number" id="sz-elec-escalation" value="3" min="0" max="20" step="0.5"><span class="unit-tag">%/an</span></div>
-              </div>
-              <div class="form-group">
-                <label for="sz-discount-rate">Taux d’actualisation</label>
-                <div class="input-unit"><input type="number" id="sz-discount-rate" value="4" min="0" max="20" step="0.5"><span class="unit-tag">%/an</span></div>
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label for="sz-panel-degradation">Dégradation panneaux</label>
-                <div class="input-unit"><input type="number" id="sz-panel-degradation" value="0.5" min="0" max="5" step="0.1"><span class="unit-tag">%/an</span></div>
-              </div>
-              <div class="form-group">
-                <label for="sz-finance-years">Horizon d’analyse</label>
-                <div class="input-unit"><input type="number" id="sz-finance-years" value="25" min="5" max="40" step="1"><span class="unit-tag">ans</span></div>
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="sz-cost-total">Coût réel total <span style="font-weight:400;font-size:10px;color:var(--color-text-muted)">(optionnel)</span></label>
-              <div class="input-unit"><input type="number" id="sz-cost-total" value="" step="100" min="0" placeholder="ex : 8500"><span class="unit-tag">€ TTC</span></div>
+        <!-- Étape 3 : objectif -->
+        <section class="ose-step card" data-step="3">
+          <div class="ose-step-head">
+            <span class="ose-step-num">3</span>
+            <div>
+              <h3 class="ose-step-title">Votre objectif</h3>
+              <p class="ose-step-hint">Choisissez <em>une</em> cible. Autoconso ≠ couverture de facture.</p>
             </div>
           </div>
-        </details>
+          <div class="ose-step-body">
+            <input type="hidden" id="sz-strategy" value="autoconso_pct">
+            <div class="ose-goal-cards" id="sz-goal-cards" role="radiogroup" aria-label="Objectif de dimensionnement">
+              <button type="button" class="ose-goal-card active" data-strategy="autoconso_pct" aria-pressed="true">
+                <strong>Autoconsommation cible</strong>
+                <span>Ex. 90 % : presque toute la production est consommée chez vous (souvent installation plus petite).</span>
+              </button>
+              <button type="button" class="ose-goal-card" data-strategy="bill_coverage_pct" aria-pressed="false">
+                <strong>Couverture de facture</strong>
+                <span>Ex. 70 % : l’électricité PV couvre 70 % de votre conso annuelle (souvent plus de panneaux).</span>
+              </button>
+              <button type="button" class="ose-goal-card" data-strategy="roi_optimal" aria-pressed="false">
+                <strong>Meilleur retour sur investissement</strong>
+                <span>Équilibre économique (temps de retour / VAN) — pas un % fixe.</span>
+              </button>
+              <button type="button" class="ose-goal-card" data-strategy="autoconso_max" aria-pressed="false">
+                <strong>Max. kWh autoconsommés</strong>
+                <span>Maximise les kWh consommés sur place sans viser un % précis.</span>
+              </button>
+            </div>
 
-        <button class="btn btn-accent" id="btn-calc-sizing" style="width:100%;margin-bottom:8px">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4 8h-2v2h-2v-2H9v-2h2V7h2v2h2v2z"/></svg>
-          Dimensionner mon installation
-        </button>
+            <div class="form-group" style="margin-top:12px" id="sz-target-coverage-group">
+              <label for="sz-target-coverage" id="sz-target-coverage-label">Taux d’autoconsommation cible</label>
+              <div class="input-unit"><input type="number" id="sz-target-coverage" value="90" min="10" max="100"><span class="unit-tag">%</span></div>
+              <p id="sz-target-help" class="ose-field-help">Sans batterie, 90&nbsp;% d’autoconso est réaliste avec une petite puissance. 90&nbsp;% de couverture de facture est un autre objectif.</p>
+            </div>
+
+            <details class="ose-advanced-block">
+              <summary>Coûts et hypothèses financières (optionnel)</summary>
+              <div class="form-row" style="margin-top:10px">
+                <div class="form-group">
+                  <label for="sz-cost-kwp">Coût estimé</label>
+                  <div class="input-unit"><input type="number" id="sz-cost-kwp" value="900" step="50"><span class="unit-tag">€/kWc HT</span></div>
+                </div>
+                <div class="form-group">
+                  <label for="sz-feedin">Tarif rachat surplus</label>
+                  <div class="input-unit"><input type="number" id="sz-feedin" value="0.13" step="0.01"><span class="unit-tag">€/kWh</span></div>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="sz-elec-escalation">Hausse prix électricité</label>
+                  <div class="input-unit"><input type="number" id="sz-elec-escalation" value="3" min="0" max="20" step="0.5"><span class="unit-tag">%/an</span></div>
+                </div>
+                <div class="form-group">
+                  <label for="sz-discount-rate">Taux d’actualisation</label>
+                  <div class="input-unit"><input type="number" id="sz-discount-rate" value="4" min="0" max="20" step="0.5"><span class="unit-tag">%/an</span></div>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="sz-panel-degradation">Dégradation panneaux</label>
+                  <div class="input-unit"><input type="number" id="sz-panel-degradation" value="0.5" min="0" max="5" step="0.1"><span class="unit-tag">%/an</span></div>
+                </div>
+                <div class="form-group">
+                  <label for="sz-finance-years">Horizon d’analyse</label>
+                  <div class="input-unit"><input type="number" id="sz-finance-years" value="25" min="5" max="40" step="1"><span class="unit-tag">ans</span></div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="sz-cost-total">Coût réel total (optionnel)</label>
+                <div class="input-unit"><input type="number" id="sz-cost-total" value="" step="100" min="0" placeholder="ex : 8500"><span class="unit-tag">€ TTC</span></div>
+              </div>
+            </details>
+          </div>
+        </section>
+
+        <!-- Étape 4 : lancer -->
+        <section class="ose-step card ose-step-action" data-step="4">
+          <div class="ose-step-head">
+            <span class="ose-step-num">4</span>
+            <div>
+              <h3 class="ose-step-title">Calculer</h3>
+              <p class="ose-step-hint">Vérifiez le lieu (colonne gauche) puis lancez le dimensionnement.</p>
+            </div>
+          </div>
+          <button class="btn btn-accent" id="btn-calc-sizing" style="width:100%">
+            Dimensionner mon installation
+          </button>
+        </section>
       </div>
 
-      <!-- Résultats -->
       <div id="sizing-results">
         <div class="result-placeholder">
           <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-          <p>Renseignez vos données de facture<br>puis cliquez sur <strong>Dimensionner</strong></p>
+          <p>Étapes 1 → 3, puis <strong>Dimensionner</strong>.<br>Les deux taux (autoconso et couverture) seront affichés clairement.</p>
         </div>
       </div>
-
     </div>`;
 }

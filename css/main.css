@@ -1255,3 +1255,133 @@ details.card > summary:focus-visible {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Parcours dimensionnement (wizard) ── */
+.ose-wizard-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(26,107,60,0.08), rgba(245,166,35,0.08));
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.ose-wizard-intro strong { color: var(--color-primary); font-size: 14px; }
+.ose-wizard-intro span { color: var(--color-text-muted); font-size: 12px; }
+
+.ose-step {
+  margin-bottom: 12px;
+  padding: 14px 16px;
+}
+.ose-step-head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.ose-step-num {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ose-step-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+.ose-step-hint {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.35;
+}
+.ose-step-action .ose-step-head { margin-bottom: 10px; }
+
+.ose-goal-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+@media (max-width: 700px) {
+  .ose-goal-cards { grid-template-columns: 1fr; }
+}
+.ose-goal-card {
+  text-align: left;
+  padding: 12px;
+  border: 2px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+.ose-goal-card strong {
+  display: block;
+  font-size: 13px;
+  color: var(--color-primary);
+  margin-bottom: 4px;
+}
+.ose-goal-card span {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  line-height: 1.35;
+}
+.ose-goal-card:hover { border-color: var(--color-accent); }
+.ose-goal-card.active {
+  border-color: var(--color-accent);
+  background: rgba(245,166,35,0.1);
+}
+.ose-field-help {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+.ose-advanced-block {
+  margin-top: 12px;
+  font-size: 13px;
+}
+.ose-advanced-block > summary {
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  font-size: 12px;
+}
+.ose-goal-met, .ose-goal-miss {
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin: 0 0 12px;
+  line-height: 1.4;
+}
+.ose-goal-met {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+.ose-goal-miss {
+  background: #fff8e1;
+  color: #e65100;
+}
+.tab-btn-more {
+  margin-left: auto;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  border-bottom: none !important;
+  opacity: 0.85;
+}
+.tab-btn-more:hover { opacity: 1; color: var(--color-primary); }
+.ose-rec-kpis {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}

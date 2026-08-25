@@ -14,11 +14,14 @@ const SizingEngine = (() => {
   const DAYS = DAYS_IN_MONTH;
 
   // ── Sélection de l'optimal selon la stratégie ─────────────────
-  function selectOptimal(results, strategy, targetCoveragePct) {
+  // Couverture = part de la conso couverte (autoconso/conso).
+  // Autoconso  = part de la prod consommée sur place (autoconso/prod).
+  // Sans batterie, 90 % d’autoconso ⇒ installation souvent plus petite ;
+  // 90 % de couverture ⇒ installation plus grande (ou batterie).
+  function selectOptimal(results, strategy, targetPct) {
     if (!results.length) return null;
     switch (strategy) {
       case 'autoconso_max': {
-        // Max autoconso en évitant les installations où > 40% part au réseau
         const goodRatio = results.filter(r => r.autoconsoRate >= 60);
         const pool = goodRatio.length ? goodRatio : [...results];
         return pool.sort((a, b) =>
@@ -28,12 +31,20 @@ const SizingEngine = (() => {
         )[0];
       }
 
+      case 'autoconso_pct': {
+        // Plus grande installation qui tient encore le taux d’autoconso cible
+        const target = targetPct || 90;
+        const ok = results.filter(r => r.autoconsoRate >= target);
+        if (ok.length) return ok[ok.length - 1];
+        return results[0];
+      }
+
       case 'roi_optimal':
         return [...results].filter(r => r.ROI < 30).sort((a, b) => a.ROI - b.ROI)[0]
           || results[0];
 
       case 'bill_coverage_pct': {
-        const target = targetCoveragePct || 60;
+        const target = targetPct || 60;
         return results.find(r => r.coverageRate >= target) || results[results.length - 1];
       }
 

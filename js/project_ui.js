@@ -229,6 +229,69 @@ function closeProjectsModal() {
   closeStartupModal();
 }
 
+/** Bouton retour Android / Escape : referme modales et hub avant de quitter l’app. */
+let _lastBackQuitAt = 0;
+
+function _modalVisible(id, displayValues) {
+  const el = document.getElementById(id);
+  if (!el) return false;
+  const d = el.style.display;
+  if (!d || d === 'none') return false;
+  return !displayValues || displayValues.includes(d);
+}
+
+function handleAndroidBack() {
+  if (_modalVisible('panel-db-modal', ['flex'])) {
+    if (typeof PanelDB !== 'undefined' && PanelDB.closeManagerModal)
+      PanelDB.closeManagerModal();
+    return true;
+  }
+  if (_modalVisible('enedis-modal', ['block', 'flex'])) {
+    if (typeof closeEnedisModal === 'function') closeEnedisModal();
+    return true;
+  }
+  if (_modalVisible('git-history-modal', ['flex', 'block'])) {
+    closeGitHistoryModal();
+    return true;
+  }
+  if (_modalVisible('edit-project-modal', ['block', 'flex'])) {
+    closeEditProjectModal();
+    return true;
+  }
+
+  const hub = document.getElementById('startup-modal');
+  const hubOpen = hub && hub.classList.contains('ose-hub-open') && !hub.hasAttribute('hidden');
+
+  if (hubOpen) {
+    const stepNew = document.getElementById('startup-step-new');
+    const stepType = document.getElementById('startup-step-type');
+    if (stepNew?.style.display === 'block') {
+      showInstallationTypeStep();
+      return true;
+    }
+    if (stepType?.style.display === 'block') {
+      showStartupStep1();
+      return true;
+    }
+    if (AppState.currentProjectId) {
+      closeStartupModal();
+      return true;
+    }
+  } else if (AppState.currentProjectId) {
+    openStartupModal();
+    return true;
+  }
+
+  const now = Date.now();
+  if (now - _lastBackQuitAt < 2500)
+    return false;
+  _lastBackQuitAt = now;
+  showToast('Appuyez encore pour quitter');
+  return true;
+}
+
+window.handleAndroidBack = handleAndroidBack;
+
 function _escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -557,15 +620,7 @@ function initProjectUI() {
   // Hub unique : pas de fermeture par clic extérieur
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-      closeEditProjectModal();
-      closeGitHistoryModal();
-      if (typeof closeEnedisModal === 'function') closeEnedisModal();
-      const hub = document.getElementById('startup-modal');
-      if (hub && hub.classList.contains('ose-hub-open')) {
-        const onList = document.getElementById('startup-step-1')?.style.display !== 'none';
-        if (!onList) showStartupStep1();
-        else if (AppState.currentProjectId) closeStartupModal();
-      }
+      if (handleAndroidBack()) return;
       return;
     }
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {

@@ -7,7 +7,7 @@
  */
 
 const DEMO_PROJECT_ID = 'demo_ose_v2';
-const DEMO_SEED_VERSION = 3;
+const DEMO_SEED_VERSION = 4;
 
 // ══════════════════════════════════════════════════════════════
 //  MODAL DE DÉMARRAGE = HUB PROJETS
@@ -265,8 +265,8 @@ function seedDemoProject() {
     'sz-panel-m2': panelM2,
     'sz-losses': losses,
     'sz-tech': 'crystSi',
-    'sz-strategy': 'roi_optimal',
-    'sz-target-coverage': '70',
+    'sz-strategy': 'autoconso_pct',
+    'sz-target-coverage': '90',
     'sz-cost-kwp': '1800',
     'sz-cost-total': '',
     'sz-feedin': '0.13',

@@ -87,7 +87,7 @@ console.log('\n═══ A. Hub démarrage ═══');
     };
   });
   check('hub ouvert au démarrage', hub.open === true);
-  check('APP_VERSION = 2.0.12', hub.version === '2.0.12', String(hub.version));
+  check('APP_VERSION = 2.0.13', hub.version === '2.0.13', String(hub.version));
   check('bouton Mises à jour présent', /mise/i.test(hub.majLabel || ''), hub.majLabel);
   note('cartes projets dans hub', String(hub.cards));
 
@@ -132,6 +132,15 @@ console.log('\n═══ B. Dimensionnement + hypothèses financières ═══
     const discEl = document.getElementById('sz-discount-rate');
     if (discEl) discEl.value = '6';
 
+    // Objectif 90 % autoconso
+    const strat = document.getElementById('sz-strategy');
+    if (strat) {
+      strat.value = 'autoconso_pct';
+      strat.dispatchEvent(new Event('change'));
+    }
+    const tgt = document.getElementById('sz-target-coverage');
+    if (tgt) tgt.value = '90';
+
     if (typeof calcSizing !== 'function') return { fields, err: 'calcSizing missing' };
     calcSizing();
     await new Promise(r => setTimeout(r, 100));
@@ -150,25 +159,31 @@ console.log('\n═══ B. Dimensionnement + hypothèses financières ═══
       yearsUsed: rec?.financeYears,
       npv: rec?.npv25,
       lcoe: rec?.lcoe,
-      payback: rec?.paybackYears,
-      hasSummary: html.includes('ose-rec-summary'),
-      hasDetails: html.includes('ose-rec-details'),
-      hasApply: html.includes('applySizingToGrid'),
-      showsDisc6: /6\s*%/.test(html) || (rec?.discountRate === 0.06),
+      autoconso: rec?.autoconsoRate,
+      coverage: rec?.coverageRate,
+      htmlHasSummary: /ose-rec-summary/.test(html),
+      htmlHasDetails: /ose-rec-details/.test(html),
+      htmlHasAutoconsoKpi: /Autoconsommation/.test(html),
+      htmlHasCoverageKpi: /Couverture facture/.test(html),
+      hasGoalCards: !!document.getElementById('sz-goal-cards'),
+      applyBtn: !!document.querySelector('#sizing-results button[onclick*="applySizingToGrid"]'),
     };
   });
   check('champs hypothèses présents (défauts)', r.fields.esc === '3' && r.fields.disc === '4' && r.fields.deg === '0.5' && r.fields.years === '25', JSON.stringify(r.fields));
   check('surface + conso démo OK', parseFloat(r.fields.surface) > 0 && parseFloat(r.fields.jan) > 0, `surf=${r.fields.surface} jan=${r.fields.jan}`);
+  check('cartes objectif présentes', r.hasGoalCards === true);
   check('dimensionnement produit une reco', r.hasRec && r.ppeak > 0, `Ppeak=${r.ppeak} n=${r.nPanels}`);
+  check('objectif 90 % autoconso respecté', r.autoconso >= 89.5, String(r.autoconso));
   check('actualisation 6 % prise en compte', r.discUsed === 0.06, String(r.discUsed));
   check('hausse élec défaut 3 %', r.escUsed === 0.03, String(r.escUsed));
   check('dégradation 0.5 %', Math.abs((r.degUsed || 0) - 0.005) < 1e-9, String(r.degUsed));
   check('horizon 25 ans', r.yearsUsed === 25, String(r.yearsUsed));
   check('VAN calculée (nombre)', typeof r.npv === 'number' && !Number.isNaN(r.npv), String(r.npv));
   check('LCOE > 0', r.lcoe > 0, String(r.lcoe));
-  check('UI résumé lisible', r.hasSummary === true);
-  check('UI détails repliés', r.hasDetails === true);
-  check('bouton Appliquer → réseau', r.hasApply === true);
+  check('UI résumé lisible', r.htmlHasSummary === true);
+  check('UI KPI autoconso + couverture', r.htmlHasAutoconsoKpi && r.htmlHasCoverageKpi);
+  check('UI détails repliés', r.htmlHasDetails === true);
+  check('bouton Appliquer → réseau', r.applyBtn === true);
   await page.close();
 }
 
@@ -357,6 +372,29 @@ console.log('\n═══ G. Sauvegarde / export présence ═══');
 }
 
 // ═══════════════════════════════════════════════════════════════
+console.log('\n═══ I. Bouton retour (navigation in-app) ═══');
+{
+  const page = await freshPage();
+  const r = await page.evaluate(() => {
+    seedDemoProject();
+    loadProject(DEMO_PROJECT_ID);
+    closeStartupModal();
+    const back1 = typeof handleAndroidBack === 'function' && handleAndroidBack();
+    const hubOpen = document.getElementById('startup-modal')?.classList.contains('ose-hub-open');
+    const back2 = handleAndroidBack();
+    const hubClosed = !document.getElementById('startup-modal')?.classList.contains('ose-hub-open');
+    openEditProjectModal();
+    const back3 = handleAndroidBack();
+    const editClosed = document.getElementById('edit-project-modal')?.style.display === 'none';
+    return { back1, hubOpen, back2, hubClosed, back3, editClosed };
+  });
+  check('handleAndroidBack ouvre le hub depuis le projet', r.back1 === true && r.hubOpen === true);
+  check('handleAndroidBack ferme le hub (projet ouvert)', r.back2 === true && r.hubClosed === true);
+  check('handleAndroidBack ferme la modal édition', r.back3 === true && r.editClosed === true);
+  await page.close();
+}
+
+// ═══════════════════════════════════════════════════════════════
 console.log('\n═══ H. Revue code — points de vigilance connus ═══');
 {
   // Checks structurels sans UI
@@ -366,6 +404,9 @@ console.log('\n═══ H. Revue code — points de vigilance connus ═══'
   const upd = fs.readFileSync(join(ROOT, 'src/app/updater.cpp'), 'utf8');
   const updH = fs.readFileSync(join(ROOT, 'src/app/updater.h'), 'utf8');
   const man = fs.readFileSync(join(ROOT, 'android/AndroidManifest.xml'), 'utf8');
+  const mainQml = fs.readFileSync(join(ROOT, 'src/qml/Main.qml'), 'utf8');
+  check('Android back : onClosing dans Main.qml', /onClosing:/.test(mainQml) && /tryHandleBack/.test(mainQml));
+  check('Android back : handleAndroidBack JS', /function handleAndroidBack/.test(fs.readFileSync(join(ROOT, 'js/project_ui.js'), 'utf8')));
   check('CSS overflow-x clip (anti débordement)', /overflow-x:\s*clip/.test(css));
   check('pont mobile : file d’attente + Timer', /__oseCmdQueue/.test(mobile) && /Timer/.test(mobile));
   check('Updater : téléchargement APK (finished + readAll)', /readAll\(\)/.test(upd));
@@ -386,6 +427,6 @@ console.log('─'.repeat(60));
 
 // Rapport JSON pour le résumé agent
 const reportPath = join(ROOT, 'tests/journey-report.json');
-writeFileSync(reportPath, JSON.stringify({ fails, findings, version: '2.0.12', at: new Date().toISOString() }, null, 2));
+writeFileSync(reportPath, JSON.stringify({ fails, findings, version: '2.0.13', at: new Date().toISOString() }, null, 2));
 
 process.exit(fails ? 1 : 0);

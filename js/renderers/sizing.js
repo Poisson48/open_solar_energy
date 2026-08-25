@@ -68,11 +68,30 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
     : 'plus de 40 ans';
   const costTxt = rec.systemCost.toLocaleString('fr');
   const summary = `Environ <strong>${rec.nPanels} panneau${rec.nPanels > 1 ? 'x' : ''}</strong> `
-    + `(<strong>${rec.Ppeak.toLocaleString('fr')} kWc</strong>) pour couvrir `
-    + `<strong>~${rec.coverageRate.toLocaleString('fr')}&nbsp;%</strong> de votre consommation, `
-    + `rentabilisé en <strong>${paybackTxt}</strong>`
+    + `(<strong>${rec.Ppeak.toLocaleString('fr')} kWc</strong>) — `
+    + `<strong>${rec.autoconsoRate.toLocaleString('fr')}&nbsp;%</strong> d’autoconsommation `
+    + `(production consommée sur place), `
+    + `<strong>${rec.coverageRate.toLocaleString('fr')}&nbsp;%</strong> de couverture de facture`
+    + `, rentabilisé en <strong>${paybackTxt}</strong>`
     + (rec.systemCost > 0 ? `, pour environ <strong>${costTxt}&nbsp;€</strong> après aide` : '')
     + '.';
+
+  const strategy = AppState.lastSizingInput?.sizing?.strategy || '';
+  const targetPct = AppState.lastSizingInput?.sizing?.targetCoveragePct;
+  let goalNote = '';
+  if (strategy === 'autoconso_pct' && targetPct) {
+    const ok = rec.autoconsoRate + 0.05 >= targetPct;
+    goalNote = ok
+      ? `<div class="ose-goal-met">Objectif atteint : ≥ ${targetPct}&nbsp;% d’autoconsommation.</div>`
+      : `<div class="ose-goal-miss">Objectif ${targetPct}&nbsp;% d’autoconso non atteint `
+        + `(max. possible ici : ${rec.autoconsoRate.toLocaleString('fr')}&nbsp;% — surface / conso limitent).</div>`;
+  } else if (strategy === 'bill_coverage_pct' && targetPct) {
+    const ok = rec.coverageRate + 0.05 >= targetPct;
+    goalNote = ok
+      ? `<div class="ose-goal-met">Objectif atteint : ≥ ${targetPct}&nbsp;% de couverture de facture.</div>`
+      : `<div class="ose-goal-miss">Objectif ${targetPct}&nbsp;% de couverture non atteint `
+        + `(max. avec la surface dispo : ${rec.coverageRate.toLocaleString('fr')}&nbsp;%).</div>`;
+  }
 
   const slotBadge = rec.slotLevel
     ? `<span class="ose-rec-badge ose-rec-badge-ok">Données Enedis 30 min</span>`
@@ -92,18 +111,23 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
         ${slotBadge}
       </div>
       <p class="ose-rec-summary">${summary}</p>
+      ${goalNote}
       <div class="kpi-grid ose-rec-kpis">
         <div class="kpi-card" style="border-left:3px solid var(--color-accent)">
           <div class="kpi-value accent">${rec.Ppeak.toLocaleString('fr')} <span class="kpi-unit">kWc</span></div>
           <div class="kpi-label">${rec.nPanels} panneau${rec.nPanels > 1 ? 'x' : ''}</div>
         </div>
-        <div class="kpi-card">
-          <div class="kpi-value" style="color:var(--color-success)">${rec.coverageRate.toLocaleString('fr')} %</div>
-          <div class="kpi-label">de votre conso couverte<br><span class="kpi-unit">par l’électricité produite et consommée sur place</span></div>
+        <div class="kpi-card" style="border-left:3px solid var(--color-success)">
+          <div class="kpi-value" style="color:var(--color-success)">${rec.autoconsoRate.toLocaleString('fr')} %</div>
+          <div class="kpi-label">Autoconsommation<br><span class="kpi-unit">part de la <em>production</em> consommée chez vous</span></div>
+        </div>
+        <div class="kpi-card" style="border-left:3px solid var(--color-primary)">
+          <div class="kpi-value" style="color:var(--color-primary)">${rec.coverageRate.toLocaleString('fr')} %</div>
+          <div class="kpi-label">Couverture facture<br><span class="kpi-unit">part de votre <em>conso</em> couverte sur place</span></div>
         </div>
         <div class="kpi-card">
           <div class="kpi-value accent">${rec.paybackYears ? rec.paybackYears + ' ans' : '> 40 ans'}</div>
-          <div class="kpi-label">pour rentabiliser<br><span class="kpi-unit">hausse élec. +${escPct} %/an prise en compte</span></div>
+          <div class="kpi-label">Rentabilisation<br><span class="kpi-unit">hausse élec. +${escPct} %/an</span></div>
         </div>
         <div class="kpi-card">
           ${costBlock}
@@ -113,22 +137,23 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
       <details class="ose-rec-details">
         <summary>Détails techniques et financiers</summary>
         <ul class="ose-rec-dl">
-          <li><span>Autoconsommation</span><strong>${rec.autoconsoRate.toLocaleString('fr')} %</strong>
-            <em>part de la production consommée sur place (le reste est injecté / revendu)</em></li>
+          <li><span>Prod. annuelle</span><strong>${Math.round(rec.annualProd).toLocaleString('fr')} kWh</strong></li>
+          <li><span>Conso. annuelle</span><strong>${Math.round(rec.annualConso).toLocaleString('fr')} kWh</strong></li>
+          <li><span>Autoconso (kWh)</span><strong>${Math.round(rec.annualAutoconsoKwh).toLocaleString('fr')} kWh</strong></li>
           ${rec.npv25 != null && rec.systemCost > 0 ? `
           <li><span>Gain net sur ${years} ans (VAN)</span>
             <strong style="color:${rec.npv25 >= 0 ? 'var(--color-success)' : 'var(--color-danger)'}">${rec.npv25 >= 0 ? '+' : ''}${rec.npv25.toLocaleString('fr')} €</strong>
-            <em>après actualisation ${discPct} %/an — positif = rentable</em></li>` : ''}
+            <em>après actualisation ${discPct} %/an</em></li>` : ''}
           ${rec.lcoe > 0 ? `
           <li><span>Coût du kWh produit (LCOE)</span><strong>${rec.lcoe.toLocaleString('fr', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} €/kWh</strong>
-            <em>coût moyen de production sur ${years} ans</em></li>` : ''}
+            <em>sur ${years} ans</em></li>` : ''}
           <li><span>Hypothèses</span><strong>—</strong>
-            <em>dégradation panneaux ${degPct} %/an · hausse électricité +${escPct} %/an · actualisation ${discPct} %/an · horizon ${years} ans</em></li>
+            <em>dégradation ${degPct} %/an · hausse élec. +${escPct} %/an · actualisation ${discPct} %/an · horizon ${years} ans</em></li>
         </ul>
       </details>
 
       <button type="button" class="btn btn-primary" style="width:100%;margin-top:12px" onclick="applySizingToGrid()">
-        → Appliquer au Système PV réseau (${rec.nPanels} panneaux · ${rec.Ppeak.toLocaleString('fr')} kWc)
+        → Étape suivante : Système PV (${rec.nPanels} panneaux · ${rec.Ppeak.toLocaleString('fr')} kWc)
       </button>
     </div>
 

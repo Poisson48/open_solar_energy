@@ -29,9 +29,23 @@ Item {
         const k = JSON.stringify(kind || "")
         webView.runJavaScript(
             "(function(){"
-            + "if(typeof closeStartupModal==='function')closeStartupModal();"
             + "if(typeof showToast==='function')showToast(" + msg + "," + k + ");"
             + "})();"
+        )
+    }
+
+    function tryHandleBack(callback) {
+        if (!webView) {
+            if (callback) callback(false)
+            return
+        }
+        webView.runJavaScript(
+            "(function(){"
+            + "return (typeof handleAndroidBack==='function' && handleAndroidBack());"
+            + "})()",
+            function (result) {
+                if (callback) callback(result === true)
+            }
         )
     }
 

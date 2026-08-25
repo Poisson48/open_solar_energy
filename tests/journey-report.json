@@ -9,12 +9,12 @@
     {
       "severity": "info",
       "label": "onglets visibles (réseau)",
-      "detail": "sizing, grid, tracker, irradiation, daily, optimizer, quote"
+      "detail": "sizing, grid, quote, "
     },
     {
       "severity": "info",
       "label": "onglets visibles (hors-réseau)",
-      "detail": "offgrid, irradiation, daily, quote"
+      "detail": "quote, offgrid, "
     },
     {
       "severity": "info",
@@ -37,6 +37,6 @@
       "detail": ""
     }
   ],
-  "version": "2.0.12",
-  "at": "2026-08-25T08:11:28.932Z"
+  "version": "2.0.13",
+  "at": "2026-08-25T08:29:02.688Z"
 }

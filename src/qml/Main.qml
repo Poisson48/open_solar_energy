@@ -22,6 +22,35 @@ ApplicationWindow {
 
     ChangelogDialog { id: changelogDialog }
 
+    // Bouton retour Android : comme Colo Course — modales / hub d’abord, quit seulement à la racine.
+    onClosing: function (close) {
+        close.accepted = false
+
+        if (changelogDialog.opened) {
+            changelogDialog.close()
+            return
+        }
+
+        if (Updater.updateAvailable || Updater.downloading || Updater.readyToInstall
+                || Updater.state === 5) {
+            Updater.dismiss()
+            return
+        }
+
+        const web = webLoader.item
+        if (web && typeof web.tryHandleBack === "function") {
+            web.tryHandleBack(function (handled) {
+                if (!handled) {
+                    close.accepted = true
+                    window.close()
+                }
+            })
+            return
+        }
+
+        close.accepted = true
+    }
+
     Component.onCompleted: {
         if (Qt.platform.os === "android")
             showMaximized()
@@ -151,6 +180,7 @@ ApplicationWindow {
         }
 
         Loader {
+            id: webLoader
             Layout.fillWidth: true
             Layout.fillHeight: true
             source: AppController.useWebEngine
