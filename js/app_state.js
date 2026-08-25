@@ -3,8 +3,12 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.20';
+const APP_VERSION = '2.0.21';
 // Historique :
+//   2.0.21 - Outils pro installateur : calculateur câbles DC/AC (section, chute
+//            de tension, pertes), bibliothèques matériel (panneaux STC Voc/Isc/
+//            Vmp/Imp + onduleurs éditables + hub 📚 Matériel), implantation
+//            toiture 2.5D (canvas offline, sync dimensionnement)
 //   2.0.20 - UX 2e passe : menu déroulant du type d'installation (remplace le
 //            cycle de badge opaque), cohérence des champs batterie hybride/hors-
 //            réseau (libellés + capacité utile en direct après DoD), CTA plus
