@@ -3,8 +3,9 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.16';
+const APP_VERSION = '2.0.17';
 // Historique :
+//   2.0.17 - Fix build Android (JNI) + hub MAJ / export / import natifs
 //   2.0.16 - Fix hub Android : MAJ ne ferme plus le hub ; export/import natifs
 //   2.0.15 - Plus de calcul auto à l’ouverture ; surface obligatoire (plus de défaut 30 m²)
 //   2.0.14 - MAJ : téléchargement APK en flux (anti OOM) + bandeau d’erreur clair

@@ -2,10 +2,9 @@
 
 #ifdef Q_OS_ANDROID
 #  include <QCoreApplication>
+#  include <QGuiApplication>
 #  include <QJniEnvironment>
 #  include <QJniObject>
-#  include <QNativeInterface>
-#  include <QGuiApplication>
 #endif
 
 namespace app {
