@@ -203,6 +203,7 @@ function activateTab(tab) {
   AppState.activeTab = tab;
   if (tab === 'irradiation') renderIrradiationData();
   if (tab === 'daily') HourlyModule.autoComputeIfReady();
+  if (tab === 'layout' && typeof renderPanelLayoutTab === 'function') renderPanelLayoutTab();
   if (tab === 'sizing' && typeof updateDemoPrefillNote === 'function')
     updateDemoPrefillNote();
 }
@@ -254,6 +255,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   initTabIrradiation();
   initTabDaily();
   initTabOptimizer();
+  initTabLayout();
   initTabQuote();
 
   // 2. Charger les données météo démo, initialiser la carte

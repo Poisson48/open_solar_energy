@@ -135,6 +135,8 @@ const PROJECT_FIELDS = [
   'og2-pv-cost-kwp','og2-bos-cost',
   // Hors réseau — mode panneaux
   'og2-panel-mode','og2-npanels-fixe',
+  // Implantation (visualiseur 2.5D)
+  'lay-roof-w','lay-roof-d','lay-panel-w','lay-panel-h','lay-npanels','lay-rows','lay-tilt','lay-azimuth',
   // Devis professionnel
   'dv-ins-company','dv-ins-siret','dv-ins-rge','dv-ins-address','dv-ins-phone','dv-ins-email',
   'dv-cli-name','dv-cli-company','dv-cli-address','dv-cli-phone','dv-cli-email',
