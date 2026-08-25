@@ -175,31 +175,57 @@ function demoMonthlyKwhHp(monthly) {
 function seedDemoPanels() {
   if (typeof PanelDB === 'undefined' || !PanelDB.save) return;
   const existing = PanelDB.list();
-  if (existing.some(p => p.model && p.model.includes('Tiger Neo 425'))) return;
-  PanelDB.save({
-    model: 'Jinko Tiger Neo N-type 425W',
-    fabricant: 'JinkoSolar',
-    wp: 425,
-    largeur: 1.134,
-    hauteur: 1.762,
-    tech: 'mono',
-    coef_temp: -0.29,
-    prix: 95,
-    garantie_p: 30,
-    url: 'https://www.jinkosolar.com/',
-    notes: 'Panneau démo Open Solar Energy'
-  });
-  PanelDB.save({
-    model: 'Longi Hi-MO 6 430W',
-    fabricant: 'LONGi',
-    wp: 430,
-    largeur: 1.134,
-    hauteur: 1.722,
-    tech: 'mono',
-    coef_temp: -0.28,
-    prix: 98,
-    garantie_p: 25,
-    notes: 'Panneau démo Open Solar Energy'
+  const hasModel = needle => existing.some(p => p.model && p.model.includes(needle));
+
+  // 4-6 panneaux courants du marché FR, avec caractéristiques électriques STC
+  // complètes (Voc/Isc/Vmp/Imp) pour le calcul de chaînage onduleur.
+  const demoPanels = [
+    { needle: 'Tiger Neo 425', data: {
+      model: 'Jinko Tiger Neo N-type 425W', fabricant: 'JinkoSolar', wp: 425,
+      largeur: 1.134, hauteur: 1.762, tech: 'mono', coef_temp: -0.29,
+      voc: 31.79, isc: 17.02, vmp: 26.63, imp: 15.96, bifacial: false,
+      prix: 95, garantie_p: 30, url: 'https://www.jinkosolar.com/',
+      notes: 'Panneau démo Open Solar Energy',
+    } },
+    { needle: 'Hi-MO 6 430', data: {
+      model: 'Longi Hi-MO 6 430W', fabricant: 'LONGi', wp: 430,
+      largeur: 1.134, hauteur: 1.722, tech: 'mono', coef_temp: -0.28,
+      voc: 41.9, isc: 13.31, vmp: 34.9, imp: 12.32, bifacial: false,
+      prix: 98, garantie_p: 25,
+      notes: 'Panneau démo Open Solar Energy',
+    } },
+    { needle: 'DualSun Flash', data: {
+      model: 'DualSun Flash 440W', fabricant: 'DualSun', wp: 440,
+      largeur: 1.134, hauteur: 1.762, tech: 'bifacial', coef_temp: -0.26,
+      voc: 33.9, isc: 16.68, vmp: 28.4, imp: 15.5, bifacial: true,
+      prix: 135, garantie_p: 25, url: 'https://dualsun.com/',
+      notes: 'Fabricant français — panneau démo',
+    } },
+    { needle: 'Vertex S+', data: {
+      model: 'Trina Solar Vertex S+ 425W', fabricant: 'Trina Solar', wp: 425,
+      largeur: 1.134, hauteur: 1.762, tech: 'mono', coef_temp: -0.30,
+      voc: 32.1, isc: 16.9, vmp: 26.9, imp: 15.8, bifacial: false,
+      prix: 99, garantie_p: 25,
+      notes: 'Panneau démo Open Solar Energy',
+    } },
+    { needle: 'Alpha Pure-R', data: {
+      model: 'REC Alpha Pure-R 430W', fabricant: 'REC Group', wp: 430,
+      largeur: 1.134, hauteur: 1.721, tech: 'half-cut', coef_temp: -0.24,
+      voc: 44.9, isc: 12.24, vmp: 37.5, imp: 11.47, bifacial: false,
+      prix: 145, garantie_p: 25, url: 'https://www.recgroup.com/',
+      notes: 'Panneau démo Open Solar Energy',
+    } },
+    { needle: 'Q.TRON 420', data: {
+      model: 'Qcells Q.TRON 420W', fabricant: 'Qcells', wp: 420,
+      largeur: 1.134, hauteur: 1.879, tech: 'mono', coef_temp: -0.29,
+      voc: 34.35, isc: 15.7, vmp: 28.9, imp: 14.53, bifacial: false,
+      prix: 110, garantie_p: 25,
+      notes: 'Panneau démo Open Solar Energy',
+    } },
+  ];
+
+  demoPanels.forEach(({ needle, data }) => {
+    if (!hasModel(needle)) PanelDB.save(data);
   });
 }
 
@@ -220,6 +246,7 @@ function seedDemoInstaller() {
 function seedDemoProject() {
   seedDemoPanels();
   seedDemoInstaller();
+  if (typeof InverterDB !== 'undefined' && InverterDB.seedFromCatalog) InverterDB.seedFromCatalog();
   seedDemoHybridProject();
 
   if (ProjectManager.get('demo_ose_v1')) ProjectManager.remove('demo_ose_v1');

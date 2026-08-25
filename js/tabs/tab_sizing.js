@@ -101,6 +101,7 @@ function initTabSizing() {
               </label>
               <input type="text" id="sz-panel-model" placeholder="ex : Jinko Tiger Neo 415W" style="width:100%">
             </div>
+            ${typeof PanelDB !== 'undefined' ? PanelDB.electricalFieldsHTML('sz') : ''}
             <div class="params-grid">
               <div class="form-group">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">

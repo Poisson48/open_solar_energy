@@ -40,6 +40,7 @@
     <button type="button" id="btn-save-project" onclick="saveCurrentProject()" title="Sauvegarder (Ctrl+S)">💾 Sauver</button>
     <button type="button" class="btn btn-outline btn-sm" id="btn-export-project" onclick="exportCurrentProject()" title="Télécharger le projet en fichier .zip">📤 Export</button>
     <button type="button" class="btn btn-outline btn-sm" id="btn-git-history" onclick="openGitHistoryModal()" title="Historique des versions">🕐 Historique</button>
+    <button type="button" class="btn btn-outline btn-sm" id="btn-materiel" onclick="openMaterielModal()" title="Bibliothèque matériel (panneaux, onduleurs)">📚 Matériel</button>
     <button type="button" id="btn-open-projects" onclick="openProjectsModal()" title="Gérer mes projets">📁 Projets</button>
     <div class="ose-type-switcher" id="ose-type-switcher">
       <button type="button" id="install-type-badge" onclick="toggleInstallTypeMenu(event)" aria-haspopup="true" aria-expanded="false" title="Type d'installation — cliquer pour changer"></button>
@@ -85,6 +86,7 @@
         <div class="ose-hub-section-title">Mes projets</div>
         <div class="ose-hub-actions">
           <button type="button" id="btn-check-updates" class="btn btn-outline btn-sm" onclick="checkForUpdates()" title="Vérifier les mises à jour">↻ Mises à jour</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="openMaterielModal()" title="Bibliothèque de panneaux et onduleurs">📚 Matériel</button>
           <button type="button" class="btn btn-outline btn-sm" onclick="ProjectManager.exportAll()" title="Exporter tous les projets en JSON">⬇ Export tout</button>
           <button type="button" class="btn btn-outline btn-sm" onclick="startImportProjects()" title="Importer JSON ou ZIP">📥 Importer</button>
           <input type="file" id="ose-import-projects-input" accept=".json,.zip,application/json,application/zip" style="display:none" onchange="importProjectsFile(this)">
@@ -463,6 +465,7 @@
 <script src="js/quote_generator.js"></script>
 <script src="js/hourly_module.js"></script>
 <script src="js/inverter_sizing.js"></script>
+<script src="js/inverter_db.js"></script>
 <script src="js/pvgis_import.js"></script>
 <script src="js/panel_3d.js"></script>
 

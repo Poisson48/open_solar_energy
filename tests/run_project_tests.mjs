@@ -266,6 +266,124 @@ check('aucun projet ouvert auto', hub.listOnly);
 check('plus de modal projets séparée', hub.noDupModal);
 check('bouton Projets = même hub', hub.openProjectsIsHub);
 
+console.log('\n═══ 9. Bibliothèque panneaux — champs STC + application au formulaire ═══');
+const panelStc = await page.evaluate(() => {
+  const before = PanelDB.list().length;
+  const saved = PanelDB.save({
+    model: 'Test STC Panel 400', fabricant: 'TestCo', wp: 400, m2: 1.95,
+    voc: 41.2, isc: 12.8, vmp: 34.5, imp: 11.9, bifacial: true,
+  });
+  const afterCount = PanelDB.list().length;
+  const reloaded = PanelDB.getById(saved?.id);
+
+  // Application au formulaire Dimensionnement (sz) — doit remplir modèle + Voc/Isc/Vmp/Imp/bifacial
+  document.getElementById('sz-panel-voc').value = '';
+  document.getElementById('sz-panel-isc').value = '';
+  document.getElementById('sz-panel-bifacial').checked = false;
+  PanelDB.applyPanel(saved.id, 'sz');
+
+  // Recherche
+  PanelDB.openLibraryModal(null);
+  PanelDB._search('Test STC');
+  const foundHtml = document.getElementById('panel-db-modal')?.innerHTML || '';
+  PanelDB._search('zzz-inexistant-panel');
+  const notFoundHtml = document.getElementById('panel-db-modal')?.innerHTML || '';
+  PanelDB.closeManagerModal();
+
+  const result = {
+    savedOk: !!saved,
+    countIncreased: afterCount === before + 1,
+    voc: reloaded?.voc, isc: reloaded?.isc, vmp: reloaded?.vmp, imp: reloaded?.imp,
+    bifacial: reloaded?.bifacial,
+    formModel: document.getElementById('sz-panel-model')?.value,
+    formVoc: document.getElementById('sz-panel-voc')?.value,
+    formIsc: document.getElementById('sz-panel-isc')?.value,
+    formBifacial: document.getElementById('sz-panel-bifacial')?.checked,
+    foundInSearch: foundHtml.includes('Test STC Panel 400'),
+    hiddenWhenNoMatch: !notFoundHtml.includes('Test STC Panel 400') && notFoundHtml.includes('Aucun résultat'),
+  };
+  PanelDB.remove(saved.id);
+  return result;
+});
+check('panneau STC enregistré', panelStc.savedOk);
+check('compteur bibliothèque +1', panelStc.countIncreased);
+check('Voc/Isc/Vmp/Imp conservés', panelStc.voc === 41.2 && panelStc.isc === 12.8 && panelStc.vmp === 34.5 && panelStc.imp === 11.9,
+  JSON.stringify({ voc: panelStc.voc, isc: panelStc.isc, vmp: panelStc.vmp, imp: panelStc.imp }));
+check('bifacial conservé', panelStc.bifacial === true);
+check('application au formulaire — modèle', panelStc.formModel === 'Test STC Panel 400', panelStc.formModel);
+check('application au formulaire — Voc', panelStc.formVoc === '41.2', panelStc.formVoc);
+check('application au formulaire — Isc', panelStc.formIsc === '12.8', panelStc.formIsc);
+check('application au formulaire — bifacial coché', panelStc.formBifacial === true);
+check('recherche trouve le panneau', panelStc.foundInSearch);
+check('recherche sans résultat', panelStc.hiddenWhenNoMatch);
+
+console.log('\n═══ 10. Bibliothèque onduleurs — seed catalogue + CRUD + application ═══');
+const invDb = await page.evaluate(() => {
+  InverterDB.seedFromCatalog();
+  const seededCount = InverterDB.list().length;
+
+  const saved = InverterDB.save({
+    brand: 'TestBrand', model: 'TestModel 5.0', type: 'string', phase: 1,
+    pnom: 5, prix: 1200, efficiency: 97.5, nMppt: 2,
+  });
+  const reloaded = InverterDB.getById(saved?.id);
+
+  document.getElementById('dv-sys-inverter').value = '';
+  document.getElementById('dv-line-inverter-price').value = '';
+  InverterDB.applyInverter(saved.id, 'dv');
+
+  document.getElementById('inp-inverter-model').value = '';
+  InverterDB.applyInverter(saved.id, 'inp');
+
+  const recs = InverterDB.recommend({ Ppeak: 5, systemType: 'grid', phase: 1 });
+
+  const result = {
+    seededCount,
+    savedOk: !!saved,
+    efficiencyStored: reloaded?.efficiency,
+    dvModel: document.getElementById('dv-sys-inverter')?.value,
+    dvPrice: document.getElementById('dv-line-inverter-price')?.value,
+    inpModel: document.getElementById('inp-inverter-model')?.value,
+    recsCount: recs.length,
+    recsHasCustom: recs.some(r => r.brand === 'TestBrand'),
+  };
+  InverterDB.remove(saved.id);
+  return result;
+});
+check('seed catalogue non vide', invDb.seededCount > 0, String(invDb.seededCount));
+check('onduleur personnalisé enregistré', invDb.savedOk);
+check('rendement stocké en fraction', Math.abs((invDb.efficiencyStored || 0) - 0.975) < 0.001, String(invDb.efficiencyStored));
+check('application devis — modèle', invDb.dvModel === 'TestBrand TestModel 5.0', invDb.dvModel);
+check('application devis — prix', invDb.dvPrice === '1200', invDb.dvPrice);
+check('application onglet réseau — modèle', invDb.inpModel === 'TestBrand TestModel 5.0', invDb.inpModel);
+check('recommend() retourne des résultats', invDb.recsCount > 0, String(invDb.recsCount));
+check('recommend() inclut le personnalisé', invDb.recsHasCustom);
+
+console.log('\n═══ 11. Hub Matériel unifié (Panneaux ⇄ Onduleurs) + retour Android ═══');
+const materiel = await page.evaluate(() => {
+  openMaterielModal();
+  const panelVisible = document.getElementById('panel-db-modal')?.style.display === 'flex';
+  const hasTabBar = (document.getElementById('panel-db-modal')?.innerHTML || '').includes('Onduleurs');
+
+  // Bascule vers l'onglet Onduleurs
+  PanelDB.closeManagerModal();
+  InverterDB.openManagerModal(null, { hub: true });
+  const invVisible = document.getElementById('inverter-db-modal')?.style.display === 'flex';
+  const invHasTabBar = (document.getElementById('inverter-db-modal')?.innerHTML || '').includes('Panneaux');
+
+  // Retour Android doit fermer la modale onduleurs
+  const backHandled = handleAndroidBack();
+  const invClosedByBack = document.getElementById('inverter-db-modal')?.style.display !== 'flex';
+
+  return { panelVisible, hasTabBar, invVisible, invHasTabBar, backHandled, invClosedByBack };
+});
+check('bouton Matériel ouvre la bibliothèque panneaux', materiel.panelVisible);
+check('onglet panneaux affiche le lien vers Onduleurs', materiel.hasTabBar);
+check('bascule vers bibliothèque onduleurs', materiel.invVisible);
+check('onglet onduleurs affiche le lien vers Panneaux', materiel.invHasTabBar);
+check('handleAndroidBack gère la modale onduleurs', materiel.backHandled === true);
+check('handleAndroidBack ferme la modale onduleurs', materiel.invClosedByBack);
+
 await browser.close().catch(() => {});
 server.close();
 console.log(`\n${fails ? '✗' : '✓'} Projet tests — ${fails} échec(s)`);

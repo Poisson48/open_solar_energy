@@ -2,7 +2,10 @@
  * panel_db.js - Bibliothèque de panneaux solaires (globale, partagée entre projets)
  * Stockage : localStorage, clé ose_panels_v1
  * Schéma panneau : { id, model, fabricant, wp, largeur, hauteur, m2, tech,
- *                    rendement, coef_temp, prix, garantie_p, url, datasheet, notes, savedAt }
+ *                    rendement, coef_temp, voc, isc, vmp, imp, bifacial,
+ *                    prix, garantie_p, url, datasheet, notes, savedAt }
+ * Champs électriques STC (voc/isc/vmp/imp) : optionnels, utilisés pour le
+ * calcul de chaînage (stringing) avec les onduleurs — cf. InverterSizing.calcStringing.
  */
 
 const PanelDB = (() => {
@@ -61,6 +64,11 @@ const PanelDB = (() => {
       tech:       data.tech || 'mono',
       rendement:  calcRendement(wp, m2) || parseFloat(data.rendement) || null,
       coef_temp:  parseFloat(data.coef_temp) || null,
+      voc:        parseFloat(data.voc) || null,
+      isc:        parseFloat(data.isc) || null,
+      vmp:        parseFloat(data.vmp) || null,
+      imp:        parseFloat(data.imp) || null,
+      bifacial:   !!data.bifacial,
       prix:       parseFloat(data.prix) || null,
       garantie_p: parseInt(data.garantie_p) || null,
       url:        (data.url || '').trim(),
@@ -91,9 +99,12 @@ const PanelDB = (() => {
   // ── MODAL GESTIONNAIRE ────────────────────────────────────────
 
   let _pickerPrefix = null; // null = mode gestionnaire seul, 'inp'/'sz'/'og2' = mode sélecteur
+  let _hubMode = false; // true = ouvert depuis le hub « 📚 Matériel » (affiche les onglets Panneaux|Onduleurs)
 
-  function openManagerModal(prefix) {
+  function openManagerModal(prefix, opts) {
     _pickerPrefix = prefix || null;
+    _hubMode = !!(opts && opts.hub);
+    _searchQuery = '';
     _ensureModal();
     _renderManager();
     document.getElementById('panel-db-modal').style.display = 'flex';
@@ -118,9 +129,15 @@ const PanelDB = (() => {
     document.body.appendChild(m);
   }
 
+  let _searchQuery = '';
+
   function _renderManager(editingId) {
     const modal   = document.getElementById('panel-db-modal');
-    const panels  = list();
+    const allPanels = list();
+    const q = _searchQuery.trim().toLowerCase();
+    const panels = q
+      ? allPanels.filter(p => `${p.model} ${p.fabricant}`.toLowerCase().includes(q))
+      : allPanels;
     const editing = editingId ? getById(editingId) : null;
     const isPicker = !!_pickerPrefix;
 
@@ -130,17 +147,18 @@ const PanelDB = (() => {
     ].map(([v, l]) => `<option value="${v}"${(editing?.tech||'mono')===v?' selected':''}>${l}</option>`).join('');
 
     const listHTML = panels.length === 0
-      ? `<div style="padding:24px;text-align:center;color:var(--color-text-muted);font-size:13px">Aucun panneau enregistré.<br>Cliquez sur <strong>+ Nouveau panneau</strong>.</div>`
+      ? `<div style="padding:24px;text-align:center;color:var(--color-text-muted);font-size:13px">${q ? 'Aucun résultat pour cette recherche.' : 'Aucun panneau enregistré.<br>Cliquez sur <strong>+ Nouveau panneau</strong>.'}</div>`
       : panels.map(p => {
           const isEdit = p.id === editingId;
           const dims   = p.largeur && p.hauteur ? `${p.largeur}×${p.hauteur} m` : p.m2 ? `${p.m2} m²` : '';
           const rend   = p.rendement ? `${p.rendement}%` : '';
+          const elec   = (p.voc && p.isc) ? `Voc ${p.voc}V / Isc ${p.isc}A` : '';
           return `
           <div style="padding:10px 12px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;gap:8px;${isEdit?'background:var(--color-surface2)':''}">
             <div style="flex:1;min-width:0">
-              <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.model)}</div>
+              <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.model)}${p.bifacial ? ' <span style="font-size:9px;background:var(--color-accent);color:#fff;padding:1px 5px;border-radius:3px;font-weight:600">BIFACIAL</span>' : ''}</div>
               <div style="font-size:11px;color:var(--color-text-muted)">
-                ${p.fabricant ? esc(p.fabricant)+' · ' : ''}${p.wp} Wc${dims?' · '+dims:''}${rend?' · '+rend:''}${p.prix?' · '+p.prix+' €':''}
+                ${p.fabricant ? esc(p.fabricant)+' · ' : ''}${p.wp} Wc${dims?' · '+dims:''}${rend?' · '+rend:''}${p.prix?' · '+p.prix+' €':''}${elec?' · '+elec:''}
               </div>
             </div>
             <div style="display:flex;gap:4px;flex-shrink:0">
@@ -199,6 +217,29 @@ const PanelDB = (() => {
             <label>Garantie puissance</label>
             <div class="input-unit"><input type="number" id="pdb-garantie" value="${editing?.garantie_p||''}" min="0" step="1" placeholder="25"><span class="unit-tag">ans</span></div>
           </div>
+          <div style="grid-column:1/-1;font-size:12px;font-weight:700;color:var(--color-primary);margin-top:6px;padding-top:6px;border-top:1px dashed var(--color-border)">
+            ⚡ Caractéristiques électriques STC <span style="font-weight:400;color:var(--color-text-muted)">(pour le calcul de chaînage onduleur)</span>
+          </div>
+          <div class="form-group">
+            <label>Voc (circuit ouvert)</label>
+            <div class="input-unit"><input type="number" id="pdb-voc" value="${editing?.voc||''}" min="0" step="0.01" placeholder="41.9"><span class="unit-tag">V</span></div>
+          </div>
+          <div class="form-group">
+            <label>Isc (court-circuit)</label>
+            <div class="input-unit"><input type="number" id="pdb-isc" value="${editing?.isc||''}" min="0" step="0.01" placeholder="13.3"><span class="unit-tag">A</span></div>
+          </div>
+          <div class="form-group">
+            <label>Vmp (tension puissance max)</label>
+            <div class="input-unit"><input type="number" id="pdb-vmp" value="${editing?.vmp||''}" min="0" step="0.01" placeholder="34.9"><span class="unit-tag">V</span></div>
+          </div>
+          <div class="form-group">
+            <label>Imp (courant puissance max)</label>
+            <div class="input-unit"><input type="number" id="pdb-imp" value="${editing?.imp||''}" min="0" step="0.01" placeholder="12.3"><span class="unit-tag">A</span></div>
+          </div>
+          <div class="checkbox-row" style="grid-column:1/-1">
+            <input type="checkbox" id="pdb-bifacial" ${editing?.bifacial?'checked':''}>
+            <label for="pdb-bifacial">Panneau bifacial (gain de production face arrière)</label>
+          </div>
           <div class="form-group" style="grid-column:1/-1">
             <label>Lien produit (URL)</label>
             <div style="display:flex;gap:6px">
@@ -225,20 +266,29 @@ const PanelDB = (() => {
         </div>
       </form>`;
 
+    const tabBarHTML = _hubMode ? `
+      <div style="display:flex;gap:6px">
+        <button style="background:rgba(255,255,255,0.25);border:none;color:#fff;font-size:12px;font-weight:700;padding:6px 12px;border-radius:6px;cursor:default">📋 Panneaux</button>
+        <button onclick="PanelDB.closeManagerModal();InverterDB.openManagerModal('${_pickerPrefix||''}',{hub:true})" style="background:rgba(255,255,255,0.08);border:none;color:#fff;font-size:12px;font-weight:600;padding:6px 12px;border-radius:6px;cursor:pointer">🔌 Onduleurs</button>
+      </div>` : `<span style="font-size:16px;font-weight:700">📋 Bibliothèque de panneaux${isPicker?' — Sélectionner un panneau':''}</span>`;
+
     modal.innerHTML = `
       <div style="background:var(--color-surface);border-radius:14px;box-shadow:0 12px 48px rgba(0,0,0,0.4);width:min(940px,96vw);max-height:90vh;display:flex;flex-direction:column;overflow:hidden">
         <!-- En-tête -->
-        <div style="background:var(--color-primary);padding:16px 20px;color:#fff;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
-          <span style="font-size:16px;font-weight:700">📋 Bibliothèque de panneaux${isPicker?' — Sélectionner un panneau':''}</span>
-          <button onclick="PanelDB.closeManagerModal()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:18px;width:30px;height:30px;border-radius:50%;cursor:pointer;line-height:1">✕</button>
+        <div style="background:var(--color-primary);padding:16px 20px;color:#fff;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px">
+          ${tabBarHTML}
+          <button onclick="PanelDB.closeManagerModal()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:18px;width:30px;height:30px;border-radius:50%;cursor:pointer;line-height:1;flex-shrink:0">✕</button>
         </div>
         <!-- Corps : liste | formulaire -->
         <div style="display:grid;grid-template-columns:1fr 1fr;flex:1;min-height:0;overflow:hidden">
           <!-- Liste -->
           <div style="border-right:1px solid var(--color-border);display:flex;flex-direction:column;min-height:0">
-            <div style="padding:10px 12px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
-              <span style="font-size:12px;font-weight:600;color:var(--color-text-muted)">${panels.length} panneau${panels.length>1?'x':''} enregistré${panels.length>1?'s':''}</span>
-              <button class="btn btn-outline btn-sm" onclick="PanelDB._renderManager(null)" style="font-size:11px">+ Nouveau panneau</button>
+            <div style="padding:10px 12px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:8px">
+              <span style="font-size:12px;font-weight:600;color:var(--color-text-muted);white-space:nowrap">${panels.length} panneau${panels.length>1?'x':''}</span>
+              <button class="btn btn-outline btn-sm" onclick="PanelDB._renderManager(null)" style="font-size:11px;white-space:nowrap">+ Nouveau</button>
+            </div>
+            <div style="padding:8px 12px;border-bottom:1px solid var(--color-border);flex-shrink:0">
+              <input type="search" placeholder="🔎 Rechercher modèle ou fabricant…" value="${esc(_searchQuery)}" oninput="PanelDB._search(this.value)" style="width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);color:var(--color-text)">
             </div>
             <div style="overflow-y:auto;flex:1">${listHTML}</div>
           </div>
@@ -249,6 +299,11 @@ const PanelDB = (() => {
           </div>
         </div>
       </div>`;
+  }
+
+  function _search(q) {
+    _searchQuery = q || '';
+    _renderManager();
   }
 
   function _autoDims() {
@@ -283,6 +338,11 @@ const PanelDB = (() => {
       tech:       document.getElementById('pdb-tech')?.value,
       rendement:  document.getElementById('pdb-rendement')?.value,
       coef_temp:  document.getElementById('pdb-coef-temp')?.value,
+      voc:        document.getElementById('pdb-voc')?.value,
+      isc:        document.getElementById('pdb-isc')?.value,
+      vmp:        document.getElementById('pdb-vmp')?.value,
+      imp:        document.getElementById('pdb-imp')?.value,
+      bifacial:   document.getElementById('pdb-bifacial')?.checked,
       prix:       document.getElementById('pdb-prix')?.value,
       garantie_p: document.getElementById('pdb-garantie')?.value,
       url:        document.getElementById('pdb-url')?.value,
@@ -356,22 +416,37 @@ const PanelDB = (() => {
       const el = document.getElementById(`${prefix}-${field}`);
       if (el && val != null) { el.value = val; el.dispatchEvent(new Event('input')); }
     };
+    const setChk = (field, val) => {
+      const el = document.getElementById(`${prefix}-${field}`);
+      if (el && el.type === 'checkbox') { el.checked = !!val; el.dispatchEvent(new Event('change')); }
+    };
     set('panel-model', panel.model);
     set('panel-wp',    panel.wp);
     set('panel-m2',    panel.m2);
+    // Champs électriques STC — remplis seulement si présents dans le formulaire cible
+    if (panel.voc != null) set('panel-voc', panel.voc);
+    if (panel.isc != null) set('panel-isc', panel.isc);
+    if (panel.vmp != null) set('panel-vmp', panel.vmp);
+    if (panel.imp != null) set('panel-imp', panel.imp);
+    setChk('panel-bifacial', panel.bifacial);
     syncModelToQuote(panel.model);
     if (typeof showToast === 'function') showToast(`Panneau "${panel.model}" chargé`);
   }
 
   function saveFromForm(prefix) {
     const g = id => document.getElementById(`${prefix}-${id}`)?.value;
+    const gChk = id => document.getElementById(`${prefix}-${id}`)?.checked;
     const model = (g('panel-model') || '').trim();
     const wp    = parseFloat(g('panel-wp'));
     const m2    = parseFloat(g('panel-m2'));
     if (!model) { showToast?.('Saisissez un nom de modèle avant d\'enregistrer.', 'error'); return; }
     if (isNaN(wp) || wp <= 0) { showToast?.('Saisissez une puissance Wc valide.', 'error'); return; }
     if (isNaN(m2) || m2 <= 0) { showToast?.('Saisissez une surface panneau valide.', 'error'); return; }
-    const saved = savePanel({ model, wp, m2 });
+    const saved = savePanel({
+      model, wp, m2,
+      voc: g('panel-voc'), isc: g('panel-isc'), vmp: g('panel-vmp'), imp: g('panel-imp'),
+      bifacial: gChk('panel-bifacial'),
+    });
     if (saved) { syncModelToQuote(model); showToast?.(`Panneau "${model}" enregistré dans la bibliothèque`); }
     else         showToast?.('Erreur lors de l\'enregistrement.', 'error');
   }
@@ -387,14 +462,48 @@ const PanelDB = (() => {
     showToast?.('Panneau supprimé');
   }
 
+  /**
+   * Bloc HTML repliable "Caractéristiques électriques STC" (Voc/Isc/Vmp/Imp/bifacial)
+   * à insérer dans un formulaire d'onglet (sz/og2/inp...). Optionnel — sert au
+   * chaînage onduleur (InverterSizing.calcStringing) quand renseigné.
+   */
+  function electricalFieldsHTML(prefix) {
+    return `
+      <details style="margin-bottom:10px">
+        <summary style="cursor:pointer;font-size:11px;font-weight:600;color:var(--color-text-muted)">⚡ Caractéristiques électriques STC (optionnel — chaînage onduleur)</summary>
+        <div class="params-grid" style="margin-top:6px">
+          <div class="form-group">
+            <label for="${prefix}-panel-voc">Voc</label>
+            <div class="input-unit"><input type="number" id="${prefix}-panel-voc" step="0.01" min="0" placeholder="41.9"><span class="unit-tag">V</span></div>
+          </div>
+          <div class="form-group">
+            <label for="${prefix}-panel-isc">Isc</label>
+            <div class="input-unit"><input type="number" id="${prefix}-panel-isc" step="0.01" min="0" placeholder="13.3"><span class="unit-tag">A</span></div>
+          </div>
+          <div class="form-group">
+            <label for="${prefix}-panel-vmp">Vmp</label>
+            <div class="input-unit"><input type="number" id="${prefix}-panel-vmp" step="0.01" min="0" placeholder="34.9"><span class="unit-tag">V</span></div>
+          </div>
+          <div class="form-group">
+            <label for="${prefix}-panel-imp">Imp</label>
+            <div class="input-unit"><input type="number" id="${prefix}-panel-imp" step="0.01" min="0" placeholder="12.3"><span class="unit-tag">A</span></div>
+          </div>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="${prefix}-panel-bifacial">
+          <label for="${prefix}-panel-bifacial">Panneau bifacial</label>
+        </div>
+      </details>`;
+  }
+
   // ── EXPORT PUBLIC ──────────────────────────────────────────────
   return {
     list, getById, save: savePanel, remove,
     openLibraryModal, closeLibraryModal,
     openManagerModal, closeManagerModal,
-    applyPanel, saveFromForm, removePanel, syncModelToQuote,
+    applyPanel, saveFromForm, removePanel, syncModelToQuote, electricalFieldsHTML,
     // Internals exposés pour les onclick inline
-    _renderManager, _autoDims, _autoRendement,
+    _renderManager, _autoDims, _autoRendement, _search,
     _submitForm, _confirmDelete, _deleteConfirmed, _applyAndClose,
     _openLink, _browseFile,
   };

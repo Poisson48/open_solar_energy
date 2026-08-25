@@ -117,10 +117,12 @@ const AppState = {
 const PROJECT_FIELDS = [
   // Système PV réseau (Ppeak calculé depuis surface + panneaux)
   'inp-surface','inp-panel-model','inp-panel-wp','inp-panel-m2','sel-tech','inp-losses','inp-tilt','inp-azimuth','inp-cost','inp-kwh-price','inp-co2',
+  'inp-panel-voc','inp-panel-isc','inp-panel-vmp','inp-panel-imp','inp-panel-bifacial','inp-inverter-model',
   // Dimensionnement EDF
   'sz-tariff','sz-price-base','sz-price-hp','sz-price-hc','sz-subscription',
   ...Array.from({length:12}, (_,i) => `sz-kwh-${i+1}`),
   'sz-tilt','sz-azimuth','sz-surface','sz-panel-model','sz-panel-wp','sz-panel-m2','sz-losses','sz-tech',
+  'sz-panel-voc','sz-panel-isc','sz-panel-vmp','sz-panel-imp','sz-panel-bifacial',
   'sz-strategy','sz-target-coverage','sz-cost-kwp','sz-cost-total','sz-feedin',
   'sz-elec-escalation','sz-discount-rate','sz-panel-degradation','sz-finance-years',
   // Batterie hybride (réseau + stockage)
@@ -132,11 +134,18 @@ const PROJECT_FIELDS = [
   ...Array.from({length:12}, (_,i) => `og2-day-${i+1}`),
   'og2-batt-tech','og2-batt-kwh','og2-tilt','og2-azimuth','og2-surface',
   'og2-panel-model','og2-panel-wp','og2-panel-m2','og2-losses','og2-target-coverage',
+  'og2-panel-voc','og2-panel-isc','og2-panel-vmp','og2-panel-imp','og2-panel-bifacial',
   'og2-pv-cost-kwp','og2-bos-cost',
   // Hors réseau — mode panneaux
   'og2-panel-mode','og2-npanels-fixe',
   // Implantation (visualiseur 2.5D)
   'lay-roof-w','lay-roof-d','lay-panel-w','lay-panel-h','lay-npanels','lay-rows','lay-tilt','lay-azimuth',
+  // Câbles DC/AC (section, chute de tension)
+  'cbl-dc-npanels','cbl-dc-rows','cbl-dc-pitch','cbl-dc-dist-inv',
+  'cbl-dc-isc','cbl-dc-voc','cbl-dc-strings-parallel','cbl-dc-panels-series',
+  'cbl-dc-i','cbl-dc-l','cbl-dc-u','cbl-dc-maxdrop','cbl-dc-material',
+  'cbl-ac-mode','cbl-ac-cosphi','cbl-ac-p','cbl-ac-dist',
+  'cbl-ac-i','cbl-ac-l','cbl-ac-u','cbl-ac-maxdrop','cbl-ac-material',
   // Devis professionnel
   'dv-ins-company','dv-ins-siret','dv-ins-rge','dv-ins-address','dv-ins-phone','dv-ins-email',
   'dv-cli-name','dv-cli-company','dv-cli-address','dv-cli-phone','dv-cli-email',

@@ -51,6 +51,7 @@ function initTabGrid() {
             </label>
             <input type="text" id="inp-panel-model" placeholder="ex : Jinko Tiger Neo 415W" style="width:100%">
           </div>
+          ${typeof PanelDB !== 'undefined' ? PanelDB.electricalFieldsHTML('inp') : ''}
 
           <div class="form-group" style="margin-bottom:10px">
             <label for="inp-panel-wp">Puissance unitaire panneau</label>
@@ -58,6 +59,17 @@ function initTabGrid() {
               <input type="number" id="inp-panel-wp" value="400" step="10" min="50" oninput="calcGridPanels()">
               <span class="unit-tag">Wc</span>
             </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:10px">
+            <label style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
+              <span for="inp-inverter-model">Modèle d'onduleur</span>
+              <span style="display:inline-flex;gap:4px;flex-wrap:wrap">
+                <button type="button" class="btn btn-outline btn-sm" onclick="InverterDB.saveFromForm('inp')" style="padding:2px 8px;font-size:10px" title="Enregistrer dans la bibliothèque">💾 Enregistrer</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="InverterDB.openLibraryModal('inp')" style="padding:2px 8px;font-size:10px" title="Choisir dans la bibliothèque">🔌 Bibliothèque</button>
+              </span>
+            </label>
+            <input type="text" id="inp-inverter-model" placeholder="ex : Fronius Primo 5.0">
           </div>
 
           <div style="margin-bottom:6px">

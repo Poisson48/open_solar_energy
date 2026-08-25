@@ -237,6 +237,17 @@ function closeProjectsModal() {
   closeStartupModal();
 }
 
+// ══════════════════════════════════════════════════════════════
+//  BIBLIOTHÈQUE MATÉRIEL (📚 Panneaux | Onduleurs — hub + barre projet)
+// ══════════════════════════════════════════════════════════════
+/** Ouvre la bibliothèque matériel en mode gestionnaire (pas de sélecteur de champ cible). */
+function openMaterielModal() {
+  if (typeof PanelDB !== 'undefined' && PanelDB.openManagerModal) {
+    PanelDB.openManagerModal(null, { hub: true });
+  }
+}
+window.openMaterielModal = openMaterielModal;
+
 /** Bouton retour Android / Escape : referme modales et hub avant de quitter l’app. */
 let _lastBackQuitAt = 0;
 
@@ -252,6 +263,11 @@ function handleAndroidBack() {
   if (_modalVisible('panel-db-modal', ['flex'])) {
     if (typeof PanelDB !== 'undefined' && PanelDB.closeManagerModal)
       PanelDB.closeManagerModal();
+    return true;
+  }
+  if (_modalVisible('inverter-db-modal', ['flex'])) {
+    if (typeof InverterDB !== 'undefined' && InverterDB.closeManagerModal)
+      InverterDB.closeManagerModal();
     return true;
   }
   if (_modalVisible('enedis-modal', ['block', 'flex'])) {

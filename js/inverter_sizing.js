@@ -84,10 +84,12 @@ const InverterSizing = (() => {
    * @param {number}  nPanels      Nombre de panneaux
    * @param {number}  vocPanel     Voc d'un panneau (V, optionnel)
    * @param {number}  iscPanel     Isc d'un panneau (A, optionnel)
+   * @param {Array}   extraCatalog Onduleurs personnalisés à fusionner (même forme que CATALOG,
+   *                               ex. fournis par InverterDB.recommend() depuis la bibliothèque)
    * @returns {Array} Liste de recommandations triées par pertinence
    */
   function recommend({ Ppeak, systemType = 'grid', phase = 1, battKwh = 0,
-                        panelWp = 400, nPanels, vocPanel = 40, iscPanel = 10 }) {
+                        panelWp = 400, nPanels, vocPanel = 40, iscPanel = 10, extraCatalog = [] }) {
 
     const needTypes = {
       grid:    ['string', 'micro'],
@@ -96,8 +98,9 @@ const InverterSizing = (() => {
     }[systemType] || ['string'];
 
     const results = [];
+    const fullCatalog = (extraCatalog && extraCatalog.length) ? CATALOG.concat(extraCatalog) : CATALOG;
 
-    CATALOG.forEach(inv => {
+    fullCatalog.forEach(inv => {
       if (!needTypes.includes(inv.type)) return;
       if (inv.phase !== 1 && inv.phase !== phase) return;
 
