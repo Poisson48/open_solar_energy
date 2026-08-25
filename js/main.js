@@ -206,6 +206,7 @@ function activateTab(tab) {
   if (tab === 'layout' && typeof renderPanelLayoutTab === 'function') renderPanelLayoutTab();
   if (tab === 'sizing' && typeof updateDemoPrefillNote === 'function')
     updateDemoPrefillNote();
+  if (tab === 'cables' && typeof CablesUI !== 'undefined') CablesUI.prefill();
 }
 
 function initTabs() {
@@ -257,6 +258,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   initTabOptimizer();
   initTabLayout();
   initTabQuote();
+  initTabCables();
 
   // 2. Charger les données météo démo, initialiser la carte
   await loadDemoData();
@@ -285,6 +287,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-calc-irr')?.addEventListener('click',      () => withLoading('btn-calc-irr',      renderIrradiationData));
   document.getElementById('btn-calc-opt')?.addEventListener('click',      () => withLoading('btn-calc-opt',      calcOptimization));
   document.getElementById('btn-calc-hourly')?.addEventListener('click',   () => withLoading('btn-calc-hourly',   () => HourlyModule.computeAllMonths()));
+  document.getElementById('btn-calc-cables')?.addEventListener('click',   () => withLoading('btn-calc-cables',   CablesUI.calc));
 
   // 5. Initialiser l'UI projets (raccourcis, etc.) — hub déjà ouvert
   if (typeof initProjectUI === 'function') initProjectUI();

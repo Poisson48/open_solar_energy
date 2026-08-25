@@ -366,6 +366,9 @@
       <button type="button" id="btn-toggle-advanced-tabs" class="tab-btn tab-btn-more" aria-expanded="false" title="Météo, analyse horaire, suiveur, optimisation">
         Outils avancés
       </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-cables" data-tab="cables" data-tier="advanced" style="display:none">
+        🔌 Câbles
+      </button>
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-irradiation" data-tab="irradiation" data-tier="advanced" style="display:none">
         Météo mensuelle
       </button>
@@ -389,6 +392,7 @@
       <div class="tab-pane" id="tab-grid" role="tabpanel" aria-label="Système PV réseau"></div>
       <div class="tab-pane" id="tab-tracker" role="tabpanel" aria-label="Suiveur PV"></div>
       <div class="tab-pane" id="tab-offgrid" role="tabpanel" aria-label="Hors réseau"></div>
+      <div class="tab-pane" id="tab-cables" role="tabpanel" aria-label="Câbles"></div>
       <div class="tab-pane" id="tab-irradiation" role="tabpanel" aria-label="Données mensuelles"></div>
       <div class="tab-pane" id="tab-daily" role="tabpanel" aria-label="Données horaires"></div>
       <div class="tab-pane" id="tab-optimizer" role="tabpanel" aria-label="Optimisation"></div>
@@ -451,6 +455,7 @@
 
 <!-- Algorithmes et moteurs de calcul -->
 <script src="js/solar_math.js"></script>
+<script src="js/cable_calc.js"></script>
 <script src="js/charts/charts_base.js"></script>
 <script src="js/charts/charts_grid.js"></script>
 <script src="js/charts/charts_sizing.js"></script>
@@ -479,6 +484,7 @@
 <script src="js/tabs/tab_optimizer.js"></script>
 <script src="js/tabs/tab_layout.js"></script>
 <script src="js/tabs/tab_quote.js"></script>
+<script src="js/tabs/tab_cables.js"></script>
 
 <!-- Logique applicative -->
 <script src="js/location.js"></script>
@@ -490,6 +496,7 @@
 <script src="js/renderers/sizing.js"></script>
 <script src="js/renderers/offgrid.js"></script>
 <script src="js/renderers/quote.js"></script>
+<script src="js/renderers/cables.js"></script>
 <script src="js/renderers/bindings.js"></script>
 <script src="js/main.js"></script>
 <script src="js/api.js"></script>
