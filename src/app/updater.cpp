@@ -217,7 +217,9 @@ void Updater::check()
 
 void Updater::download()
 {
-    if (m_apkUrl.isEmpty()) {
+    // Desktop : pas d'install APK in-app — ouvrir la page Release (AppImage).
+    // Android : télécharger l'APK puis Platform::installApk.
+    if (!canInstall() || m_apkUrl.isEmpty()) {
         install();
         return;
     }

@@ -8,7 +8,7 @@
 // ══════════════════════════════════════════════════════════════
 /**
  * Sauvegarde le projet courant dans localStorage ET dans un commit git.
- * Ne fait rien si aucun projet actif ou si l'API Electron n'est pas disponible.
+ * Ne fait rien si aucun projet actif ou si le pont Qt (webBridge) n'est pas disponible.
  */
 async function gitAutoSave(actionMessage) {
   if (!AppState.currentProjectId) return;
@@ -18,10 +18,10 @@ async function gitAutoSave(actionMessage) {
   // Sauvegarde localStorage (compatibilité existante)
   ProjectManager.save(project);
 
-  // Sauvegarde git (optionnelle : nécessite Electron + git installé)
-  if (!window.electronAPI) return;
+  // Sauvegarde git (optionnelle : nécessite l'app Qt + git installé)
+  if (!getNativeBridge()) return;
   try {
-    await window.electronAPI.gitSave(
+    await getNativeBridge().gitSave(
       AppState.currentProjectId,
       JSON.stringify(project, null, 2),
       actionMessage
@@ -43,10 +43,10 @@ async function openGitHistoryModal() {
   const listEl    = document.getElementById('git-history-list');
   const branchBar = document.getElementById('git-branch-bar');
 
-  if (!window.electronAPI) {
+  if (!getNativeBridge()) {
     if (branchBar) branchBar.style.display = 'none';
     listEl.innerHTML = `<p style="color:var(--color-text-muted);text-align:center;padding:20px">
-      L'historique git n'est disponible que dans l'application Electron.<br>
+      L'historique git n'est disponible que dans l'application Qt (AppImage).<br>
       <span style="font-size:11px">En mode navigateur, seule la sauvegarde localStorage est active.</span>
     </p>`;
     return;
@@ -64,8 +64,8 @@ async function openGitHistoryModal() {
 
   try {
     const [commits, branches] = await Promise.all([
-      window.electronAPI.gitLog(AppState.currentProjectId),
-      window.electronAPI.gitBranches(AppState.currentProjectId),
+      getNativeBridge().gitLog(AppState.currentProjectId),
+      getNativeBridge().gitBranches(AppState.currentProjectId),
     ]);
 
     if (branchBar && branches && branches.length > 0) {
@@ -113,7 +113,7 @@ async function openGitHistoryModal() {
 }
 
 function gitNewBranch() {
-  if (!window.electronAPI || !AppState.currentProjectId) return;
+  if (!getNativeBridge() || !AppState.currentProjectId) return;
   const bar = document.getElementById('git-branch-bar');
   if (!bar) return;
 
@@ -151,7 +151,7 @@ async function gitNewBranchSubmit(event) {
   if (input) input.disabled = true;
 
   try {
-    const res = await window.electronAPI.gitCreateBranch(AppState.currentProjectId, name);
+    const res = await getNativeBridge().gitCreateBranch(AppState.currentProjectId, name);
     if (res.ok) {
       showToast(`✓ Variante "${res.branchName}" créée — vous travaillez maintenant dessus`);
       openGitHistoryModal();
@@ -168,15 +168,15 @@ async function gitNewBranchSubmit(event) {
 }
 
 async function gitSwitchBranch(branchName) {
-  if (!window.electronAPI || !AppState.currentProjectId) return;
+  if (!getNativeBridge() || !AppState.currentProjectId) return;
   try {
-    await window.electronAPI.gitSave(
+    await getNativeBridge().gitSave(
       AppState.currentProjectId,
       JSON.stringify(buildProjectData(), null, 2),
       'Sauvegarde avant changement de variante'
     );
-    await window.electronAPI.gitSwitchBranch(AppState.currentProjectId, branchName);
-    const jsonText = await window.electronAPI.gitRead(AppState.currentProjectId);
+    await getNativeBridge().gitSwitchBranch(AppState.currentProjectId, branchName);
+    const jsonText = await getNativeBridge().gitRead(AppState.currentProjectId);
     const project  = JSON.parse(jsonText);
     if (project.hourlyEnedisData?.halfHourly) {
       project.hourlyEnedisData.halfHourly = new Float32Array(project.hourlyEnedisData.halfHourly);
@@ -212,9 +212,9 @@ function restoreGitVersionConfirm(hash) {
 }
 
 async function restoreGitVersion(hash) {
-  if (!window.electronAPI || !AppState.currentProjectId) return;
+  if (!getNativeBridge() || !AppState.currentProjectId) return;
   try {
-    const jsonText = await window.electronAPI.gitCheckout(AppState.currentProjectId, hash);
+    const jsonText = await getNativeBridge().gitCheckout(AppState.currentProjectId, hash);
     const project  = JSON.parse(jsonText);
     if (project.hourlyEnedisData?.halfHourly) {
       project.hourlyEnedisData.halfHourly = new Float32Array(project.hourlyEnedisData.halfHourly);

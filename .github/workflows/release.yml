@@ -82,16 +82,20 @@ jobs:
           **Android (arm64)** — installer l'APK ; l'app propose les mises à jour automatiquement
           (comme Colo Course), signature stable pour installer par-dessus sans désinstaller.
 
-          L'AppImage Electron reste disponible sur les releases antérieures ; à partir de v2.0.0,
-          l'AppImage Qt remplace le binaire desktop recommandé.
+          L'AppImage Qt est le binaire desktop recommandé à partir de v2.0.0.
           EOF
           } > notes.md
+          # Si une release existe déjà (re-run CI) : uploader + forcer les notes du tag.
           if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" "$APK" "$APPIMAGE" \
               --repo "$GITHUB_REPOSITORY" --clobber
-            exit 0
+            gh release edit "$GITHUB_REF_NAME" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Open Solar Energy $GITHUB_REF_NAME" \
+              --notes-file notes.md
+          else
+            gh release create "$GITHUB_REF_NAME" "$APK" "$APPIMAGE" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Open Solar Energy $GITHUB_REF_NAME" \
+              --notes-file notes.md
           fi
-          gh release create "$GITHUB_REF_NAME" "$APK" "$APPIMAGE" \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "Open Solar Energy $GITHUB_REF_NAME" \
-            --notes-file notes.md

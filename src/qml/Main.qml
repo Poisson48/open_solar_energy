@@ -40,12 +40,15 @@ ApplicationWindow {
         anchors.fill: parent
         spacing: 0
 
+        // Desktop only — sur Android la barre doublonne le header web et mange l’écran
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 40
+            Layout.preferredHeight: visible ? 40 : 0
+            visible: Qt.platform.os !== "android"
             color: Theme.surface
             border.color: Theme.outline
             border.width: 0
+            clip: true
 
             RowLayout {
                 anchors.fill: parent

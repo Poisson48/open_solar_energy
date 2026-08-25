@@ -57,7 +57,7 @@ La boucle exécute `validate-app.sh`, écrit `validation/last-run.json`, et éch
 ### Phase 0 — Shell Qt + web embarqué (en cours)
 
 - `CMakeLists.txt` + `src/app/main.cpp`
-- `WebBridge` : même API que `electronAPI` (preload.js)
+- `WebBridge` : pont QWebChannel (git, openExternal, openFileDialog, checkForUpdates)
 - `WebContainer.qml` : WebEngine (desktop) / WebView (Android)
 - `Theme` clair aligné sur `css/main.css`
 - `scripts/build-android.sh` calqué sur open_bingo
@@ -97,7 +97,7 @@ Voir rapport agent « Parcours » — scripts manuels dans `docs/PLAN-VALIDATION
 1. Import ZIP Enedis → statut vert + champs `sz-kwh-*` remplis
 2. `AppState.monthlyKwh` : 12 valeurs > 0
 
-### Parcours 7 — Git (Electron / Qt)
+### Parcours 7 — Git (Qt AppImage)
 1. Sauvegarder → Historique → commits listés
 2. Qt : via `WebBridge.gitSave` (desktop shell git)
 

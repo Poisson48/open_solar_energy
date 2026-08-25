@@ -6,7 +6,7 @@
 
 namespace app {
 
-/** Pont QWebChannel — même surface que window.electronAPI (preload.js) */
+/** Pont QWebChannel — API native Qt pour le web embarqué */
 class WebBridge : public QObject {
     Q_OBJECT
 public:

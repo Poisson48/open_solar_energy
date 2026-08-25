@@ -10,7 +10,7 @@ let _toastTimer = null;
 function showToast(msg, type = 'ok') {
   const el = document.getElementById('ose-toast');
   if (!el) return;
-  el.textContent = msg;
+  el.innerHTML = typeof emStr === 'function' ? emStr(String(msg)) : String(msg);
   el.style.background = type === 'error' ? 'var(--color-danger)'
     : type === 'warning' ? 'var(--color-warning)'
     : 'var(--color-primary)';
@@ -42,12 +42,13 @@ function saveCurrentProject() {
 
   const btn = document.getElementById('btn-save-project');
   if (btn) {
-    btn.textContent = ok ? '✓ Sauvegardé' : '✗ Erreur';
+    const label = ok ? '✓ Sauvegardé' : '✗ Erreur';
+    btn.innerHTML = typeof emStr === 'function' ? emStr(label) : label;
     btn.style.background  = ok ? 'var(--color-success)' : 'var(--color-danger)';
     btn.style.borderColor = btn.style.background;
     btn.style.color = '#fff';
     setTimeout(() => {
-      btn.textContent = '💾 Sauvegarder';
+      btn.innerHTML = typeof emStr === 'function' ? emStr('💾 Sauvegarder') : '💾 Sauvegarder';
       btn.style.background = btn.style.borderColor = btn.style.color = '';
     }, 2500);
   }
@@ -477,16 +478,13 @@ function _isNewerVersion(candidate, current) {
 
 async function checkForUpdates() {
   const btn = document.getElementById('btn-check-updates');
-  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  const label = typeof emStr === 'function' ? emStr('↻ Mises à jour') : '↻ Mises à jour';
+  if (btn) { btn.disabled = true; btn.innerHTML = '…'; }
   try {
     // Pont Qt natif (AppImage / APK) si exposé
-    if (window.webBridge?.checkForUpdates) {
-      window.webBridge.checkForUpdates();
-      showToast('Vérification des mises à jour…');
-      return;
-    }
-    if (window.electronAPI?.checkForUpdates) {
-      await window.electronAPI.checkForUpdates();
+    const bridge = typeof getNativeBridge === 'function' ? getNativeBridge() : (window.webBridge || null);
+    if (bridge?.checkForUpdates) {
+      bridge.checkForUpdates();
       showToast('Vérification des mises à jour…');
       return;
     }
@@ -511,14 +509,18 @@ async function checkForUpdates() {
       return;
     }
     showToast(`Nouvelle version v${best.ver} disponible`, 'warning');
-    const open = window.electronAPI?.openExternal
-      || ((u) => window.open(u, '_blank', 'noopener'));
+    const open = (bridge?.openExternal)
+      ? ((u) => bridge.openExternal(u))
+      : ((u) => window.open(u, '_blank', 'noopener'));
     if (confirm(`Open Solar Energy v${best.ver} est disponible.\nVous avez la v${current}.\n\nOuvrir la page de téléchargement ?`))
       open(best.url);
   } catch (e) {
     showToast('Impossible de vérifier les mises à jour : ' + (e.message || e), 'error');
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '↻ Mises à jour'; }
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = label;
+    }
   }
 }
 
@@ -529,16 +531,19 @@ function initProjectUI() {
   document.getElementById('projects-modal')?.addEventListener('click', e => {
     if (e.target === e.currentTarget) closeProjectsModal();
   });
-  document.getElementById('startup-modal')?.addEventListener('click', e => {
-    if (e.target === e.currentTarget) closeStartupModal();
-  });
+  // Hub plein écran : pas de fermeture par clic extérieur
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       closeProjectsModal();
-      closeStartupModal();
       closeEditProjectModal();
       closeGitHistoryModal();
       if (typeof closeEnedisModal === 'function') closeEnedisModal();
+      // Escape sur le hub : revenir à la liste (pas fermer l’app sans projet)
+      const hub = document.getElementById('startup-modal');
+      if (hub && !hub.hidden) {
+        const onList = document.getElementById('startup-step-1')?.style.display !== 'none';
+        if (!onList) showStartupStep1();
+      }
       return;
     }
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {

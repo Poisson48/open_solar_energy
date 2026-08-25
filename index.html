@@ -16,15 +16,7 @@
 <!-- ═══ HEADER ═══════════════════════════════════════════════ -->
 <header>
   <div class="logo">
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="5" fill="#f5a623"/>
-      <g stroke="#fff" stroke-width="1.8" stroke-linecap="round">
-        <line x1="12" y1="2" x2="12" y2="4.5"/><line x1="12" y1="19.5" x2="12" y2="22"/>
-        <line x1="2" y1="12" x2="4.5" y2="12"/><line x1="19.5" y1="12" x2="22" y2="12"/>
-        <line x1="4.93" y1="4.93" x2="6.64" y2="6.64"/><line x1="17.36" y1="17.36" x2="19.07" y2="19.07"/>
-        <line x1="19.07" y1="4.93" x2="17.36" y2="6.64"/><line x1="6.64" y1="17.36" x2="4.93" y2="19.07"/>
-      </g>
-    </svg>
+    <img class="logo-img" src="packaging/icon-192.png" width="32" height="32" alt="" decoding="async">
     <div>
       <h1>Open Solar Energy</h1>
       <span class="subtitle">Photovoltaic Geographical Information System</span>
@@ -32,10 +24,6 @@
   </div>
   <div class="spacer"></div>
   <span class="badge" id="version-badge">v… - Open Source</span>
-  <button id="btn-check-updates" onclick="checkForUpdates()" title="Vérifier les mises à jour"
-    style="margin-left:8px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.28);color:#fff;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;white-space:nowrap">
-    ↻ Mises à jour
-  </button>
 </header>
 
 <!-- ═══ BARRE PROJET ═════════════════════════════════════════ -->
@@ -57,50 +45,41 @@
   <button id="install-type-badge" onclick="toggleInstallationType()" title="Basculer entre installation réseau et hors-réseau" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1.5px solid;cursor:pointer;transition:all .2s;flex-shrink:0"></button>
 </div>
 
-<!-- ═══ MODAL DÉMARRAGE ═══════════════════════════════════════ -->
-<div id="startup-modal" role="dialog" aria-modal="true" aria-labelledby="startup-modal-title" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.72);align-items:center;justify-content:center" onclick="if(event.target===this)closeStartupModal()">
-  <div style="width:min(680px,95vw);background:var(--color-surface);border-radius:14px;box-shadow:0 12px 48px rgba(0,0,0,0.4);overflow:hidden;max-height:90vh;overflow-y:auto">
+<!-- ═══ HUB PROJETS (écran d’accueil plein écran) ════════════ -->
+<div id="startup-modal" class="ose-hub" role="dialog" aria-modal="true" aria-labelledby="startup-modal-title" hidden>
+  <div class="ose-hub-panel">
 
-    <!-- En-tête modal -->
-    <div style="background:var(--color-primary);padding:22px 28px 18px;color:#fff;display:flex;align-items:center;justify-content:space-between">
-      <div>
-        <div style="font-size:20px;font-weight:700;margin-bottom:2px" id="startup-modal-title">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="vertical-align:middle;margin-right:8px"><circle cx="12" cy="12" r="5" fill="#f5a623"/><g stroke="#fff" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="2" x2="12" y2="4.5"/><line x1="12" y1="19.5" x2="12" y2="22"/><line x1="2" y1="12" x2="4.5" y2="12"/><line x1="19.5" y1="12" x2="22" y2="12"/></g></svg>
-          Open Solar Energy
+    <!-- En-tête hub -->
+    <div class="ose-hub-header">
+      <div class="ose-hub-brand">
+        <img src="packaging/icon-192.png" width="40" height="40" alt="" decoding="async">
+        <div>
+          <div class="ose-hub-title" id="startup-modal-title">Open Solar Energy</div>
+          <div class="ose-hub-sub">Choisissez un projet pour commencer</div>
         </div>
-        <div style="font-size:12px;opacity:0.75">Dimensionnement photovoltaïque - outil libre et gratuit</div>
       </div>
-      <button onclick="closeStartupModal()" aria-label="Fermer" style="background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:18px;width:32px;height:32px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
     </div>
 
     <!-- Étape 1 : hub projets (écran d’accueil) -->
-    <div id="startup-step-1" style="padding:20px 24px 24px">
-      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <div style="font-size:15px;font-weight:700;color:var(--color-primary)">Mes projets</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px">
-          <button class="btn btn-outline btn-sm" onclick="checkForUpdates()" title="Interroger GitHub Releases">↻ Mises à jour</button>
+    <div id="startup-step-1" class="ose-hub-body">
+      <div class="ose-hub-toolbar">
+        <div class="ose-hub-section-title">Mes projets</div>
+        <div class="ose-hub-actions">
+          <button type="button" id="btn-check-updates" class="btn btn-outline btn-sm" onclick="checkForUpdates()" title="Vérifier les mises à jour">↻ Mises à jour</button>
           <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Importer JSON ou ZIP">
             📥 Importer
             <input type="file" accept=".json,.zip" style="display:none" onchange="importProjectsFile(this)">
           </label>
-          <button class="btn btn-accent btn-sm" onclick="showInstallationTypeStep()">＋ Nouveau</button>
+          <button type="button" class="btn btn-accent btn-sm" onclick="showInstallationTypeStep()">＋ Nouveau</button>
         </div>
       </div>
       <div class="form-group" style="margin-bottom:12px">
         <label for="startup-project-search" style="font-size:12px">Rechercher</label>
-        <input type="search" id="startup-project-search" placeholder="Nom du projet, client, lieu, date…"
+        <input type="search" id="startup-project-search" placeholder="Nom, client, lieu, date…"
                oninput="renderProjectsList('startup-projects-list', this.value)"
-               style="width:100%;font-size:14px" autocomplete="off">
-        <div style="font-size:11px;color:var(--color-text-muted);margin-top:4px">
-          Filtre sur le nom, le client, la localisation ou la date de modification.
-        </div>
+               style="width:100%;font-size:16px" autocomplete="off" enterkeyhint="search">
       </div>
-      <div id="startup-projects-list" style="min-height:120px;max-height:min(48vh,420px);overflow-y:auto"></div>
-      <div style="text-align:center;margin-top:14px">
-        <button onclick="closeStartupModal()" style="background:none;border:1px solid var(--color-border);border-radius:6px;color:var(--color-text-muted);cursor:pointer;font-size:13px;padding:6px 14px">
-          Continuer sans projet
-        </button>
-      </div>
+      <div id="startup-projects-list" class="ose-hub-list"></div>
     </div>
 
     <!-- Étape 1.5 : type d'installation -->
@@ -257,7 +236,6 @@
     <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--color-border);gap:10px;flex-wrap:wrap">
       <div id="projects-modal-title" style="font-weight:700;font-size:16px">📁 Mes projets</div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <button class="btn btn-outline btn-sm" onclick="checkForUpdates()">↻ Mises à jour</button>
         <button class="btn btn-outline btn-sm" onclick="ProjectManager.exportAll()" title="Exporter tous les projets en JSON">⬇ Export tout</button>
         <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Importer des projets depuis un fichier JSON ou ZIP">
           📥 Importer
@@ -456,6 +434,8 @@
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 
 <!-- État global et constantes (en premier) -->
+<script src="js/emoji.js"></script>
+<script src="js/native_bridge.js"></script>
 <script src="js/app_state.js"></script>
 <script src="js/constants.js"></script>
 <script src="js/finance.js"></script>

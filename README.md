@@ -26,13 +26,12 @@ Téléchargez la dernière version — **[⬇️ Releases](https://github.com/Po
 L’AppImage embarque Qt et l’interface web : un fichier, aucune dépendance système à installer.
 L’APK est signé avec la clé de publication du projet — les versions suivantes s’installent **par-dessus**, et l’app vous les propose d’elle-même (comme Colo Course).
 
-| Autre | Fichier | Notes |
-|---|---|---|
-| Navigateur (sans install) | — | `./serve.sh` ou site GitHub Pages |
-| Linux Electron (v1.x) | `Open-Solar-Energy-*.AppImage` | Anciennes releases — conservé pour compatibilité |
+| Autre | Notes |
+|---|---|
+| Navigateur (sans install) | `./serve.sh` ou [GitHub Pages](https://poisson48.github.io/open_solar_energy/) |
 
 **Mises à jour**
-- Bouton **↻ Mises à jour** (header, hub projets, barre Qt) pour vérifier à la demande.
+- Bouton **↻ Mises à jour** sur le hub projets (écran d’accueil) pour vérifier à la demande.
 - **Android** : détection → téléchargement APK → installation in-app.
 - **PC / Linux** : détection d’une version plus récente → ouverture de la page GitHub Release.
 
@@ -173,21 +172,21 @@ cmake --build build --target opensolarenergy
 # Binaire : build/src/opensolarenergy
 
 # AppImage local
-VERSION_NAME=2.0.2 QT_ROOT="$HOME/Qt/6.8.2/gcc_64" bash scripts/build-appimage.sh
+VERSION_NAME=2.0.3 QT_ROOT="$HOME/Qt/6.8.2/gcc_64" bash scripts/build-appimage.sh
 ```
 
 ### Android (arm64)
 
 ```bash
 # Une fois : SDK/NDK + Qt Android (voir scripts/)
-VERSION_NAME=2.0.2 VERSION_CODE=202 bash scripts/build-android.sh
+VERSION_NAME=2.0.3 VERSION_CODE=203 bash scripts/build-android.sh
 # → opensolarenergy-arm64.apk (signé debug, ou release si ANDROID_KEYSTORE_B64 est défini)
 ```
 
 ### Publier une version
 
 ```bash
-git tag -a v2.0.2 -m "Notes affichées dans l’app avant MAJ" && git push origin v2.0.2
+git tag -a v2.0.3 -m "Notes affichées dans l’app avant MAJ" && git push origin v2.0.3
 ```
 
 Le workflow **Release** construit l’APK Android **et** l’AppImage Linux Qt, puis les publie sur GitHub Releases.
@@ -208,7 +207,7 @@ bash scripts/validate-app.sh
 
 ## Architecture
 
-À partir de **v2.0**, l’app native (Linux / Android) est un **shell Qt** qui embarque l’UI web existante (WebEngine / WebView) via un bridge `electronAPI`-compatible. Le mode navigateur et Electron v1.x restent disponibles.
+À partir de **v2.0**, l’app native (Linux / Android) est exclusivement un **shell Qt** qui embarque l’UI web (WebEngine / WebView) via `WebBridge` (QWebChannel). Le mode navigateur (`./serve.sh`) reste disponible pour le développement.
 
 ```
 open_solar_energy/
@@ -272,10 +271,11 @@ Pour un site réel, importer les données météo via **« Importer météo (Ope
 
 | Version | Changements |
 |---|---|
+| **2.0.3** | Hub plein écran, emojis Android figés, logo adaptive, suppression Electron (Qt only), correctifs MAJ |
 | **2.0.2** | Hub projets au démarrage (liste + recherche nom/client/lieu/date), bouton vérifier les MAJ, capacité batterie saisie manuellement |
 | **2.0.1** | Logo Android/PC, projet démo complet (Enedis 30 min synthétique cohérent HP/HC, devis, panneaux) |
 | **2.0.0** | Port Qt natif (Linux AppImage + Android APK), mises à jour auto via GitHub Releases (comme Colo Course), corrections P0 (import Enedis ZIP 30 min, production hors-réseau, câblage onduleur), tests math unitaires |
-| **1.8.x** | Releases Electron AppImage (auto-update electron-updater) |
+| **1.8.x** | Anciennes releases desktop (remplacées par Qt depuis v2.0) |
 | **1.7.0** | Repasse physique et financière : Rb numérique (Braun & Mitchell), HDKR anisotrope, NOCT avec durée réelle, hourlyIrradiance exact, payback actualisé, VAN 25 ans, LCOE |
 | **1.6.1** | Script `serve.sh` (Python, port libre, ouverture navigateur) |
 | **1.6.0** | Hors-réseau : import Enedis, simulation horaire 30 min, SOC mensuel, recommandation coût+jours-déficit |

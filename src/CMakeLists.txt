@@ -1,7 +1,7 @@
 set(OSE_WARN_FLAGS -Wall -Wextra -Wpedantic -Wno-unused-parameter)
 
-set(OSE_VERSION_NAME "2.0.2" CACHE STRING "Version affichée")
-set(OSE_VERSION_CODE "202" CACHE STRING "versionCode Android")
+set(OSE_VERSION_NAME "2.0.3" CACHE STRING "Version affichée")
+set(OSE_VERSION_CODE "203" CACHE STRING "versionCode Android")
 
 add_library(applib STATIC
     app/theme.cpp
@@ -30,6 +30,7 @@ file(GLOB_RECURSE OSE_WEB_FILES CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/data/*"
     "${CMAKE_SOURCE_DIR}/data/*/*"
     "${CMAKE_SOURCE_DIR}/packaging/*.png"
+    "${CMAKE_SOURCE_DIR}/assets/emoji/*.png"
 )
 list(FILTER OSE_WEB_FILES EXCLUDE REGEX "/build-")
 list(FILTER OSE_WEB_FILES EXCLUDE REGEX "/build/")

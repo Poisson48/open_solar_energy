@@ -14,15 +14,22 @@ const DEMO_SEED_VERSION = 3;
 // ══════════════════════════════════════════════════════════════
 function openStartupModal() {
   showStartupStep1();
-  document.getElementById('startup-modal').style.display = 'flex';
+  const hub = document.getElementById('startup-modal');
+  if (!hub) return;
+  hub.hidden = false;
+  hub.classList.add('ose-hub-open');
+  document.body.classList.add('ose-hub-active');
   const search = document.getElementById('startup-project-search');
   if (search) search.value = '';
   renderProjectsList('startup-projects-list', '');
-  setTimeout(() => search?.focus(), 50);
 }
 
 function closeStartupModal() {
-  document.getElementById('startup-modal').style.display = 'none';
+  const hub = document.getElementById('startup-modal');
+  if (!hub) return;
+  hub.hidden = true;
+  hub.classList.remove('ose-hub-open');
+  document.body.classList.remove('ose-hub-active');
 }
 
 function showStartupStep1() {

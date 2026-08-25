@@ -324,23 +324,25 @@ const PanelDB = (() => {
   function _openLink(inputId) {
     const url = document.getElementById(inputId)?.value?.trim();
     if (!url) return;
-    // Electron : shell.openExternal via IPC — sinon window.open
-    if (window.electronAPI?.openExternal) {
-      window.electronAPI.openExternal(url);
+    const bridge = typeof getNativeBridge === 'function' ? getNativeBridge() : null;
+    if (bridge?.openExternal) {
+      bridge.openExternal(url);
     } else {
       window.open(url, '_blank', 'noopener');
     }
   }
 
   async function _browseFile() {
-    if (window.electronAPI?.openFileDialog) {
-      const filePath = await window.electronAPI.openFileDialog();
+    const bridge = typeof getNativeBridge === 'function' ? getNativeBridge() : null;
+    if (bridge?.openFileDialog) {
+      const filePath = await bridge.openFileDialog();
       if (filePath) {
         const el = document.getElementById('pdb-datasheet');
         if (el) el.value = filePath;
       }
     } else {
-      if (typeof showToast === 'function') showToast('Parcourir disponible uniquement dans l\'application Electron.', 'error');
+      if (typeof showToast === 'function')
+        showToast('Parcourir disponible uniquement dans l\'application Qt (desktop).', 'error');
     }
   }
 

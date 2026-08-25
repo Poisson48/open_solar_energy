@@ -1,7 +1,7 @@
 # Dependencies
 node_modules/
 
-# Build outputs (electron-builder + Qt)
+# Build outputs (Qt AppImage / APK)
 dist/
 out/
 build/
