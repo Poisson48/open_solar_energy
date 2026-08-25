@@ -90,13 +90,13 @@ header .logo .logo-img {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  object-fit: cover;
+  object-fit: contain;
   background: #fff;
 }
 
 /* ── HUB PROJETS (plein écran) ── */
-.ose-hub[hidden] { display: none !important; }
-.ose-hub {
+.ose-hub:not(.ose-hub-open) { display: none !important; }
+.ose-hub.ose-hub-open {
   position: fixed;
   inset: 0;
   z-index: 10000;
@@ -137,6 +137,7 @@ header .logo .logo-img {
   height: 40px;
   border-radius: 10px;
   background: #fff;
+  object-fit: contain;
   flex-shrink: 0;
 }
 .ose-hub-title {

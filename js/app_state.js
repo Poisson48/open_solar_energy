@@ -3,8 +3,9 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.3';
+const APP_VERSION = '2.0.4';
 // Historique :
+//   2.0.4 - Fix WebHost ?v= (hub + boutons morts sur Android)
 //   2.0.3 - Hub plein écran, emojis Noto, logo adaptive, Qt only (plus Electron)
 //   2.0.2 - Hub projets + recherche + bouton MAJ, capacité batterie saisie
 //   2.0.1 - Logo Android/PC, projet démo complet (Enedis 30 min synthétique cohérent)

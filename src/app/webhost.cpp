@@ -95,6 +95,13 @@ void WebHost::handleRequest(QTcpSocket* socket, const QByteArray& request)
         return;
     }
     QString path = QUrl::fromPercentEncoding(parts[1].toUtf8());
+    // Ignorer ?v=… / #… (cache-busting HTML) — sinon 404 sur project_ui.js?v=3 etc.
+    const int q = path.indexOf(QLatin1Char('?'));
+    if (q >= 0)
+        path = path.left(q);
+    const int hash = path.indexOf(QLatin1Char('#'));
+    if (hash >= 0)
+        path = path.left(hash);
     if (path == QStringLiteral("/"))
         path = QStringLiteral("/index.html");
     if (path.contains(QStringLiteral(".."))) {

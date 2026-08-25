@@ -144,7 +144,13 @@ function initTabs() {
 
 // ── Point d'entrée ───────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
+  // Hub visible dès que possible (même si le reste échoue)
+  try {
+    if (typeof seedDemoProject === 'function') seedDemoProject();
+    if (typeof openStartupModal === 'function') openStartupModal();
+  } catch (e) { console.warn('[init] hub', e); }
 
+  try {
   // 1. Injecter le HTML de chaque onglet
   initTabSizing();
   initTabGrid();
@@ -155,7 +161,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   initTabOptimizer();
   initTabQuote();
 
-  // 2. Charger les données météo démo, initialiser la carte, injecter le projet démo
+  // 2. Charger les données météo démo, initialiser la carte
   await loadDemoData();
   seedDemoProject();
   initMap();
@@ -182,8 +188,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-calc-opt')?.addEventListener('click',      () => withLoading('btn-calc-opt',      calcOptimization));
   document.getElementById('btn-calc-hourly')?.addEventListener('click',   () => withLoading('btn-calc-hourly',   () => HourlyModule.computeAllMonths()));
 
-  // 5. Initialiser l'UI projets (modal démarrage, Ctrl+S, etc.)
-  initProjectUI();
+  // 5. Initialiser l'UI projets (raccourcis, etc.) — hub déjà ouvert
+  if (typeof initProjectUI === 'function') initProjectUI();
 
   // 6. Initialiser le module PVGIS Import
   setTimeout(() => {
@@ -195,5 +201,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     renderIrradiationData();
     HourlyModule.updateSourceStatus();
   }, 350);
-
+  } catch (e) {
+    console.error('[init]', e);
+    if (typeof openStartupModal === 'function') openStartupModal();
+  }
 });

@@ -232,7 +232,7 @@ const hub = await page.evaluate(() => {
   const modal = document.getElementById('startup-modal');
   const list = document.getElementById('startup-projects-list');
   const search = document.getElementById('startup-project-search');
-  const visible = !!(modal && !modal.hidden && modal.classList.contains('ose-hub-open'));
+  const visible = !!(modal && modal.classList.contains('ose-hub-open'));
   const htmlBefore = list?.innerHTML || '';
   search.value = 'Martin';
   renderProjectsList('startup-projects-list', 'Martin');

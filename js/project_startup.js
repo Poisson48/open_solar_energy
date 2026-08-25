@@ -16,19 +16,20 @@ function openStartupModal() {
   showStartupStep1();
   const hub = document.getElementById('startup-modal');
   if (!hub) return;
-  hub.hidden = false;
   hub.classList.add('ose-hub-open');
+  hub.removeAttribute('hidden');
   document.body.classList.add('ose-hub-active');
   const search = document.getElementById('startup-project-search');
   if (search) search.value = '';
-  renderProjectsList('startup-projects-list', '');
+  if (typeof renderProjectsList === 'function')
+    renderProjectsList('startup-projects-list', '');
 }
 
 function closeStartupModal() {
   const hub = document.getElementById('startup-modal');
   if (!hub) return;
-  hub.hidden = true;
   hub.classList.remove('ose-hub-open');
+  hub.setAttribute('hidden', '');
   document.body.classList.remove('ose-hub-active');
 }
 

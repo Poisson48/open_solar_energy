@@ -1,7 +1,7 @@
 set(OSE_WARN_FLAGS -Wall -Wextra -Wpedantic -Wno-unused-parameter)
 
-set(OSE_VERSION_NAME "2.0.3" CACHE STRING "Version affichée")
-set(OSE_VERSION_CODE "203" CACHE STRING "versionCode Android")
+set(OSE_VERSION_NAME "2.0.4" CACHE STRING "Version affichée")
+set(OSE_VERSION_CODE "204" CACHE STRING "versionCode Android")
 
 add_library(applib STATIC
     app/theme.cpp

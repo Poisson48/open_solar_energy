@@ -540,7 +540,7 @@ function initProjectUI() {
       if (typeof closeEnedisModal === 'function') closeEnedisModal();
       // Escape sur le hub : revenir à la liste (pas fermer l’app sans projet)
       const hub = document.getElementById('startup-modal');
-      if (hub && !hub.hidden) {
+      if (hub && hub.classList.contains('ose-hub-open')) {
         const onList = document.getElementById('startup-step-1')?.style.display !== 'none';
         if (!onList) showStartupStep1();
       }

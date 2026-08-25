@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="css/main.css">
 </head>
-<body>
+<body class="ose-hub-active">
 
 <!-- ═══ HEADER ═══════════════════════════════════════════════ -->
 <header>
@@ -45,8 +45,8 @@
   <button id="install-type-badge" onclick="toggleInstallationType()" title="Basculer entre installation réseau et hors-réseau" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1.5px solid;cursor:pointer;transition:all .2s;flex-shrink:0"></button>
 </div>
 
-<!-- ═══ HUB PROJETS (écran d’accueil plein écran) ════════════ -->
-<div id="startup-modal" class="ose-hub" role="dialog" aria-modal="true" aria-labelledby="startup-modal-title" hidden>
+<!-- ═══ HUB PROJETS (écran d’accueil plein écran — visible dès le HTML) ════════════ -->
+<div id="startup-modal" class="ose-hub ose-hub-open" role="dialog" aria-modal="true" aria-labelledby="startup-modal-title">
   <div class="ose-hub-panel">
 
     <!-- En-tête hub -->
