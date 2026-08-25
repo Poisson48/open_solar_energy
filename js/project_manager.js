@@ -70,25 +70,61 @@ const ProjectManager = (() => {
     return 'proj_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
   }
 
-  // ── Export / Import JSON ──────────────────────────────────────
-  function exportAll() {
-    const blob = new Blob([JSON.stringify(list(), null, 2)], { type: 'application/json' });
+  // ── Téléchargement / partage (Android WebView : pas de <a download>) ──
+  function _bytesToBase64(bytes) {
+    const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    let bin = '';
+    const chunk = 0x8000;
+    for (let i = 0; i < u8.length; i += chunk)
+      bin += String.fromCharCode.apply(null, u8.subarray(i, i + chunk));
+    return btoa(bin);
+  }
+
+  async function _downloadOrShare(filename, data, mime) {
+    const bridge = (typeof getNativeBridge === 'function' ? getNativeBridge() : null)
+                || window.webBridge || null;
+    if (bridge?.shareFile) {
+      let b64;
+      if (typeof data === 'string') {
+        b64 = _bytesToBase64(new TextEncoder().encode(data));
+      } else if (data instanceof Blob) {
+        b64 = _bytesToBase64(new Uint8Array(await data.arrayBuffer()));
+      } else if (data instanceof ArrayBuffer) {
+        b64 = _bytesToBase64(new Uint8Array(data));
+      } else if (data instanceof Uint8Array) {
+        b64 = _bytesToBase64(data);
+      } else {
+        b64 = _bytesToBase64(new TextEncoder().encode(String(data)));
+      }
+      bridge.shareFile(filename, mime || 'application/octet-stream', b64);
+      if (typeof showToast === 'function')
+        showToast('Choisissez où enregistrer / partager le fichier');
+      return;
+    }
+    const blob = data instanceof Blob
+      ? data
+      : new Blob([data], { type: mime || 'application/octet-stream' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'ose_projets_' + new Date().toISOString().slice(0, 10) + '.json';
+    a.download = filename;
     a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
+  // ── Export / Import JSON ──────────────────────────────────────
+  async function exportAll() {
+    const filename = 'ose_projets_' + new Date().toISOString().slice(0, 10) + '.json';
+    const text = JSON.stringify(list(), null, 2);
+    await _downloadOrShare(filename, text, 'application/json');
   }
 
   /** Exporte un seul projet en fichier JSON local */
-  function exportOne(id) {
+  async function exportOne(id) {
     const project = get(id);
     if (!project) return;
     const safeName = (project.name || 'projet').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `ose_${safeName}_${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
+    const filename = `ose_${safeName}_${new Date().toISOString().slice(0, 10)}.json`;
+    await _downloadOrShare(filename, JSON.stringify(project, null, 2), 'application/json');
   }
 
   /** Exporte un projet en ZIP (project.json + enedis_30min.csv si présent) */
@@ -113,10 +149,11 @@ const ProjectManager = (() => {
     if (enedisCsv) zip.file('enedis_30min.csv', enedisCsv);
 
     const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `ose_${safeName}_${new Date().toISOString().slice(0, 10)}.zip`;
-    a.click();
+    await _downloadOrShare(
+      `ose_${safeName}_${new Date().toISOString().slice(0, 10)}.zip`,
+      blob,
+      'application/zip'
+    );
   }
 
   /** Importe un projet unique depuis un texte JSON */
@@ -158,5 +195,9 @@ const ProjectManager = (() => {
     }
   }
 
-  return { list, get, save, remove, clone, newId, exportAll, exportOne, exportOneZip, importOne, importFromJSON };
+  return {
+    list, get, save, remove, clone, newId,
+    exportAll, exportOne, exportOneZip, importOne, importFromJSON,
+    _downloadOrShare,
+  };
 })();

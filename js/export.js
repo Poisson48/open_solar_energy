@@ -11,6 +11,11 @@ const Exporter = (() => {
   }
 
   function downloadBlob(content, filename, mime) {
+    // Sur Android (WebView), <a download> ne fonctionne pas → partage natif.
+    if (typeof ProjectManager !== 'undefined' && ProjectManager._downloadOrShare) {
+      ProjectManager._downloadOrShare(filename, content, mime);
+      return;
+    }
     const blob = new Blob([content], { type: mime });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

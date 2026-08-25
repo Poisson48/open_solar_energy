@@ -457,61 +457,97 @@ function _refreshProjectLists() {
   renderProjectsList(document.getElementById('projects-search')?.value || '');
 }
 
+function startImportProjects() {
+  const bridge = (typeof getNativeBridge === 'function' ? getNativeBridge() : null)
+              || window.webBridge || null;
+  if (bridge?.pickImportFile) {
+    bridge.pickImportFile();
+    return;
+  }
+  const input = document.getElementById('ose-import-projects-input');
+  if (input) input.click();
+}
+
+async function _importZipBytes(bytes, label) {
+  const zip = await JSZip.loadAsync(bytes);
+  const projectFile = zip.file('project.json');
+  if (!projectFile) { showToast('ZIP invalide : project.json manquant', 'error'); return; }
+  let jsonText = await projectFile.async('string');
+
+  const enedisFile = zip.file('enedis_30min.csv');
+  if (enedisFile) {
+    const csvText = await enedisFile.async('string');
+    const lines   = csvText.trim().split('\n').slice(1);
+    const arr     = new Float32Array(lines.length);
+    lines.forEach((line, i) => { arr[i] = parseFloat(line.split(',')[1]) || 0; });
+    const parsed = JSON.parse(jsonText);
+    if (parsed.hourlyEnedisData?.halfHourly === '__enedis_30min.csv__') {
+      parsed.hourlyEnedisData.halfHourly = Array.from(arr);
+    }
+    jsonText = JSON.stringify(parsed);
+  }
+
+  const result = ProjectManager.importOne(jsonText);
+  if (result.error) { showToast('Erreur import ZIP : ' + result.error, 'error'); return; }
+  showToast(`✓ Projet "${result.project.name}" importé${label ? ' depuis ' + label : ''}`);
+  _refreshProjectLists();
+}
+
+function _importJsonText(text) {
+  let result;
+  try {
+    const parsed = JSON.parse(text);
+    if (Array.isArray(parsed)) {
+      result = ProjectManager.importFromJSON(text);
+      if (!result.error) result._msg = `✓ ${result.added} projet(s) importé(s)`;
+    } else {
+      result = ProjectManager.importOne(text);
+      if (!result.error) result._msg = `✓ Projet "${result.project.name}" importé`;
+    }
+  } catch { result = { error: 'Fichier JSON invalide' }; }
+  if (result.error) { showToast('Erreur import : ' + result.error, 'error'); }
+  else {
+    showToast(result._msg);
+    _refreshProjectLists();
+  }
+}
+
 async function importProjectsFile(input) {
   const file = input.files[0];
   if (!file) return;
   input.value = '';
 
-  if (file.name.endsWith('.zip')) {
+  if (file.name.toLowerCase().endsWith('.zip')) {
     try {
-      const zip = await JSZip.loadAsync(file);
-      const projectFile = zip.file('project.json');
-      if (!projectFile) { showToast('ZIP invalide : project.json manquant', 'error'); return; }
-      let jsonText = await projectFile.async('string');
-
-      const enedisFile = zip.file('enedis_30min.csv');
-      if (enedisFile) {
-        const csvText = await enedisFile.async('string');
-        const lines   = csvText.trim().split('\n').slice(1);
-        const arr     = new Float32Array(lines.length);
-        lines.forEach((line, i) => { arr[i] = parseFloat(line.split(',')[1]) || 0; });
-        const parsed = JSON.parse(jsonText);
-        if (parsed.hourlyEnedisData?.halfHourly === '__enedis_30min.csv__') {
-          parsed.hourlyEnedisData.halfHourly = Array.from(arr);
-        }
-        jsonText = JSON.stringify(parsed);
-      }
-
-      const result = ProjectManager.importOne(jsonText);
-      if (result.error) { showToast('Erreur import ZIP : ' + result.error, 'error'); return; }
-      showToast(`✓ Projet "${result.project.name}" importé depuis ZIP`);
-      _refreshProjectLists();
-    } catch(e) { showToast('Erreur lecture ZIP : ' + e.message, 'error'); }
+      await _importZipBytes(file, 'ZIP');
+    } catch (e) { showToast('Erreur lecture ZIP : ' + e.message, 'error'); }
     return;
   }
 
   const reader = new FileReader();
-  reader.onload = e => {
-    const text = e.target.result;
-    let result;
-    try {
-      const parsed = JSON.parse(text);
-      if (Array.isArray(parsed)) {
-        result = ProjectManager.importFromJSON(text);
-        if (!result.error) result._msg = `✓ ${result.added} projet(s) importé(s)`;
-      } else {
-        result = ProjectManager.importOne(text);
-        if (!result.error) result._msg = `✓ Projet "${result.project.name}" importé`;
-      }
-    } catch { result = { error: 'Fichier JSON invalide' }; }
-    if (result.error) { showToast('Erreur import : ' + result.error, 'error'); }
-    else {
-      showToast(result._msg);
-      _refreshProjectLists();
-    }
-  };
+  reader.onload = e => _importJsonText(e.target.result);
   reader.readAsText(file, 'UTF-8');
 }
+
+/** Import déclenché par le shell Android (contenu base64). */
+async function importProjectsFromNative(filename, contentBase64) {
+  try {
+    const name = String(filename || 'import.bin');
+    const bin = atob(String(contentBase64 || ''));
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+
+    if (/\.zip$/i.test(name) || (bytes.length >= 2 && bytes[0] === 0x50 && bytes[1] === 0x4b)) {
+      await _importZipBytes(bytes, 'ZIP');
+      return;
+    }
+    const text = new TextDecoder('utf-8').decode(bytes);
+    _importJsonText(text);
+  } catch (e) {
+    showToast('Erreur import : ' + (e.message || e), 'error');
+  }
+}
+window.importProjectsFromNative = importProjectsFromNative;
 
 // ══════════════════════════════════════════════════════════════
 //  NOUVEAU PROJET VIERGE (depuis la modal projets)
@@ -577,10 +613,9 @@ async function checkForUpdates() {
   try {
     const bridge = await waitNativeBridge(2500);
     if (bridge?.checkForUpdates) {
-      if (typeof closeStartupModal === 'function')
-        closeStartupModal();
+      // Ne pas fermer le hub : la bannière Qt s’affiche au-dessus.
       bridge.checkForUpdates();
-      // Retour utilisateur via shell Qt (bannière + toast natif injecté)
+      showToast('Vérification des mises à jour…');
       return;
     }
 

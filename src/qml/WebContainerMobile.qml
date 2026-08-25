@@ -20,6 +20,37 @@ Item {
         }
         if (c.indexOf("open:") === 0 && root.bridge)
             root.bridge.openExternal(c.substring(5))
+        if (c === "share-file") {
+            webView.runJavaScript(
+                "(function(){try{return JSON.stringify(window.__oseSharePending||null);}catch(e){return 'null';}})()",
+                function (result) {
+                    try {
+                        const payload = JSON.parse(result || "null")
+                        if (!payload || !payload.name || !payload.b64) {
+                            notifyWebToast("Export impossible", "error")
+                            return
+                        }
+                        const ok = AppController.shareFile(
+                            String(payload.name),
+                            String(payload.mime || "application/octet-stream"),
+                            String(payload.b64))
+                        if (ok)
+                            notifyWebToast("Choisissez où enregistrer / partager", "")
+                        else
+                            notifyWebToast("Partage impossible", "error")
+                    } catch (e) {
+                        notifyWebToast("Export impossible", "error")
+                    } finally {
+                        webView.runJavaScript("window.__oseSharePending=null")
+                    }
+                })
+            return
+        }
+        if (c === "pick-import") {
+            if (!AppController.pickImportFile())
+                notifyWebToast("Sélecteur de fichiers indisponible", "error")
+            return
+        }
     }
 
     function notifyWebToast(message, kind) {
@@ -30,6 +61,35 @@ Item {
         webView.runJavaScript(
             "(function(){"
             + "if(typeof showToast==='function')showToast(" + msg + "," + k + ");"
+            + "})();"
+        )
+    }
+
+    function deliverImportResult(raw) {
+        if (!raw || !webView)
+            return
+        const s = String(raw)
+        if (s.indexOf("err\t") === 0) {
+            const err = s.substring(4)
+            if (err === "cancelled")
+                return
+            notifyWebToast("Import : " + err, "error")
+            return
+        }
+        if (s.indexOf("ok\t") !== 0)
+            return
+        const rest = s.substring(3)
+        const tab = rest.indexOf("\t")
+        if (tab < 0)
+            return
+        const name = rest.substring(0, tab)
+        const b64 = rest.substring(tab + 1)
+        const nameJs = JSON.stringify(name)
+        const b64Js = JSON.stringify(b64)
+        webView.runJavaScript(
+            "(function(){"
+            + "if(typeof importProjectsFromNative==='function')"
+            + "importProjectsFromNative(" + nameJs + "," + b64Js + ");"
             + "})();"
         )
     }
@@ -119,6 +179,10 @@ Item {
                 + "var api={"
                 + "checkForUpdates:function(){oseCmd('check-updates');},"
                 + "openExternal:function(u){oseCmd('open:'+String(u));},"
+                + "shareFile:function(name,mime,b64){"
+                + "window.__oseSharePending={name:String(name),mime:String(mime||''),b64:String(b64)};"
+                + "oseCmd('share-file');},"
+                + "pickImportFile:function(){oseCmd('pick-import');},"
                 + "nativeReady:true"
                 + "};"
                 + "window.webBridge=api;window.nativeBridge=api;"
@@ -135,7 +199,9 @@ Item {
                 + "window.__oseCmdQueue=window.__oseCmdQueue||[];"
                 + "function oseCmd(c){window.__oseCmdQueue.push(c);try{document.title='OSE_CMD:'+c;}catch(e){}}"
                 + "window.webBridge={checkForUpdates:function(){oseCmd('check-updates');},"
-                + "openExternal:function(u){oseCmd('open:'+String(u));},nativeReady:true};"
+                + "openExternal:function(u){oseCmd('open:'+String(u));},"
+                + "shareFile:function(name,mime,b64){window.__oseSharePending={name:String(name),mime:String(mime||''),b64:String(b64)};oseCmd('share-file');},"
+                + "pickImportFile:function(){oseCmd('pick-import');},nativeReady:true};"
                 + "window.nativeBridge=window.webBridge;window.__oseNativeInjected=true;"
                 + "}"
                 + "var q=window.__oseCmdQueue;if(!q||!q.length)return '';"
@@ -146,6 +212,9 @@ Item {
                         handleNativeCmd(result)
                 }
             )
+            const imp = AppController.pollImportResult()
+            if (imp)
+                deliverImportResult(imp)
         }
     }
 

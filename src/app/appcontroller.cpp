@@ -1,8 +1,10 @@
 #include "appcontroller.h"
 
+#include "platform.h"
 #include "webbridge.h"
 #include "updater.h"
 
+#include <QByteArray>
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
@@ -11,6 +13,25 @@
 namespace app {
 
 AppController::AppController(QObject* parent) : QObject(parent) {}
+
+bool AppController::shareFile(const QString& filename, const QString& mime,
+                              const QString& base64Data)
+{
+    const QByteArray raw = QByteArray::fromBase64(base64Data.toLatin1());
+    if (raw.isEmpty() && !base64Data.isEmpty())
+        return false;
+    return platformShareFile(filename, mime, raw);
+}
+
+bool AppController::pickImportFile()
+{
+    return platformPickImportFile();
+}
+
+QString AppController::pollImportResult()
+{
+    return platformPollImportResult();
+}
 
 QString AppController::resolveWebRoot() const
 {

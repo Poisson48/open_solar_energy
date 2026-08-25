@@ -68,10 +68,8 @@
         <div class="ose-hub-actions">
           <button type="button" id="btn-check-updates" class="btn btn-outline btn-sm" onclick="checkForUpdates()" title="Vérifier les mises à jour">↻ Mises à jour</button>
           <button type="button" class="btn btn-outline btn-sm" onclick="ProjectManager.exportAll()" title="Exporter tous les projets en JSON">⬇ Export tout</button>
-          <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0" title="Importer JSON ou ZIP">
-            📥 Importer
-            <input type="file" accept=".json,.zip" style="display:none" onchange="importProjectsFile(this)">
-          </label>
+          <button type="button" class="btn btn-outline btn-sm" onclick="startImportProjects()" title="Importer JSON ou ZIP">📥 Importer</button>
+          <input type="file" id="ose-import-projects-input" accept=".json,.zip,application/json,application/zip" style="display:none" onchange="importProjectsFile(this)">
           <button type="button" class="btn btn-accent btn-sm" onclick="showInstallationTypeStep()">＋ Nouveau</button>
         </div>
       </div>
