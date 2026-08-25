@@ -5,33 +5,49 @@
 
 function calcSizing() {
   if (!AppState.weatherData) {
-    showToast('Sélectionnez un lieu avec des données météo.', 'error');
+    showToast('Sélectionnez un lieu avec des données météo (colonne gauche).', 'error');
     return;
   }
   const input      = SizingEngine.readFormInput();
   const annualConso = input.bill.monthlyKwh.reduce((s, k) => s + k, 0);
   if (annualConso === 0) {
+    showToast('Étape 1 : renseignez votre consommation mensuelle.', 'warning');
     document.getElementById('sizing-results').innerHTML = `<div class="result-placeholder">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 11h-2v2H9v-2H7v-2h2V9h2v2h2v2z"/></svg>
-      <p>Renseignez votre consommation mensuelle<br>puis cliquez sur <strong>Dimensionner</strong></p>
+      <p>Renseignez votre consommation mensuelle (étape 1)<br>puis cliquez sur <strong>Dimensionner</strong></p>
     </div>`;
+    document.getElementById('sz-kwh-1')?.focus();
     return;
   }
   if (!input.site.maxSurfaceM2) {
+    showToast('Étape 2 : indiquez la surface de toiture disponible (m²).', 'warning');
+    const surf = document.getElementById('sz-surface');
+    if (surf) {
+      surf.classList.add('ose-field-required-flash');
+      surf.focus();
+      setTimeout(() => surf.classList.remove('ose-field-required-flash'), 2200);
+    }
+    document.querySelector('.ose-step[data-step="2"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     document.getElementById('sizing-results').innerHTML = `<div class="result-placeholder">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-      <p>Renseignez la surface disponible en toiture<br>puis cliquez sur <strong>Dimensionner</strong></p>
+      <p><strong>Surface manquante</strong><br>
+      Indiquez la surface dispo en toiture (étape 2) — sans ça, aucun dimensionnement.</p>
     </div>`;
     return;
   }
-  const { recommended, allCandidates, currentBill } =
+  const { recommended, allCandidates, currentBill, error } =
     SizingEngine.run(input, AppState.weatherData, AppState.location.lat);
+  if (error === 'surface_too_small' || !recommended) {
+    showToast('Surface trop petite pour placer au moins un panneau.', 'error');
+    document.getElementById('sizing-results').innerHTML = `<div class="result-placeholder">
+      <p>Surface insuffisante (${input.site.maxSurfaceM2} m²) pour le panneau choisi
+      (${input.site.panelSurfaceM2} m²). Augmentez la surface (étape 2).</p>
+    </div>`;
+    return;
+  }
   AppState.lastSizingResult     = recommended;
   AppState.lastSizingCandidates = allCandidates;
   AppState.lastSizingInput      = input;
   renderSizingResults(recommended, allCandidates, currentBill, annualConso);
 
-  // Commit git après dimensionnement
   if (typeof gitAutoSave === 'function' && recommended) {
     gitAutoSave(`Calcul dimensionnement — ${recommended.Ppeak} kWc`);
   }
@@ -78,20 +94,38 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
 
   const strategy = AppState.lastSizingInput?.sizing?.strategy || '';
   const targetPct = AppState.lastSizingInput?.sizing?.targetCoveragePct;
+  const usedSurface = AppState.lastSizingInput?.site?.maxSurfaceM2;
+  const strategyLabel = {
+    autoconso_pct: 'Autoconsommation cible',
+    bill_coverage_pct: 'Couverture de facture',
+    roi_optimal: 'Meilleur ROI',
+    autoconso_max: 'Max. kWh autoconsommés',
+  }[strategy] || strategy;
+
   let goalNote = '';
   if (strategy === 'autoconso_pct' && targetPct) {
     const ok = rec.autoconsoRate + 0.05 >= targetPct;
     goalNote = ok
       ? `<div class="ose-goal-met">Objectif atteint : ≥ ${targetPct}&nbsp;% d’autoconsommation.</div>`
-      : `<div class="ose-goal-miss">Objectif ${targetPct}&nbsp;% d’autoconso non atteint `
-        + `(max. possible ici : ${rec.autoconsoRate.toLocaleString('fr')}&nbsp;% — surface / conso limitent).</div>`;
+      : `<div class="ose-goal-miss">Objectif ${targetPct}&nbsp;% d’autoconso non atteint
+          (obtenu : ${rec.autoconsoRate.toLocaleString('fr')}&nbsp;%
+          avec ${usedSurface} m² saisis).</div>`;
   } else if (strategy === 'bill_coverage_pct' && targetPct) {
     const ok = rec.coverageRate + 0.05 >= targetPct;
     goalNote = ok
       ? `<div class="ose-goal-met">Objectif atteint : ≥ ${targetPct}&nbsp;% de couverture de facture.</div>`
-      : `<div class="ose-goal-miss">Objectif ${targetPct}&nbsp;% de couverture non atteint `
-        + `(max. avec la surface dispo : ${rec.coverageRate.toLocaleString('fr')}&nbsp;%).</div>`;
+      : `<div class="ose-goal-miss">Objectif ${targetPct}&nbsp;% de couverture non atteint
+          (max. avec les <strong>${usedSurface}&nbsp;m²</strong> saisis en étape 2 :
+          ${rec.coverageRate.toLocaleString('fr')}&nbsp;%).
+          Augmentez la surface ou baissez la cible.</div>`;
   }
+
+  const paramsUsed = `<p class="ose-rec-params">Calcul basé sur :
+    <strong>${usedSurface}&nbsp;m²</strong> de toiture
+    · objectif « ${strategyLabel} »
+    ${targetPct && (strategy === 'autoconso_pct' || strategy === 'bill_coverage_pct')
+      ? `à <strong>${targetPct}&nbsp;%</strong>` : ''}
+  </p>`;
 
   const slotBadge = rec.slotLevel
     ? `<span class="ose-rec-badge ose-rec-badge-ok">Données Enedis 30 min</span>`
@@ -111,6 +145,7 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
         ${slotBadge}
       </div>
       <p class="ose-rec-summary">${summary}</p>
+      ${paramsUsed}
       ${goalNote}
       <div class="kpi-grid ose-rec-kpis">
         <div class="kpi-card" style="border-left:3px solid var(--color-accent)">

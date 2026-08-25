@@ -1382,6 +1382,24 @@ details.card > summary:focus-visible {
   opacity: 0.85;
 }
 .tab-btn-more:hover { opacity: 1; color: var(--color-primary); }
-.ose-rec-kpis {
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+.ose-req { color: var(--color-danger); font-weight: 700; }
+.ose-rec-params {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: 0 0 10px;
+  line-height: 1.4;
+}
+.ose-demo-note {
+  display: block;
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: rgba(245,166,35,0.12);
+  border-radius: 6px;
+  color: #9a5b00;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.ose-field-required-flash {
+  outline: 2px solid var(--color-accent) !important;
+  box-shadow: 0 0 0 4px rgba(245,166,35,0.35);
 }

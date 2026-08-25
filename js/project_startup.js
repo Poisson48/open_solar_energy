@@ -7,7 +7,7 @@
  */
 
 const DEMO_PROJECT_ID = 'demo_ose_v2';
-const DEMO_SEED_VERSION = 4;
+const DEMO_SEED_VERSION = 5;
 
 // ══════════════════════════════════════════════════════════════
 //  MODAL DE DÉMARRAGE = HUB PROJETS

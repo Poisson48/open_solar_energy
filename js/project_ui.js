@@ -153,24 +153,32 @@ function loadProject(id) {
   showToast(`✓ Projet "${project.name}" chargé`);
 
   setTimeout(() => {
+    // Pas de calcul auto : le parcours est étape par étape (l’utilisateur clique Dimensionner).
+    // On rafraîchit seulement les affichages non décisifs.
     if (typeof calcGridPanels        === 'function') calcGridPanels();
-    if (typeof calcSizing            === 'function') calcSizing();
-    if (installType === 'offgrid' && typeof calcOffgridSizing === 'function') calcOffgridSizing();
     if (typeof renderIrradiationData === 'function') renderIrradiationData();
     if (typeof HourlyModule?.computeAllMonths === 'function' && AppState.hourlyEnedisData)
       HourlyModule.computeAllMonths();
-    // Devis : totaux + import résultats dimensionnement si dispo
     ['panels','inverter','fixations','cabling','labor','admin','misc'].forEach(k => {
       if (typeof updateQuoteLine === 'function') updateQuoteLine(k);
     });
     if (typeof updateQuoteTotals === 'function') updateQuoteTotals();
-    if (typeof importSizingToQuote === 'function' && AppState.lastSizingResult)
-      importSizingToQuote();
-    // Rafraîchir le résumé projet après calculs réels
-    if (project.isDemo && typeof saveCurrentProject === 'function') {
-      try { saveCurrentProject(); } catch (_) { /* ignore */ }
-    }
+    updateDemoPrefillNote();
   }, 100);
+}
+
+function updateDemoPrefillNote() {
+  const note = document.getElementById('ose-demo-prefill-note');
+  if (!note) return;
+  const p = AppState.currentProjectId ? ProjectManager.get(AppState.currentProjectId) : null;
+  const show = !!(p && p.isDemo);
+  note.hidden = !show;
+  if (show) {
+    const surf = document.getElementById('sz-surface')?.value;
+    note.textContent = surf
+      ? `Projet démo : valeurs préremplies (surface ${surf} m², conso, etc.). Modifiez-les ou créez « Nouveau » pour partir de zéro.`
+      : `Projet démo : certaines valeurs sont préremplies. Créez « Nouveau » pour un parcours à blanc.`;
+  }
 }
 
 // ══════════════════════════════════════════════════════════════

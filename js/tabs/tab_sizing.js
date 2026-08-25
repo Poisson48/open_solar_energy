@@ -6,6 +6,9 @@ function initTabSizing() {
     <div class="ose-wizard-intro">
       <strong>Parcours dimensionnement</strong>
       <span>Suivez les étapes dans l’ordre. Un seul calcul à la fin — pas de chiffres dispersés.</span>
+      <span id="ose-demo-prefill-note" class="ose-demo-note" hidden>
+        Projet démo : des valeurs sont préremplies (dont la surface). Modifiez-les ou créez un projet « Nouveau » pour partir de zéro.
+      </span>
     </div>
 
     <div class="tab-form-col">
@@ -110,8 +113,9 @@ function initTabSizing() {
                 <div class="input-unit"><input type="number" id="sz-azimuth" value="0" min="-180" max="180"><span class="unit-tag">°</span></div>
               </div>
               <div class="form-group">
-                <label for="sz-surface">Surface dispo</label>
-                <div class="input-unit"><input type="number" id="sz-surface" value="" min="1" placeholder="m²"><span class="unit-tag">m²</span></div>
+                <label for="sz-surface">Surface dispo <span class="ose-req">*</span></label>
+                <div class="input-unit"><input type="number" id="sz-surface" value="" min="1" step="0.1" placeholder="obligatoire" required aria-required="true"><span class="unit-tag">m²</span></div>
+                <p class="ose-field-help">Sans surface, le calcul ne démarre pas (aucune valeur inventée).</p>
               </div>
               <div class="form-group">
                 <label for="sz-panel-wp">Panneaux (Wc)</label>

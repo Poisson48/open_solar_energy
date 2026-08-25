@@ -3,8 +3,9 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.14';
+const APP_VERSION = '2.0.15';
 // Historique :
+//   2.0.15 - Plus de calcul auto à l’ouverture ; surface obligatoire (plus de défaut 30 m²)
 //   2.0.14 - MAJ : téléchargement APK en flux (anti OOM) + bandeau d’erreur clair
 //   2.0.13 - Parcours dimensionnement étape par étape + objectif autoconso 90 %
 //   2.0.12 - MAJ Android fiable (flux Colo Course : bannière + retours natifs)

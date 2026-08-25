@@ -125,6 +125,8 @@ function activateTab(tab) {
   AppState.activeTab = tab;
   if (tab === 'irradiation') renderIrradiationData();
   if (tab === 'daily') HourlyModule.autoComputeIfReady();
+  if (tab === 'sizing' && typeof updateDemoPrefillNote === 'function')
+    updateDemoPrefillNote();
 }
 
 function initTabs() {

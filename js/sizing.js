@@ -98,9 +98,29 @@ const SizingEngine = (() => {
       SolarMath.tiltedIrradiation(m.GHI, m.DHI, lat, site.tilt, site.azimuth, i + 1)
     );
 
-    // 2. Contrainte physique
-    const nPanelsMax = Math.floor((site.maxSurfaceM2 || 30) / (site.panelSurfaceM2 || 1.96));
+    // 2. Contrainte physique — JAMAIS de surface inventée (ex-défaut 30 m² silencieux)
+    if (!site.maxSurfaceM2 || site.maxSurfaceM2 <= 0) {
+      return {
+        recommended: null,
+        allCandidates: [],
+        monthlyHtilt,
+        currentBill: 0,
+        annualConso: 0,
+        error: 'missing_surface',
+      };
+    }
+    const nPanelsMax = Math.floor(site.maxSurfaceM2 / (site.panelSurfaceM2 || 1.96));
     const PpeakMax = Math.min(20, (nPanelsMax * (site.panelWattPeak || 400)) / 1000);
+    if (nPanelsMax < 1 || PpeakMax < 0.5) {
+      return {
+        recommended: null,
+        allCandidates: [],
+        monthlyHtilt,
+        currentBill: 0,
+        annualConso: bill.monthlyKwh.reduce((s, k) => s + k, 0),
+        error: 'surface_too_small',
+      };
+    }
 
     // 3. Facture actuelle
     const currentBill = FinanceCalc.calcCurrentAnnualBill(bill);

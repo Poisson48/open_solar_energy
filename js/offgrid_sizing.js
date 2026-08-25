@@ -286,7 +286,7 @@ const OffgridSizing = (() => {
     // Contraintes physiques
     const nPanelsMax = site.nPanelsFixed > 0
       ? site.nPanelsFixed
-      : Math.floor((site.maxSurfaceM2 || 30) / (site.panelSurfaceM2 || 1.96));
+      : Math.floor((site.maxSurfaceM2 > 0 ? site.maxSurfaceM2 : 0) / (site.panelSurfaceM2 || 1.96));
     const ppeakHard  = (nPanelsMax * (site.panelWattPeak || 400)) / 1000;
     // Plafond Ppeak : 15 kWc en mode standard, 40 kWc en mode autonomie totale
     const PpeakMax   = Math.min(fullAutonomy ? 40 : 15, ppeakHard);
