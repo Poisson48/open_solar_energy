@@ -95,7 +95,10 @@ QJsonObject WebBridge::gitSave(const QString& projectId, const QString& projectJ
     add.start(QStringLiteral("git"), {QStringLiteral("add"), QStringLiteral("project.json")});
     add.waitForFinished(10000);
     QString safeMsg = message;
-    safeMsg.replace('"', '\'').replace('`', '\'').replace('$', QString()).left(200);
+    safeMsg.replace('"', '\'');
+    safeMsg.replace('`', '\'');
+    safeMsg.replace('$', QString());
+    safeMsg = safeMsg.left(200);
     QProcess commit;
     commit.setWorkingDirectory(dir);
     commit.start(QStringLiteral("git"), {QStringLiteral("commit"), QStringLiteral("-m"), safeMsg});
