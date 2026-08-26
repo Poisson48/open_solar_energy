@@ -11,11 +11,18 @@ const SiteSurvey = (() => {
 
   const state = {
     points: [],           // { az, elev, source?: 'manual'|'photo' }
-    compassOffset: 0,     // ° ajoutés à la lecture brute
-    lastHeading: null,
-    lastPitch: null,
+    compassOffset: 0,     // ° ajoutés à la lecture brute (après correction écran)
+    lastHeading: null,    // cap 0=N, déjà corrigé écran + offset
+    lastPitch: null,      // pitch « écran » (°), ~90 = vertical / horizon
+    lastElev: null,       // élévation regard 0–90° dérivée du pitch
+    lastScreenAngle: 0,   // 0 portrait, 90/270 paysage…
+    lastBeta: null,
+    lastGamma: null,
+    dragIndex: -1,
+    dragMoved: false,
     photoActive: false,
     orientationBound: false,
+    screenOrientBound: false,
     stream: null,
     monthlyLoss: null,    // [12] fraction beam perdue 0–1
     annualLossPct: 0,
@@ -183,24 +190,135 @@ const SiteSurvey = (() => {
     return _normAz(raw + state.compassOffset);
   }
 
+  /**
+   * Angle de rotation de l’écran (CSS / Android) :
+   * 0 = portrait, 90 = paysage (sens antihoraire device), 180, 270.
+   * Indispensable : alpha/beta/gamma sont liés au boîtier, pas au viewport.
+   */
+  function screenAngle() {
+    try {
+      if (screen.orientation && typeof screen.orientation.angle === 'number'
+          && !isNaN(screen.orientation.angle)) {
+        return ((screen.orientation.angle % 360) + 360) % 360;
+      }
+    } catch (_) {}
+    if (typeof window.orientation === 'number' && !isNaN(window.orientation)) {
+      return ((window.orientation % 360) + 360) % 360;
+    }
+    return (typeof window.innerWidth === 'number'
+      && typeof window.innerHeight === 'number'
+      && window.innerWidth > window.innerHeight) ? 90 : 0;
+  }
+
+  function screenAngleLabel(ang) {
+    const a = ((ang % 360) + 360) % 360;
+    if (a > 45 && a < 135) return 'paysage';
+    if (a >= 135 && a < 225) return 'portrait inversé';
+    if (a >= 225 && a < 315) return 'paysage';
+    return 'portrait';
+  }
+
+  /**
+   * Cap brut capteur (0=N) → cap dans le repère écran / viseur caméra.
+   * En paysage, alpha / webkitCompassHeading restent liés au haut matériel :
+   * on ajoute l’angle d’écran pour viser avec le centre du viewport.
+   */
+  function headingWithScreen(rawHeading, screenAng) {
+    return _normAz(rawHeading + (screenAng || 0));
+  }
+
+  /**
+   * Pitch dans le plan de l’écran (~90° = appareil vertical, regard horizon).
+   * Portrait : surtout beta ; paysage : surtout gamma.
+   */
+  function screenPitchFromSensors(beta, gamma, screenAng) {
+    const b = (typeof beta === 'number' && !isNaN(beta)) ? beta : 0;
+    const g = (typeof gamma === 'number' && !isNaN(gamma)) ? gamma : 0;
+    const a = ((screenAng || 0) * Math.PI) / 180;
+    return b * Math.cos(a) - g * Math.sin(a);
+  }
+
+  /** Élévation du regard caméra (0=horizon, + = ciel). pitch écran ~90 à la verticale. */
+  function elevationFromScreenPitch(pitch) {
+    if (typeof pitch !== 'number' || isNaN(pitch)) return null;
+    // Debout : pitch≈90 → élév 0 ; penché vers le ciel : pitch↑ → élév↑
+    return Math.max(0, Math.min(90, pitch - 90));
+  }
+
   // ── Orientation device ─────────────────────────────────────
-  function _onOrient(e) {
-    let heading = null;
-    if (typeof e.webkitCompassHeading === 'number' && !isNaN(e.webkitCompassHeading)) {
-      heading = e.webkitCompassHeading;
-    } else if (typeof e.alpha === 'number') {
-      // absolute: alpha ~0 when pointing north (varies by browser)
-      heading = e.absolute === false ? (360 - e.alpha) : (360 - e.alpha);
+  function _applyOrientationSample(rawHeading, beta, gamma) {
+    const ang = screenAngle();
+    state.lastScreenAngle = ang;
+    if (typeof beta === 'number' && !isNaN(beta)) state.lastBeta = beta;
+    if (typeof gamma === 'number' && !isNaN(gamma)) state.lastGamma = gamma;
+
+    if (rawHeading != null && !isNaN(rawHeading)) {
+      const screenH = headingWithScreen(rawHeading, ang);
+      state.lastHeading = correctedHeading(screenH);
     }
-    if (heading != null) {
-      state.lastHeading = correctedHeading(heading);
-    }
-    if (typeof e.beta === 'number') {
-      // beta ~0 téléphone à plat ; ~90 vertical → élévation regard ≈ 90 - |beta|
-      const beta = e.beta;
-      state.lastPitch = beta;
+
+    if ((typeof beta === 'number' && !isNaN(beta))
+        || (typeof gamma === 'number' && !isNaN(gamma))) {
+      const pitch = screenPitchFromSensors(state.lastBeta, state.lastGamma, ang);
+      state.lastPitch = pitch;
+      state.lastElev = elevationFromScreenPitch(pitch);
     }
     updateCompassUI();
+  }
+
+  function _onOrient(e) {
+    let rawHeading = null;
+    if (typeof e.webkitCompassHeading === 'number' && !isNaN(e.webkitCompassHeading)) {
+      rawHeading = e.webkitCompassHeading;
+    } else if (typeof e.alpha === 'number' && !isNaN(e.alpha)) {
+      // alpha ~0 quand l’axe Y device pointe vers le nord (absolu) ; cap = 360 − alpha
+      rawHeading = 360 - e.alpha;
+    }
+    _applyOrientationSample(
+      rawHeading,
+      typeof e.beta === 'number' ? e.beta : state.lastBeta,
+      typeof e.gamma === 'number' ? e.gamma : state.lastGamma
+    );
+  }
+
+  /** Recalcule cap/pitch si l’utilisateur tourne la tablette sans nouveau event capteur. */
+  function _onScreenOrientationChange() {
+    _applyOrientationSample(
+      state.lastHeading == null ? null
+        : _normAz(state.lastHeading - state.compassOffset - (state.lastScreenAngle || 0)),
+      state.lastBeta,
+      state.lastGamma
+    );
+  }
+
+  function _bindScreenOrientation() {
+    if (state.screenOrientBound) return;
+    const handler = () => _onScreenOrientationChange();
+    window.addEventListener('orientationchange', handler);
+    window.addEventListener('resize', handler);
+    try {
+      if (screen.orientation && typeof screen.orientation.addEventListener === 'function') {
+        screen.orientation.addEventListener('change', handler);
+      }
+    } catch (_) {}
+    state.screenOrientBound = true;
+    state._screenOrientHandler = handler;
+  }
+
+  function _unbindScreenOrientation() {
+    if (!state.screenOrientBound) return;
+    const handler = state._screenOrientHandler;
+    if (handler) {
+      window.removeEventListener('orientationchange', handler);
+      window.removeEventListener('resize', handler);
+      try {
+        if (screen.orientation && typeof screen.orientation.removeEventListener === 'function') {
+          screen.orientation.removeEventListener('change', handler);
+        }
+      } catch (_) {}
+    }
+    state.screenOrientBound = false;
+    state._screenOrientHandler = null;
   }
 
   async function startOrientation() {
@@ -222,14 +340,19 @@ const SiteSurvey = (() => {
       window.addEventListener('deviceorientation', _onOrient, true);
       state.orientationBound = true;
     }
+    _bindScreenOrientation();
+    state.lastScreenAngle = screenAngle();
+    updateCompassUI();
     return true;
   }
 
   function stopOrientation() {
-    if (!state.orientationBound) return;
-    window.removeEventListener('deviceorientationabsolute', _onOrient, true);
-    window.removeEventListener('deviceorientation', _onOrient, true);
-    state.orientationBound = false;
+    if (state.orientationBound) {
+      window.removeEventListener('deviceorientationabsolute', _onOrient, true);
+      window.removeEventListener('deviceorientation', _onOrient, true);
+      state.orientationBound = false;
+    }
+    _unbindScreenOrientation();
   }
 
   async function ensureNativeCameraPermission() {
@@ -336,21 +459,25 @@ const SiteSurvey = (() => {
       }
       az = man;
     }
-    let elev;
-    if (state.lastPitch != null) {
-      // Téléphone vertical (beta≈90) → horizon ~0° ; penché vers le haut → elev+
-      elev = Math.max(0, Math.min(90, 90 - Math.abs(state.lastPitch)));
+    // Élévation = pitch live (prioritaire), sinon override, sinon champ manuel
+    let elev = null;
+    const elevOverride = document.getElementById('site-photo-elev')?.value;
+    if (elevOverride !== '' && elevOverride != null && !isNaN(parseFloat(elevOverride))) {
+      elev = parseFloat(elevOverride);
+    } else if (state.lastElev != null) {
+      elev = state.lastElev;
+    } else if (state.lastPitch != null) {
+      elev = elevationFromScreenPitch(state.lastPitch);
     } else {
       elev = parseFloat(document.getElementById('site-man-elev')?.value);
-      if (isNaN(elev)) elev = 15;
     }
-    // Permettre override manuel si champ rempli
-    const elevOverride = document.getElementById('site-photo-elev')?.value;
-    if (elevOverride !== '' && elevOverride != null && !isNaN(parseFloat(elevOverride)))
-      elev = parseFloat(elevOverride);
+    if (elev == null || isNaN(elev)) {
+      _toast('Pitch / élévation indisponible — penchez l’appareil ou saisissez l’élévation.', 'warning');
+      return;
+    }
 
     addPoint(az, elev, 'photo');
-    _toast(`Point ${state.points.length} : az ${az.toFixed(0)}° · élév ${(+elev).toFixed(0)}°`);
+    _toast(`Point ${state.points.length} : az ${(+az).toFixed(0)}° · élév ${(+elev).toFixed(0)}° (pitch)`);
   }
 
   function addPointManual() {
@@ -605,19 +732,29 @@ const SiteSurvey = (() => {
       }
       ctx.stroke();
 
-      // Points
-      state.points.forEach(p => {
+      // Points (plus gros si sélectionnés / déplaçables)
+      state.points.forEach((p, i) => {
         const r = R * (1 - p.elev / 90);
         const ang = (p.az - 90) * DEG;
-        ctx.fillStyle = p.source === 'photo' ? '#66bb6a' : '#42a5f5';
+        const x = cx + Math.cos(ang) * r;
+        const y = cy + Math.sin(ang) * r;
+        const sel = state.dragIndex === i;
+        ctx.fillStyle = sel ? '#ffee58' : (p.source === 'photo' ? '#66bb6a' : '#42a5f5');
         ctx.beginPath();
-        ctx.arc(cx + Math.cos(ang) * r, cy + Math.sin(ang) * r, 5, 0, Math.PI * 2);
+        ctx.arc(x, y, sel ? 8 : 6, 0, Math.PI * 2);
         ctx.fill();
+        if (sel) {
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
       });
     }
 
-    // Heading actuel
+    // Heading + élévation actuels (visée)
     if (state.lastHeading != null) {
+      const elevAim = state.lastElev != null ? state.lastElev : 0;
+      const rAim = R * (1 - elevAim / 90);
       const ang = (state.lastHeading - 90) * DEG;
       ctx.strokeStyle = '#ef5350';
       ctx.lineWidth = 2;
@@ -625,20 +762,164 @@ const SiteSurvey = (() => {
       ctx.moveTo(cx, cy);
       ctx.lineTo(cx + Math.cos(ang) * R, cy + Math.sin(ang) * R);
       ctx.stroke();
+      // Marqueur d’élévation (pitch)
+      ctx.fillStyle = '#ef5350';
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(ang) * rAim, cy + Math.sin(ang) * rAim, 5, 0, Math.PI * 2);
+      ctx.fill();
     }
+  }
+
+  function _canvasGeom(canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const cx = canvas.width / 2, cy = canvas.height / 2;
+    const R = Math.min(canvas.width, canvas.height) * 0.42;
+    return { rect, scaleX, scaleY, cx, cy, R };
+  }
+
+  function _clientToAzElev(canvas, clientX, clientY) {
+    const { rect, scaleX, scaleY, cx, cy, R } = _canvasGeom(canvas);
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
+    const dx = x - cx, dy = y - cy;
+    const dist = Math.hypot(dx, dy);
+    if (dist > R * 1.08 || dist < 2) return null;
+    let az = Math.atan2(dy, dx) / DEG + 90;
+    az = _normAz(az);
+    const elev = Math.max(0, Math.min(90, (1 - dist / R) * 90));
+    return { az, elev, x, y, dist, cx, cy, R };
+  }
+
+  function _hitTestPoint(canvas, clientX, clientY) {
+    const { rect, scaleX, scaleY, cx, cy, R } = _canvasGeom(canvas);
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
+    const hitR = 14 * Math.max(scaleX, scaleY);
+    let best = -1, bestD = hitR;
+    state.points.forEach((p, i) => {
+      const r = R * (1 - p.elev / 90);
+      const ang = (p.az - 90) * DEG;
+      const px = cx + Math.cos(ang) * r;
+      const py = cy + Math.sin(ang) * r;
+      const d = Math.hypot(px - x, py - y);
+      if (d < bestD) { bestD = d; best = i; }
+    });
+    return best;
+  }
+
+  function movePoint(idx, az, elev) {
+    if (idx < 0 || idx >= state.points.length) return;
+    state.points[idx].az = Math.round(_normAz(az) * 10) / 10;
+    state.points[idx].elev = Math.round(Math.max(0, Math.min(90, +elev)) * 10) / 10;
+    state.points.sort((a, b) => a.az - b.az);
+    // Ré-index après tri : retrouver le point déplacé
+    // (approximatif via valeurs)
+    persist();
+    recompute();
+  }
+
+  function onPointerDown(ev) {
+    const canvas = document.getElementById('site-solar-canvas');
+    if (!canvas) return;
+    const clientX = ev.clientX ?? ev.touches?.[0]?.clientX;
+    const clientY = ev.clientY ?? ev.touches?.[0]?.clientY;
+    if (clientX == null) return;
+    const hit = _hitTestPoint(canvas, clientX, clientY);
+    if (hit >= 0) {
+      state.dragIndex = hit;
+      state.dragMoved = false;
+      canvas.style.cursor = 'grabbing';
+      ev.preventDefault();
+      redraw();
+      return;
+    }
+    state.dragIndex = -1;
+  }
+
+  function onPointerMove(ev) {
+    const canvas = document.getElementById('site-solar-canvas');
+    if (!canvas || state.dragIndex < 0) return;
+    const clientX = ev.clientX ?? ev.touches?.[0]?.clientX;
+    const clientY = ev.clientY ?? ev.touches?.[0]?.clientY;
+    if (clientX == null) return;
+    const pos = _clientToAzElev(canvas, clientX, clientY);
+    if (!pos) return;
+    state.dragMoved = true;
+    const idx = state.dragIndex;
+    // Mettre à jour sans re-trier à chaque pixel (garde l’index)
+    state.points[idx].az = Math.round(pos.az * 10) / 10;
+    state.points[idx].elev = Math.round(pos.elev * 10) / 10;
+    redraw();
+    ev.preventDefault();
+  }
+
+  function onPointerUp(ev) {
+    const canvas = document.getElementById('site-solar-canvas');
+    if (!canvas) return;
+    canvas.style.cursor = 'crosshair';
+    if (state.dragIndex >= 0) {
+      if (state.dragMoved) {
+        state.points.sort((a, b) => a.az - b.az);
+        persist();
+        recompute();
+        _toast('Point déplacé');
+      }
+      state.dragIndex = -1;
+      state.dragMoved = false;
+      redraw();
+      return;
+    }
+    // Clic simple : ajouter un point
+    const clientX = ev.clientX ?? ev.changedTouches?.[0]?.clientX;
+    const clientY = ev.clientY ?? ev.changedTouches?.[0]?.clientY;
+    if (clientX == null) return;
+    const pos = _clientToAzElev(canvas, clientX, clientY);
+    if (!pos) return;
+    addPoint(pos.az, pos.elev, 'manual');
   }
 
   function updateCompassUI() {
     const el = document.getElementById('site-compass-readout');
     if (el) {
       const h = state.lastHeading;
-      const p = state.lastPitch;
-      el.textContent = h == null
-        ? `Boussole : — (offset ${state.compassOffset.toFixed(1)}°)`
-        : `Cap ${h.toFixed(0)}° · pitch ${p != null ? p.toFixed(0) + '°' : '—'} · offset ${state.compassOffset.toFixed(1)}°`;
+      const elev = state.lastElev;
+      const ang = state.lastScreenAngle ?? screenAngle();
+      const orient = screenAngleLabel(ang);
+      if (h == null) {
+        el.textContent = `Boussole : — · ${orient} · offset ${state.compassOffset.toFixed(1)}°`;
+      } else {
+        const elevStr = elev != null ? `${elev.toFixed(0)}°` : '—';
+        el.textContent = `Cap ${h.toFixed(0)}° · élév ${elevStr} · ${orient} (${ang}°) · offset ${state.compassOffset.toFixed(1)}°`;
+      }
     }
     const off = document.getElementById('site-compass-offset');
     if (off && document.activeElement !== off) off.value = state.compassOffset;
+
+    // HUD mode photo : cap + élévation live (pitch pris en compte)
+    const hud = document.getElementById('site-photo-hud');
+    if (hud) {
+      const h = state.lastHeading;
+      const elev = state.lastElev;
+      if (h == null && elev == null) {
+        hud.textContent = 'Cap — · Élév — (activez la boussole)';
+      } else {
+        hud.textContent = `Cap ${h != null ? h.toFixed(0) + '°' : '—'} · Élév ${elev != null ? elev.toFixed(0) + '°' : '—'} · ${screenAngleLabel(state.lastScreenAngle ?? screenAngle())}`;
+      }
+    }
+    // Préremplir les champs manuels si non focus (visée photo)
+    if (state.photoActive) {
+      const azEl = document.getElementById('site-man-az');
+      const elevEl = document.getElementById('site-man-elev');
+      if (azEl && document.activeElement !== azEl && state.lastHeading != null)
+        azEl.value = Math.round(state.lastHeading * 10) / 10;
+      if (elevEl && document.activeElement !== elevEl && state.lastElev != null)
+        elevEl.value = Math.round(state.lastElev * 10) / 10;
+      const pe = document.getElementById('site-photo-elev');
+      if (pe && document.activeElement !== pe && state.lastElev != null)
+        pe.placeholder = `auto ${state.lastElev.toFixed(0)}°`;
+    }
   }
 
   function updateResultsUI() {
@@ -730,29 +1011,24 @@ const SiteSurvey = (() => {
     updateCompassUI();
   }
 
-  function onCanvasClick(ev) {
-    const canvas = document.getElementById('site-solar-canvas');
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const x = (ev.clientX - rect.left) * scaleX;
-    const y = (ev.clientY - rect.top) * scaleY;
-    const cx = canvas.width / 2, cy = canvas.height / 2;
-    const R = Math.min(canvas.width, canvas.height) * 0.42;
-    const dx = x - cx, dy = y - cy;
-    const dist = Math.hypot(dx, dy);
-    if (dist > R * 1.05 || dist < 4) return;
-    let az = Math.atan2(dy, dx) / DEG + 90; // invert draw mapping
-    az = _normAz(az);
-    const elev = Math.max(0, Math.min(90, (1 - dist / R) * 90));
-    addPoint(az, elev, 'manual');
-  }
-
   function init() {
     loadFromAppState();
     const canvas = document.getElementById('site-solar-canvas');
-    canvas?.addEventListener('click', onCanvasClick);
+    if (canvas) {
+      canvas.style.touchAction = 'none';
+      canvas.style.cursor = 'crosshair';
+      canvas.addEventListener('pointerdown', onPointerDown);
+      canvas.addEventListener('pointermove', onPointerMove);
+      canvas.addEventListener('pointerup', onPointerUp);
+      canvas.addEventListener('pointercancel', onPointerUp);
+      // Fallback souris / tactile
+      canvas.addEventListener('mousedown', onPointerDown);
+      window.addEventListener('mousemove', onPointerMove);
+      window.addEventListener('mouseup', onPointerUp);
+      canvas.addEventListener('touchstart', onPointerDown, { passive: false });
+      canvas.addEventListener('touchmove', onPointerMove, { passive: false });
+      canvas.addEventListener('touchend', onPointerUp);
+    }
     document.getElementById('site-compass-offset')?.addEventListener('change', e => {
       setCompassOffset(parseFloat(e.target.value) || 0);
     });
@@ -764,12 +1040,15 @@ const SiteSurvey = (() => {
 
   return {
     init, redraw, recompute,
-    addPoint, addPointManual, addPointFromPhoto, removePoint, clearPoints,
-    startPhotoMode, stopPhotoMode, startOrientation,
+    addPoint, addPointManual, addPointFromPhoto, removePoint, clearPoints, movePoint,
+    startPhotoMode, stopPhotoMode, startOrientation, stopOrientation,
     setCompassOffset, calibrateCompassTo,
     importTerrainElevations, applyTerrainToInstall, applyShadingToLosses,
     loadFromAppState, persist,
     getState: () => state,
     sunPos, horizonElevAt, computeShading,
+    // helpers orientation (tests + debug)
+    screenAngle, screenAngleLabel, headingWithScreen,
+    screenPitchFromSensors, elevationFromScreenPitch,
   };
 })();

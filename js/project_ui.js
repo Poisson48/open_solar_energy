@@ -733,7 +733,7 @@ function _renderHubNews(box, current, releases, native = {}) {
       ${top.date ? `<div class="ose-hub-news-meta">Publiée le ${_escHtml(_fmtReleaseDate(top.date))}</div>` : ''}
       <div class="ose-hub-news-body" id="ose-hub-news-update-body">${_escHtml(notes)}</div>
       <div class="ose-hub-news-actions">
-        <button type="button" class="btn btn-accent btn-sm" onclick="checkForUpdates()">⬇ Mettre à jour</button>
+        <button type="button" class="btn btn-accent btn-sm" onclick="installAvailableUpdate()">⬇ Mettre à jour</button>
         <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('ose-hub-news-update-body')?.classList.toggle('expanded')">Voir plus</button>
         ${top.url ? `<a class="btn btn-outline btn-sm" href="${_escHtml(top.url)}" target="_blank" rel="noopener">Notes GitHub</a>` : ''}
       </div>
@@ -778,6 +778,43 @@ window.__oseOnUpdaterState = function __oseOnUpdaterState(state, msg) {
       refreshHubNews(false);
   } catch (_) {}
 };
+
+async function installAvailableUpdate() {
+  function waitNativeBridge(ms) {
+    return new Promise(resolve => {
+      const t0 = Date.now();
+      (function poll() {
+        const b = (typeof getNativeBridge === 'function' ? getNativeBridge() : null)
+               || window.webBridge || null;
+        if (b && (window.__oseNativeInjected || b.nativeReady || b.startUpdate || b.checkForUpdates))
+          return resolve(b);
+        if (Date.now() - t0 >= ms)
+          return resolve(b || null);
+        setTimeout(poll, 80);
+      })();
+    });
+  }
+
+  try {
+    const bridge = await waitNativeBridge(2500);
+    if (bridge?.startUpdate) {
+      bridge.startUpdate();
+      showToast('Téléchargement / installation de la mise à jour…');
+      setTimeout(() => { if (typeof refreshHubNews === 'function') refreshHubNews(true); }, 1500);
+      return;
+    }
+    // Fallback : ancienne API → au moins vérifier (bandeau Qt)
+    if (bridge?.checkForUpdates) {
+      bridge.checkForUpdates();
+      showToast('Vérification des mises à jour…');
+      return;
+    }
+    // Navigateur : ouvrir l’APK / release
+    await checkForUpdates();
+  } catch (e) {
+    showToast('Mise à jour impossible : ' + (e.message || e), 'error');
+  }
+}
 
 async function checkForUpdates() {
   const btn = document.getElementById('btn-check-updates');

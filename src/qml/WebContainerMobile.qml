@@ -13,7 +13,14 @@ Item {
         const c = String(cmd)
         if (c === "check-updates") {
             if (root.updater)
-                root.updater.check()
+                root.updater.checkFromUser()
+            else if (root.bridge)
+                root.bridge.checkForUpdates()
+            return
+        }
+        if (c === "start-update") {
+            if (root.updater)
+                root.updater.startUpdate()
             else if (root.bridge)
                 root.bridge.checkForUpdates()
             return
@@ -191,6 +198,7 @@ Item {
                 + "var prev=window.webBridge||window.nativeBridge||{};"
                 + "var api={"
                 + "checkForUpdates:function(){oseCmd('check-updates');},"
+                + "startUpdate:function(){oseCmd('start-update');},"
                 + "openExternal:function(u){oseCmd('open:'+String(u));},"
                 + "shareFile:function(name,mime,b64){"
                 + "window.__oseSharePending={name:String(name),mime:String(mime||''),b64:String(b64)};"
@@ -220,6 +228,7 @@ Item {
                 + "function oseCmd(c){window.__oseCmdQueue.push(c);try{document.title='OSE_CMD:'+c;}catch(e){}}"
                 + "var prev=window.webBridge||{};"
                 + "window.webBridge={checkForUpdates:function(){oseCmd('check-updates');},"
+                + "startUpdate:function(){oseCmd('start-update');},"
                 + "openExternal:function(u){oseCmd('open:'+String(u));},"
                 + "shareFile:function(name,mime,b64){window.__oseSharePending={name:String(name),mime:String(mime||''),b64:String(b64)};oseCmd('share-file');},"
                 + "pickImportFile:function(){oseCmd('pick-import');},"

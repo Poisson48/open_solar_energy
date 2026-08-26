@@ -18,7 +18,10 @@ const VIEWPORTS = [
   { name: 'iPhone SE', width: 375, height: 667 },
   { name: 'Pixel 7', width: 412, height: 915 },
   { name: 'Galaxy S8', width: 360, height: 740 },
-  { name: 'iPad mini', width: 768, height: 1024 },
+  { name: 'Phone landscape', width: 740, height: 360 },
+  { name: 'iPad mini portrait', width: 768, height: 1024 },
+  { name: 'iPad mini landscape', width: 1024, height: 768 },
+  { name: 'Tablet landscape', width: 1180, height: 820 },
   { name: 'Desktop', width: 1280, height: 800 },
 ];
 
@@ -147,28 +150,34 @@ for (const vp of VIEWPORTS) {
     check('onglet Site accessible', false, 'bouton introuvable');
   }
 
-  // Dimensionnement : grille graphiques en 1 col sur mobile
+  // Dimensionnement : grille graphiques selon largeur / orientation
   await page.click('.tab-btn[data-tab="sizing"]', { force: true }).catch(() => {});
   await page.waitForTimeout(200);
-  const chartCss = await page.evaluate(() => {
+  const layoutInfo = await page.evaluate(() => {
     const probe = document.createElement('div');
     probe.className = 'ose-charts-grid';
     probe.style.cssText = 'position:absolute;left:-9999px;visibility:hidden';
     document.body.appendChild(probe);
     const cols = getComputedStyle(probe).gridTemplateColumns;
     probe.remove();
-    return cols;
+    const app = document.querySelector('.app-layout');
+    const appCols = app ? getComputedStyle(app).gridTemplateColumns : '';
+    return { chartCols: cols, appCols };
   });
-  const expectOneCol = vp.width <= 900;
-  const isOneCol = !chartCss.includes(' ') || chartCss.split(' ').filter(Boolean).length === 1
-    || /^[0-9.]+px$/.test(chartCss.trim());
-  // grid-template-columns "1fr" or a single pixel track
-  const tracks = chartCss.trim().split(/\s+/).filter(t => t && t !== '/');
-  const oneCol = tracks.length <= 1;
-  if (expectOneCol) {
-    check('graphiques en 1 colonne', oneCol, chartCss);
+  const tracks = layoutInfo.chartCols.trim().split(/\s+/).filter(t => t && t !== '/');
+  const appTracks = layoutInfo.appCols.trim().split(/\s+/).filter(t => t && t !== '/' && !t.startsWith('['));
+  const isLandscape = vp.width > vp.height;
+  const expectChartOneCol = vp.width <= 900 && !(isLandscape && vp.height <= 520);
+  const expectAppTwoCol = (isLandscape && vp.height <= 520) || vp.width > 900;
+  if (expectChartOneCol) {
+    check('graphiques en 1 colonne', tracks.length <= 1, layoutInfo.chartCols);
   } else {
-    check('graphiques en 2 colonnes (desktop/tablette large)', tracks.length >= 2, chartCss);
+    check('graphiques en 2 colonnes', tracks.length >= 2, layoutInfo.chartCols);
+  }
+  if (expectAppTwoCol) {
+    check('app-layout 2 colonnes (sidebar|contenu)', appTracks.length >= 2, layoutInfo.appCols);
+  } else {
+    check('app-layout 1 colonne (empilé)', appTracks.length <= 1, layoutInfo.appCols);
   }
 
   check('aucune pageerror', pageErrors.length === 0, pageErrors.slice(0, 2).join(' | '));

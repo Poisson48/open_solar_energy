@@ -3,8 +3,12 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.30';
+const APP_VERSION = '2.0.32';
 // Historique :
+//   2.0.32 - Hub « Mettre à jour » lance téléchargement/install ; photo : pitch→élév ;
+//            points du diagramme déplaçables (glisser)
+//   2.0.31 - Tablette portrait/paysage : layout adapté ; boussole cap/pitch/offset
+//            compensés selon l’angle d’écran (DeviceOrientation + screen.orientation)
 //   2.0.30 - Mobile : caméra ombrage (CAMERA + WebView getUserMedia), safe-area,
 //            barre projet / onglets / graphiques responsive (Pixel & co)
 //   2.0.29 - Git complet téléphone + PC (isomorphic-git / IndexedDB) :

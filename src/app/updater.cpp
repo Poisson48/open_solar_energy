@@ -180,6 +180,7 @@ void Updater::check()
 {
     if (m_state == Checking || m_state == Downloading)
         return;
+    // check() seul (bouton « Vérifier ») : ne pas auto-télécharger sauf si startUpdate l’a demandé
     setState(Checking);
 
     QNetworkRequest req{ QUrl(QString::fromLatin1(kReleasesApi)) };
@@ -195,6 +196,7 @@ void Updater::check()
             qWarning() << "[Updater] check failed:" << reply->errorString();
             const QString err = QStringLiteral("Impossible de contacter GitHub : %1")
                                     .arg(reply->errorString());
+            m_autoStartAfterCheck = false;
             // Pas de maj en cours → toast, pas de bandeau rouge trompeur
             if (m_apkUrl.isEmpty() && m_latestVersion.isEmpty()) {
                 if (m_state != Idle) {
@@ -256,6 +258,7 @@ void Updater::check()
 
         if (bestNewer.isEmpty()) {
             m_latestVersion.clear();
+            m_autoStartAfterCheck = false;
             setState(Idle);
             return;
         }
@@ -265,13 +268,45 @@ void Updater::check()
             m_statusMessage = QStringLiteral("Version %1 trouvée mais APK introuvable sur GitHub")
                                   .arg(bestNewer);
             m_latestVersion = bestNewer;
+            m_autoStartAfterCheck = false;
             setState(Failed);
             return;
         }
 
         m_latestVersion = bestNewer;
         setState(Available);
+        if (m_autoStartAfterCheck) {
+            m_autoStartAfterCheck = false;
+            download();
+        }
     });
+}
+
+void Updater::startUpdate()
+{
+    if (m_state == Checking || m_state == Downloading)
+        return;
+    if (m_state == Ready) {
+        install();
+        return;
+    }
+    if (m_state == Available) {
+        download();
+        return;
+    }
+    if (m_state == Failed) {
+        if (canInstall() && !m_apkPath.isEmpty() && QFile::exists(m_apkPath)) {
+            install();
+            return;
+        }
+        if (canInstall() && (!m_apkUrl.isEmpty() || !m_apkApiUrl.isEmpty())) {
+            download();
+            return;
+        }
+    }
+    // Idle ou Failed sans APK : vérifier puis télécharger automatiquement
+    m_autoStartAfterCheck = true;
+    check();
 }
 
 void Updater::startApkDownload(const QUrl& url, bool apiAsset)

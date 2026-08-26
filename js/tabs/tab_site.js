@@ -27,7 +27,8 @@ function initTabSite() {
         <div class="card" style="margin-top:12px">
           <div class="card-title">Boussole</div>
           <p style="font-size:12px;color:var(--color-text-muted);line-height:1.45;margin:0 0 8px">
-            Si la boussole du téléphone dévie, calibrez-la (visée connue) ou réglez l’offset.
+            Si la boussole dévie, calibrez-la (visée connue) ou réglez l’offset.
+            Cap et élévation suivent l’orientation de l’écran (portrait / paysage tablette).
           </p>
           <p id="site-compass-readout" style="font-size:12px;font-weight:600;margin:0 0 8px">Boussole : —</p>
           <div class="form-row" style="gap:8px;margin-bottom:8px">
@@ -60,7 +61,8 @@ function initTabSite() {
           <div class="card-title">Diagramme solaire</div>
           <p style="font-size:12px;color:var(--color-text-muted);line-height:1.45;margin:0 0 10px">
             Cliquez dans le cercle pour placer un obstacle (manuel PC / téléphone),
-            ou utilisez le mode photo + boussole. Trajectoires : été / équinoxe / hiver.
+            ou utilisez le mode photo + boussole (cap + pitch). Glissez un point sur le diagramme pour le déplacer.
+            Trajectoires : été / équinoxe / hiver.
           </p>
           <canvas id="site-solar-canvas" width="520" height="520"
             style="width:100%;max-width:520px;height:auto;display:block;margin:0 auto;border-radius:8px;cursor:crosshair;background:#0b1a2a"></canvas>
@@ -90,12 +92,15 @@ function initTabSite() {
             <div style="position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center">
               <div style="width:36px;height:36px;border:2px solid #f5a623;border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,0.4)"></div>
             </div>
+            <div id="site-photo-hud" style="position:absolute;top:8px;left:8px;right:8px;pointer-events:none;background:rgba(0,0,0,0.65);color:#fff;font-size:12px;font-weight:600;padding:6px 10px;border-radius:6px;text-align:center">
+              Cap — · Élév —
+            </div>
             <div class="ose-photo-controls" style="padding:10px;background:rgba(0,0,0,0.75);display:flex;gap:8px;flex-wrap:wrap;align-items:center">
               <div class="form-group" style="margin:0;flex:1 1 120px;min-width:0">
-                <label for="site-photo-elev" style="color:#ddd;font-size:11px">Élév. override</label>
+                <label for="site-photo-elev" style="color:#ddd;font-size:11px">Élév. override (sinon = pitch live)</label>
                 <input type="number" id="site-photo-elev" min="0" max="90" step="0.5" placeholder="auto" style="width:100%">
               </div>
-              <button type="button" class="btn btn-accent" style="flex:1 1 auto" onclick="SiteSurvey.addPointFromPhoto()">➕ Placer le point</button>
+              <button type="button" class="btn btn-accent" style="flex:1 1 auto" onclick="SiteSurvey.addPointFromPhoto()">➕ Placer le point (cap+pitch)</button>
             </div>
           </div>
         </div>

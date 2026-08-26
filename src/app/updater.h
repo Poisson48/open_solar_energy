@@ -49,16 +49,17 @@ public:
     static bool isNewer(const QString& candidate, const QString& current);
     static QString notesFromBody(const QString& body);
 
-public slots:
-    void check();
-    /** Alias explicite pour le bouton hub web (même comportement que check). */
-    void checkFromUser() { check(); }
-    void download();
-    void install();
-    void dismiss();
-    void acknowledgeNotes();
+    Q_INVOKABLE void check();
+    /** Alias explicite pour le bouton hub web (vérifier sans auto-install). */
+    Q_INVOKABLE void checkFromUser() { m_autoStartAfterCheck = false; check(); }
+    /** Hub « Mettre à jour » : install / download, ou check puis download auto. */
+    Q_INVOKABLE void startUpdate();
+    Q_INVOKABLE void download();
+    Q_INVOKABLE void install();
+    Q_INVOKABLE void dismiss();
+    Q_INVOKABLE void acknowledgeNotes();
     /** À appeler périodiquement (Timer QML) pour remonter le statut PackageInstaller. */
-    void pollNativeInstallStatus();
+    Q_INVOKABLE void pollNativeInstallStatus();
 
 signals:
     void stateChanged();
@@ -87,6 +88,7 @@ private:
     QString m_statusMessage;
     qreal m_progress = 0.0;
     bool m_triedApiDownload = false;
+    bool m_autoStartAfterCheck = false;
 };
 
 } // namespace app
