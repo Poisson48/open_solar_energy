@@ -150,6 +150,16 @@ bool platformInstallApk(const QString& apkPath)
         ctx.object(), jPath.object<jstring>());
 }
 
+bool platformEnsureInstallPermission()
+{
+    const QJniObject ctx = androidContext();
+    if (!ctx.isValid())
+        return false;
+    return QJniObject::callStaticMethod<jboolean>(
+        kPlatformClass, "ensureInstallPermission",
+        "(Landroid/content/Context;)Z", ctx.object());
+}
+
 QString platformPollInstallStatus()
 {
     const QJniObject r = QJniObject::callStaticObjectMethod(
@@ -261,6 +271,7 @@ bool platformOpenPdfFromUrl(const QString& url)
 bool platformPickImportFile() { return false; }
 QString platformPollImportResult() { return {}; }
 bool platformInstallApk(const QString&) { return false; }
+bool platformEnsureInstallPermission() { return true; }
 QString platformPollInstallStatus() { return {}; }
 void platformVibrate(int) {}
 void platformKeepScreenOn(bool) {}

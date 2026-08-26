@@ -284,6 +284,11 @@ void Updater::check()
 
 void Updater::startUpdate()
 {
+#ifdef Q_OS_ANDROID
+    // Demander l’autorisation d’install tôt (pendant le téléchargement),
+    // pour qu’elle soit déjà accordée quand l’APK est prêt.
+    platformEnsureInstallPermission();
+#endif
     // Si une vérif est déjà en cours (check au démarrage), ne pas abandonner :
     // enchaîner le téléchargement dès que Available.
     if (m_state == Checking) {

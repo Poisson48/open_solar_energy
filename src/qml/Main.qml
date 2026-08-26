@@ -193,7 +193,10 @@ ApplicationWindow {
             onLoaded: {
                 item.webUrl = AppController.webUrl
                 item.bridge = AppController.bridge
-                if (item.updater !== undefined)
+                // `property var updater` vaut undefined par défaut : le test
+                // `!== undefined` ne marchait JAMAIS → startUpdate jamais appelé,
+                // barre hub figée, faux message « apps inconnues ».
+                if ("updater" in item)
                     item.updater = Updater
             }
         }

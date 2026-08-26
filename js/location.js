@@ -375,6 +375,10 @@ async function geocodeAddress() {
       AppState.map.setView([flatLat, flatLon], 10);
       AppState.location.name = geocodedName;
       updateLocationUI();
+      // Préremplir l'adresse chantier (devis) avec le lieu géocodé si elle est
+      // encore vide — ne jamais écraser une adresse chantier déjà saisie.
+      const siteEl = document.getElementById('dv-site-address');
+      if (siteEl && !siteEl.value.trim()) siteEl.value = geocodedName;
     } else {
       if (typeof showToast === 'function') showToast(`Lieu introuvable : "${address}"`, 'warning');
     }

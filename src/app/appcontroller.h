@@ -40,6 +40,8 @@ public:
     /** Poll statut caméra : pending/granted/denied/unavailable/vide. */
     Q_INVOKABLE QString pollCameraPermission();
     Q_INVOKABLE bool hasCameraPermission();
+    /** Android : ouvre « Installer des apps inconnues » si pas encore autorisé. */
+    Q_INVOKABLE bool ensureInstallPermission();
 
 signals:
     void webUrlChanged();

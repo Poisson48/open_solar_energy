@@ -122,6 +122,8 @@ function resetForNewProject() {
   AppState.lastSizingInput         = null;
   AppState.lastOffgridResult       = null;
   AppState.lastOffgridSizingResult = null;
+  AppState.lastOffgridSizingRecommended = null;
+  AppState.lastOffgridSizingEconomic    = null;
   AppState.hourlyEnedisData        = null;
   AppState.monthlyKwhHp            = null;
   AppState.enedisYear              = null;
@@ -161,9 +163,47 @@ function prefillClientInQuote() {
   setVal('dv-cli-address', c.adresse);
   setVal('dv-cli-phone',   c.tel);
   setVal('dv-cli-email',   c.email);
-  // Adresse chantier = adresse client si renseignée (pas le libellé lieu démo)
-  setVal('dv-site-address', c.adresse || AppState.location?.name || '');
+  // Adresse chantier : ne préremplir que si le champ est encore vide, pour ne
+  // jamais écraser une adresse chantier différente déjà saisie/restaurée
+  // (ex. rechargement d'un projet où chantier ≠ adresse client).
+  // Pour resynchroniser après une modification de l'adresse client existante,
+  // voir syncSiteAddressWithClient().
+  const siteEl = document.getElementById('dv-site-address');
+  if (siteEl && !siteEl.value.trim()) {
+    siteEl.value = c.adresse || AppState.location?.name || '';
+  }
 }
+
+/**
+ * Aligne dv-site-address sur la nouvelle adresse client quand l'adresse chantier
+ * n'a pas été personnalisée : elle est vide, ou identique à l'ancienne adresse
+ * client (donc probablement encore un simple reflet de celle-ci). Si l'utilisateur
+ * a saisi une adresse chantier différente, on ne la touche pas.
+ * @param {string} oldAddress adresse client avant modification
+ * @param {string} newAddress nouvelle adresse client (après modification)
+ */
+function syncSiteAddressWithClient(oldAddress, newAddress) {
+  const siteEl = document.getElementById('dv-site-address');
+  if (!siteEl) return;
+  const cur  = (siteEl.value || '').trim();
+  const prev = (oldAddress || '').trim();
+  if (!cur || cur === prev) {
+    siteEl.value = newAddress || AppState.location?.name || '';
+  }
+}
+
+// Édition directe de l'adresse client dans l'onglet Devis (dv-cli-address) :
+// répercuter sur AppState.currentClient et appliquer la même règle de
+// synchronisation pour l'adresse chantier (minimal, pas de nouveau bouton).
+document.addEventListener('change', (e) => {
+  if (!e.target || e.target.id !== 'dv-cli-address') return;
+  const oldAddress = AppState.currentClient?.adresse || '';
+  const newAddress = e.target.value;
+  if (newAddress === oldAddress) return;
+  if (!AppState.currentClient) AppState.currentClient = { nom: '', adresse: '', tel: '', email: '' };
+  AppState.currentClient.adresse = newAddress;
+  syncSiteAddressWithClient(oldAddress, newAddress);
+});
 
 /**
  * Aligne le libellé lieu (carte / loc-name) sur l’adresse chantier client.

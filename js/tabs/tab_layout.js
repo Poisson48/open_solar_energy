@@ -99,11 +99,14 @@ function initTabLayout() {
       <!-- Rendu + légende -->
       <div>
         <div class="card" style="padding:10px">
+          <div class="alert alert-warning" style="font-size:12px;font-weight:600;margin-bottom:8px">
+            ⚠️ Vue 2.5D schématique — pas un modèle 3D contractuel. Elle sert à visualiser l'agencement des panneaux, pas à produire un plan d'exécution.
+          </div>
           <div id="layout-canvas-wrap" style="position:relative;width:100%;height:420px;border-radius:10px;overflow:hidden;border:1px solid var(--color-border)">
             <canvas id="layout-canvas" style="display:block;width:100%;height:100%"></canvas>
           </div>
           <p style="margin-top:8px;font-size:11px;color:var(--color-text-muted)">
-            Vue 2.5D schématique (non contractuelle) — la flèche orange indique l'orientation des panneaux.
+            La flèche orange indique l'orientation des panneaux.
           </p>
         </div>
 
@@ -125,6 +128,10 @@ function initTabLayout() {
             <div class="kpi-card">
               <div class="kpi-value" id="lay-kpi-coverage">-</div>
               <div class="kpi-label">Taux de couverture<br><span class="kpi-unit">de la toiture</span></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-value" id="lay-kpi-azimuth">-</div>
+              <div class="kpi-label">Orientation<br><span class="kpi-unit" id="lay-kpi-azimuth-deg">-</span></div>
             </div>
           </div>
           <div id="lay-warning" class="alert alert-warning" style="display:none;margin-top:10px">
@@ -160,6 +167,14 @@ function readPanelLayoutConfig() {
   };
 }
 
+/** Libellé compas (8 directions) pour un azimut donné (0°=Sud, -90°=Est, +90°=Ouest, ±180°=Nord). */
+function azimuthCompassLabel(az) {
+  const dirs = ['Sud', 'Sud-Ouest', 'Ouest', 'Nord-Ouest', 'Nord', 'Nord-Est', 'Est', 'Sud-Est'];
+  const normalized = ((Number(az) % 360) + 360) % 360;
+  const idx = Math.round(normalized / 45) % 8;
+  return dirs[idx];
+}
+
 /** Redessine le canvas isométrique et met à jour la légende. Appelée à chaque saisie et à l'activation de l'onglet. */
 function renderPanelLayoutTab() {
   const canvas = document.getElementById('layout-canvas');
@@ -182,6 +197,10 @@ function renderPanelLayoutTab() {
   if (roofEl) roofEl.textContent = nf(layout.surfaceRoof);
   const covEl = document.getElementById('lay-kpi-coverage');
   if (covEl) covEl.textContent = `${nf(layout.coveragePct)}%`;
+  const azEl = document.getElementById('lay-kpi-azimuth');
+  if (azEl) azEl.textContent = azimuthCompassLabel(layout.azimuth);
+  const azDegEl = document.getElementById('lay-kpi-azimuth-deg');
+  if (azDegEl) azDegEl.textContent = `${layout.azimuth > 0 ? '+' : ''}${nf(layout.azimuth)}° (0°=Sud)`;
   const warnEl = document.getElementById('lay-warning');
   if (warnEl) warnEl.style.display = (layout.nPanels > 0 && !layout.fits) ? '' : 'none';
 

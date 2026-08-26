@@ -5,24 +5,35 @@ Item {
     id: root
     property url webUrl
     property var bridge
-    property var updater
+    // Contexte global Updater (même si Main.qml oublie l’assignation).
+    property var updater: Updater
+
+    function updaterObj() {
+        return root.updater || Updater
+    }
 
     function handleNativeCmd(cmd) {
         if (!cmd)
             return
         const c = String(cmd)
         if (c === "check-updates") {
-            if (root.updater)
-                root.updater.checkFromUser()
+            const u = updaterObj()
+            if (u)
+                u.checkFromUser()
             else if (root.bridge)
                 root.bridge.checkForUpdates()
             return
         }
         if (c === "start-update") {
-            if (root.updater)
-                root.updater.startUpdate()
+            const u = updaterObj()
+            if (u)
+                u.startUpdate()
             else if (root.bridge)
                 root.bridge.checkForUpdates()
+            return
+        }
+        if (c === "ensure-install-perm") {
+            AppController.ensureInstallPermission()
             return
         }
         if (c.indexOf("open:") === 0 && root.bridge)
@@ -162,16 +173,17 @@ Item {
     }
 
     function notifyWebUpdaterState() {
-        if (!webView || !root.updater)
+        const u = updaterObj()
+        if (!webView || !u)
             return
-        const st = root.updater.state
-        const msg = JSON.stringify(String(root.updater.statusMessage || ""))
-        const ver = JSON.stringify(String(root.updater.currentVersion || ""))
-        const latest = JSON.stringify(String(root.updater.latestVersion || ""))
-        const notes = JSON.stringify(String(root.updater.releaseNotes || "").slice(0, 4000))
-        const avail = root.updater.updateAvailable ? "true" : "false"
-        const prog = Number(root.updater.progress || 0)
-        const bytes = Number(root.updater.bytesReceived || 0)
+        const st = u.state
+        const msg = JSON.stringify(String(u.statusMessage || ""))
+        const ver = JSON.stringify(String(u.currentVersion || ""))
+        const latest = JSON.stringify(String(u.latestVersion || ""))
+        const notes = JSON.stringify(String(u.releaseNotes || "").slice(0, 4000))
+        const avail = u.updateAvailable ? "true" : "false"
+        const prog = Number(u.progress || 0)
+        const bytes = Number(u.bytesReceived || 0)
         webView.runJavaScript(
             "(function(){"
             + "window.__oseNativeVersion=" + ver + ";"
@@ -188,20 +200,21 @@ Item {
     }
 
     Connections {
-        target: root.updater
+        target: Updater
         function onStateChanged() {
-            if (!root.updater)
+            const u = Updater
+            if (!u)
                 return
-            const msg = root.updater.statusMessage
+            const msg = u.statusMessage
             // Toast seulement hors téléchargement (sinon spam % / Mo)
-            if (msg.length > 0 && root.updater.state !== 3) {
-                const kind = root.updater.state === 5 ? "error"
-                           : (root.updater.state === 2 ? "warning" : "")
+            if (msg.length > 0 && u.state !== 3) {
+                const kind = u.state === 5 ? "error"
+                           : (u.state === 2 ? "warning" : "")
                 notifyWebToast(msg, kind)
             }
             notifyWebUpdaterState()
             // Ne pas recharger le hub pendant check / download / install
-            const st = root.updater.state
+            const st = u.state
             if (st !== 1 && st !== 3 && st !== 4) {
                 webView.runJavaScript(
                     "if(typeof refreshHubNews==='function')try{refreshHubNews(false);}catch(e){}"
@@ -263,6 +276,7 @@ Item {
                 + "requestCameraPermission:function(){oseCmd('request-camera');},"
                 + "pollCameraPermission:function(){return window.__oseCamPoll?window.__oseCamPoll():null;},"
                 + "hasCameraPermission:function(){return !!window.__oseCamHas;},"
+                + "ensureInstallPermission:function(){oseCmd('ensure-install-perm');},"
                 + "nativeReady:true"
                 + "};"
                 + "['gitSave','gitLog','gitRead','gitCheckout','gitBranches','gitCreateBranch','gitSwitchBranch'].forEach(function(k){"
@@ -292,7 +306,8 @@ Item {
                 + "pickImportFile:function(){oseCmd('pick-import');},"
                 + "requestCameraPermission:function(){oseCmd('request-camera');},"
                 + "pollCameraPermission:function(){return window.__oseCamPoll?window.__oseCamPoll():null;},"
-                + "hasCameraPermission:function(){return !!window.__oseCamHas;},nativeReady:true};"
+                + "hasCameraPermission:function(){return !!window.__oseCamHas;},"
+                + "ensureInstallPermission:function(){oseCmd('ensure-install-perm');},nativeReady:true};"
                 + "['gitSave','gitLog','gitRead','gitCheckout','gitBranches','gitCreateBranch','gitSwitchBranch'].forEach(function(k){"
                 + "if(typeof prev[k]==='function')window.webBridge[k]=prev[k];"
                 + "});"

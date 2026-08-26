@@ -3,9 +3,11 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.41';
+const APP_VERSION = '2.0.43';
 // Historique :
-//   2.0.41 - Sync live inclinaison/azimut/surface/panneau entre onglets + devis ;
+//   2.0.43 - Fix MAJ Android : Updater bien branché au WebView, permission d’install anticipée,
+//            barre de progression animée, messages d’erreur plus justes
+//   2.0.42 - Sync live inclinaison/azimut/surface/panneau entre onglets + devis ;
 //            devis : lignes libres, import sans écraser l’adresse, onduleur réel ;
 //            terrain → rafraîchit implantation ; câbles selon type d’install ;
 //            implantation « Depuis Autonome » + dims PanelDB ; clarté pente/suiveur ;
@@ -113,6 +115,11 @@ const AppState = {
   lastSizingResult:       null,
   lastSizingInput:        null,
   lastOffgridSizingResult: null,
+  // Recommandations d'origine (calculées une fois par OffgridSizing.run, non écrasées par
+  // la sélection d'une case de la heatmap) — servent à garder "recommandé" et "sélectionné"
+  // visibles séparément, et à afficher la config "Économique" à côté de "Autonome".
+  lastOffgridSizingRecommended: null,
+  lastOffgridSizingEconomic:    null,
 
   // Gestion de projets
   currentProjectId: null,   // null = projet non sauvegardé
@@ -151,6 +158,7 @@ const AppState = {
     losses:     14,
     tech:       'crystSi',
     panelModel: '',
+    inverterModel: '', // dernière valeur d'onduleur (inp-inverter-model) répercutée sur dv-sys-inverter
   },
 
   // Profil d'horizon / ombrage / terrain (onglet Site)

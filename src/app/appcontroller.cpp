@@ -61,6 +61,11 @@ bool AppController::hasCameraPermission()
     return platformHasCameraPermission();
 }
 
+bool AppController::ensureInstallPermission()
+{
+    return platformEnsureInstallPermission();
+}
+
 QString AppController::resolveWebRoot() const
 {
     const QByteArray env = qgetenv("OSE_WEB_ROOT");

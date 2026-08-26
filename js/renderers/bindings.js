@@ -232,6 +232,38 @@ function bindSharedParamSync() {
     });
   });
 
+  // Onduleur : Système PV réseau (inp-inverter-model) → Devis (dv-sys-inverter),
+  // seulement si le champ devis est vide ou égal à la dernière valeur synchronisée
+  // (on respecte une saisie/effacement manuel côté devis, cf. syncQuoteSiteFields).
+  const invModelEl = document.getElementById('inp-inverter-model');
+  invModelEl?.addEventListener('input', () => {
+    const value = invModelEl.value;
+    const dvInv = document.getElementById('dv-sys-inverter');
+    if (dvInv) {
+      const lastSynced = AppState.install.inverterModel;
+      if (dvInv.value === '' || dvInv.value === lastSynced) {
+        dvInv.value = value;
+        if (typeof QuoteLines !== 'undefined' && typeof QuoteLines.setLine === 'function' && value) {
+          QuoteLines.setLine('inverter', { label: value });
+        }
+      }
+    }
+    AppState.install.inverterModel = value;
+  });
+
+  // Tarif rachat/revente surplus : sz-feedin (Dimensionnement) et inp-kwh-price
+  // (Système PV réseau) désignent le même prix de revente — sync live bidirectionnelle.
+  const feedinEl   = document.getElementById('sz-feedin');
+  const kwhPriceEl = document.getElementById('inp-kwh-price');
+  if (feedinEl && kwhPriceEl) {
+    feedinEl.addEventListener('input', () => {
+      if (feedinEl.value !== '' && kwhPriceEl.value !== feedinEl.value) kwhPriceEl.value = feedinEl.value;
+    });
+    kwhPriceEl.addEventListener('input', () => {
+      if (kwhPriceEl.value !== '' && feedinEl.value !== kwhPriceEl.value) feedinEl.value = kwhPriceEl.value;
+    });
+  }
+
   // Sizing tab : changement de tarif → affichage/masquage des prix HP/HC
   const tariffSel = document.getElementById('sz-tariff');
   if (tariffSel) {

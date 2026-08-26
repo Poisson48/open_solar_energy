@@ -203,6 +203,51 @@ function propagateInstallField(key, sourceTab) {
   }
 }
 
+// ── Sync des caractéristiques électriques STC (Voc/Isc/Vmp/Imp/bifacial) ──
+// Même principe que panelModel dans INSTALL_FIELDS (sync live entre onglets),
+// mais table à part car `bifacial` est une case à cocher (checked, événement
+// 'change') alors que les autres champs sont des nombres (value, 'input').
+const ELECTRICAL_FIELDS = {
+  sizing:  { voc:'sz-panel-voc',  isc:'sz-panel-isc',  vmp:'sz-panel-vmp',  imp:'sz-panel-imp',  bifacial:'sz-panel-bifacial'  },
+  grid:    { voc:'inp-panel-voc', isc:'inp-panel-isc', vmp:'inp-panel-vmp', imp:'inp-panel-imp', bifacial:'inp-panel-bifacial' },
+  offgrid: { voc:'og2-panel-voc', isc:'og2-panel-isc', vmp:'og2-panel-vmp', imp:'og2-panel-imp', bifacial:'og2-panel-bifacial' },
+};
+
+const ELECTRICAL_CHECKBOX_FIELDS = new Set(['bifacial']);
+
+// Répercute la valeur d'un champ électrique sur les AUTRES onglets en direct.
+function propagateElectricalField(key, sourceTab) {
+  const srcMap = ELECTRICAL_FIELDS[sourceTab];
+  if (!srcMap) return;
+  const srcEl = document.getElementById(srcMap[key]);
+  if (!srcEl) return;
+  const isChk = ELECTRICAL_CHECKBOX_FIELDS.has(key);
+  const value = isChk ? srcEl.checked : srcEl.value;
+  for (const [tab, map] of Object.entries(ELECTRICAL_FIELDS)) {
+    if (tab === sourceTab) continue;
+    const id = map[key];
+    if (!id) continue;
+    const el = document.getElementById(id);
+    if (!el) continue;
+    if (isChk) {
+      if (el.checked !== value) el.checked = value;
+    } else if (el.value !== value) {
+      el.value = value;
+    }
+  }
+}
+
+function bindElectricalSync(tab) {
+  const map = ELECTRICAL_FIELDS[tab];
+  if (!map) return;
+  for (const [key, id] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    const evtName = ELECTRICAL_CHECKBOX_FIELDS.has(key) ? 'change' : 'input';
+    el.addEventListener(evtName, () => propagateElectricalField(key, tab));
+  }
+}
+
 // Mémorise la dernière valeur synchronisée par champ devis/site pour ne pas
 // écraser une saisie/effacement volontaire de l'utilisateur (cf. point 4).
 const _quoteSiteSyncMemo = {};
@@ -333,6 +378,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   initMap();
   initTabs();
   Object.keys(INSTALL_FIELDS).forEach(bindInstallSync);
+  Object.keys(ELECTRICAL_FIELDS).forEach(bindElectricalSync);
   writeInstallToTab('sizing');
   applyInstallationType(AppState.installationType);
   initLocationInputs();

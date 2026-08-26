@@ -369,7 +369,11 @@ const OffgridSizing = (() => {
     });
 
     // Sélection
-    let recommended;
+    // "economic" : coût minimal parmi les configs qui atteignent la cible de couverture,
+    // SANS la contrainte de confort sur les jours de déficit consécutifs (contrairement à
+    // "recommended" = "Autonome" ci-dessous). N'a de sens que si au moins une config
+    // atteint la cible en mode standard — reste null pour l'autonomie 100% ou le fallback.
+    let recommended, economic = null;
     if (fullAutonomy) {
       // Autonomie 100 % : exiger déficit nul (< 1 Wh sur l'année) puis min coût
       const zero = allCandidates.filter(c => c.total_deficit_raw < 0.001);
@@ -387,6 +391,7 @@ const OffgridSizing = (() => {
       const candidates_comfort = candidates_ok.filter(c => c.deficit_days <= maxDeficitDays);
       const pool = candidates_comfort.length > 0 ? candidates_comfort : candidates_ok;
       recommended = pool.sort((a, b) => a.systemCost - b.systemCost)[0];
+      economic = candidates_ok.slice().sort((a, b) => a.systemCost - b.systemCost)[0];
     } else {
       // Fallback : max couverture, puis min coût
       const maxCov = Math.max(...allCandidates.map(c => c.coverageRate));
@@ -397,7 +402,7 @@ const OffgridSizing = (() => {
     const useHourly = !!(AppState.hourlyEnedisData);
     // Préférer la conso réelle Enedis (slot-par-slot) à la conso formulaire
     const real_annual_conso = recommended?.total_conso ?? Math.round(annual_conso);
-    return { recommended, allCandidates, monthlyHtilt, tech, annual_conso: real_annual_conso, useHourly };
+    return { recommended, economic, allCandidates, monthlyHtilt, tech, annual_conso: real_annual_conso, useHourly };
   }
 
   // ── Lecture du formulaire ─────────────────────────────────────

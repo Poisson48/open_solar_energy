@@ -316,6 +316,30 @@ public class Platform {
         }
     }
 
+    /**
+     * Ouvre l’écran « Installer des apps inconnues » si besoin.
+     * @return true si déjà autorisé (ou API &lt; O), false si l’écran réglages a été ouvert.
+     */
+    public static boolean ensureInstallPermission(Context ctx) {
+        if (ctx == null)
+            return false;
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O)
+            return true;
+        PackageManager pm = ctx.getPackageManager();
+        if (pm != null && pm.canRequestPackageInstalls())
+            return true;
+        try {
+            Intent settings = new Intent(
+                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:" + ctx.getPackageName()));
+            settings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(settings);
+        } catch (Exception e) {
+            Log.e(TAG, "open unknown-sources settings", e);
+        }
+        return false;
+    }
+
     public static boolean installApk(Context ctx, String apkPath) {
         if (ctx == null || apkPath == null)
             return false;
@@ -329,17 +353,8 @@ public class Platform {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             PackageManager pm = ctx.getPackageManager();
             if (pm != null && !pm.canRequestPackageInstalls()) {
-                try {
-                    Intent settings = new Intent(
-                            Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                            Uri.parse("package:" + ctx.getPackageName()));
-                    settings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    ctx.startActivity(settings);
-                    setInstallStatus("need_perm\tAutorisez « Installer des apps inconnues » pour Open Solar, puis retapez Installer");
-                } catch (Exception e) {
-                    Log.e(TAG, "open unknown-sources settings", e);
-                    setInstallStatus("err\tOuvrez Paramètres → Apps spéciales → Installer des apps inconnues");
-                }
+                ensureInstallPermission(ctx);
+                setInstallStatus("need_perm\tAutorisez « Installer des apps inconnues » pour Open Solar, puis retapez Installer");
                 return false;
             }
         }

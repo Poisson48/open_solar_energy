@@ -224,6 +224,7 @@ function saveEditProject(event) {
   const nameEl  = document.getElementById('project-name-input');
   if (nameEl) nameEl.value = newName;
 
+  const oldAddress = AppState.currentClient?.adresse || '';
   AppState.currentClient = {
     nom:     document.getElementById('edit-client-nom').value.trim(),
     adresse: document.getElementById('edit-client-adresse').value.trim(),
@@ -233,6 +234,10 @@ function saveEditProject(event) {
   updateProjectBar();
   if (typeof syncLocationLabelFromClient === 'function')
     syncLocationLabelFromClient({ force: true });
+  // Adresse chantier : suivre la nouvelle adresse client seulement si elle était
+  // vide ou identique à l'ancienne (sinon l'utilisateur l'a personnalisée).
+  if (typeof syncSiteAddressWithClient === 'function')
+    syncSiteAddressWithClient(oldAddress, AppState.currentClient.adresse);
   prefillClientInQuote();
   closeEditProjectModal();
   showToast('✓ Informations du projet mises à jour');
@@ -864,15 +869,17 @@ function _renderHubUpdateProgress(state, msg) {
     : downloading ? (msg || 'Téléchargement…')
     : ready ? (msg || 'Installation Android…')
     : (msg || 'Échec de la mise à jour');
+  const indeterminate = checking || available || (downloading && pct < 2);
+  const widthPct = indeterminate ? 32 : Math.max(pct, ready ? 100 : 4);
   bar.innerHTML = `
     <div class="ose-hub-news-kicker">${failed ? 'Erreur MAJ' : 'Mise à jour en cours'}</div>
     <h4 style="margin:4px 0 8px;font-size:14px">${_escHtml(title)}</h4>
     ${!failed ? `
-      <div style="height:10px;background:var(--color-border);border-radius:5px;overflow:hidden">
-        <div style="height:100%;width:${checking || available ? 28 : Math.max(pct, ready ? 100 : 4)}%;background:var(--color-accent);transition:width .2s"></div>
+      <div class="ose-hub-update-track">
+        <div class="ose-hub-update-fill${indeterminate ? ' indeterminate' : ''}" style="width:${widthPct}%"></div>
       </div>
       <div class="ose-hub-news-meta" style="margin-top:6px">
-        ${downloading && pct > 0 ? pct + ' %' : ''}${mo ? (pct > 0 ? ' · ' : '') + mo : ''}
+        ${downloading && pct > 0 ? pct + ' %' : (indeterminate ? 'En cours…' : '')}${mo ? (pct > 0 ? ' · ' : '') + mo : ''}
         ${ready ? 'Confirmez l’installation sur l’écran Android si demandé.' : ''}
       </div>
     ` : `
@@ -937,7 +944,7 @@ async function installAvailableUpdate() {
     const bridge = await waitNativeBridge(2500);
     if (bridge?.startUpdate) {
       bridge.startUpdate();
-      // Watchdog : si rien n’avance, proposer / ouvrir l’APK
+      // Watchdog : si le natif ne passe pas en téléchargement, fallback APK
       clearTimeout(window.__oseUpdateWatchdog);
       window.__oseUpdateWatchdog = setTimeout(() => {
         const st = Number(window.__oseUpdaterState || 0);
@@ -946,9 +953,12 @@ async function installAvailableUpdate() {
         if (st === 3 && prog > 0.02) return; // téléchargement OK
         if (st === 4) return;
         if (st === 5) return;
-        _renderHubUpdateProgress(5,
-          'Le téléchargement natif ne démarre pas. Autorisez « Installer des apps inconnues », ou ouvrez l’APK ci-dessous.');
-      }, 12000);
+        // st 0/1/2 après 18s = téléchargement jamais démarré (pont ou check bloqué)
+        const hint = st === 1
+          ? 'Vérification trop longue. Réessayez ou ouvrez l’APK ci-dessous.'
+          : 'Le téléchargement ne démarre pas. Réessayez, ou ouvrez l’APK ci-dessous.';
+        _renderHubUpdateProgress(5, hint);
+      }, 18000);
       return;
     }
     if (bridge?.checkForUpdates) {

@@ -80,12 +80,25 @@ const PanelLayout3D = (() => {
 
   function lerpPt(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; }
 
-  function drawPanel(ctx, project, x, y, w, d, riseZ, overflow) {
+  /** Rotation 2D d'un point (x,y) autour de (cx,cy) — utilisée pour l'azimut du tableau. */
+  function rotateAround(x, y, cx, cy, cosA, sinA) {
+    const dx = x - cx, dy = y - cy;
+    return [cx + dx * cosA - dy * sinA, cy + dx * sinA + dy * cosA];
+  }
+
+  function drawPanel(ctx, project, x, y, w, d, riseZ, overflow, rotate) {
+    const rot = rotate || ((px, py) => [px, py]);
     // Bord avant-bas (z=0) → bord arrière-haut (z=riseZ) : donne l'effet "quad relevé".
-    const pFL = project(x, y + d, 0);
-    const pFR = project(x + w, y + d, 0);
-    const pBR = project(x + w, y, riseZ);
-    const pBL = project(x, y, riseZ);
+    // rot() tourne l'empreinte au sol (x,y) selon l'azimut avant projection — voir
+    // commentaire dans render() pour la justification de cette rotation simplifiée.
+    const [flx, fly] = rot(x, y + d);
+    const [frx, fry] = rot(x + w, y + d);
+    const [brx, bry] = rot(x + w, y);
+    const [blx, bly] = rot(x, y);
+    const pFL = project(flx, fly, 0);
+    const pFR = project(frx, fry, 0);
+    const pBR = project(brx, bry, riseZ);
+    const pBL = project(blx, bly, riseZ);
 
     const topA = overflow ? '#e0704a' : '#2f6fb3';
     const topB = overflow ? '#c1502c' : '#123a63';
@@ -221,6 +234,20 @@ const PanelLayout3D = (() => {
     }
 
     // ── Panneaux (ordre arrière→avant pour un chevauchement correct) ──
+    // Azimut : on tourne l'empreinte du tableau de panneaux (au sol) autour de son
+    // propre centre, dans le plan de la toiture, avant projection isométrique.
+    // Ce n'est pas une vraie reprojection 3D de l'inclinaison selon l'azimut (qui
+    // demanderait de faire pivoter tout le repère caméra) — c'est une approximation
+    // schématique volontairement simple qui suffit à rendre visuellement différentes
+    // une pose Sud (0°), Est (-90°) ou Ouest (+90°), tout en gardant le calcul de
+    // computeLayout() (surface, ajustement toiture) inchangé.
+    const azimuthRad = (layout.azimuth * Math.PI) / 180;
+    let rotate = null;
+    if (nPanels > 0 && Math.abs(layout.azimuth) > 1e-6) {
+      const cosA = Math.cos(azimuthRad), sinA = Math.sin(azimuthRad);
+      const rcx = offX + arrayW / 2, rcy = offY + arrayD / 2;
+      rotate = (px, py) => rotateAround(px, py, rcx, rcy, cosA, sinA);
+    }
     if (nPanels > 0 && rows > 0 && cols > 0) {
       let placed = 0;
       const cells = [];
@@ -233,7 +260,7 @@ const PanelLayout3D = (() => {
         }
       }
       cells.sort((a, b) => a.r - b.r);
-      cells.forEach(cell => drawPanel(ctx, project, cell.x0, cell.y0, panelW, footprintH, riseZ, cell.overflow));
+      cells.forEach(cell => drawPanel(ctx, project, cell.x0, cell.y0, panelW, footprintH, riseZ, cell.overflow, rotate));
     }
 
     // ── Boussole azimut ──

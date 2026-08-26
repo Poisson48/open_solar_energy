@@ -12,9 +12,13 @@ function calcOffgridSizing() {
     showToast('Renseignez la consommation journalière (Wh/j) ou importez un fichier Enedis.', 'error');
     return;
   }
-  const { recommended: rec, allCandidates, tech, annual_conso, useHourly } =
+  const { recommended: rec, economic, allCandidates, tech, annual_conso, useHourly } =
     OffgridSizing.run(input, AppState.weatherData, AppState.location.lat);
   AppState.lastOffgridSizingResult    = rec;
+  // Recommandations d'origine, figées pour cette exécution — la sélection d'une
+  // case de la heatmap ne les écrase pas (cf. selectOffgridCandidate).
+  AppState.lastOffgridSizingRecommended = rec;
+  AppState.lastOffgridSizingEconomic    = economic;
   AppState.lastOffgridSizingCandidates = allCandidates;
   AppState.lastOffgridSizingAnnual    = annual_conso;
   AppState.lastOffgridSizingTech      = tech;
@@ -81,6 +85,52 @@ function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, hour
     ? `Meilleure config sous contraintes — ${tech.label}`
     : `Système autonome recommandé — ${tech.label}`;
 
+  // Config "Économique" : coût minimal atteignant la cible de couverture, sans la
+  // contrainte de confort sur les jours de déficit consécutifs qu'impose "Autonome".
+  // Comparée à la recommandation "Autonome" d'origine (figée), pas à la config
+  // actuellement affichée (qui peut être une autre case choisie dans la heatmap).
+  const recommendedRef = AppState.lastOffgridSizingRecommended || rec;
+  const eco = AppState.lastOffgridSizingEconomic;
+  const showEco = eco && (eco.Ppeak !== recommendedRef.Ppeak || eco.C_batt_gross !== recommendedRef.C_batt_gross);
+  const ecoDeltaCost = showEco ? eco.systemCost - recommendedRef.systemCost : 0;
+  const ecoHTML = showEco ? `
+    <div class="card" style="border-left:4px solid var(--color-info);margin-bottom:16px">
+      <div class="section-header ose-offgrid-rec-head">
+        <div class="card-title">💶 Config économique — coût min. pour ${targetPct}&nbsp;% de couverture</div>
+        <button class="btn btn-outline btn-sm"
+          onclick="selectOffgridCandidate(${eco.Ppeak}, ${eco.C_batt_gross})"
+          title="Afficher cette config en détail (graphiques + tableau mensuel)">
+          👁 Voir cette config
+        </button>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card" style="border-left:3px solid var(--color-info)">
+          <div class="kpi-value info">${eco.Ppeak}</div>
+          <div class="kpi-label">Puissance PV<br><span class="kpi-unit">kWc</span></div>
+        </div>
+        <div class="kpi-card" style="border-left:3px solid var(--color-info)">
+          <div class="kpi-value info">${eco.C_batt_gross}</div>
+          <div class="kpi-label">Capacité batterie<br><span class="kpi-unit">kWh brut</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value" style="color:${eco.coverageRate >= targetPct ? 'var(--color-success)' : 'var(--color-accent-dark)'}">${eco.coverageRate} %</div>
+          <div class="kpi-label">Taux de couverture<br><span class="kpi-unit">cible ${targetPct}%</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value ${eco.deficit_days > 10 ? 'accent' : ''}">${eco.deficit_days}</div>
+          <div class="kpi-label">Jours déficit/an<br><span class="kpi-unit">vs ${recommendedRef.deficit_days} j (Autonome)</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value accent">${eco.systemCost.toLocaleString('fr')}</div>
+          <div class="kpi-label">Coût total<br><span class="kpi-unit">€ HT (${ecoDeltaCost <= 0 ? '' : '+'}${ecoDeltaCost.toLocaleString('fr')} vs Autonome)</span></div>
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--color-text-muted);margin-top:8px">
+        Même surface/cible de couverture que "Autonome", mais sans limiter les jours de déficit consécutifs
+        (peut donc subir des coupures groupées, ex. en hiver) — à réserver aux usages tolérants aux coupures.
+      </p>
+    </div>` : '';
+
   el.innerHTML = `
     ${warnHTML}
     <div class="card" style="border-left:4px solid ${undersized ? 'var(--color-accent)' : 'var(--color-accent)'};margin-bottom:16px">
@@ -133,6 +183,8 @@ function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, hour
       </button>
     </div>
 
+    ${ecoHTML}
+
     <div class="ose-offgrid-charts">
       <div class="card">
         <div class="section-header">
@@ -168,7 +220,9 @@ function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, hour
   setTimeout(() => {
     Charts.renderOffgridBalance(c1, rec);
     Charts.renderOffgridDeficitDays(c2, rec);
-    Charts.renderOffgridHeatmap(hmId, allCandidates, rec.Ppeak, rec.C_batt_gross);
+    // recommendedRef = recommandation "Autonome" d'origine (★) ; rec = config actuellement
+    // affichée/sélectionnée (✓) — peuvent différer si l'utilisateur a cliqué une autre case.
+    Charts.renderOffgridHeatmap(hmId, allCandidates, recommendedRef.Ppeak, recommendedRef.C_batt_gross, rec.Ppeak, rec.C_batt_gross);
   }, 50);
 }
 
