@@ -264,6 +264,7 @@ const SiteSurvey = (() => {
       state.lastElev = elevationFromScreenPitch(pitch);
     }
     updateCompassUI();
+    if (state.orientationBound || state.photoActive) redraw();
   }
 
   function _onOrient(e) {

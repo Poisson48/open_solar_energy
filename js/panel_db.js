@@ -124,7 +124,7 @@ const PanelDB = (() => {
     if (document.getElementById('panel-db-modal')) return;
     const m = document.createElement('div');
     m.id = 'panel-db-modal';
-    m.style.cssText = 'display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,0.72);align-items:center;justify-content:center';
+    m.style.cssText = 'display:none;position:fixed;inset:0;z-index:11050;background:rgba(0,0,0,0.72);align-items:center;justify-content:center';
     m.onclick = e => { if (e.target === m) closeManagerModal(); };
     document.body.appendChild(m);
   }

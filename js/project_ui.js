@@ -248,9 +248,22 @@ function closeProjectsModal() {
 // ══════════════════════════════════════════════════════════════
 /** Ouvre la bibliothèque matériel en mode gestionnaire (pas de sélecteur de champ cible). */
 function openMaterielModal() {
-  if (typeof PanelDB !== 'undefined' && PanelDB.openManagerModal) {
-    PanelDB.openManagerModal(null, { hub: true });
+  try {
+    if (typeof PanelDB !== 'undefined' && typeof PanelDB.openManagerModal === 'function') {
+      PanelDB.openManagerModal(null, { hub: true });
+      // S’assurer que le modal est au-dessus du hub (z-index)
+      const m = document.getElementById('panel-db-modal');
+      if (m) {
+        m.style.zIndex = '11050';
+        m.style.display = 'flex';
+      }
+      return;
+    }
+  } catch (e) {
+    console.error('[materiel]', e);
   }
+  if (typeof showToast === 'function')
+    showToast('Bibliothèque matériel indisponible', 'error');
 }
 window.openMaterielModal = openMaterielModal;
 
@@ -722,6 +735,7 @@ function _renderHubNews(box, current, releases, native = {}) {
   }
 
   const parts = [];
+  const cur = String(current).replace(/^[vV]/, '');
 
   if (newer.length) {
     const top = newer[0];
@@ -729,7 +743,7 @@ function _renderHubNews(box, current, releases, native = {}) {
       || 'Correctifs et améliorations — touchez Mettre à jour pour installer.';
     parts.push(`<div class="ose-hub-news-card update">
       <div class="ose-hub-news-kicker">Nouvelle version disponible</div>
-      <h4>v${_escHtml(top.ver)} — vous avez v${_escHtml(current)}</h4>
+      <h4>v${_escHtml(top.ver)} — vous avez v${_escHtml(cur)}</h4>
       ${top.date ? `<div class="ose-hub-news-meta">Publiée le ${_escHtml(_fmtReleaseDate(top.date))}</div>` : ''}
       <div class="ose-hub-news-body" id="ose-hub-news-update-body">${_escHtml(notes)}</div>
       <div class="ose-hub-news-actions">
@@ -741,26 +755,33 @@ function _renderHubNews(box, current, releases, native = {}) {
   } else {
     parts.push(`<div class="ose-hub-news-card">
       <div class="ose-hub-news-kicker">À jour</div>
-      <div class="ose-hub-news-ok">✓ Vous avez la dernière version (v${_escHtml(current)})</div>
+      <div class="ose-hub-news-ok">✓ Vous avez la dernière version (v${_escHtml(cur)})</div>
     </div>`);
   }
 
-  // News : 3 dernières versions (y compris courante / antérieures)
+  // Toujours les 3 dernières versions publiées (ordre GitHub = plus récente d’abord)
   const news = list.slice(0, 3);
   if (news.length) {
-    const items = news.map(r => {
-      const isNew = _isNewerVersion(r.ver, current);
-      const isCur = r.ver === String(current).replace(/^[vV]/, '');
-      const badge = isNew ? ' · à installer' : (isCur ? ' · installée' : '');
-      const preview = (r.notes || 'Voir les notes de version.').split('\n').filter(Boolean).slice(0, 4).join('\n');
-      return `<div class="ose-hub-news-card">
-        <div class="ose-hub-news-kicker">Nouveautés</div>
-        <h4>v${_escHtml(r.ver)}${_escHtml(badge)}</h4>
+    parts.push(`<div class="ose-hub-news-section-title">3 dernières versions</div>`);
+    news.forEach((r, i) => {
+      const isNew = _isNewerVersion(r.ver, cur);
+      const isCur = r.ver === cur;
+      const badge = isNew ? 'à installer' : (isCur ? 'installée' : 'précédente');
+      const preview = (r.notes || 'Voir les notes de version sur GitHub.')
+        .split('\n').filter(Boolean).slice(0, 6).join('\n');
+      const bodyId = `ose-hub-news-body-${i}`;
+      parts.push(`<div class="ose-hub-news-card${isNew ? ' update' : ''}">
+        <div class="ose-hub-news-kicker">v${_escHtml(r.ver)} · ${_escHtml(badge)}</div>
+        <h4>${_escHtml(r.name || ('Open Solar Energy v' + r.ver))}</h4>
         ${r.date ? `<div class="ose-hub-news-meta">${_escHtml(_fmtReleaseDate(r.date))}</div>` : ''}
-        <div class="ose-hub-news-body">${_escHtml(preview)}</div>
-      </div>`;
-    }).join('');
-    parts.push(items);
+        <div class="ose-hub-news-body" id="${bodyId}">${_escHtml(preview)}</div>
+        <div class="ose-hub-news-actions">
+          <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('${bodyId}')?.classList.toggle('expanded')">Voir plus</button>
+          ${r.url ? `<a class="btn btn-outline btn-sm" href="${_escHtml(r.url)}" target="_blank" rel="noopener">GitHub</a>` : ''}
+          ${isNew ? `<button type="button" class="btn btn-accent btn-sm" onclick="installAvailableUpdate()">⬇ Mettre à jour</button>` : ''}
+        </div>
+      </div>`);
+    });
   }
 
   box.innerHTML = parts.join('') || '<div class="ose-hub-news-loading">Pas de news pour le moment.</div>';
