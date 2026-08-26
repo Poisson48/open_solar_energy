@@ -3,8 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.38';
+const APP_VERSION = '2.0.39';
 // Historique :
+//   2.0.39 - Carte : tuiles OSM + plein écran ; adresse chantier préremplie ;
+//            import terrain dans la sidebar (comme la météo)
 //   2.0.38 - Boussole mode photo : cap caméra correct téléphone debout (portrait/paysage)
 //   2.0.37 - MAJ Android : bandeau + barre de progression fiable (plus de toast sans suite)
 //   2.0.36 - Boussole : plus d’oscillation 90°↔300° (absolute vs relatif)

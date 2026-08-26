@@ -106,6 +106,9 @@ function loadProject(id) {
   updateProjectBar();
 
   updateLocationUI();
+  // Si le lieu affiche encore un libellé démo, le remplacer par l’adresse chantier
+  if (typeof syncLocationLabelFromClient === 'function')
+    syncLocationLabelFromClient();
   updateMapMarker();
   if (typeof setMapEditEnabled === 'function') setMapEditEnabled(false);
 
@@ -228,6 +231,8 @@ function saveEditProject(event) {
     email:   document.getElementById('edit-client-email').value.trim(),
   };
   updateProjectBar();
+  if (typeof syncLocationLabelFromClient === 'function')
+    syncLocationLabelFromClient({ force: true });
   prefillClientInQuote();
   closeEditProjectModal();
   showToast('✓ Informations du projet mises à jour');
@@ -279,6 +284,8 @@ function _modalVisible(id, displayValues) {
 }
 
 function handleAndroidBack() {
+  if (typeof exitMapFullscreenIfNeeded === 'function' && exitMapFullscreenIfNeeded())
+    return true;
   const shareModal = document.getElementById('ose-share-modal');
   if (shareModal?.classList.contains('open')) {
     ProjectShare.closeShareModal();

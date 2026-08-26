@@ -10,8 +10,8 @@ function initTabSite() {
         <div class="card">
           <div class="card-title">Terrain &amp; orientation</div>
           <p style="font-size:12px;color:var(--color-text-muted);line-height:1.5;margin:0 0 10px">
-            Importe une grille d’altitudes autour du lieu (Open-Meteo) pour estimer
-            l’inclinaison du terrain et le sens de la pente (azimut 0° = Sud).
+            Même import que dans <strong>Localisation</strong> (sidebar) : grille d’altitudes Open-Meteo
+            pour estimer l’inclinaison et l’orientation (0° = Sud).
           </p>
           <div style="display:flex;flex-direction:column;gap:6px">
             <button type="button" class="btn btn-primary" style="width:100%" onclick="SiteSurvey.importTerrainElevations()">

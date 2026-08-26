@@ -638,13 +638,26 @@ const SiteSurvey = (() => {
   }
 
   // ── Terrain 3D (grille d’altitudes Open-Meteo) ─────────────
+  function _setTerrainStatus(msg, type) {
+    const el = document.getElementById('terrain-import-status');
+    if (!el) return;
+    const colors = { info: '#1565c0', success: '#2e7d32', error: '#c62828', loading: '#888' };
+    el.style.color = colors[type] || '#666';
+    el.textContent = msg || '';
+    el.style.display = msg ? 'block' : 'none';
+  }
+
   async function importTerrainElevations() {
     const lat = AppState.location?.lat;
     const lon = AppState.location?.lon;
     if (lat == null || lon == null) {
       _toast('Fixez d’abord le lieu (Localisation).', 'warning');
+      _setTerrainStatus('✗ Fixez d’abord le lieu sur la carte', 'error');
       return;
     }
+    const btn = document.getElementById('btn-import-terrain');
+    if (btn) { btn.disabled = true; btn.classList.add('btn-loading'); }
+    _setTerrainStatus('⏳ Import terrain (altitudes)…', 'loading');
     _toast('Import terrain (altitudes)…');
     const stepM = 40;
     const n = 5; // 5×5
@@ -718,10 +731,15 @@ const SiteSurvey = (() => {
       }
       persist();
       updateTerrainUI();
+      const msg = `✓ Terrain : ${state.terrain.tilt}° · az ${state.terrain.azimuth > 0 ? '+' : ''}${state.terrain.azimuth}° · ${Math.round(state.terrain.alt)} m`;
+      _setTerrainStatus(msg, 'success');
       _toast(`Terrain : inclinaison ~${state.terrain.tilt}° · azimut ${state.terrain.azimuth}° (0=Sud)`);
     } catch (err) {
       console.error(err);
+      _setTerrainStatus('✗ Import terrain échoué : ' + (err.message || err), 'error');
       _toast('Import terrain échoué : ' + (err.message || err), 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.classList.remove('btn-loading'); }
     }
   }
 
@@ -1118,19 +1136,28 @@ const SiteSurvey = (() => {
 
   function updateTerrainUI() {
     const el = document.getElementById('site-terrain-result');
-    if (!el) return;
-    if (!state.terrain) {
-      el.innerHTML = '<span style="color:var(--color-text-muted);font-size:12px">Pas encore de terrain importé.</span>';
-      return;
+    if (el) {
+      if (!state.terrain) {
+        el.innerHTML = '<span style="color:var(--color-text-muted);font-size:12px">Pas encore de terrain importé.</span>';
+      } else {
+        const t = state.terrain;
+        el.innerHTML = `
+          <div style="font-size:13px;line-height:1.55">
+            Inclinaison estimée : <strong>${t.tilt}°</strong>
+            (${t.slopePct} %)<br>
+            Orientation (0°=Sud) : <strong>${t.azimuth > 0 ? '+' : ''}${t.azimuth}°</strong><br>
+            Altitude centre : ${t.alt} m
+          </div>`;
+      }
     }
-    const t = state.terrain;
-    el.innerHTML = `
-      <div style="font-size:13px;line-height:1.55">
-        Inclinaison estimée : <strong>${t.tilt}°</strong>
-        (${t.slopePct} %)<br>
-        Orientation (0°=Sud) : <strong>${t.azimuth > 0 ? '+' : ''}${t.azimuth}°</strong><br>
-        Altitude centre : ${t.alt} m
-      </div>`;
+    // Statut sidebar (même zone que météo)
+    if (state.terrain) {
+      const t = state.terrain;
+      _setTerrainStatus(
+        `✓ Terrain : ${t.tilt}° · az ${t.azimuth > 0 ? '+' : ''}${t.azimuth}° · ${Math.round(t.alt)} m`,
+        'success'
+      );
+    }
   }
 
   function persist() {
@@ -1178,6 +1205,13 @@ const SiteSurvey = (() => {
     }
     document.getElementById('site-compass-offset')?.addEventListener('change', e => {
       setCompassOffset(parseFloat(e.target.value) || 0);
+    });
+    // Sidebar Localisation : mêmes actions que l’onglet Site
+    document.getElementById('btn-import-terrain')?.addEventListener('click', () => {
+      importTerrainElevations();
+    });
+    document.getElementById('btn-apply-terrain')?.addEventListener('click', () => {
+      applyTerrainToInstall();
     });
     redraw();
     updateResultsUI();

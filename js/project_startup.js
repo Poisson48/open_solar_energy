@@ -102,6 +102,10 @@ function createNewProject(event) {
 
   updateProjectBar();
   resetForNewProject();
+  // Remplace le libellé lieu résiduel (ex. « Nice, France (démo hybride) »)
+  // et préremplit l’adresse carte / chantier.
+  if (typeof syncLocationLabelFromClient === 'function')
+    syncLocationLabelFromClient({ force: true });
   closeStartupModal();
   prefillClientInQuote();
   if (typeof saveCurrentProject === 'function') saveCurrentProject();

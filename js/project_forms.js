@@ -154,11 +154,34 @@ function resetForNewProject() {
 //  PRÉ-REMPLISSAGE DEVIS CLIENT
 // ══════════════════════════════════════════════════════════════
 function prefillClientInQuote() {
-  const c = AppState.currentClient;
+  const c = AppState.currentClient || {};
   const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
   setVal('dv-cli-name',    c.nom);
   setVal('dv-cli-address', c.adresse);
   setVal('dv-cli-phone',   c.tel);
   setVal('dv-cli-email',   c.email);
-  setVal('dv-site-address', AppState.location?.name || '');
+  // Adresse chantier = adresse client si renseignée (pas le libellé lieu démo)
+  setVal('dv-site-address', c.adresse || AppState.location?.name || '');
+}
+
+/**
+ * Aligne le libellé lieu (carte / loc-name) sur l’adresse chantier client.
+ * @param {{ force?: boolean }} [opts] force=true remplace même un nom déjà défini
+ *        (ex. résidu « Nice, France (démo hybride) » à la création d’un projet).
+ */
+function syncLocationLabelFromClient(opts) {
+  const addr = (AppState.currentClient?.adresse || '').trim();
+  if (!addr) return;
+  const force = !!(opts && opts.force);
+  const cur = (AppState.location?.name || '').trim();
+  const isDemoLabel = /\(démo\b|\(demo\b/i.test(cur)
+    || /approx\.\)\s*$/i.test(cur)
+    || !cur;
+  if (!force && !isDemoLabel && cur && cur !== addr) return;
+  if (!AppState.location) AppState.location = { lat: 46.6, lon: 2.4, alt: 0, name: '' };
+  AppState.location.name = addr;
+  if (typeof updateLocationUI === 'function') updateLocationUI();
+  // Champ adresse carte : afficher l’adresse chantier (pas seulement le cleanName géocodé)
+  const inp = document.getElementById('inp-address');
+  if (inp) inp.value = addr;
 }

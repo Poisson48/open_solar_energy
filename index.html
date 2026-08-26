@@ -316,11 +316,11 @@
       <p id="loc-name" style="font-size:11px;color:var(--color-text-muted);margin-top:8px;font-style:italic">Paris, France</p>
     </div>
 
-    <!-- Import PVGIS -->
+    <!-- Import site (météo + terrain) -->
     <div class="sidebar-section" id="pvgis-import-section">
-      <h3>Import PVGIS</h3>
+      <h3>Données du site</h3>
       <p style="font-size:11px;color:var(--color-text-muted);margin-bottom:10px;line-height:1.5">
-        Données réelles depuis l'API JRC (Commission Européenne) pour le site sélectionné.
+        Après avoir placé le lieu : importez la météo (PVGIS / Open-Meteo) et le terrain (altitudes → inclinaison / orientation).
       </p>
       <div class="btn-group" style="flex-direction:column;gap:6px">
         <button class="btn btn-primary" id="btn-pvgis-weather" style="width:100%;justify-content:flex-start;gap:8px">
@@ -331,13 +331,21 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4 8h-2v2h-2v-2H9v-2h2V7h2v2h2v2z"/></svg>
           Comparer avec PVcalc PVGIS
         </button>
+        <button class="btn btn-outline" id="btn-hourly-weather" style="width:100%;justify-content:flex-start;gap:8px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm4.24 16L12 15.45 7.77 18l1.12-4.81-3.73-3.23 4.92-.42L12 5l1.92 4.53 4.92.42-3.73 3.23L16.23 18z"/></svg>
+          Météo horaire jour/jour
+        </button>
+        <button class="btn btn-primary" id="btn-import-terrain" style="width:100%;justify-content:flex-start;gap:8px">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M14 6l-3.75 5 2.85 3.8-1.6 1.2C9.81 13.75 7 10 7 10l-6 8h22L14 6z"/></svg>
+          Importer le terrain 3D
+        </button>
+        <button class="btn btn-outline" id="btn-apply-terrain" style="width:100%;justify-content:flex-start;gap:8px">
+          Appliquer inclinaison / orientation
+        </button>
       </div>
-      <button class="btn btn-outline" id="btn-hourly-weather" style="width:100%;justify-content:flex-start;gap:8px;margin-top:4px">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm4.24 16L12 15.45 7.77 18l1.12-4.81-3.73-3.23 4.92-.42L12 5l1.92 4.53 4.92.42-3.73 3.23L16.23 18z"/></svg>
-        Météo horaire jour/jour
-      </button>
       <p id="pvgis-import-status" style="display:none;font-size:11px;margin-top:8px;font-weight:600;line-height:1.5"></p>
       <p id="hourly-weather-status" style="display:none;font-size:11px;margin-top:4px;font-weight:600;color:var(--color-success);line-height:1.5"></p>
+      <p id="terrain-import-status" style="display:none;font-size:11px;margin-top:4px;font-weight:600;line-height:1.5"></p>
       <div id="pvgis-import-preview" style="display:none"></div>
       <hr style="margin:10px 0">
       <div style="font-size:11px;color:var(--color-text-muted)">
@@ -353,7 +361,27 @@
     </div>
 
     <!-- Carte -->
-    <div id="map"></div>
+    <div class="map-panel" id="map-panel">
+      <div class="map-toolbar" id="map-toolbar">
+        <label class="map-tiles-label" for="map-tiles-select">Fond</label>
+        <select id="map-tiles-select" class="map-tiles-select" title="Tuiles OpenStreetMap / fond de carte">
+          <option value="osm">OSM Standard</option>
+          <option value="osmfr">OSM France</option>
+          <option value="hot">OSM Humanitaire</option>
+          <option value="topo">OpenTopoMap</option>
+          <option value="cyclosm">CyclOSM</option>
+          <option value="sat">Satellite (Esri)</option>
+        </select>
+        <button type="button" class="btn btn-outline btn-sm" id="btn-map-fullscreen" title="Carte en plein écran">⛶ Plein écran</button>
+      </div>
+      <div id="map"></div>
+      <div class="map-fs-bar" id="map-fs-bar" hidden>
+        <button type="button" class="btn btn-outline btn-sm" id="btn-map-fs-exit">✕ Quitter</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-map-fs-edit">✏️ Modifier le lieu</button>
+        <button type="button" class="btn btn-accent btn-sm" id="btn-map-fs-lock" style="display:none">✓ Valider</button>
+        <span class="map-fs-hint" id="map-fs-hint">Plein écran</span>
+      </div>
+    </div>
 
   </aside>
 

@@ -124,7 +124,8 @@ function importSizingToQuote() {
     else if (modelInp) panelModelEl.value = modelInp;
   }
 
-  setVal('dv-site-address', AppState.location.name || '');
+  setVal('dv-site-address',
+    (AppState.currentClient?.adresse || '').trim() || AppState.location.name || '');
   if (isOffgrid) {
     const tilt = document.getElementById('og2-tilt')?.value;
     const az   = document.getElementById('og2-azimuth')?.value;
