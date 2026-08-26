@@ -219,6 +219,13 @@ header .logo .logo-img {
   border-color: var(--color-accent);
   background: linear-gradient(135deg, rgba(245,166,35,0.12), rgba(21,101,192,0.06));
 }
+.ose-hub-update-progress {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+}
 .ose-hub-news-card .ose-hub-news-kicker {
   font-size: 11px;
   font-weight: 700;
@@ -1718,7 +1725,20 @@ details.card > summary:focus-visible {
     gap: 8px;
   }
   .kpi-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .kpi-card { min-width: 0; padding: 10px 8px; }
   .kpi-value { font-size: 18px; }
+  .ose-offgrid-charts {
+    grid-template-columns: 1fr !important;
+  }
+  .ose-offgrid-rec-head {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .ose-offgrid-rec-head .card-title {
+    flex: 1 1 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
   .unit-tag { font-size: 10px; padding: 6px 5px; }
   label { overflow-wrap: break-word; }
   .data-table { font-size: 11px; }
@@ -1960,4 +1980,309 @@ details.card > summary:focus-visible {
 .ose-field-required-flash {
   outline: 2px solid var(--color-accent) !important;
   box-shadow: 0 0 0 4px rgba(245,166,35,0.35);
+}
+
+/* Résultats hors-réseau */
+.ose-offgrid-apply-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.ose-offgrid-apply-actions .btn {
+  width: 100%;
+}
+.ose-btn-wrap {
+  white-space: normal !important;
+  height: auto !important;
+  min-height: 40px;
+  line-height: 1.35;
+  text-align: center;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.ose-offgrid-charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.ose-offgrid-charts .card {
+  min-width: 0;
+  overflow: hidden;
+}
+.ose-offgrid-warn {
+  overflow-wrap: anywhere;
+}
+
+.ose-loc-hint-mobile { display: none; }
+@media (max-width: 900px) {
+  .ose-loc-hint-desktop { display: none; }
+  .ose-loc-hint-mobile { display: inline; }
+}
+
+/* ── Bibliothèque panneaux / onduleurs (modale responsive) ── */
+#panel-db-modal,
+#inverter-db-modal {
+  padding: max(8px, env(safe-area-inset-top, 0px)) max(8px, env(safe-area-inset-right, 0px))
+           max(8px, env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
+  box-sizing: border-box;
+}
+.ose-lib-shell {
+  background: var(--color-surface);
+  border-radius: 14px;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.4);
+  width: min(940px, 100%);
+  max-height: min(92dvh, 920px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+.ose-lib-head {
+  background: var(--color-primary);
+  padding: 14px 16px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  gap: 10px;
+  min-width: 0;
+}
+.ose-lib-head > span,
+.ose-lib-head > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ose-lib-close {
+  background: rgba(255,255,255,0.15);
+  border: none;
+  color: #fff;
+  font-size: 18px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.ose-lib-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.ose-lib-list-pane {
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.ose-lib-list-toolbar {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ose-lib-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.ose-lib-search {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+.ose-lib-search input {
+  width: 100%;
+  font-size: 12px;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  box-sizing: border-box;
+}
+.ose-lib-list {
+  overflow-y: auto;
+  flex: 1;
+  -webkit-overflow-scrolling: touch;
+}
+.ose-lib-form-pane {
+  overflow-y: auto;
+  padding: 16px;
+  min-width: 0;
+  -webkit-overflow-scrolling: touch;
+}
+.ose-lib-form-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+  margin-bottom: 12px;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .ose-lib-shell {
+    width: 100%;
+    max-height: 100dvh;
+    height: 100%;
+    border-radius: 0;
+  }
+  .ose-lib-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(38%, 42vh) 1fr;
+  }
+  .ose-lib-list-pane {
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+  }
+  #panel-db-modal,
+  #inverter-db-modal {
+    padding: 0;
+    align-items: stretch !important;
+  }
+  .ose-lib-form-pane [style*="grid-template-columns:1fr 1fr"],
+  .ose-lib-form-pane [style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Solidité multi-écrans (filet de sécurité) ── */
+.section-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.section-header .card-title,
+.card-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 700px) {
+  .card:has(> .data-table),
+  .card:has(> div > .data-table) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .data-table {
+    min-width: 520px;
+  }
+}
+/* KPI / params : auto-fit sur grand écran ; mobile géré dans les @media plus bas */
+@supports (width: min(140px, 100%)) {
+  @media (min-width: 641px) {
+    .kpi-grid {
+      grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
+    }
+    .params-grid {
+      grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+    }
+  }
+}
+
+/* Hub : boutons qui wrapent proprement */
+@media (max-width: 520px) {
+  .ose-hub-actions {
+    width: 100%;
+  }
+  .ose-hub-actions .btn {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 0;
+    justify-content: center;
+    white-space: normal;
+    height: auto;
+    min-height: 36px;
+    line-height: 1.25;
+    text-align: center;
+  }
+  .ose-hub-title { font-size: 16px; }
+  .ose-hub-body {
+    padding: 12px 12px calc(20px + var(--safe-bottom));
+  }
+  .ose-hub-news-actions {
+    flex-wrap: wrap;
+  }
+  .ose-hub-news-actions .btn {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: normal;
+    height: auto;
+  }
+}
+
+/* Tablette / téléphone : toutes les grilles 2 cols inline → 1 col */
+@media (max-width: 700px) {
+  .tab-pane [style*="grid-template-columns:1fr 1fr"],
+  .tab-pane [style*="grid-template-columns: 1fr 1fr"],
+  .card [style*="grid-template-columns:1fr 1fr"],
+  .card [style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+  .ose-offgrid-charts {
+    grid-template-columns: 1fr !important;
+  }
+  .coord-display {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+/* Écrans très larges : hub un peu plus large, contenu centré */
+@media (min-width: 1100px) {
+  .ose-hub-panel {
+    max-width: 780px;
+  }
+}
+
+/* Paysage téléphone : éviter sidebar trop haute + KPI écrasés */
+@media (orientation: landscape) and (max-height: 480px) {
+  .kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .kpi-value { font-size: 16px; }
+  .kpi-label { font-size: 10px; }
+  .chart-container { height: 160px; }
+  .ose-lib-body {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: none;
+  }
+  .ose-lib-shell {
+    max-height: 96dvh;
+    border-radius: 10px;
+  }
+  #panel-db-modal,
+  #inverter-db-modal {
+    padding: 4px;
+  }
+}
+
+/* Empêche tout débordement horizontal global */
+.tab-pane,
+.card,
+.form-group,
+.input-unit {
+  max-width: 100%;
+  min-width: 0;
+}
+img, canvas, svg, video, iframe {
+  max-width: 100%;
+}
+.input-unit input,
+.form-group input,
+.form-group select,
+.form-group textarea {
+  max-width: 100%;
+  box-sizing: border-box;
 }

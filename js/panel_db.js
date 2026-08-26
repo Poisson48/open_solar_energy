@@ -30,15 +30,38 @@ const PanelDB = (() => {
 
   // ── CRUD ──────────────────────────────────────────────────────
 
-  function list() {
+  /** Entrées utilisateur uniquement (localStorage). */
+  function listUser() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw).sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt)) : [];
+      const list = raw ? JSON.parse(raw) : [];
+      // Ne plus stocker de copies Rexel (catalogue en mémoire)
+      return list.filter(p => !(p.id || '').startsWith('rexel_panel_') && p.source !== 'rexel');
     } catch { return []; }
   }
 
+  /** Catalogue Rexel (mémoire) + panneaux personnalisés. */
+  function list() {
+    const catalog = (typeof RexelCatalog !== 'undefined' && RexelCatalog.getPanels)
+      ? RexelCatalog.getPanels() : [];
+    const user = listUser();
+    return catalog.concat(user).sort((a, b) => {
+      // Personnalisés d’abord, puis par Wc décroissant, puis nom
+      const au = (a.id || '').startsWith('rexel_') ? 1 : 0;
+      const bu = (b.id || '').startsWith('rexel_') ? 1 : 0;
+      if (au !== bu) return au - bu;
+      if ((b.wp || 0) !== (a.wp || 0)) return (b.wp || 0) - (a.wp || 0);
+      return String(a.model || '').localeCompare(String(b.model || ''), 'fr');
+    });
+  }
+
   function getById(id) {
-    return list().find(p => p.id === id) || null;
+    if (!id) return null;
+    if (typeof RexelCatalog !== 'undefined' && RexelCatalog.getPanelById) {
+      const c = RexelCatalog.getPanelById(id);
+      if (c) return c;
+    }
+    return listUser().find(p => p.id === id) || null;
   }
 
   function savePanel(data) {
@@ -51,10 +74,15 @@ const PanelDB = (() => {
     const m2computed = calcM2(largeur, hauteur);
     const m2 = m2computed || parseFloat(data.m2) || null;
 
-    const panels   = list();
-    const existing = data.id ? panels.find(p => p.id === data.id) : null;
+    // Édition d’une entrée catalogue → copie utilisateur
+    let id = data.id;
+    if (id && String(id).startsWith('rexel_panel_'))
+      id = 'panel_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+
+    const panels   = listUser();
+    const existing = id ? panels.find(p => p.id === id) : null;
     const entry = {
-      id:         existing ? existing.id : 'panel_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      id:         existing ? existing.id : (id || ('panel_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6))),
       model,
       fabricant:  (data.fabricant || '').trim(),
       wp,
@@ -92,8 +120,26 @@ const PanelDB = (() => {
   }
 
   function remove(id) {
-    const panels = list().filter(p => p.id !== id);
+    if ((id || '').startsWith('rexel_panel_')) {
+      if (typeof showToast === 'function')
+        showToast('Les panneaux du catalogue Rexel ne peuvent pas être supprimés.', 'warning');
+      return;
+    }
+    const panels = listUser().filter(p => p.id !== id);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(panels));
+  }
+
+  function _matchPanel(p, q) {
+    if (!q) return true;
+    const tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
+    const hay = [
+      p.model, p.fabricant, p.tech, p.notes, p.sku,
+      p.wp != null ? String(p.wp) : '',
+      p.wp != null ? (p.wp + 'wc') : '',
+      p.bifacial ? 'bifacial' : '',
+      p.source || '',
+    ].join(' ').toLowerCase();
+    return tokens.every(t => hay.includes(t));
   }
 
   // ── MODAL GESTIONNAIRE ────────────────────────────────────────
@@ -108,6 +154,12 @@ const PanelDB = (() => {
     _ensureModal();
     _renderManager();
     document.getElementById('panel-db-modal').style.display = 'flex';
+    if (typeof RexelCatalog !== 'undefined' && RexelCatalog.ensureLoaded) {
+      RexelCatalog.ensureLoaded().then(() => {
+        const m = document.getElementById('panel-db-modal');
+        if (m && m.style.display === 'flex') _renderManager();
+      }).catch(() => {});
+    }
   }
 
   function openLibraryModal(prefix) { openManagerModal(prefix); }
@@ -133,13 +185,16 @@ const PanelDB = (() => {
 
   function _renderManager(editingId) {
     const modal   = document.getElementById('panel-db-modal');
+    if (!modal) return;
     const allPanels = list();
-    const q = _searchQuery.trim().toLowerCase();
+    const q = _searchQuery.trim();
     const panels = q
-      ? allPanels.filter(p => `${p.model} ${p.fabricant}`.toLowerCase().includes(q))
+      ? allPanels.filter(p => _matchPanel(p, q))
       : allPanels;
     const editing = editingId ? getById(editingId) : null;
     const isPicker = !!_pickerPrefix;
+    const nCat = allPanels.filter(p => (p.id || '').startsWith('rexel_')).length;
+    const nUser = allPanels.length - nCat;
 
     const techOptions = [
       ['mono','Monocristallin'],['poly','Polycristallin'],['bifacial','Bifacial'],
@@ -156,7 +211,7 @@ const PanelDB = (() => {
           return `
           <div style="padding:10px 12px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;gap:8px;${isEdit?'background:var(--color-surface2)':''}">
             <div style="flex:1;min-width:0">
-              <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.model)}${p.bifacial ? ' <span style="font-size:9px;background:var(--color-accent);color:#fff;padding:1px 5px;border-radius:3px;font-weight:600">BIFACIAL</span>' : ''}</div>
+              <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.model)}${p.bifacial ? ' <span style="font-size:9px;background:var(--color-accent);color:#fff;padding:1px 5px;border-radius:3px;font-weight:600">BIFACIAL</span>' : ''}${(p.id||'').startsWith('rexel_') ? ' <span style="font-size:9px;background:var(--color-surface2);color:var(--color-text-muted);padding:1px 5px;border-radius:3px">Rexel</span>' : ''}</div>
               <div style="font-size:11px;color:var(--color-text-muted)">
                 ${p.fabricant ? esc(p.fabricant)+' · ' : ''}${p.wp} Wc${dims?' · '+dims:''}${rend?' · '+rend:''}${p.prix?' · '+p.prix+' €':''}${elec?' · '+elec:''}
               </div>
@@ -164,8 +219,8 @@ const PanelDB = (() => {
             <div style="display:flex;gap:4px;flex-shrink:0">
               ${isPicker ? `<button class="btn btn-accent btn-sm" onclick="PanelDB._applyAndClose('${p.id}')" style="font-size:11px;padding:2px 8px">Utiliser</button>` : ''}
               ${p.datasheet ? `<button class="btn btn-outline btn-sm" onclick="PanelDB._openDatasheet('${p.id}')" style="font-size:11px;padding:2px 8px" title="Fiche PDF">📄</button>` : ''}
-              <button class="btn btn-outline btn-sm" onclick="PanelDB._renderManager('${p.id}')" style="font-size:11px;padding:2px 8px" title="Modifier">✏️</button>
-              <button class="btn btn-sm" data-del="${p.id}" onclick="PanelDB._confirmDelete('${p.id}')" style="font-size:11px;padding:2px 8px;background:var(--color-danger);color:#fff;border:none;border-radius:4px;cursor:pointer" title="Supprimer">✕</button>
+              <button class="btn btn-outline btn-sm" onclick="PanelDB._renderManager('${p.id}')" style="font-size:11px;padding:2px 8px" title="${(p.id||'').startsWith('rexel_')?'Copier / adapter':'Modifier'}">✏️</button>
+              ${(p.id||'').startsWith('rexel_') ? '' : `<button class="btn btn-sm" data-del="${p.id}" onclick="PanelDB._confirmDelete('${p.id}')" style="font-size:11px;padding:2px 8px;background:var(--color-danger);color:#fff;border:none;border-radius:4px;cursor:pointer" title="Supprimer">✕</button>`}
             </div>
           </div>`;
         }).join('');
@@ -274,31 +329,26 @@ const PanelDB = (() => {
       </div>` : `<span style="font-size:16px;font-weight:700">📋 Bibliothèque de panneaux${isPicker?' — Sélectionner un panneau':''}</span>`;
 
     modal.innerHTML = `
-      <div style="background:var(--color-surface);border-radius:14px;box-shadow:0 12px 48px rgba(0,0,0,0.4);width:min(940px,96vw);max-height:90vh;display:flex;flex-direction:column;overflow:hidden">
-        <!-- En-tête -->
-        <div style="background:var(--color-primary);padding:16px 20px;color:#fff;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px">
+      <div class="ose-lib-shell">
+        <div class="ose-lib-head">
           ${tabBarHTML}
-          <button onclick="PanelDB.closeManagerModal()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:18px;width:30px;height:30px;border-radius:50%;cursor:pointer;line-height:1;flex-shrink:0">✕</button>
+          <button type="button" class="ose-lib-close" onclick="PanelDB.closeManagerModal()" aria-label="Fermer">✕</button>
         </div>
-        <!-- Corps : liste | formulaire -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;flex:1;min-height:0;overflow:hidden">
-          <!-- Liste -->
-          <div style="border-right:1px solid var(--color-border);display:flex;flex-direction:column;min-height:0">
-            <div style="padding:10px 12px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:8px;flex-wrap:wrap">
-              <span style="font-size:12px;font-weight:600;color:var(--color-text-muted);white-space:nowrap">${allPanels.length} panneau${allPanels.length>1?'x':''}</span>
+        <div class="ose-lib-body">
+          <div class="ose-lib-list-pane">
+            <div class="ose-lib-list-toolbar">
+              <span class="ose-lib-count">${panels.length}${q ? ' / ' + allPanels.length : ''} panneau${allPanels.length>1?'x':''}${nCat ? ` · ${nCat} Rexel` : ''}${nUser ? ` · ${nUser} perso` : ''}</span>
               <div style="display:flex;gap:4px;flex-wrap:wrap">
-                <button class="btn btn-outline btn-sm" onclick="RexelCatalog.importWithUi()" style="font-size:11px;white-space:nowrap" title="Importer panneaux + onduleurs Rexel">⬇ Rexel</button>
                 <button class="btn btn-outline btn-sm" onclick="PanelDB._renderManager(null)" style="font-size:11px;white-space:nowrap">+ Nouveau</button>
               </div>
             </div>
-            <div style="padding:8px 12px;border-bottom:1px solid var(--color-border);flex-shrink:0">
-              <input type="search" placeholder="🔎 Rechercher modèle ou fabricant…" value="${esc(_searchQuery)}" oninput="PanelDB._search(this.value)" style="width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);color:var(--color-text)">
+            <div class="ose-lib-search">
+              <input type="search" placeholder="🔎 Filtrer : modèle, marque, Wc, bifacial…" value="${esc(_searchQuery)}" oninput="PanelDB._search(this.value)" autocomplete="off">
             </div>
-            <div style="overflow-y:auto;flex:1">${listHTML}</div>
+            <div class="ose-lib-list">${listHTML}</div>
           </div>
-          <!-- Formulaire -->
-          <div style="overflow-y:auto;padding:16px">
-            <div style="font-size:13px;font-weight:600;color:var(--color-primary);margin-bottom:12px">${editing ? 'Modifier : '+esc(editing.model) : 'Nouveau panneau'}</div>
+          <div class="ose-lib-form-pane">
+            <div class="ose-lib-form-title">${editing ? 'Modifier : '+esc(editing.model) : 'Nouveau panneau'}</div>
             ${formHTML}
           </div>
         </div>
@@ -307,7 +357,18 @@ const PanelDB = (() => {
 
   function _search(q) {
     _searchQuery = q || '';
+    const active = document.activeElement;
+    const wasSearch = active && active.getAttribute('oninput') === 'PanelDB._search(this.value)';
+    const selStart = wasSearch ? active.selectionStart : null;
+    const selEnd = wasSearch ? active.selectionEnd : null;
     _renderManager();
+    if (wasSearch) {
+      const inp = document.querySelector('#panel-db-modal input[type="search"]');
+      if (inp) {
+        inp.focus();
+        try { inp.setSelectionRange(selStart, selEnd); } catch (_) {}
+      }
+    }
   }
 
   function _autoDims() {

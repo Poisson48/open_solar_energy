@@ -3,8 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.39';
+const APP_VERSION = '2.0.40';
 // Historique :
+//   2.0.40 - Catalogue Rexel embarqué + filtre ; MAJ hub fiable ; UI responsive ;
+//            hors-réseau : alerte si config insuffisante
 //   2.0.39 - Carte : tuiles OSM + plein écran ; adresse chantier préremplie ;
 //            import terrain dans la sidebar (comme la météo)
 //   2.0.38 - Boussole mode photo : cap caméra correct téléphone debout (portrait/paysage)

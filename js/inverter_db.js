@@ -28,15 +28,36 @@ const InverterDB = (() => {
 
   // ── CRUD ──────────────────────────────────────────────────────
 
-  function list() {
+  /** Entrées locales uniquement (seed + perso, sans copies Rexel). */
+  function listUser() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw).sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt)) : [];
+      const list = raw ? JSON.parse(raw) : [];
+      return list.filter(i => !(i.id || '').startsWith('rexel_inv_') && i.source !== 'rexel');
     } catch { return []; }
   }
 
+  /** Catalogue Rexel (mémoire) + onduleurs locaux. */
+  function list() {
+    const catalog = (typeof RexelCatalog !== 'undefined' && RexelCatalog.getInverters)
+      ? RexelCatalog.getInverters() : [];
+    const user = listUser();
+    return catalog.concat(user).sort((a, b) => {
+      const ar = (a.id || '').startsWith('rexel_') ? 1 : 0;
+      const br = (b.id || '').startsWith('rexel_') ? 1 : 0;
+      if (ar !== br) return ar - br;
+      if ((b.pnom || 0) !== (a.pnom || 0)) return (b.pnom || 0) - (a.pnom || 0);
+      return `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`, 'fr');
+    });
+  }
+
   function getById(id) {
-    return list().find(i => i.id === id) || null;
+    if (!id) return null;
+    if (typeof RexelCatalog !== 'undefined' && RexelCatalog.getInverterById) {
+      const c = RexelCatalog.getInverterById(id);
+      if (c) return c;
+    }
+    return listUser().find(i => i.id === id) || null;
   }
 
   function saveInverter(data) {
@@ -44,10 +65,14 @@ const InverterDB = (() => {
     const model = (data.model || '').trim();
     if (!brand && !model) return null;
 
-    const inverters = list();
-    const existing = data.id ? inverters.find(i => i.id === data.id) : null;
+    let id = data.id;
+    if (id && String(id).startsWith('rexel_inv_'))
+      id = 'inv_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+
+    const inverters = listUser();
+    const existing = id ? inverters.find(i => i.id === id) : null;
     const entry = {
-      id:              existing ? existing.id : 'inv_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      id:              existing ? existing.id : (id || ('inv_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6))),
       brand,
       model,
       type:            data.type || 'string',
@@ -83,8 +108,27 @@ const InverterDB = (() => {
   }
 
   function remove(id) {
-    const inverters = list().filter(i => i.id !== id);
+    if ((id || '').startsWith('rexel_inv_')) {
+      if (typeof showToast === 'function')
+        showToast('Les onduleurs du catalogue Rexel ne peuvent pas être supprimés.', 'warning');
+      return;
+    }
+    const inverters = listUser().filter(i => i.id !== id);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(inverters));
+  }
+
+  function _matchInverter(i, q) {
+    if (!q) return true;
+    const tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
+    const hay = [
+      i.brand, i.model, i.type, i.notes, i.sku,
+      i.pnom != null ? String(i.pnom) : '',
+      i.pnom != null ? (i.pnom + 'kw') : '',
+      i.phase === 3 ? 'triphasé triphase 3' : 'monophasé monophase 1',
+      TYPE_LABEL[i.type] || '',
+      i.source || '',
+    ].join(' ').toLowerCase();
+    return tokens.every(t => hay.includes(t));
   }
 
   // ── SEED DEPUIS LE CATALOGUE INTÉGRÉ ────────────────────────────
@@ -94,7 +138,7 @@ const InverterDB = (() => {
       if (localStorage.getItem(SEED_FLAG_KEY)) return;
     } catch { /* localStorage indisponible */ }
     if (typeof InverterSizing === 'undefined' || !Array.isArray(InverterSizing.CATALOG)) return;
-    if (list().length > 0) { _markSeeded(); return; } // bibliothèque déjà peuplée (ex. import) — ne pas dupliquer
+    if (listUser().length > 0) { _markSeeded(); return; } // déjà peuplée — ne pas dupliquer
 
     const seeded = [];
     InverterSizing.CATALOG.forEach(fam => {
@@ -166,7 +210,7 @@ const InverterDB = (() => {
   function recommend(params) {
     if (typeof InverterSizing === 'undefined') return [];
     seedFromCatalog();
-    const custom = list().filter(i => !i.seeded && i.pnom).map(_toFamilyShape);
+    const custom = listUser().filter(i => !i.seeded && i.pnom).map(_toFamilyShape);
     return InverterSizing.recommend({ ...params, extraCatalog: custom });
   }
 
@@ -184,6 +228,12 @@ const InverterDB = (() => {
     _ensureModal();
     _renderManager();
     document.getElementById('inverter-db-modal').style.display = 'flex';
+    if (typeof RexelCatalog !== 'undefined' && RexelCatalog.ensureLoaded) {
+      RexelCatalog.ensureLoaded().then(() => {
+        const m = document.getElementById('inverter-db-modal');
+        if (m && m.style.display === 'flex') _renderManager();
+      }).catch(() => {});
+    }
   }
 
   function openLibraryModal(prefix) { openManagerModal(prefix); }
@@ -210,13 +260,16 @@ const InverterDB = (() => {
 
   function _renderManager(editingId) {
     const modal = document.getElementById('inverter-db-modal');
+    if (!modal) return;
     const allInverters = list();
-    const q = _searchQuery.trim().toLowerCase();
+    const q = _searchQuery.trim();
     const inverters = q
-      ? allInverters.filter(i => `${i.brand} ${i.model}`.toLowerCase().includes(q))
+      ? allInverters.filter(i => _matchInverter(i, q))
       : allInverters;
     const editing = editingId ? getById(editingId) : null;
     const isPicker = !!_pickerPrefix;
+    const nCat = allInverters.filter(i => (i.id || '').startsWith('rexel_')).length;
+    const nUser = allInverters.length - nCat;
 
     const typeOptions = [['string','String (réseau)'],['hybrid','Hybride (batterie)'],['micro','Micro-onduleur']]
       .map(([v, l]) => `<option value="${v}"${(editing?.type||'string')===v?' selected':''}>${l}</option>`).join('');
@@ -227,11 +280,15 @@ const InverterDB = (() => {
       ? `<div style="padding:24px;text-align:center;color:var(--color-text-muted);font-size:13px">${q ? 'Aucun résultat pour cette recherche.' : 'Aucun onduleur enregistré.'}</div>`
       : inverters.map(i => {
           const isEdit = i.id === editingId;
+          const isRexel = (i.id || '').startsWith('rexel_');
           const pnomTxt = i.pnom ? (i.type === 'micro' ? `${Math.round(i.pnom*1000)} W/unité` : `${i.pnom} kW`) : '';
+          const badge = isRexel
+            ? ' <span style="font-size:9px;background:var(--color-surface2);color:var(--color-text-muted);padding:1px 5px;border-radius:3px">Rexel</span>'
+            : (i.seeded ? ' <span style="font-size:9px;background:var(--color-surface2);color:var(--color-text-muted);padding:1px 5px;border-radius:3px">catalogue</span>' : '');
           return `
           <div style="padding:10px 12px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;gap:8px;${isEdit?'background:var(--color-surface2)':''}">
             <div style="flex:1;min-width:0">
-              <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${TYPE_ICON[i.type]||'⚡'} ${esc(i.brand)} ${esc(i.model)}${i.seeded ? ' <span style="font-size:9px;background:var(--color-surface2);color:var(--color-text-muted);padding:1px 5px;border-radius:3px">catalogue</span>' : ''}</div>
+              <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${TYPE_ICON[i.type]||'⚡'} ${esc(i.brand)} ${esc(i.model)}${badge}</div>
               <div style="font-size:11px;color:var(--color-text-muted)">
                 ${TYPE_LABEL[i.type]||i.type}${i.phase?' · '+i.phase+'~':''}${pnomTxt?' · '+pnomTxt:''}${i.efficiency?' · '+Math.round(i.efficiency*1000)/10+'%':''}${i.prix?' · '+i.prix.toLocaleString('fr')+' €':''}
               </div>
@@ -239,8 +296,8 @@ const InverterDB = (() => {
             <div style="display:flex;gap:4px;flex-shrink:0">
               ${isPicker ? `<button class="btn btn-accent btn-sm" onclick="InverterDB._applyAndClose('${i.id}')" style="font-size:11px;padding:2px 8px">Utiliser</button>` : ''}
               ${i.datasheet ? `<button class="btn btn-outline btn-sm" onclick="InverterDB._openDatasheet('${i.id}')" style="font-size:11px;padding:2px 8px" title="Fiche PDF">📄</button>` : ''}
-              <button class="btn btn-outline btn-sm" onclick="InverterDB._renderManager('${i.id}')" style="font-size:11px;padding:2px 8px" title="Modifier">✏️</button>
-              <button class="btn btn-sm" data-del="${i.id}" onclick="InverterDB._confirmDelete('${i.id}')" style="font-size:11px;padding:2px 8px;background:var(--color-danger);color:#fff;border:none;border-radius:4px;cursor:pointer" title="Supprimer">✕</button>
+              <button class="btn btn-outline btn-sm" onclick="InverterDB._renderManager('${i.id}')" style="font-size:11px;padding:2px 8px" title="${isRexel?'Copier / adapter':'Modifier'}">✏️</button>
+              ${isRexel ? '' : `<button class="btn btn-sm" data-del="${i.id}" onclick="InverterDB._confirmDelete('${i.id}')" style="font-size:11px;padding:2px 8px;background:var(--color-danger);color:#fff;border:none;border-radius:4px;cursor:pointer" title="Supprimer">✕</button>`}
             </div>
           </div>`;
         }).join('');
@@ -333,27 +390,26 @@ const InverterDB = (() => {
       </div>` : `<span style="font-size:16px;font-weight:700">🔌 Bibliothèque d'onduleurs${isPicker?' — Sélectionner un onduleur':''}</span>`;
 
     modal.innerHTML = `
-      <div style="background:var(--color-surface);border-radius:14px;box-shadow:0 12px 48px rgba(0,0,0,0.4);width:min(940px,96vw);max-height:90vh;display:flex;flex-direction:column;overflow:hidden">
-        <div style="background:var(--color-primary);padding:16px 20px;color:#fff;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px">
+      <div class="ose-lib-shell">
+        <div class="ose-lib-head">
           ${tabBarHTML}
-          <button onclick="InverterDB.closeManagerModal()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:18px;width:30px;height:30px;border-radius:50%;cursor:pointer;line-height:1;flex-shrink:0">✕</button>
+          <button type="button" class="ose-lib-close" onclick="InverterDB.closeManagerModal()" aria-label="Fermer">✕</button>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;flex:1;min-height:0;overflow:hidden">
-          <div style="border-right:1px solid var(--color-border);display:flex;flex-direction:column;min-height:0">
-            <div style="padding:10px 12px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:8px;flex-wrap:wrap">
-              <span style="font-size:12px;font-weight:600;color:var(--color-text-muted);white-space:nowrap">${allInverters.length} onduleur${allInverters.length>1?'s':''}</span>
+        <div class="ose-lib-body">
+          <div class="ose-lib-list-pane">
+            <div class="ose-lib-list-toolbar">
+              <span class="ose-lib-count">${inverters.length}${q ? ' / ' + allInverters.length : ''} onduleur${allInverters.length>1?'s':''}${nCat ? ` · ${nCat} Rexel` : ''}${nUser ? ` · ${nUser} local` : ''}</span>
               <div style="display:flex;gap:4px;flex-wrap:wrap">
-                <button class="btn btn-outline btn-sm" onclick="RexelCatalog.importWithUi()" style="font-size:11px;white-space:nowrap" title="Importer catalogue Rexel">⬇ Rexel</button>
                 <button class="btn btn-outline btn-sm" onclick="InverterDB._renderManager(null)" style="font-size:11px;white-space:nowrap">+ Nouveau</button>
               </div>
             </div>
-            <div style="padding:8px 12px;border-bottom:1px solid var(--color-border);flex-shrink:0">
-              <input type="search" placeholder="🔎 Rechercher marque ou modèle…" value="${esc(_searchQuery)}" oninput="InverterDB._search(this.value)" style="width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);color:var(--color-text)">
+            <div class="ose-lib-search">
+              <input type="search" placeholder="🔎 Filtrer : marque, modèle, kW, hybride, micro…" value="${esc(_searchQuery)}" oninput="InverterDB._search(this.value)" autocomplete="off">
             </div>
-            <div style="overflow-y:auto;flex:1">${listHTML}</div>
+            <div class="ose-lib-list">${listHTML}</div>
           </div>
-          <div style="overflow-y:auto;padding:16px">
-            <div style="font-size:13px;font-weight:600;color:var(--color-primary);margin-bottom:12px">${editing ? 'Modifier : '+esc(editing.brand)+' '+esc(editing.model) : 'Nouvel onduleur'}</div>
+          <div class="ose-lib-form-pane">
+            <div class="ose-lib-form-title">${editing ? 'Modifier : '+esc(editing.brand)+' '+esc(editing.model) : 'Nouvel onduleur'}</div>
             ${formHTML}
           </div>
         </div>
@@ -379,7 +435,18 @@ const InverterDB = (() => {
 
   function _search(q) {
     _searchQuery = q || '';
+    const active = document.activeElement;
+    const wasSearch = active && active.getAttribute('oninput') === 'InverterDB._search(this.value)';
+    const selStart = wasSearch ? active.selectionStart : null;
+    const selEnd = wasSearch ? active.selectionEnd : null;
     _renderManager();
+    if (wasSearch) {
+      const inp = document.querySelector('#inverter-db-modal input[type="search"]');
+      if (inp) {
+        inp.focus();
+        try { inp.setSelectionRange(selStart, selEnd); } catch (_) {}
+      }
+    }
   }
 
   function _submitForm(event) {

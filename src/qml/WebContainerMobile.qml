@@ -200,7 +200,9 @@ Item {
                 notifyWebToast(msg, kind)
             }
             notifyWebUpdaterState()
-            if (root.updater.state !== 3) {
+            // Ne pas recharger le hub pendant check / download / install
+            const st = root.updater.state
+            if (st !== 1 && st !== 3 && st !== 4) {
                 webView.runJavaScript(
                     "if(typeof refreshHubNews==='function')try{refreshHubNews(false);}catch(e){}"
                 )

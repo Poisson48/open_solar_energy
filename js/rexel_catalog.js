@@ -1,29 +1,22 @@
 /**
- * rexel_catalog.js — Import du catalogue Rexel (panneaux + onduleurs)
- * depuis data/rexel_catalog/catalog.json vers PanelDB / InverterDB.
+ * rexel_catalog.js — Catalogue Rexel embarqué (panneaux + onduleurs)
+ * Source : data/rexel_catalog/catalog.json (lu une fois, en mémoire).
+ * Pas d’import manuel : PanelDB / InverterDB fusionnent ce catalogue
+ * avec les entrées personnalisées (localStorage).
  */
 const RexelCatalog = (() => {
 
   const CATALOG_URL = 'data/rexel_catalog/catalog.json';
-  const FLAG_KEY = 'ose_rexel_catalog_imported_v1';
+  const FLAG_LEGACY = 'ose_rexel_catalog_imported_v1';
 
   let _cache = null;
-
-  function _toast(msg, kind) {
-    if (typeof showToast === 'function') showToast(msg, kind);
-  }
-
-  async function loadCatalog(force) {
-    if (_cache && !force) return _cache;
-    const res = await fetch(CATALOG_URL + (force ? ('?t=' + Date.now()) : ''), { cache: force ? 'no-store' : 'default' });
-    if (!res.ok) throw new Error('Catalogue introuvable (HTTP ' + res.status + ')');
-    _cache = await res.json();
-    return _cache;
-  }
+  let _loadPromise = null;
+  let _panels = null;
+  let _inverters = null;
 
   function panelFromEntry(p) {
     const m2 = (p.largeur && p.hauteur) ? +(p.largeur * p.hauteur).toFixed(4) : null;
-    return {
+    const entry = {
       id: 'rexel_panel_' + p.sku,
       model: p.model || p.name || ('SKU ' + p.sku),
       fabricant: p.fabricant || p.brand || '',
@@ -31,7 +24,7 @@ const RexelCatalog = (() => {
       largeur: p.largeur || null,
       hauteur: p.hauteur || null,
       m2,
-      tech: p.tech || 'mono',
+      tech: p.tech || (p.bifacial ? 'bifacial' : 'mono'),
       rendement: null,
       coef_temp: p.coef_temp ?? null,
       voc: p.voc ?? null,
@@ -46,13 +39,26 @@ const RexelCatalog = (() => {
       notes: [
         'Catalogue Rexel',
         p.rexelPartNumber ? ('Réf. ' + p.rexelPartNumber) : '',
-        p.datasheetPurpose || '',
+        p.sku ? ('SKU ' + p.sku) : '',
       ].filter(Boolean).join(' · '),
       seeded: true,
       source: 'rexel',
       sku: p.sku,
-      savedAt: new Date().toISOString(),
+      savedAt: p.scrapedAt || '1970-01-01T00:00:00.000Z',
     };
+    if (entry.wp && entry.m2)
+      entry.rendement = +(entry.wp / (entry.m2 * 1000) * 100).toFixed(1);
+    return entry;
+  }
+
+  /** Exclut accessoires / passerelles / câbles scrapés par erreur dans « onduleurs ». */
+  function isRealInverter(inv) {
+    const blob = `${inv.name || ''} ${inv.model || ''} ${inv.brand || ''} ${inv.fabricant || ''}`;
+    if (/passerelle|gateway|\bECU[- ]|câble|cable|bouchon|borne de recharge|compteur(?!.*onduleur)|coffret de|optimiseur|q-seal|q cable/i.test(blob))
+      return false;
+    // Garder micro même si pnom petit ; sinon exiger une puissance
+    if (inv.type === 'micro') return true;
+    return !!(inv.pnom > 0);
   }
 
   function inverterFromEntry(inv) {
@@ -76,93 +82,107 @@ const RexelCatalog = (() => {
       notes: [
         'Catalogue Rexel',
         inv.rexelPartNumber ? ('Réf. ' + inv.rexelPartNumber) : '',
-        inv.datasheetPurpose || '',
+        inv.sku ? ('SKU ' + inv.sku) : '',
       ].filter(Boolean).join(' · '),
       seeded: true,
       source: 'rexel',
       sku: inv.sku,
-      savedAt: new Date().toISOString(),
+      savedAt: inv.scrapedAt || '1970-01-01T00:00:00.000Z',
     };
   }
 
-  /**
-   * Fusionne le catalogue Rexel dans les bibliothèques (écrase les entrées rexel_*).
-   * @returns {{ panels: number, inverters: number }}
-   */
-  async function importIntoLibraries(opts) {
-    const replace = !opts || opts.replace !== false;
-    const cat = await loadCatalog(!!(opts && opts.forceReload));
-    const panels = Array.isArray(cat.panels) ? cat.panels : [];
-    const inverters = Array.isArray(cat.inverters) ? cat.inverters : [];
+  function _rebuildMaps() {
+    const panels = Array.isArray(_cache?.panels) ? _cache.panels : [];
+    const inverters = Array.isArray(_cache?.inverters) ? _cache.inverters : [];
+    _panels = panels.filter(p => p.wp > 0).map(panelFromEntry);
+    _inverters = inverters.filter(isRealInverter).map(inverterFromEntry);
+  }
 
-    if (typeof PanelDB !== 'undefined') {
-      let list = PanelDB.list().filter(p => !(replace && (p.id || '').startsWith('rexel_panel_')));
-      const mapped = panels.filter(p => p.wp > 0).map(panelFromEntry);
-      // recalcul rendement via savePanel logique — write direct pour perf
-      mapped.forEach(p => {
-        if (p.wp && p.m2) p.rendement = +(p.wp / (p.m2 * 1000) * 100).toFixed(1);
+  async function ensureLoaded(force) {
+    if (_cache && !force) return _cache;
+    if (_loadPromise && !force) return _loadPromise;
+    _loadPromise = (async () => {
+      const res = await fetch(CATALOG_URL + (force ? ('?t=' + Date.now()) : ''), {
+        cache: force ? 'no-store' : 'default',
       });
-      list = mapped.concat(list);
-      try {
-        localStorage.setItem('ose_panels_v1', JSON.stringify(list));
-      } catch (e) {
-        throw new Error('Stockage panneaux plein : ' + (e.message || e));
-      }
-    }
-
-    if (typeof InverterDB !== 'undefined') {
-      let list = InverterDB.list().filter(i => !(replace && (i.id || '').startsWith('rexel_inv_')));
-      const mapped = inverters.map(inverterFromEntry);
-      list = mapped.concat(list);
-      try {
-        localStorage.setItem('ose_inverters_v1', JSON.stringify(list));
-        try { localStorage.setItem('ose_inverters_seeded_v1', '1'); } catch { /* ignore */ }
-      } catch (e) {
-        throw new Error('Stockage onduleurs plein : ' + (e.message || e));
-      }
-    }
-
-    try { localStorage.setItem(FLAG_KEY, cat.scrapedAt || '1'); } catch { /* ignore */ }
-    return { panels: panels.length, inverters: inverters.length, scrapedAt: cat.scrapedAt };
-  }
-
-  async function importWithUi() {
+      if (!res.ok) throw new Error('Catalogue introuvable (HTTP ' + res.status + ')');
+      _cache = await res.json();
+      _rebuildMaps();
+      // Nettoyage : anciennes copies Rexel dans localStorage (quota mobile)
+      _purgeLegacyLocalCopies();
+      return _cache;
+    })();
     try {
-      _toast('Import catalogue Rexel…');
-      const r = await importIntoLibraries({ replace: true, forceReload: true });
-      _toast(`Catalogue Rexel : ${r.panels} panneaux, ${r.inverters} onduleurs`);
-      if (typeof PanelDB !== 'undefined' && PanelDB._renderManager) PanelDB._renderManager();
-      if (typeof InverterDB !== 'undefined' && InverterDB._renderManager) InverterDB._renderManager();
-      return r;
-    } catch (e) {
-      console.error(e);
-      _toast('Import Rexel échoué : ' + (e.message || e), 'error');
-      return null;
+      return await _loadPromise;
+    } finally {
+      _loadPromise = null;
     }
   }
 
-  function wasImported() {
-    try { return !!localStorage.getItem(FLAG_KEY); } catch { return false; }
-  }
-
-  /** Au démarrage : importe une fois si bibliothèque panneaux vide. */
-  async function autoImportIfEmpty() {
+  function _purgeLegacyLocalCopies() {
     try {
-      if (wasImported()) return;
-      const emptyPanels = typeof PanelDB === 'undefined' || PanelDB.list().length === 0;
-      if (!emptyPanels) return;
-      await importIntoLibraries({ replace: true });
+      const strip = (key, prefix) => {
+        const raw = localStorage.getItem(key);
+        if (!raw) return;
+        const list = JSON.parse(raw);
+        if (!Array.isArray(list)) return;
+        const next = list.filter(x => !(x.id || '').startsWith(prefix));
+        if (next.length !== list.length)
+          localStorage.setItem(key, JSON.stringify(next));
+      };
+      strip('ose_panels_v1', 'rexel_panel_');
+      strip('ose_inverters_v1', 'rexel_inv_');
+      localStorage.removeItem(FLAG_LEGACY);
     } catch (e) {
-      console.warn('RexelCatalog auto-import', e);
+      console.warn('RexelCatalog purge', e);
     }
   }
+
+  function getPanels() {
+    return _panels ? _panels.slice() : [];
+  }
+
+  function getInverters() {
+    return _inverters ? _inverters.slice() : [];
+  }
+
+  function getPanelById(id) {
+    return (_panels || []).find(p => p.id === id) || null;
+  }
+
+  function getInverterById(id) {
+    return (_inverters || []).find(i => i.id === id) || null;
+  }
+
+  function isReady() {
+    return !!_panels;
+  }
+
+  /** Au démarrage : charge le JSON (pas d’écriture localStorage du catalogue). */
+  async function boot() {
+    try {
+      await ensureLoaded(false);
+    } catch (e) {
+      console.warn('RexelCatalog boot', e);
+    }
+  }
+
+  // Compat anciennes API (plus d’import UI)
+  async function autoImportIfEmpty() { return boot(); }
+  async function importWithUi() { await boot(); return { panels: getPanels().length, inverters: getInverters().length }; }
+  async function importIntoLibraries() { await boot(); return { panels: getPanels().length, inverters: getInverters().length }; }
 
   return {
-    loadCatalog,
-    importIntoLibraries,
-    importWithUi,
-    wasImported,
+    ensureLoaded,
+    boot,
+    getPanels,
+    getInverters,
+    getPanelById,
+    getInverterById,
+    isReady,
     autoImportIfEmpty,
+    importWithUi,
+    importIntoLibraries,
     CATALOG_URL,
   };
 })();

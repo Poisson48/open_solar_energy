@@ -757,12 +757,17 @@ function _renderHubNews(box, current, releases, native = {}) {
 
   const parts = [];
   const cur = String(current).replace(/^[vV]/, '');
+  let featuredVer = '';
 
   if (newer.length) {
     const top = newer[0];
-    const notes = (top.notes || native.nativeNotes || '').trim()
+    featuredVer = top.ver;
+    let notes = (top.notes || native.nativeNotes || '').trim()
       || 'Correctifs et améliorations — touchez Mettre à jour pour installer.';
-    parts.push(`<div class="ose-hub-news-card update">
+    // Évite de répéter « vX.Y.Z — … » juste sous le titre
+    notes = notes.replace(new RegExp('^v?' + top.ver.replace(/\./g, '\\.') + '\\s*[—\\-–:].*\\n?', 'i'), '').trim()
+      || notes;
+    parts.push(`<div class="ose-hub-news-card update" id="ose-hub-update-featured">
       <div class="ose-hub-news-kicker">Nouvelle version disponible</div>
       <h4>v${_escHtml(top.ver)} — vous avez v${_escHtml(cur)}</h4>
       ${top.date ? `<div class="ose-hub-news-meta">Publiée le ${_escHtml(_fmtReleaseDate(top.date))}</div>` : ''}
@@ -780,10 +785,10 @@ function _renderHubNews(box, current, releases, native = {}) {
     </div>`);
   }
 
-  // Toujours les 3 dernières versions publiées (ordre GitHub = plus récente d’abord)
-  const news = list.slice(0, 3);
+  // Historique : pas de doublon avec la carte « Nouvelle version » ci-dessus
+  const news = list.filter(r => r.ver !== featuredVer).slice(0, 3);
   if (news.length) {
-    parts.push(`<div class="ose-hub-news-section-title">3 dernières versions</div>`);
+    parts.push(`<div class="ose-hub-news-section-title">Versions récentes</div>`);
     news.forEach((r, i) => {
       const isNew = _isNewerVersion(r.ver, cur);
       const isCur = r.ver === cur;
@@ -811,9 +816,15 @@ function _renderHubNews(box, current, releases, native = {}) {
 // Callback depuis le shell Qt (WebContainerMobile.notifyWebUpdaterState)
 window.__oseOnUpdaterState = function __oseOnUpdaterState(state, msg) {
   try {
-    // 1=Checking 3=Downloading 4=Ready 5=Failed — barre visible dans le hub
-    _renderHubUpdateProgress(state, msg);
-    if (state !== 3) {
+    const st = Number(state);
+    if (st === 3 || st === 4 || st === 5)
+      window.__oseUpdateRequested = true;
+    if (st === 0)
+      window.__oseUpdateRequested = false;
+    _renderHubUpdateProgress(st, msg);
+    // Ne pas recharger les news pendant téléchargement / install (évite de faire
+    // disparaître la barre de progression).
+    if (st !== 1 && st !== 3 && st !== 4) {
       const hub = document.getElementById('startup-modal');
       if (hub && hub.classList.contains('ose-hub-open') && typeof refreshHubNews === 'function')
         refreshHubNews(false);
@@ -825,18 +836,22 @@ function _renderHubUpdateProgress(state, msg) {
   let bar = document.getElementById('ose-hub-update-progress');
   const hubBody = document.getElementById('startup-step-1');
   if (!hubBody) return;
-  const downloading = state === 3 || state === 1;
-  const failed = state === 5;
-  const ready = state === 4;
-  if (!downloading && !failed && !ready) {
+  const st = Number(state);
+  const requested = !!window.__oseUpdateRequested;
+  // Idle : masquer. Available : garder si l’utilisateur a lancé la MAJ.
+  const checking = st === 1;
+  const available = st === 2 && requested;
+  const downloading = st === 3;
+  const ready = st === 4;
+  const failed = st === 5;
+  if (!checking && !available && !downloading && !ready && !failed) {
     if (bar) bar.remove();
     return;
   }
   if (!bar) {
     bar = document.createElement('div');
     bar.id = 'ose-hub-update-progress';
-    bar.className = 'ose-hub-news-card update';
-    bar.style.marginBottom = '12px';
+    bar.className = 'ose-hub-news-card update ose-hub-update-progress';
     const news = document.getElementById('ose-hub-news');
     if (news) hubBody.insertBefore(bar, news);
     else hubBody.prepend(bar);
@@ -844,23 +859,58 @@ function _renderHubUpdateProgress(state, msg) {
   const pct = Math.max(0, Math.min(100, Math.round((window.__oseUpdaterProgress || 0) * 100)));
   const bytes = Number(window.__oseUpdaterBytes || 0);
   const mo = bytes > 0 ? (bytes / 1e6).toFixed(1) + ' Mo' : '';
-  const title = state === 1 ? 'Vérification…'
-    : state === 3 ? (msg || 'Téléchargement…')
-    : state === 4 ? 'Installation…'
+  const title = checking ? (msg || 'Vérification…')
+    : available ? (msg || 'Préparation du téléchargement…')
+    : downloading ? (msg || 'Téléchargement…')
+    : ready ? (msg || 'Installation Android…')
     : (msg || 'Échec de la mise à jour');
   bar.innerHTML = `
-    <div class="ose-hub-news-kicker">${failed ? 'Erreur MAJ' : 'Mise à jour'}</div>
+    <div class="ose-hub-news-kicker">${failed ? 'Erreur MAJ' : 'Mise à jour en cours'}</div>
     <h4 style="margin:4px 0 8px;font-size:14px">${_escHtml(title)}</h4>
-    ${downloading || ready ? `
-      <div style="height:8px;background:var(--color-border);border-radius:4px;overflow:hidden">
-        <div style="height:100%;width:${state === 1 ? 35 : Math.max(pct, 4)}%;background:var(--color-accent);transition:width .2s"></div>
+    ${!failed ? `
+      <div style="height:10px;background:var(--color-border);border-radius:5px;overflow:hidden">
+        <div style="height:100%;width:${checking || available ? 28 : Math.max(pct, ready ? 100 : 4)}%;background:var(--color-accent);transition:width .2s"></div>
       </div>
-      <div class="ose-hub-news-meta" style="margin-top:6px">${pct > 0 ? pct + ' %' : ''}${mo ? ' · ' + mo : ''}</div>
+      <div class="ose-hub-news-meta" style="margin-top:6px">
+        ${downloading && pct > 0 ? pct + ' %' : ''}${mo ? (pct > 0 ? ' · ' : '') + mo : ''}
+        ${ready ? 'Confirmez l’installation sur l’écran Android si demandé.' : ''}
+      </div>
     ` : `
+      <p class="ose-hub-news-meta" style="margin:0 0 8px;line-height:1.4">${_escHtml(msg || 'Échec')}</p>
       <div class="ose-hub-news-actions">
         <button type="button" class="btn btn-accent btn-sm" onclick="installAvailableUpdate()">Réessayer</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="openUpdateApkFallback()">Ouvrir l’APK (navigateur)</button>
       </div>
     `}`;
+  try { bar.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {}
+}
+
+function _latestCachedApk() {
+  const list = _hubNewsCache?.releases || [];
+  const current = (typeof window.__oseNativeVersion === 'string' && window.__oseNativeVersion)
+    || (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '0.0.0');
+  for (const r of list) {
+    if (r.apk && _isNewerVersion(r.ver, current)) return r;
+  }
+  return list.find(r => r.apk) || null;
+}
+
+function openUpdateApkFallback() {
+  const hit = _latestCachedApk();
+  const url = hit?.apk || hit?.url;
+  if (!url) {
+    showToast('Lien APK introuvable — ouvrez la page GitHub.', 'error');
+    return;
+  }
+  const bridge = (typeof getNativeBridge === 'function' ? getNativeBridge() : null)
+              || window.webBridge || null;
+  showToast('Ouverture du téléchargement APK…', 'warning');
+  try {
+    if (bridge?.openExternal) bridge.openExternal(url);
+    else window.open(url, '_blank');
+  } catch (e) {
+    showToast('Impossible d’ouvrir : ' + (e.message || e), 'error');
+  }
 }
 
 async function installAvailableUpdate() {
@@ -879,24 +929,37 @@ async function installAvailableUpdate() {
     });
   }
 
+  window.__oseUpdateRequested = true;
+  window.__oseUpdaterProgress = window.__oseUpdaterProgress || 0;
+  _renderHubUpdateProgress(1, 'Lancement de la mise à jour…');
+
   try {
     const bridge = await waitNativeBridge(2500);
     if (bridge?.startUpdate) {
       bridge.startUpdate();
-      showToast('Téléchargement / installation de la mise à jour…');
-      setTimeout(() => { if (typeof refreshHubNews === 'function') refreshHubNews(true); }, 1500);
+      // Watchdog : si rien n’avance, proposer / ouvrir l’APK
+      clearTimeout(window.__oseUpdateWatchdog);
+      window.__oseUpdateWatchdog = setTimeout(() => {
+        const st = Number(window.__oseUpdaterState || 0);
+        const prog = Number(window.__oseUpdaterProgress || 0);
+        if (!window.__oseUpdateRequested) return;
+        if (st === 3 && prog > 0.02) return; // téléchargement OK
+        if (st === 4) return;
+        if (st === 5) return;
+        _renderHubUpdateProgress(5,
+          'Le téléchargement natif ne démarre pas. Autorisez « Installer des apps inconnues », ou ouvrez l’APK ci-dessous.');
+      }, 12000);
       return;
     }
-    // Fallback : ancienne API → au moins vérifier (bandeau Qt)
     if (bridge?.checkForUpdates) {
       bridge.checkForUpdates();
       showToast('Vérification des mises à jour…');
       return;
     }
-    // Navigateur : ouvrir l’APK / release
-    await checkForUpdates();
+    openUpdateApkFallback();
   } catch (e) {
     showToast('Mise à jour impossible : ' + (e.message || e), 'error');
+    openUpdateApkFallback();
   }
 }
 

@@ -53,15 +53,40 @@ function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, hour
   const tilt    = parseFloat(document.getElementById('og2-tilt')?.value)    || 30;
   const azimuth = parseFloat(document.getElementById('og2-azimuth')?.value) || 0;
   const dodPct  = Math.round((tech.dod || 0.8) * 100);
+  const targetPct = parseFloat(document.getElementById('og2-target-coverage')?.value) || 90;
+  const fixeMode = !!document.getElementById('og2-pmode-fixe')?.classList.contains('active');
+  const undersized = (rec.coverageRate || 0) + 0.5 < targetPct || (rec.deficit_days || 0) >= 300;
+  const avgConsoKwh = rec.monthly?.length
+    ? Math.round(rec.monthly.reduce((s, m) => s + (m.e_conso_day || 0), 0) / rec.monthly.length * 10) / 10
+    : null;
+
+  const warnHTML = undersized ? `
+    <div class="alert alert-warning ose-offgrid-warn" style="margin-bottom:14px">
+      <strong>Configuration insuffisante pour ${targetPct}&nbsp;% d’autonomie</strong>
+      <p style="margin:6px 0 0;font-size:13px;line-height:1.4">
+        Meilleure config possible avec les contraintes actuelles&nbsp;:
+        <strong>${rec.coverageRate}&nbsp;%</strong> de couverture,
+        <strong>${rec.deficit_days}&nbsp;j</strong> de déficit/an
+        (${rec.total_deficit}&nbsp;kWh manquants)${avgConsoKwh != null ? ` · conso ~${avgConsoKwh}&nbsp;kWh/j` : ''}.
+        ${fixeMode
+          ? 'Mode <em>nombre de panneaux fixe</em> actif — passez en dimensionnement auto (selon conso) ou augmentez le nombre / la surface.'
+          : 'Augmentez la surface dispo, baissez la conso, ou visez un taux de couverture plus bas.'}
+      </p>
+    </div>` : '';
+
+  const titleLabel = undersized
+    ? `Meilleure config sous contraintes — ${tech.label}`
+    : `Système autonome recommandé — ${tech.label}`;
 
   el.innerHTML = `
-    <div class="card" style="border-left:4px solid var(--color-accent);margin-bottom:16px">
-      <div class="section-header">
-        <div class="card-title">Système autonome recommandé - ${tech.label}${hourlyBadge}</div>
+    ${warnHTML}
+    <div class="card" style="border-left:4px solid ${undersized ? 'var(--color-accent)' : 'var(--color-accent)'};margin-bottom:16px">
+      <div class="section-header ose-offgrid-rec-head">
+        <div class="card-title">${titleLabel}${hourlyBadge}</div>
         <button class="btn btn-accent btn-sm"
           onclick="applyOffgridToHourly(${rec.Ppeak}, ${rec.C_batt_gross}, ${dodPct}, ${tilt}, ${azimuth})"
           title="Reporter ces valeurs dans l'onglet Analyse horaire">
-          ↗ Utiliser pour la simulation horaire
+          ↗ Simulation horaire
         </button>
       </div>
       <div class="kpi-grid">
@@ -78,8 +103,8 @@ function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, hour
           <div class="kpi-label">Panneaux<br><span class="kpi-unit">unités</span></div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-value" style="color:var(--color-success)">${rec.coverageRate} %</div>
-          <div class="kpi-label">Taux de couverture<br><span class="kpi-unit">% autonome</span></div>
+          <div class="kpi-value" style="color:${rec.coverageRate >= targetPct ? 'var(--color-success)' : 'var(--color-accent-dark)'}">${rec.coverageRate} %</div>
+          <div class="kpi-label">Taux de couverture<br><span class="kpi-unit">% autonome (cible ${targetPct}%)</span></div>
         </div>
         <div class="kpi-card">
           <div class="kpi-value ${rec.deficit_days > 10 ? 'accent' : ''}" style="${rec.deficit_days === 0 ? 'color:var(--color-success)' : ''}">
@@ -94,18 +119,18 @@ function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, hour
       </div>
     </div>
 
-    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
-      <button type="button" class="btn btn-primary" style="width:100%"
+    <div class="ose-offgrid-apply-actions">
+      <button type="button" class="btn btn-primary ose-btn-wrap"
         onclick="applyOffgridRecommendation()">
-        ✓ Appliquer la recommandation (fixer ${rec.nPanels} panneaux · ${rec.C_batt_gross} kWh batterie)
+        ✓ Appliquer (${rec.nPanels} panneaux · ${rec.C_batt_gross} kWh batt.)
       </button>
-      <button type="button" class="btn btn-accent" style="width:100%"
+      <button type="button" class="btn btn-accent ose-btn-wrap"
         onclick="applyOffgridRecommendation(); importSizingToQuote(); activateTab('quote')">
-        ✓ Appliquer et préparer le Devis client →
+        ✓ Appliquer et ouvrir le Devis →
       </button>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+    <div class="ose-offgrid-charts">
       <div class="card">
         <div class="section-header">
           <div class="card-title">Production vs Consommation</div>
