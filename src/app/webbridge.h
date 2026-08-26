@@ -14,6 +14,10 @@ public:
 
 public slots:
     void openExternal(const QString& url);
+    /** Écrit le PDF en cache et ouvre la visioneuse système (Intent / Desktop). */
+    bool openPdf(const QString& filename, const QString& base64Data);
+    /** Télécharge l’URL PDF (natif) puis ouvre la visioneuse. */
+    bool openPdfFromUrl(const QString& url);
     QString openFileDialog();
     void checkForUpdates();
     QJsonObject gitSave(const QString& projectId, const QString& projectJson, const QString& message);

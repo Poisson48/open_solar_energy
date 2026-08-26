@@ -87,6 +87,8 @@ function buildProjectData() {
     // Préserver les métadonnées démo à la re-sauvegarde
     isDemo:           existing?.isDemo || false,
     demoSeedVersion:  existing?.demoSeedVersion,
+    // Préserver le partage multi-appareils (clé Nostr)
+    share:            existing?.share || undefined,
   };
 }
 

@@ -3,8 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.33';
+const APP_VERSION = '2.0.35';
 // Historique :
+//   2.0.35 - Partage projet sans serveur (clé courte + QR, sync Nostr E2E)
+//   2.0.34 - Catalogue Rexel (panneaux + onduleurs) + fiches PDF via visioneuse
 //   2.0.33 - Hub : Matériel au-dessus du hub (z-index) ; nouveautés = 3 dernières versions
 //   2.0.32 - Hub « Mettre à jour » lance téléchargement/install ; photo : pitch→élév ;
 //            points du diagramme déplaçables (glisser)

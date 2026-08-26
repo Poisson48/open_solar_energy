@@ -163,6 +163,7 @@ const PanelDB = (() => {
             </div>
             <div style="display:flex;gap:4px;flex-shrink:0">
               ${isPicker ? `<button class="btn btn-accent btn-sm" onclick="PanelDB._applyAndClose('${p.id}')" style="font-size:11px;padding:2px 8px">Utiliser</button>` : ''}
+              ${p.datasheet ? `<button class="btn btn-outline btn-sm" onclick="PanelDB._openDatasheet('${p.id}')" style="font-size:11px;padding:2px 8px" title="Fiche PDF">📄</button>` : ''}
               <button class="btn btn-outline btn-sm" onclick="PanelDB._renderManager('${p.id}')" style="font-size:11px;padding:2px 8px" title="Modifier">✏️</button>
               <button class="btn btn-sm" data-del="${p.id}" onclick="PanelDB._confirmDelete('${p.id}')" style="font-size:11px;padding:2px 8px;background:var(--color-danger);color:#fff;border:none;border-radius:4px;cursor:pointer" title="Supprimer">✕</button>
             </div>
@@ -252,7 +253,7 @@ const PanelDB = (() => {
             <div style="display:flex;gap:6px">
               <input type="text" id="pdb-datasheet" value="${esc(editing?.datasheet||'')}" placeholder="https://... ou /home/user/docs/panneau.pdf" style="flex:1;font-size:12px">
               <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB._browseFile()" style="white-space:nowrap">📂 Parcourir</button>
-              ${editing?.datasheet ? `<button type="button" class="btn btn-outline btn-sm" onclick="PanelDB._openLink('pdb-datasheet')" style="white-space:nowrap">Ouvrir</button>` : ''}
+              ${editing?.datasheet ? `<button type="button" class="btn btn-outline btn-sm" onclick="PanelDB._openLink('pdb-datasheet')" style="white-space:nowrap">📄 Visionneuse PDF</button>` : ''}
             </div>
           </div>
           <div class="form-group" style="grid-column:1/-1">
@@ -283,9 +284,12 @@ const PanelDB = (() => {
         <div style="display:grid;grid-template-columns:1fr 1fr;flex:1;min-height:0;overflow:hidden">
           <!-- Liste -->
           <div style="border-right:1px solid var(--color-border);display:flex;flex-direction:column;min-height:0">
-            <div style="padding:10px 12px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:8px">
-              <span style="font-size:12px;font-weight:600;color:var(--color-text-muted);white-space:nowrap">${panels.length} panneau${panels.length>1?'x':''}</span>
-              <button class="btn btn-outline btn-sm" onclick="PanelDB._renderManager(null)" style="font-size:11px;white-space:nowrap">+ Nouveau</button>
+            <div style="padding:10px 12px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:8px;flex-wrap:wrap">
+              <span style="font-size:12px;font-weight:600;color:var(--color-text-muted);white-space:nowrap">${allPanels.length} panneau${allPanels.length>1?'x':''}</span>
+              <div style="display:flex;gap:4px;flex-wrap:wrap">
+                <button class="btn btn-outline btn-sm" onclick="RexelCatalog.importWithUi()" style="font-size:11px;white-space:nowrap" title="Importer panneaux + onduleurs Rexel">⬇ Rexel</button>
+                <button class="btn btn-outline btn-sm" onclick="PanelDB._renderManager(null)" style="font-size:11px;white-space:nowrap">+ Nouveau</button>
+              </div>
             </div>
             <div style="padding:8px 12px;border-bottom:1px solid var(--color-border);flex-shrink:0">
               <input type="search" placeholder="🔎 Rechercher modèle ou fabricant…" value="${esc(_searchQuery)}" oninput="PanelDB._search(this.value)" style="width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);color:var(--color-text)">
@@ -384,11 +388,28 @@ const PanelDB = (() => {
   function _openLink(inputId) {
     const url = document.getElementById(inputId)?.value?.trim();
     if (!url) return;
+    if (inputId === 'pdb-datasheet' && typeof Datasheet !== 'undefined') {
+      Datasheet.open(url, { filename: (getById(document.getElementById('pdb-id')?.value)?.model || 'fiche') + '.pdf' });
+      return;
+    }
     const bridge = typeof getNativeBridge === 'function' ? getNativeBridge() : null;
     if (bridge?.openExternal) {
       bridge.openExternal(url);
     } else {
       window.open(url, '_blank', 'noopener');
+    }
+  }
+
+  function _openDatasheet(id) {
+    const p = getById(id);
+    if (!p?.datasheet) {
+      if (typeof showToast === 'function') showToast('Pas de fiche PDF pour ce panneau.', 'warning');
+      return;
+    }
+    if (typeof Datasheet !== 'undefined') {
+      Datasheet.open(p.datasheet, { filename: (p.model || 'panneau').replace(/[^\w.\-]+/g, '_') + '.pdf' });
+    } else {
+      _openLink('pdb-datasheet');
     }
   }
 
@@ -429,8 +450,69 @@ const PanelDB = (() => {
     if (panel.vmp != null) set('panel-vmp', panel.vmp);
     if (panel.imp != null) set('panel-imp', panel.imp);
     setChk('panel-bifacial', panel.bifacial);
+    markFromLibrary(prefix, true);
     syncModelToQuote(panel.model);
     if (typeof showToast === 'function') showToast(`Panneau "${panel.model}" chargé`);
+  }
+
+  /** Marque Wp/m² comme issus de la bibliothèque → masque Auto Wc (hors-réseau). */
+  function markFromLibrary(prefix, fromLib) {
+    const wp = document.getElementById(`${prefix}-panel-wp`);
+    const m2 = document.getElementById(`${prefix}-panel-m2`);
+    const model = document.getElementById(`${prefix}-panel-model`);
+    [wp, m2, model].forEach(el => {
+      if (!el) return;
+      if (fromLib) el.dataset.fromLibrary = '1';
+      else delete el.dataset.fromLibrary;
+    });
+    syncLibraryWpAutoUI(prefix);
+  }
+
+  function isFromLibrary(prefix) {
+    const wp = document.getElementById(`${prefix}-panel-wp`);
+    return !!(wp && wp.dataset.fromLibrary === '1');
+  }
+
+  function syncLibraryWpAutoUI(prefix) {
+    const fromLib = isFromLibrary(prefix);
+    const autoBtn = document.getElementById(`${prefix}-panel-wp-auto`);
+    const hint = document.getElementById(`${prefix}-panel-wp-lib-hint`);
+    if (autoBtn) autoBtn.style.display = fromLib ? 'none' : '';
+    if (hint) hint.style.display = fromLib ? '' : 'none';
+    // Si l’utilisateur modifie manuellement le modèle / Wc, lever le verrou
+    const model = document.getElementById(`${prefix}-panel-model`);
+    const wp = document.getElementById(`${prefix}-panel-wp`);
+    if (model && !model._oseLibListen) {
+      model._oseLibListen = true;
+      model.addEventListener('input', () => {
+        if (model.dataset.fromLibrary === '1') markFromLibrary(prefix, false);
+      });
+    }
+    if (wp && !wp._oseLibListen) {
+      wp._oseLibListen = true;
+      wp.addEventListener('input', () => {
+        // Ne pas lever au premier set programmatique ; seulement si déjà fromLib et user tape
+        if (wp.dataset.fromLibrary === '1' && document.activeElement === wp)
+          markFromLibrary(prefix, false);
+      });
+    }
+  }
+
+  /** Si modèle+Wc correspondent à un panneau bibliothèque, verrouille Auto Wc. */
+  function syncFromLibraryIfMatch(prefix) {
+    const model = (document.getElementById(`${prefix}-panel-model`)?.value || '').trim();
+    const wp = parseFloat(document.getElementById(`${prefix}-panel-wp`)?.value);
+    if (!model || isNaN(wp)) {
+      syncLibraryWpAutoUI(prefix);
+      return false;
+    }
+    const hit = list().find(p => p.model === model && Number(p.wp) === Number(wp));
+    if (hit) {
+      markFromLibrary(prefix, true);
+      return true;
+    }
+    syncLibraryWpAutoUI(prefix);
+    return false;
   }
 
   function saveFromForm(prefix) {
@@ -502,10 +584,11 @@ const PanelDB = (() => {
     openLibraryModal, closeLibraryModal,
     openManagerModal, closeManagerModal,
     applyPanel, saveFromForm, removePanel, syncModelToQuote, electricalFieldsHTML,
+    markFromLibrary, isFromLibrary, syncLibraryWpAutoUI, syncFromLibraryIfMatch,
     // Internals exposés pour les onclick inline
     _renderManager, _autoDims, _autoRendement, _search,
     _submitForm, _confirmDelete, _deleteConfirmed, _applyAndClose,
-    _openLink, _browseFile,
+    _openLink, _browseFile, _openDatasheet,
   };
 
 })();

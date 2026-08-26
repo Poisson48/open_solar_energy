@@ -216,6 +216,12 @@ function bindSharedParamSync() {
   ['og2-surface', 'og2-panel-wp', 'og2-panel-m2'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', () => calcPanelsForMode('og2'));
   });
+  // Si un modèle bibliothèque est déjà chargé (projet / démo), masquer Auto Wc
+  if (typeof PanelDB !== 'undefined' && PanelDB.syncFromLibraryIfMatch) {
+    ['og2', 'sz', 'inp'].forEach(p => {
+      try { PanelDB.syncFromLibraryIfMatch(p); } catch (_) {}
+    });
+  }
 
   // Système PV : hint "Chaînes" — se met à jour dès que Voc panneau ou modèle
   // d'onduleur change (saisie manuelle ou application depuis une bibliothèque,

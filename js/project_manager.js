@@ -61,6 +61,7 @@ const ProjectManager = (() => {
     copy.isDemo = false;
     copy.createdAt = new Date().toISOString();
     copy.updatedAt = copy.createdAt;
+    delete copy.share; // ne pas hériter du canal de partage
     save(copy);
     return copy;
   }

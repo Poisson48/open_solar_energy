@@ -27,8 +27,9 @@ function initTabSite() {
         <div class="card" style="margin-top:12px">
           <div class="card-title">Boussole</div>
           <p style="font-size:12px;color:var(--color-text-muted);line-height:1.45;margin:0 0 8px">
-            Si la boussole dévie, calibrez-la (visée connue) ou réglez l’offset.
-            Cap et élévation suivent l’orientation de l’écran (portrait / paysage tablette).
+            Pour calibrer : <strong>secouez l’appareil</strong> (mouvement en 8) — la boussole devient en général assez précise.
+            Cap et élévation suivent l’orientation de l’écran (portrait / paysage).
+            En dernier recours : visez un cap connu ou réglez l’offset.
           </p>
           <p id="site-compass-readout" style="font-size:12px;font-weight:600;margin:0 0 8px">Boussole : —</p>
           <div class="form-row" style="gap:8px;margin-bottom:8px">

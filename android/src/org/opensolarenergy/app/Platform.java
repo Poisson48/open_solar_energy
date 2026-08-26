@@ -92,6 +92,86 @@ public class Platform {
         }
     }
 
+    /**
+     * Télécharge un PDF depuis une URL (sans CORS WebView) puis ACTION_VIEW.
+     */
+    public static boolean openPdfFromUrl(Context ctx, String url) {
+        if (ctx == null || url == null || url.isEmpty())
+            return false;
+        try {
+            java.net.URL u = new java.net.URL(url);
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) u.openConnection();
+            conn.setConnectTimeout(20000);
+            conn.setReadTimeout(60000);
+            conn.setRequestProperty("User-Agent", "OpenSolarEnergy/2.0");
+            conn.setInstanceFollowRedirects(true);
+            int code = conn.getResponseCode();
+            if (code >= 400)
+                return false;
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            try (InputStream in = conn.getInputStream()) {
+                byte[] buf = new byte[8192];
+                int n;
+                int total = 0;
+                final int max = 40 * 1024 * 1024;
+                while ((n = in.read(buf)) >= 0) {
+                    total += n;
+                    if (total > max)
+                        return false;
+                    bos.write(buf, 0, n);
+                }
+            }
+            byte[] data = bos.toByteArray();
+            String name = "fiche_" + Integer.toHexString(url.hashCode()) + ".pdf";
+            return openPdf(ctx, name, data);
+        } catch (Exception e) {
+            Log.w(TAG, "openPdfFromUrl failed", e);
+            return false;
+        }
+    }
+
+    /**
+     * Écrit le PDF en cache / Downloads et lance ACTION_VIEW (visioneuse PDF système).
+     */
+    public static boolean openPdf(Context ctx, String filename, byte[] data) {
+        if (ctx == null || data == null || data.length == 0)
+            return false;
+        try {
+            String safe = filename != null ? filename.replaceAll("[^a-zA-Z0-9._\\-]", "_") : "fiche.pdf";
+            if (safe.isEmpty())
+                safe = "fiche.pdf";
+            if (!safe.toLowerCase().endsWith(".pdf"))
+                safe = safe + ".pdf";
+
+            Uri uri = writeToDownloads(ctx, safe, "application/pdf", data);
+            if (uri == null) {
+                // fallback cache
+                File dir = new File(ctx.getCacheDir(), "ose_pdf");
+                if (!dir.exists() && !dir.mkdirs())
+                    return false;
+                File out = new File(dir, safe);
+                try (FileOutputStream fos = new FileOutputStream(out)) {
+                    fos.write(data);
+                }
+                uri = Uri.fromFile(out);
+            }
+
+            Intent view = new Intent(Intent.ACTION_VIEW);
+            view.setDataAndType(uri, "application/pdf");
+            view.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            if (!(ctx instanceof Activity))
+                view.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            Intent chooser = Intent.createChooser(view, "Ouvrir la fiche PDF");
+            if (!(ctx instanceof Activity))
+                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(chooser);
+            return true;
+        } catch (Exception e) {
+            Log.w(TAG, "openPdf failed", e);
+            return false;
+        }
+    }
+
     private static Uri writeToDownloads(Context ctx, String filename, String mime, byte[] data)
             throws Exception {
         if (Build.VERSION.SDK_INT >= 29) {

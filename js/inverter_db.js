@@ -238,6 +238,7 @@ const InverterDB = (() => {
             </div>
             <div style="display:flex;gap:4px;flex-shrink:0">
               ${isPicker ? `<button class="btn btn-accent btn-sm" onclick="InverterDB._applyAndClose('${i.id}')" style="font-size:11px;padding:2px 8px">Utiliser</button>` : ''}
+              ${i.datasheet ? `<button class="btn btn-outline btn-sm" onclick="InverterDB._openDatasheet('${i.id}')" style="font-size:11px;padding:2px 8px" title="Fiche PDF">📄</button>` : ''}
               <button class="btn btn-outline btn-sm" onclick="InverterDB._renderManager('${i.id}')" style="font-size:11px;padding:2px 8px" title="Modifier">✏️</button>
               <button class="btn btn-sm" data-del="${i.id}" onclick="InverterDB._confirmDelete('${i.id}')" style="font-size:11px;padding:2px 8px;background:var(--color-danger);color:#fff;border:none;border-radius:4px;cursor:pointer" title="Supprimer">✕</button>
             </div>
@@ -308,6 +309,13 @@ const InverterDB = (() => {
             </div>
           </div>
           <div class="form-group" style="grid-column:1/-1">
+            <label>Fiche technique / Datasheet (URL ou PDF)</label>
+            <div style="display:flex;gap:6px">
+              <input type="text" id="idb-datasheet" value="${esc(editing?.datasheet||'')}" placeholder="https://... ou chemin PDF" style="flex:1;font-size:12px">
+              ${editing?.datasheet ? `<button type="button" class="btn btn-outline btn-sm" onclick="InverterDB._openLink('idb-datasheet')" style="white-space:nowrap">📄 Visionneuse PDF</button>` : ''}
+            </div>
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
             <label>Notes</label>
             <textarea id="idb-notes" rows="2" style="width:100%;resize:vertical;font-size:12px;font-family:inherit;border:1px solid var(--color-border);border-radius:6px;padding:6px;background:var(--color-bg);color:var(--color-text)">${esc(editing?.notes||'')}</textarea>
           </div>
@@ -332,9 +340,12 @@ const InverterDB = (() => {
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;flex:1;min-height:0;overflow:hidden">
           <div style="border-right:1px solid var(--color-border);display:flex;flex-direction:column;min-height:0">
-            <div style="padding:10px 12px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:8px">
-              <span style="font-size:12px;font-weight:600;color:var(--color-text-muted);white-space:nowrap">${inverters.length} onduleur${inverters.length>1?'s':''}</span>
-              <button class="btn btn-outline btn-sm" onclick="InverterDB._renderManager(null)" style="font-size:11px;white-space:nowrap">+ Nouveau</button>
+            <div style="padding:10px 12px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:8px;flex-wrap:wrap">
+              <span style="font-size:12px;font-weight:600;color:var(--color-text-muted);white-space:nowrap">${allInverters.length} onduleur${allInverters.length>1?'s':''}</span>
+              <div style="display:flex;gap:4px;flex-wrap:wrap">
+                <button class="btn btn-outline btn-sm" onclick="RexelCatalog.importWithUi()" style="font-size:11px;white-space:nowrap" title="Importer catalogue Rexel">⬇ Rexel</button>
+                <button class="btn btn-outline btn-sm" onclick="InverterDB._renderManager(null)" style="font-size:11px;white-space:nowrap">+ Nouveau</button>
+              </div>
             </div>
             <div style="padding:8px 12px;border-bottom:1px solid var(--color-border);flex-shrink:0">
               <input type="search" placeholder="🔎 Rechercher marque ou modèle…" value="${esc(_searchQuery)}" oninput="InverterDB._search(this.value)" style="width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg);color:var(--color-text)">
@@ -389,6 +400,7 @@ const InverterDB = (() => {
       maxChargeCurrent: document.getElementById('idb-chargecurrent')?.value,
       garantie_p:       document.getElementById('idb-garantie')?.value,
       url:              document.getElementById('idb-url')?.value,
+      datasheet:        document.getElementById('idb-datasheet')?.value,
       notes:            document.getElementById('idb-notes')?.value,
     };
     const saved = saveInverter(data);
@@ -426,9 +438,24 @@ const InverterDB = (() => {
   function _openLink(inputId) {
     const url = document.getElementById(inputId)?.value?.trim();
     if (!url) return;
+    if (inputId === 'idb-datasheet' && typeof Datasheet !== 'undefined') {
+      Datasheet.open(url, { filename: ((getById(document.getElementById('idb-id')?.value)?.model) || 'fiche') + '.pdf' });
+      return;
+    }
     const bridge = typeof getNativeBridge === 'function' ? getNativeBridge() : null;
     if (bridge?.openExternal) bridge.openExternal(url);
     else window.open(url, '_blank', 'noopener');
+  }
+
+  function _openDatasheet(id) {
+    const inv = getById(id);
+    if (!inv?.datasheet) {
+      if (typeof showToast === 'function') showToast('Pas de fiche PDF pour cet onduleur.', 'warning');
+      return;
+    }
+    if (typeof Datasheet !== 'undefined') {
+      Datasheet.open(inv.datasheet, { filename: ((inv.brand || '') + '_' + (inv.model || 'ond')).replace(/[^\w.\-]+/g, '_') + '.pdf' });
+    }
   }
 
   // ── APPLIQUER UN ONDULEUR AUX CHAMPS FORMULAIRE ────────────────
@@ -478,7 +505,7 @@ const InverterDB = (() => {
     applyInverter, saveFromForm,
     // Internals exposés pour les onclick inline
     _renderManager, _search, _submitForm, _confirmDelete, _deleteConfirmed,
-    _applyAndClose, _openLink, _toggleTypeFields,
+    _applyAndClose, _openLink, _openDatasheet, _toggleTypeFields,
   };
 
 })();

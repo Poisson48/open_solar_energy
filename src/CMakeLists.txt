@@ -1,7 +1,7 @@
 set(OSE_WARN_FLAGS -Wall -Wextra -Wpedantic -Wno-unused-parameter)
 
-set(OSE_VERSION_NAME "2.0.29" CACHE STRING "Version affichée")
-set(OSE_VERSION_CODE "229" CACHE STRING "versionCode Android")
+set(OSE_VERSION_NAME "2.0.35" CACHE STRING "Version affichée")
+set(OSE_VERSION_CODE "235" CACHE STRING "versionCode Android")
 
 add_library(applib STATIC
     app/theme.cpp
@@ -36,6 +36,7 @@ file(GLOB_RECURSE OSE_WEB_FILES CONFIGURE_DEPENDS
 list(FILTER OSE_WEB_FILES EXCLUDE REGEX "/build-")
 list(FILTER OSE_WEB_FILES EXCLUDE REGEX "/build/")
 list(FILTER OSE_WEB_FILES EXCLUDE REGEX "/node_modules/")
+list(FILTER OSE_WEB_FILES EXCLUDE REGEX "/rexel_catalog/pdfs/")
 qt_add_resources(applib "web_assets"
     PREFIX "/web"
     BASE "${CMAKE_SOURCE_DIR}"

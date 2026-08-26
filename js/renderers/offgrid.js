@@ -94,9 +94,16 @@ function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, hour
       </div>
     </div>
 
-    <button type="button" class="btn btn-primary" style="width:100%;margin-bottom:16px" onclick="activateTab('quote')">
-      ✓ Étape suivante : préparer le Devis client →
-    </button>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+      <button type="button" class="btn btn-primary" style="width:100%"
+        onclick="applyOffgridRecommendation()">
+        ✓ Appliquer la recommandation (fixer ${rec.nPanels} panneaux · ${rec.C_batt_gross} kWh batterie)
+      </button>
+      <button type="button" class="btn btn-accent" style="width:100%"
+        onclick="applyOffgridRecommendation(); importSizingToQuote(); activateTab('quote')">
+        ✓ Appliquer et préparer le Devis client →
+      </button>
+    </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
       <div class="card">
@@ -149,6 +156,10 @@ function applyOffgridToHourly(Ppeak, battKwh, dodPct, tilt, azimuth) {
 }
 
 function autoCalcOffgridPanelWp() {
+  if (typeof PanelDB !== 'undefined' && PanelDB.isFromLibrary?.('og2')) {
+    showToast('Puissance Wc fixée par le modèle bibliothèque — Auto désactivé. Modifiez le modèle pour réactiver.', 'warning');
+    return;
+  }
   if (!AppState.weatherData) {
     showToast('Sélectionnez d\'abord un lieu avec des données météo.', 'error');
     return;
@@ -225,4 +236,34 @@ function importEDFToOffgrid() {
   if (defEl) defEl.value = avg;
   if (statusEl) statusEl.textContent = `✓ Consommation importée (${Math.round(kwh.reduce((s, k) => s + k, 0))} kWh/an)`;
   document.getElementById('og2-day-1')?.dispatchEvent(new Event('input'));
+}
+
+/**
+ * Figé la recommandation hors-réseau dans le formulaire (nb panneaux + batterie)
+ * pour que le devis / recalculs partent de ces valeurs.
+ */
+function applyOffgridRecommendation() {
+  const rec = AppState.lastOffgridSizingResult;
+  if (!rec || !rec.nPanels) {
+    showToast('Lancez d\'abord un dimensionnement autonome.', 'warning');
+    return false;
+  }
+
+  if (typeof setPanelMode === 'function') setPanelMode('og2', 'fixe');
+  const nEl = document.getElementById('og2-npanels-fixe');
+  if (nEl) {
+    nEl.value = rec.nPanels;
+    nEl.dispatchEvent(new Event('input'));
+  }
+  if (typeof calcPanelsForMode === 'function') calcPanelsForMode('og2');
+
+  const battEl = document.getElementById('og2-batt-kwh');
+  if (battEl && rec.C_batt_gross != null) {
+    battEl.value = rec.C_batt_gross;
+    battEl.dispatchEvent(new Event('input'));
+  }
+
+  AppState.offgridRecommendationApplied = true;
+  showToast(`✓ Recommandation appliquée : ${rec.nPanels} panneaux (${rec.Ppeak} kWc) · batterie ${rec.C_batt_gross} kWh`);
+  return true;
 }

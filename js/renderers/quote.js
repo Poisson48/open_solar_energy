@@ -45,50 +45,105 @@ function updateQuoteTotals() {
 }
 
 function importSizingToQuote() {
-  const rec = AppState.lastSizingResult;
-  const inp = AppState.lastSizingInput;
-  if (!rec && !inp) { showToast('Lancez d\'abord un dimensionnement pour importer les données.', 'warning'); return; }
+  const recGrid = AppState.lastSizingResult;
+  const inpGrid = AppState.lastSizingInput;
+  const recOg   = AppState.lastOffgridSizingResult;
+  if (!recGrid && !inpGrid && !recOg) {
+    showToast('Lancez d\'abord un dimensionnement (réseau ou autonome) pour importer les données.', 'warning');
+    return;
+  }
   const setVal = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+  const isOffgrid = !recGrid && !!recOg;
+  const rec = isOffgrid ? recOg : recGrid;
+  const inp = inpGrid;
 
-  if (rec?.Ppeak)       setVal('dv-sys-ppeak',   rec.Ppeak);
-  if (rec?.Ppeak && inp?.site?.panelWattPeak)
-    setVal('dv-sys-panels', Math.ceil(rec.Ppeak * 1000 / inp.site.panelWattPeak));
-  if (rec?.annualProd)  setVal('dv-sys-prod',    Math.round(rec.annualProd));
-  if (rec?.co2Saved)    setVal('dv-sys-co2',     Math.round(rec.co2Saved));
+  if (rec?.Ppeak) setVal('dv-sys-ppeak', rec.Ppeak);
 
-  // Batterie hybride (réseau + stockage) — importée si le dimensionnement en recommande une
-  if (rec?.battery?.capacityKwh) {
-    setVal('dv-sys-batt', rec.battery.capacityKwh);
-    const battLine = document.getElementById('dv-line-misc-label');
-    if (battLine && !battLine.value) {
-      const battTechLabel = (typeof OffgridSizing !== 'undefined'
-        && OffgridSizing.BATTERY_TECH[rec.battery.type]?.label) || rec.battery.type;
-      battLine.value = `Batterie ${battTechLabel} ${rec.battery.capacityKwh} kWh`;
+  if (isOffgrid) {
+    if (rec.nPanels) setVal('dv-sys-panels', rec.nPanels);
+    if (rec.C_batt_gross) setVal('dv-sys-batt', rec.C_batt_gross);
+    if (rec.coverageRate != null) {
+      setVal('dv-sys-autonomy', `${rec.coverageRate} % autonome (${rec.deficit_days || 0} j déficit/an)`);
+    }
+    // Production annuelle estimée depuis le bilan mensuel
+    if (Array.isArray(rec.monthly) && typeof DAYS_IN_MONTH !== 'undefined') {
+      const annualProd = rec.monthly.reduce((s, m, i) => {
+        const days = DAYS_IN_MONTH[i] || 30;
+        return s + (m.e_prod_day || 0) * days;
+      }, 0);
+      if (annualProd > 0) setVal('dv-sys-prod', Math.round(annualProd));
+    }
+    // Lignes de coût hors-réseau
+    if (rec.costPV > 0) {
+      setVal('dv-line-panels-qty', 1);
+      setVal('dv-line-panels-price', rec.costPV);
+      if (typeof updateQuoteLine === 'function') updateQuoteLine('panels');
+    }
+    if (rec.costBatt > 0) {
+      const battLine = document.getElementById('dv-line-misc-label');
+      const battTech = document.getElementById('og2-batt-tech');
+      const techKey  = battTech?.value || '';
+      const techLabel = (typeof OffgridSizing !== 'undefined'
+        && OffgridSizing.BATTERY_TECH?.[techKey]?.label) || 'Batterie';
+      if (battLine) battLine.value = `${techLabel} ${rec.C_batt_gross} kWh`;
       setVal('dv-line-misc-qty', 1);
       setVal('dv-line-misc-unit', 'u');
-      setVal('dv-line-misc-price', rec.battery.cost || 0);
+      setVal('dv-line-misc-price', rec.costBatt);
       if (typeof updateQuoteLine === 'function') updateQuoteLine('misc');
+    }
+  } else {
+    if (rec?.Ppeak && inp?.site?.panelWattPeak)
+      setVal('dv-sys-panels', Math.ceil(rec.Ppeak * 1000 / inp.site.panelWattPeak));
+    if (rec?.annualProd)  setVal('dv-sys-prod',    Math.round(rec.annualProd));
+    if (rec?.co2Saved)    setVal('dv-sys-co2',     Math.round(rec.co2Saved));
+
+    // Batterie hybride (réseau + stockage)
+    if (rec?.battery?.capacityKwh) {
+      setVal('dv-sys-batt', rec.battery.capacityKwh);
+      const battLine = document.getElementById('dv-line-misc-label');
+      if (battLine && !battLine.value) {
+        const battTechLabel = (typeof OffgridSizing !== 'undefined'
+          && OffgridSizing.BATTERY_TECH[rec.battery.type]?.label) || rec.battery.type;
+        battLine.value = `Batterie ${battTechLabel} ${rec.battery.capacityKwh} kWh`;
+        setVal('dv-line-misc-qty', 1);
+        setVal('dv-line-misc-unit', 'u');
+        setVal('dv-line-misc-price', rec.battery.cost || 0);
+        if (typeof updateQuoteLine === 'function') updateQuoteLine('misc');
+      }
     }
   }
 
-  // Propager le modele panneau depuis les onglets dimensionnement / réseau
+  // Modèle panneau : dimensionnement / réseau / hors-réseau
   const panelModelEl = document.getElementById('dv-sys-panel-model');
   if (panelModelEl && !panelModelEl.value) {
     const modelSz  = (document.getElementById('sz-panel-model')?.value  || '').trim();
     const modelInp = (document.getElementById('inp-panel-model')?.value || '').trim();
-    if (modelSz)  panelModelEl.value = modelSz;
+    const modelOg  = (document.getElementById('og2-panel-model')?.value || '').trim();
+    if (modelSz) panelModelEl.value = modelSz;
+    else if (modelOg) panelModelEl.value = modelOg;
     else if (modelInp) panelModelEl.value = modelInp;
   }
 
   setVal('dv-site-address', AppState.location.name || '');
-  if (inp?.tilt)                   setVal('dv-site-tilt',    inp.tilt);
-  if (inp?.azimuth !== undefined)  setVal('dv-site-azimuth', inp.azimuth);
-  if (inp?.surface)                setVal('dv-site-surface', inp.surface);
+  if (isOffgrid) {
+    const tilt = document.getElementById('og2-tilt')?.value;
+    const az   = document.getElementById('og2-azimuth')?.value;
+    const surf = document.getElementById('og2-surface')?.value;
+    if (tilt) setVal('dv-site-tilt', tilt);
+    if (az !== undefined && az !== '') setVal('dv-site-azimuth', az);
+    if (surf) setVal('dv-site-surface', surf);
+  } else {
+    if (inp?.tilt)                   setVal('dv-site-tilt',    inp.tilt);
+    if (inp?.azimuth !== undefined)  setVal('dv-site-azimuth', inp.azimuth);
+    if (inp?.surface)                setVal('dv-site-surface', inp.surface);
+  }
 
   const dateEl = document.getElementById('dv-date');
   if (dateEl && !dateEl.value) dateEl.value = new Date().toLocaleDateString('fr-FR');
 
-  showToast('✓ Données importées depuis le dimensionnement');
+  showToast(isOffgrid
+    ? '✓ Données importées depuis le dimensionnement autonome'
+    : '✓ Données importées depuis le dimensionnement');
 }
 
 function previewQuote() {

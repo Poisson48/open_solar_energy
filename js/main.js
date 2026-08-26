@@ -275,6 +275,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   applyInstallationType(AppState.installationType);
   initLocationInputs();
   if (typeof SiteSurvey !== 'undefined') SiteSurvey.init();
+  if (typeof RexelCatalog !== 'undefined') RexelCatalog.autoImportIfEmpty();
 
   // 3. Bind les interactions des formulaires
   bindOptimizeCheckboxes();

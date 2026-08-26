@@ -279,6 +279,16 @@ function _modalVisible(id, displayValues) {
 }
 
 function handleAndroidBack() {
+  const shareModal = document.getElementById('ose-share-modal');
+  if (shareModal?.classList.contains('open')) {
+    ProjectShare.closeShareModal();
+    return true;
+  }
+  const joinModal = document.getElementById('ose-join-modal');
+  if (joinModal?.classList.contains('open')) {
+    ProjectShare.closeJoinModal();
+    return true;
+  }
   if (_modalVisible('panel-db-modal', ['flex'])) {
     if (typeof PanelDB !== 'undefined' && PanelDB.closeManagerModal)
       PanelDB.closeManagerModal();
@@ -419,8 +429,12 @@ function renderProjectsList(queryOrId = '', maybeQuery) {
 }
 
 function _projectActionsHTML(p) {
+  const shareBadge = p.share?.enabled
+    ? ' <span title="Partage actif" style="font-size:10px;color:var(--color-accent)">☁</span>'
+    : '';
   return `<button class="btn btn-primary btn-sm" onclick="loadProject('${p.id}')">Ouvrir</button>
           <button class="btn btn-outline btn-sm" onclick="startCloneProject('${p.id}')">Cloner</button>
+          <button class="btn btn-outline btn-sm" onclick="openProjectShare('${p.id}')" title="Partager via clé / QR (sans serveur)">🔗 Partager${shareBadge}</button>
           <button class="btn btn-outline btn-sm" onclick="ProjectManager.exportOne('${p.id}')" title="Exporter en fichier JSON">📤 Export</button>
           ${p.isDemo ? '' : `<button class="btn btn-outline btn-sm" style="color:var(--color-danger);border-color:var(--color-danger)" onclick="confirmDeleteProject('${p.id}')">✕ Supprimer</button>`}`;
 }
@@ -938,6 +952,7 @@ function initProjectUI() {
     try {
       const project = buildProjectData();
       ProjectManager.save(project);
+      if (typeof ProjectShare !== 'undefined') ProjectShare.onProjectSaved(project);
     } catch (e) {
       console.warn('silentSave:', e);
     }
@@ -948,4 +963,7 @@ function initProjectUI() {
   window.addEventListener('pagehide', silentSave);
 
   openStartupModal();
+  if (typeof ProjectShare !== 'undefined') {
+    try { ProjectShare.resumeAllShared(); } catch (e) { console.warn('share resume', e); }
+  }
 }

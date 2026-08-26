@@ -128,9 +128,10 @@ function initTabOffgrid() {
               <div class="form-group">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
                   <label for="og2-panel-wp" style="margin:0">Panneaux (Wc)</label>
-                  <button type="button" class="btn btn-outline btn-sm" onclick="autoCalcOffgridPanelWp()" style="padding:1px 7px;font-size:10px">⚡ Auto</button>
+                  <button type="button" id="og2-panel-wp-auto" class="btn btn-outline btn-sm" onclick="autoCalcOffgridPanelWp()" style="padding:1px 7px;font-size:10px" title="Choisir une puissance standard selon surface et couverture">⚡ Auto</button>
                 </div>
                 <div class="input-unit"><input type="number" id="og2-panel-wp" value="400" step="10"><span class="unit-tag">Wc</span></div>
+                <p id="og2-panel-wp-lib-hint" class="ose-field-help" style="display:none;margin-top:4px">Puissance issue de la bibliothèque — Auto désactivé.</p>
               </div>
               <div class="form-group">
                 <label for="og2-panel-m2">Surface panneau</label>

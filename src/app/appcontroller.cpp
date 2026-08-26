@@ -23,6 +23,19 @@ bool AppController::shareFile(const QString& filename, const QString& mime,
     return platformShareFile(filename, mime, raw);
 }
 
+bool AppController::openPdf(const QString& filename, const QString& base64Data)
+{
+    const QByteArray raw = QByteArray::fromBase64(base64Data.toLatin1());
+    if (raw.isEmpty())
+        return false;
+    return platformOpenPdf(filename, raw);
+}
+
+bool AppController::openPdfFromUrl(const QString& url)
+{
+    return platformOpenPdfFromUrl(url);
+}
+
 bool AppController::pickImportFile()
 {
     return platformPickImportFile();

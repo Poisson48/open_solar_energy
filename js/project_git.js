@@ -62,6 +62,7 @@
     const project = buildProjectData();
     AppState.currentProjectId = project.id;
     ProjectManager.save(project);
+    if (typeof ProjectShare !== 'undefined') ProjectShare.onProjectSaved(project);
 
     const api = _gitApi();
     if (!api) return;

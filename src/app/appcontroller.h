@@ -28,6 +28,9 @@ public:
     /** Partage un fichier (Android : Intent ACTION_SEND via FileProvider). */
     Q_INVOKABLE bool shareFile(const QString& filename, const QString& mime,
                                const QString& base64Data);
+    /** Ouvre un PDF avec la visioneuse système. */
+    Q_INVOKABLE bool openPdf(const QString& filename, const QString& base64Data);
+    Q_INVOKABLE bool openPdfFromUrl(const QString& url);
     /** Ouvre le sélecteur de fichiers pour importer un projet (Android). */
     Q_INVOKABLE bool pickImportFile();
     /** Poll résultat import : chaîne "ok\\tname\\tbase64" / "err\\tmsg" / vide. */

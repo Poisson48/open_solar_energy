@@ -1,5 +1,7 @@
 #include "webbridge.h"
 
+#include "platform.h"
+
 #include <QDesktopServices>
 #include <QDir>
 #include <QFile>
@@ -11,6 +13,7 @@
 #include <QRegularExpression>
 #include <QStandardPaths>
 #include <QUrl>
+#include <QByteArray>
 
 namespace app {
 
@@ -56,8 +59,34 @@ bool WebBridge::ensureGitRepo(const QString& dir) const
 
 void WebBridge::openExternal(const QString& url)
 {
-    if (url.startsWith(QStringLiteral("http://")) || url.startsWith(QStringLiteral("https://")))
-        QDesktopServices::openUrl(QUrl(url));
+    QString u = url.trimmed();
+    if (u.isEmpty())
+        return;
+    if (u.startsWith(QStringLiteral("http://")) || u.startsWith(QStringLiteral("https://"))) {
+        QDesktopServices::openUrl(QUrl(u));
+        return;
+    }
+    if (u.startsWith(QStringLiteral("file://"))) {
+        QDesktopServices::openUrl(QUrl(u));
+        return;
+    }
+    // Chemin local absolu → visioneuse système (PDF, etc.)
+    if (u.startsWith(QLatin1Char('/')) || (u.size() > 2 && u.at(1) == QLatin1Char(':'))) {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(u));
+    }
+}
+
+bool WebBridge::openPdf(const QString& filename, const QString& base64Data)
+{
+    const QByteArray raw = QByteArray::fromBase64(base64Data.toLatin1());
+    if (raw.isEmpty())
+        return false;
+    return platformOpenPdf(filename, raw);
+}
+
+bool WebBridge::openPdfFromUrl(const QString& url)
+{
+    return platformOpenPdfFromUrl(url.trimmed());
 }
 
 void WebBridge::checkForUpdates()

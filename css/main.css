@@ -267,6 +267,115 @@ header .logo .logo-img {
 .ose-hub-list {
   min-height: 120px;
 }
+
+/* ── Partage projet (QR + clé courte) ── */
+.ose-share-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  background: rgba(15, 23, 42, 0.45);
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  padding-top: calc(16px + var(--safe-top, 0px));
+  padding-bottom: calc(16px + var(--safe-bottom, 0px));
+}
+.ose-share-overlay.open { display: flex; }
+.ose-share-dialog {
+  background: var(--color-surface, #fff);
+  border-radius: 12px;
+  width: min(440px, 100%);
+  max-height: min(90dvh, 720px);
+  overflow: auto;
+  padding: 18px 18px 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+}
+.ose-share-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.ose-share-head h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+.ose-share-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: 0 0 12px;
+  line-height: 1.45;
+}
+.ose-share-status {
+  font-size: 12px;
+  color: var(--color-primary);
+  margin-bottom: 10px;
+  min-height: 1.2em;
+}
+.ose-share-qr {
+  display: flex;
+  justify-content: center;
+  margin: 8px 0 14px;
+  background: #fff;
+  padding: 8px;
+}
+.ose-share-qr svg { display: block; }
+.ose-share-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin: 8px 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.ose-share-keyrow {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.ose-share-short {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 10px 12px;
+  background: var(--color-surface2, #f5f7fa);
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  word-break: break-all;
+  user-select: all;
+}
+.ose-share-uri {
+  flex: 1;
+  font-size: 11px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface2, #f5f7fa);
+  min-width: 0;
+}
+.ose-share-input {
+  width: 100%;
+  font-size: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  box-sizing: border-box;
+}
+.ose-share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+  justify-content: flex-end;
+}
+
 body.ose-hub-active > header,
 body.ose-hub-active > #project-bar,
 body.ose-hub-active > .app-layout,

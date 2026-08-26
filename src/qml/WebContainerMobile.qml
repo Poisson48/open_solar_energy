@@ -27,6 +27,46 @@ Item {
         }
         if (c.indexOf("open:") === 0 && root.bridge)
             root.bridge.openExternal(c.substring(5))
+        if (c === "open-pdf") {
+            webView.runJavaScript(
+                "(function(){try{return JSON.stringify(window.__osePdfPending||null);}catch(e){return 'null';}})()",
+                function (result) {
+                    try {
+                        const payload = JSON.parse(result || "null")
+                        if (!payload || !payload.name || !payload.b64) {
+                            notifyWebToast("PDF indisponible", "error")
+                            return
+                        }
+                        let ok = false
+                        if (root.bridge && root.bridge.openPdf)
+                            ok = root.bridge.openPdf(String(payload.name), String(payload.b64))
+                        else
+                            ok = AppController.openPdf(String(payload.name), String(payload.b64))
+                        if (ok)
+                            notifyWebToast("Choisissez une visioneuse PDF", "")
+                        else
+                            notifyWebToast("Impossible d’ouvrir le PDF", "error")
+                    } catch (e) {
+                        notifyWebToast("Impossible d’ouvrir le PDF", "error")
+                    } finally {
+                        webView.runJavaScript("window.__osePdfPending=null")
+                    }
+                })
+            return
+        }
+        if (c.indexOf("open-pdf-url:") === 0) {
+            const url = c.substring("open-pdf-url:".length)
+            let ok = false
+            if (root.bridge && root.bridge.openPdfFromUrl)
+                ok = root.bridge.openPdfFromUrl(url)
+            else
+                ok = AppController.openPdfFromUrl(url)
+            if (ok)
+                notifyWebToast("Choisissez une visioneuse PDF", "")
+            else
+                notifyWebToast("Impossible de télécharger le PDF", "error")
+            return
+        }
         if (c === "share-file") {
             webView.runJavaScript(
                 "(function(){try{return JSON.stringify(window.__oseSharePending||null);}catch(e){return 'null';}})()",
@@ -200,6 +240,8 @@ Item {
                 + "checkForUpdates:function(){oseCmd('check-updates');},"
                 + "startUpdate:function(){oseCmd('start-update');},"
                 + "openExternal:function(u){oseCmd('open:'+String(u));},"
+                + "openPdf:function(name,b64){window.__osePdfPending={name:String(name),b64:String(b64)};oseCmd('open-pdf');return true;},"
+                + "openPdfFromUrl:function(u){oseCmd('open-pdf-url:'+String(u));return true;},"
                 + "shareFile:function(name,mime,b64){"
                 + "window.__oseSharePending={name:String(name),mime:String(mime||''),b64:String(b64)};"
                 + "oseCmd('share-file');},"
@@ -230,6 +272,8 @@ Item {
                 + "window.webBridge={checkForUpdates:function(){oseCmd('check-updates');},"
                 + "startUpdate:function(){oseCmd('start-update');},"
                 + "openExternal:function(u){oseCmd('open:'+String(u));},"
+                + "openPdf:function(name,b64){window.__osePdfPending={name:String(name),b64:String(b64)};oseCmd('open-pdf');return true;},"
+                + "openPdfFromUrl:function(u){oseCmd('open-pdf-url:'+String(u));return true;},"
                 + "shareFile:function(name,mime,b64){window.__oseSharePending={name:String(name),mime:String(mime||''),b64:String(b64)};oseCmd('share-file');},"
                 + "pickImportFile:function(){oseCmd('pick-import');},"
                 + "requestCameraPermission:function(){oseCmd('request-camera');},"

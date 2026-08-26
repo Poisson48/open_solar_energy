@@ -344,6 +344,7 @@ const SiteSurvey = (() => {
     _bindScreenOrientation();
     state.lastScreenAngle = screenAngle();
     updateCompassUI();
+    _toast('Boussole active — secouez l’appareil pour calibrer le capteur.');
     return true;
   }
 
