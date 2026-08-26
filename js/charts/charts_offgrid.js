@@ -73,7 +73,7 @@
     });
   };
 
-  /** Matrice couverture (Ppeak × C_batt) sous forme de heatmap HTML */
+  /** Matrice couverture (Ppeak × C_batt) sous forme de heatmap HTML cliquable */
   Charts.renderOffgridHeatmap = function (containerId, allCandidates, recPpeak, recBatt) {
     const ppeaks = [...new Set(allCandidates.map(c => c.Ppeak))].sort((a, b) => a - b);
     const batts  = [...new Set(allCandidates.map(c => c.C_batt_gross))].sort((a, b) => a - b);
@@ -85,8 +85,13 @@
         const pct    = c.coverageRate;
         const isRec  = (p === recPpeak && b === recBatt);
         const bg     = pct >= 95 ? 'rgba(26,107,60,0.85)' : pct >= 80 ? 'rgba(245,166,35,0.80)' : pct >= 60 ? 'rgba(230,119,0,0.70)' : 'rgba(198,40,40,0.65)';
-        const border = isRec ? 'outline:2px solid #fff;outline-offset:-2px;' : '';
-        return `<td style="background:${bg};color:#fff;${border}">${pct}%${isRec ? ' ★' : ''}</td>`;
+        const title  = `${p} kWc · ${b} kWh — couverture ${pct} %, ${c.deficit_days || 0} j déficit, ${c.nPanels || '?'} panneaux — cliquer pour sélectionner`;
+        const cls    = 'heatmap-cell' + (isRec ? ' heatmap-cell-selected' : '');
+        return `<td class="${cls}" style="background:${bg}"
+          role="button" tabindex="0"
+          title="${title.replace(/"/g, '&quot;')}"
+          onclick="selectOffgridCandidate(${p}, ${b})"
+          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectOffgridCandidate(${p}, ${b});}">${pct}%${isRec ? ' ★' : ''}</td>`;
       }).join('');
       return `<tr><th>${p} kWc</th>${cells}</tr>`;
     }).join('');
@@ -99,7 +104,8 @@
         </table>
       </div>
       <p style="font-size:11px;color:var(--color-text-muted);margin-top:6px">
-        Taux de couverture (%). ★ = configuration recommandée. Vert ≥95%, Orange ≥80%, Rouge &lt;80%.
+        Cliquez une case pour sélectionner cette config (KPI + graphiques). ★ = sélection actuelle.
+        Vert ≥95%, Orange ≥80%, Rouge &lt;80%.
       </p>`;
   };
 })();

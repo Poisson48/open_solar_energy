@@ -3,8 +3,13 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.40';
+const APP_VERSION = '2.0.41';
 // Historique :
+//   2.0.41 - Sync live inclinaison/azimut/surface/panneau entre onglets + devis ;
+//            devis : lignes libres, import sans écraser l’adresse, onduleur réel ;
+//            terrain → rafraîchit implantation ; câbles selon type d’install ;
+//            implantation « Depuis Autonome » + dims PanelDB ; clarté pente/suiveur ;
+//            versions alignées ; tests 403 GitHub ignorés
 //   2.0.40 - Catalogue Rexel embarqué + filtre ; MAJ hub fiable ; UI responsive ;
 //            hors-réseau : alerte si config insuffisante
 //   2.0.39 - Carte : tuiles OSM + plein écran ; adresse chantier préremplie ;
@@ -138,13 +143,14 @@ const AppState = {
 
   // Paramètres d'installation partagés entre onglets
   install: {
-    tilt:    30,
-    azimuth: 0,
-    surface: null,
-    panelWp: 400,
-    panelM2: 1.96,
-    losses:  14,
-    tech:    'crystSi',
+    tilt:       30,
+    azimuth:    0,
+    surface:    null,
+    panelWp:    400,
+    panelM2:    1.96,
+    losses:     14,
+    tech:       'crystSi',
+    panelModel: '',
   },
 
   // Profil d'horizon / ombrage / terrain (onglet Site)
@@ -194,12 +200,7 @@ const PROJECT_FIELDS = [
   'dv-site-address','dv-site-type','dv-site-surface','dv-site-tilt','dv-site-azimuth',
   'dv-sys-ppeak','dv-sys-panels','dv-sys-panel-model','dv-sys-inverter','dv-sys-batt',
   'dv-sys-prod','dv-sys-co2','dv-sys-autonomy',
-  'dv-line-panels-label','dv-line-panels-qty','dv-line-panels-unit','dv-line-panels-price',
-  'dv-line-inverter-label','dv-line-inverter-qty','dv-line-inverter-unit','dv-line-inverter-price',
-  'dv-line-fixations-label','dv-line-fixations-qty','dv-line-fixations-unit','dv-line-fixations-price',
-  'dv-line-cabling-label','dv-line-cabling-qty','dv-line-cabling-unit','dv-line-cabling-price',
-  'dv-line-labor-label','dv-line-labor-qty','dv-line-labor-unit','dv-line-labor-price',
-  'dv-line-admin-label','dv-line-admin-qty','dv-line-admin-unit','dv-line-admin-price',
-  'dv-line-misc-label','dv-line-misc-qty','dv-line-misc-unit','dv-line-misc-price',
+  // Lignes devis dynamiques (JSON) — les anciens champs dv-line-*-* sont migrés à la restauration
+  'dv-quote-lines-json',
   'dv-tva','dv-remise','dv-validity','dv-notes','dv-date','dv-ref'
 ];

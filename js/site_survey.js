@@ -758,12 +758,16 @@ const SiteSurvey = (() => {
     ];
     ids.forEach(([id, v]) => {
       const el = document.getElementById(id);
-      if (el) el.value = v;
+      if (!el) return;
+      el.value = v;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      if (el.tagName === 'SELECT') el.dispatchEvent(new Event('change', { bubbles: true }));
     });
     if (typeof AppState !== 'undefined' && AppState.install) {
       AppState.install.tilt = tilt;
       AppState.install.azimuth = azimuth;
     }
+    if (typeof renderPanelLayoutTab === 'function') renderPanelLayoutTab();
     _toast('Inclinaison / orientation appliquées au projet.');
   }
 

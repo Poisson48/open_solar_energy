@@ -494,6 +494,24 @@ const PanelDB = (() => {
     const panel = getById(id);
     if (!panel || !prefix) return;
 
+    if (prefix === 'dv') {
+      const modelEl = document.getElementById('dv-sys-panel-model');
+      if (modelEl) {
+        modelEl.value = panel.model || '';
+        modelEl.dispatchEvent(new Event('input'));
+      }
+      if (typeof QuoteLines !== 'undefined') {
+        QuoteLines.boot();
+        const patch = {
+          label: panel.model ? `Panneaux photovoltaïques ${panel.model}` : undefined,
+        };
+        if (panel.prix != null) patch.price = panel.prix;
+        QuoteLines.setLine('panels', patch);
+      }
+      if (typeof showToast === 'function') showToast(`Panneau "${panel.model}" chargé`);
+      return;
+    }
+
     const set = (field, val) => {
       const el = document.getElementById(`${prefix}-${field}`);
       if (el && val != null) { el.value = val; el.dispatchEvent(new Event('input')); }

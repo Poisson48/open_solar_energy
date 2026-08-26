@@ -23,10 +23,22 @@ const CablesUI = (() => {
     return null;
   }
 
+  /** Ordre de priorité des préfixes de formulaire (sz/inp/og2) selon le type d'installation. */
+  function _prefixPriority() {
+    switch (AppState.installationType) {
+      case 'offgrid': return ['og2', 'sz', 'inp'];
+      case 'grid':    return ['inp', 'sz', 'og2'];
+      case 'hybrid':  return ['sz', 'inp', 'og2'];
+      default:        return ['sz', 'inp', 'og2'];
+    }
+  }
+
   function findMatchingPanel() {
     if (typeof PanelDB === 'undefined') return null;
+    const prefixes = _prefixPriority();
     const modelCandidates = [
-      val('sz-panel-model'), val('inp-panel-model'), val('og2-panel-model'), val('dv-sys-panel-model')
+      ...prefixes.map(p => val(`${p}-panel-model`)),
+      val('dv-sys-panel-model'),
     ].map(s => (s || '').trim().toLowerCase()).filter(Boolean);
     if (!modelCandidates.length) return null;
     const panels = PanelDB.list();
@@ -41,11 +53,18 @@ const CablesUI = (() => {
     const gridP    = AppState.lastGridParams;
     const sizingR  = AppState.lastSizingResult;
     const sizingIn = AppState.lastSizingInput;
+    const prefixes = _prefixPriority();
 
     const Ppeak = gridP?.Ppeak || sizingR?.Ppeak || numVal('inp-ppeak') || null;
-    const panelWp = gridP?.panelWp
+    let panelWp = null;
+    for (const p of prefixes) {
+      panelWp = numVal(`${p}-panel-wp`);
+      if (panelWp) break;
+    }
+    panelWp = panelWp
+      || gridP?.panelWp
       || sizingIn?.site?.panelWattPeak
-      || numVal('inp-panel-wp') || numVal('sz-panel-wp') || 400;
+      || 400;
 
     let nPanels = gridP?.nPanels || null;
     if (!nPanels) {
@@ -277,19 +296,31 @@ const CablesUI = (() => {
     const res = AppState.lastCableResult;
     if (!res) { showToast('Calculez d\'abord le câblage.', 'error'); return; }
 
+    if (typeof QuoteLines !== 'undefined') QuoteLines.boot();
     const labelEl = document.getElementById('dv-line-cabling-label');
-    const qtyEl   = document.getElementById('dv-line-cabling-qty');
-    const unitEl  = document.getElementById('dv-line-cabling-unit');
     if (!labelEl) { showToast('Onglet Devis introuvable.', 'error'); return; }
 
     const dcMat = MATERIALS_LABEL(res.dc.input.material);
     const acMat = MATERIALS_LABEL(res.ac.input.material);
-    labelEl.value = `Câblage DC ${res.dc.sectionRecommended} mm² ${dcMat} (${res.dc.input.L} m) `
+    const label = `Câblage DC ${res.dc.sectionRecommended} mm² ${dcMat} (${res.dc.input.L} m) `
       + `+ AC ${res.ac.sectionRecommended} mm² ${acMat} (${res.ac.input.L} m) + protections`;
-    if (unitEl && !unitEl.value) unitEl.value = 'forfait';
-    if (qtyEl && (!qtyEl.value || qtyEl.value === '0')) qtyEl.value = 1;
 
-    if (typeof updateQuoteLine === 'function') updateQuoteLine('cabling');
+    if (typeof QuoteLines !== 'undefined') {
+      const qty = parseFloat(document.getElementById('dv-line-cabling-qty')?.value) || 0;
+      QuoteLines.setLine('cabling', {
+        label,
+        qty: qty > 0 ? qty : 1,
+        unit: document.getElementById('dv-line-cabling-unit')?.value || 'forfait',
+      });
+    } else {
+      labelEl.value = label;
+      const qtyEl  = document.getElementById('dv-line-cabling-qty');
+      const unitEl = document.getElementById('dv-line-cabling-unit');
+      if (unitEl && !unitEl.value) unitEl.value = 'forfait';
+      if (qtyEl && (!qtyEl.value || qtyEl.value === '0')) qtyEl.value = 1;
+      if (typeof updateQuoteLine === 'function') updateQuoteLine('cabling');
+    }
+
     showToast('✓ Ligne de câblage envoyée au devis');
     if (typeof activateTab === 'function') activateTab('quote');
   }

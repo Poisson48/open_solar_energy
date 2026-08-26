@@ -1326,6 +1326,26 @@ input:focus, select:focus, textarea:focus {
   font-size: 11px;
   border: 1px solid rgba(255,255,255,0.4);
   min-width: 36px;
+  color: #fff;
+}
+.heatmap-table td.heatmap-cell {
+  cursor: pointer;
+  transition: transform 0.08s ease, filter 0.12s ease, box-shadow 0.12s ease;
+  user-select: none;
+}
+.heatmap-table td.heatmap-cell:hover,
+.heatmap-table td.heatmap-cell:focus {
+  filter: brightness(1.12);
+  transform: scale(1.04);
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+  z-index: 1;
+  position: relative;
+}
+.heatmap-table td.heatmap-cell-selected {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,0.35);
 }
 
 /* ── SEPARATOR ── */
@@ -1413,11 +1433,21 @@ details.card > summary:focus-visible {
 ::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
 
 /* ── DEVIS ── */
+.dv-lines-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+.dv-lines-table { min-width: 480px; }
 .dv-cost-row { border-bottom: 1px solid var(--color-border); }
 .dv-cost-row:hover { background: var(--color-surface2); }
 .dv-cost-row td { padding: 3px 4px; }
 .dv-cost-row input { padding: 3px 4px; border-radius: 3px; transition: background 0.15s; }
 .dv-cost-row input:focus { background: var(--color-bg); outline: 1px solid var(--color-primary); }
+@media (max-width: 640px) {
+  .dv-lines-table { font-size: 11px; min-width: 420px; }
+  #dv-lines-actions .btn { font-size: 11px; }
+}
 
 /* ── BOUTON LOADING ── */
 @keyframes btn-spin {

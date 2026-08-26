@@ -57,7 +57,14 @@ const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
 const pageErrors = [];
 const consoleErrors = [];
 page.on('pageerror', (err) => pageErrors.push(err.message || String(err)));
-page.on('console', (msg) => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
+page.on('console', (msg) => {
+  if (msg.type() !== 'error') return;
+  const t = msg.text() || '';
+  // Ignorer 403 réseau (ex. API GitHub rate-limit sur check MAJ) — pas un bug app
+  if (/Failed to load resource:.*\b403\b/i.test(t)) return;
+  if (/net::ERR_/i.test(t) && /api\.github\.com/i.test(t)) return;
+  consoleErrors.push(t);
+});
 
 console.log('== Chargement de l\'application ==');
 await page.goto(url, { waitUntil: 'networkidle' });

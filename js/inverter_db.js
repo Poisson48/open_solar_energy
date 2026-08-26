@@ -545,7 +545,14 @@ const InverterDB = (() => {
     const modelEl = document.getElementById(f.model);
     if (modelEl) { modelEl.value = label; modelEl.dispatchEvent(new Event('input')); }
 
-    if (f.price && inv.prix) {
+    if (prefix === 'dv' && typeof QuoteLines !== 'undefined') {
+      QuoteLines.boot();
+      const patch = { label: label || undefined };
+      if (inv.prix != null) patch.price = inv.prix;
+      const qty = parseFloat(document.getElementById('dv-line-inverter-qty')?.value);
+      if (!(qty > 0)) patch.qty = 1;
+      QuoteLines.setLine('inverter', patch);
+    } else if (f.price && inv.prix) {
       const priceEl = document.getElementById(f.price);
       if (priceEl) { priceEl.value = inv.prix; priceEl.dispatchEvent(new Event('input')); }
     }

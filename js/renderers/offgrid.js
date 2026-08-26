@@ -16,6 +16,9 @@ function calcOffgridSizing() {
     OffgridSizing.run(input, AppState.weatherData, AppState.location.lat);
   AppState.lastOffgridSizingResult    = rec;
   AppState.lastOffgridSizingCandidates = allCandidates;
+  AppState.lastOffgridSizingAnnual    = annual_conso;
+  AppState.lastOffgridSizingTech      = tech;
+  AppState.lastOffgridSizingHourly    = useHourly;
   renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, useHourly);
 
   // Commit git après dimensionnement hors-réseau
@@ -261,6 +264,31 @@ function importEDFToOffgrid() {
   if (defEl) defEl.value = avg;
   if (statusEl) statusEl.textContent = `✓ Consommation importée (${Math.round(kwh.reduce((s, k) => s + k, 0))} kWh/an)`;
   document.getElementById('og2-day-1')?.dispatchEvent(new Event('input'));
+}
+
+/**
+ * Sélectionne une case de la matrice PV × batterie et met à jour les KPI / graphiques.
+ */
+function selectOffgridCandidate(ppeak, battKwh) {
+  const list = AppState.lastOffgridSizingCandidates || [];
+  const p = Number(ppeak);
+  const b = Number(battKwh);
+  const cand = list.find(c => Number(c.Ppeak) === p && Number(c.C_batt_gross) === b);
+  if (!cand) {
+    showToast('Configuration introuvable dans la matrice.', 'warning');
+    return;
+  }
+  AppState.lastOffgridSizingResult = cand;
+  const tech = AppState.lastOffgridSizingTech
+    || (typeof OffgridSizing !== 'undefined' && OffgridSizing.BATTERY_TECH
+      ? (OffgridSizing.BATTERY_TECH[document.getElementById('og2-batt-tech')?.value] || OffgridSizing.BATTERY_TECH.lfp)
+      : { label: 'Batterie', dod: 0.8 });
+  const annual = AppState.lastOffgridSizingAnnual ?? cand.annual_conso ?? 0;
+  const hourly = !!AppState.lastOffgridSizingHourly;
+  renderOffgridSizingResults(cand, list, tech, annual, hourly);
+  showToast(`Config sélectionnée : ${cand.Ppeak} kWc · ${cand.C_batt_gross} kWh · ${cand.coverageRate} %`);
+  const el = document.getElementById('offgrid2-results');
+  if (el) try { el.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (_) {}
 }
 
 /**

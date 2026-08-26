@@ -12,10 +12,11 @@ function initTabSite() {
           <p style="font-size:12px;color:var(--color-text-muted);line-height:1.5;margin:0 0 10px">
             Même import que dans <strong>Localisation</strong> (sidebar) : grille d’altitudes Open-Meteo
             pour estimer l’inclinaison et l’orientation (0° = Sud).
+            Calcule inclinaison/azimut depuis une grille d'altitude (pas de maillage 3D).
           </p>
           <div style="display:flex;flex-direction:column;gap:6px">
             <button type="button" class="btn btn-primary" style="width:100%" onclick="SiteSurvey.importTerrainElevations()">
-              🗻 Importer le terrain 3D
+              🗻 Estimer pente (relief)
             </button>
             <button type="button" class="btn btn-outline" style="width:100%" onclick="SiteSurvey.applyTerrainToInstall()">
               Appliquer inclinaison / orientation

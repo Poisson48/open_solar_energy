@@ -142,12 +142,17 @@ function chooseInstallationType(type) {
 }
 
 // ── Synchronisation des paramètres d'installation partagés ──
+// L'onglet « daily » (horaire) n'utilise volontairement que tilt/azimuth :
+// ne pas y ajouter panelModel ni les autres champs (cf. point 6).
 const INSTALL_FIELDS = {
-  sizing:  { tilt:'sz-tilt',    azimuth:'sz-azimuth',    surface:'sz-surface',    panelWp:'sz-panel-wp',    panelM2:'sz-panel-m2',    losses:'sz-losses'    },
-  grid:    { tilt:'inp-tilt',   azimuth:'inp-azimuth',   surface:'inp-surface',   panelWp:'inp-panel-wp',   panelM2:'inp-panel-m2',   losses:'inp-losses'   },
-  offgrid: { tilt:'og2-tilt',   azimuth:'og2-azimuth',   surface:'og2-surface',   panelWp:'og2-panel-wp',   panelM2:'og2-panel-m2',   losses:'og2-losses'   },
+  sizing:  { tilt:'sz-tilt',    azimuth:'sz-azimuth',    surface:'sz-surface',    panelWp:'sz-panel-wp',    panelM2:'sz-panel-m2',    losses:'sz-losses',    panelModel:'sz-panel-model'  },
+  grid:    { tilt:'inp-tilt',   azimuth:'inp-azimuth',   surface:'inp-surface',   panelWp:'inp-panel-wp',   panelM2:'inp-panel-m2',   losses:'inp-losses',   panelModel:'inp-panel-model' },
+  offgrid: { tilt:'og2-tilt',   azimuth:'og2-azimuth',   surface:'og2-surface',   panelWp:'og2-panel-wp',   panelM2:'og2-panel-m2',   losses:'og2-losses',   panelModel:'og2-panel-model' },
   daily:   { tilt:'hourly-tilt',azimuth:'hourly-azimuth' },
 };
+
+// Champs texte (pas de parseFloat) parmi les clés d'INSTALL_FIELDS.
+const INSTALL_STRING_FIELDS = new Set(['panelModel']);
 
 function readInstallFromTab(tab) {
   const map = INSTALL_FIELDS[tab];
@@ -155,6 +160,10 @@ function readInstallFromTab(tab) {
   for (const [key, id] of Object.entries(map)) {
     const el = document.getElementById(id);
     if (!el) continue;
+    if (INSTALL_STRING_FIELDS.has(key)) {
+      AppState.install[key] = el.value;
+      continue;
+    }
     const v = el.value !== '' ? parseFloat(el.value) : null;
     if (v !== null && !isNaN(v)) AppState.install[key] = v;
   }
@@ -166,7 +175,53 @@ function writeInstallToTab(tab) {
   for (const [key, id] of Object.entries(map)) {
     const el = document.getElementById(id);
     if (!el || AppState.install[key] == null) continue;
+    if (INSTALL_STRING_FIELDS.has(key)) {
+      if (el.value !== AppState.install[key]) el.value = AppState.install[key];
+      continue;
+    }
     if (parseFloat(el.value) !== AppState.install[key]) el.value = AppState.install[key];
+  }
+}
+
+// Répercute la valeur d'un champ partagé sur les AUTRES onglets en direct
+// (le tab source vient d'être édité par l'utilisateur, on ne le retouche pas).
+function propagateInstallField(key, sourceTab) {
+  const value = AppState.install[key];
+  if (value == null) return;
+  const isString = INSTALL_STRING_FIELDS.has(key);
+  for (const [tab, map] of Object.entries(INSTALL_FIELDS)) {
+    if (tab === sourceTab) continue;
+    const id = map[key];
+    if (!id) continue;
+    const el = document.getElementById(id);
+    if (!el) continue;
+    if (isString) {
+      if (el.value !== value) el.value = value;
+    } else if (parseFloat(el.value) !== value) {
+      el.value = value;
+    }
+  }
+}
+
+// Mémorise la dernière valeur synchronisée par champ devis/site pour ne pas
+// écraser une saisie/effacement volontaire de l'utilisateur (cf. point 4).
+const _quoteSiteSyncMemo = {};
+
+// Répercute tilt/azimut/surface de l'installation sur l'onglet Devis (site),
+// uniquement si l'utilisateur n'a pas modifié le champ depuis la dernière sync.
+function syncQuoteSiteFields() {
+  const map = { tilt: 'dv-site-tilt', azimuth: 'dv-site-azimuth', surface: 'dv-site-surface' };
+  for (const [key, id] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    const v = AppState.install[key];
+    if (v == null || isNaN(v)) continue;
+    const current = el.value !== '' ? parseFloat(el.value) : null;
+    const lastSynced = _quoteSiteSyncMemo[id];
+    // Le champ a été modifié/vidé manuellement depuis la dernière sync → on respecte ce choix.
+    if (lastSynced !== undefined && current !== lastSynced) continue;
+    if (current !== v) el.value = v;
+    _quoteSiteSyncMemo[id] = v;
   }
 }
 
@@ -177,8 +232,15 @@ function bindInstallSync(tab) {
     const el = document.getElementById(id);
     if (!el) continue;
     el.addEventListener('input', () => {
-      const v = parseFloat(el.value);
-      if (!isNaN(v)) AppState.install[key] = v;
+      if (INSTALL_STRING_FIELDS.has(key)) {
+        AppState.install[key] = el.value;
+      } else {
+        const v = el.value !== '' ? parseFloat(el.value) : null;
+        if (v === null || isNaN(v)) return;
+        AppState.install[key] = v;
+      }
+      propagateInstallField(key, tab);
+      syncQuoteSiteFields();
     });
   }
 }

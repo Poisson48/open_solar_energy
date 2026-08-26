@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(opensolarenergy VERSION 2.0.15 LANGUAGES CXX)
+project(opensolarenergy VERSION 2.0.41 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

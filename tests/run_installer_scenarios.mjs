@@ -321,7 +321,13 @@ console.log('\n═══ 4. Chargement de la démo depuis le hub ═══');
   const jsErrors = [];
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   page.on('pageerror', e => jsErrors.push(String(e.message || e)));
-  page.on('console', msg => { if (msg.type() === 'error') jsErrors.push(msg.text()); });
+  page.on('console', msg => {
+    if (msg.type() !== 'error') return;
+    const t = msg.text() || '';
+    if (/Failed to load resource:.*\b403\b/i.test(t)) return;
+    if (/net::ERR_/i.test(t) && /api\.github\.com/i.test(t)) return;
+    jsErrors.push(t);
+  });
   await page.goto(url, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => typeof ProjectManager !== 'undefined' && typeof AppState !== 'undefined');
   await page.waitForFunction(() => AppState.demoData != null, { timeout: 10000 });

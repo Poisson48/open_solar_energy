@@ -7,6 +7,7 @@
 //  CAPTURE / RESTAURATION FORMULAIRES
 // ══════════════════════════════════════════════════════════════
 function captureFormState() {
+  if (typeof QuoteLines !== 'undefined') QuoteLines.sync();
   const fields = {};
   PROJECT_FIELDS.forEach(id => {
     const el = document.getElementById(id);
@@ -37,11 +38,9 @@ function restoreFormState(fields) {
     setPanelMode('grid', fields['grid-panel-mode'] || 'surface');
     setPanelMode('og2',  fields['og2-panel-mode']  || 'surface');
   }
-  // Totaux devis après restauration des lignes
-  ['panels','inverter','fixations','cabling','labor','admin','misc'].forEach(k => {
-    if (typeof updateQuoteLine === 'function') updateQuoteLine(k);
-  });
-  if (typeof updateQuoteTotals === 'function') updateQuoteTotals();
+  // Lignes devis dynamiques (JSON ou migration anciens champs)
+  if (typeof QuoteLines !== 'undefined') QuoteLines.afterRestore(fields);
+  else if (typeof updateQuoteTotals === 'function') updateQuoteTotals();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -148,6 +147,8 @@ function resetForNewProject() {
   // 5. Rafraîchir les affichages calculés depuis les champs
   if (typeof calcGridPanels === 'function') calcGridPanels();
   document.getElementById('og2-batt-tech')?.dispatchEvent(new Event('change'));
+  // 6. Remettre les lignes de devis par défaut
+  if (typeof QuoteLines !== 'undefined') QuoteLines.boot(true);
 }
 
 // ══════════════════════════════════════════════════════════════

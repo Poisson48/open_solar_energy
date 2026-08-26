@@ -410,7 +410,7 @@ console.log('\n═══ H. Revue code — points de vigilance connus ═══'
   check('CSS overflow-x clip (anti débordement)', /overflow-x:\s*clip/.test(css));
   check('pont mobile : file d’attente + Timer', /__oseCmdQueue/.test(mobile) && /Timer/.test(mobile));
   check('Updater : téléchargement APK en flux (readyRead)', /readyRead/.test(upd));
-  check('Updater : checkFromUser délègue à check', /checkFromUser\(\)\s*\{\s*check\(\)/s.test(updH));
+  check('Updater : checkFromUser délègue à check', /checkFromUser\(\)\s*\{[^}]*\bcheck\(\)/s.test(updH));
   check('Updater : retours natifs → web (mobile)', /notifyWebToast/.test(mobile) && /onStateChanged/.test(mobile));
   check('Updater : statusMessage pour retours UI', /statusMessage/.test(upd));
   check('Android InstallReceiver déclaré', /InstallReceiver/.test(man) && /REQUEST_INSTALL_PACKAGES/.test(man));

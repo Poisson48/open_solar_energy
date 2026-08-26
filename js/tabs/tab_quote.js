@@ -125,11 +125,17 @@ function initTabQuote() {
               <input type="number" id="dv-sys-panels" placeholder="8">
             </div>
             <div class="form-group">
-              <label for="dv-sys-panel-model">Modèle panneau</label>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;gap:6px">
+                <label for="dv-sys-panel-model" style="margin:0">Modèle panneau</label>
+                <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.openLibraryModal('dv')" style="padding:1px 7px;font-size:10px" title="Bibliothèque panneaux">📋</button>
+              </div>
               <input type="text" id="dv-sys-panel-model" placeholder="Jinko Tiger 400W">
             </div>
             <div class="form-group">
-              <label for="dv-sys-inverter">Onduleur</label>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;gap:6px">
+                <label for="dv-sys-inverter" style="margin:0">Onduleur</label>
+                <button type="button" class="btn btn-outline btn-sm" onclick="InverterDB.openLibraryModal('dv')" style="padding:1px 7px;font-size:10px" title="Bibliothèque onduleurs">🔌</button>
+              </div>
               <input type="text" id="dv-sys-inverter" placeholder="Fronius Primo 3.0">
             </div>
             <div class="form-group">
@@ -160,75 +166,38 @@ function initTabQuote() {
         <details class="card" open>
           <summary class="card-title" style="cursor:pointer;user-select:none">💶 Détail du prix (HT)</summary>
           <div style="margin-top:10px">
-            <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <p class="ose-field-help" style="margin:0 0 8px">Modifiez les lignes (onduleur, câbles, main d’œuvre…) ou ajoutez-en autant que vous voulez.</p>
+            <div class="dv-lines-scroll">
+            <table class="dv-lines-table" style="width:100%;border-collapse:collapse;font-size:12px">
               <thead>
                 <tr style="border-bottom:2px solid var(--color-border)">
-                  <th style="text-align:left;padding:4px 6px;width:36%">Désignation</th>
+                  <th style="text-align:left;padding:4px 6px;width:34%">Désignation</th>
                   <th style="text-align:center;padding:4px 6px;width:10%">Qté</th>
                   <th style="text-align:center;padding:4px 6px;width:12%">Unité</th>
-                  <th style="text-align:right;padding:4px 6px;width:20%">Prix unit. HT</th>
-                  <th style="text-align:right;padding:4px 6px;width:22%">Montant HT</th>
+                  <th style="text-align:right;padding:4px 6px;width:18%">Prix unit. HT</th>
+                  <th style="text-align:right;padding:4px 6px;width:18%">Montant HT</th>
+                  <th style="width:8%"></th>
                 </tr>
               </thead>
-              <tbody id="dv-lines-body">
-                <tr class="dv-cost-row">
-                  <td><input type="text" id="dv-line-panels-label" value="Panneaux photovoltaïques" style="width:100%;border:none;background:transparent;font-size:12px"></td>
-                  <td><input type="number" id="dv-line-panels-qty" value="8" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center" oninput="updateQuoteLine('panels')"></td>
-                  <td><input type="text" id="dv-line-panels-unit" value="u" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center"></td>
-                  <td><input type="number" id="dv-line-panels-price" value="180" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:right" oninput="updateQuoteLine('panels')"></td>
-                  <td id="dv-line-panels-total" style="text-align:right;padding:4px 6px;font-weight:600">1 440 €</td>
-                </tr>
-                <tr class="dv-cost-row">
-                  <td><input type="text" id="dv-line-inverter-label" value="Onduleur" style="width:100%;border:none;background:transparent;font-size:12px"></td>
-                  <td><input type="number" id="dv-line-inverter-qty" value="1" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center" oninput="updateQuoteLine('inverter')"></td>
-                  <td><input type="text" id="dv-line-inverter-unit" value="u" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center"></td>
-                  <td><input type="number" id="dv-line-inverter-price" value="900" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:right" oninput="updateQuoteLine('inverter')"></td>
-                  <td id="dv-line-inverter-total" style="text-align:right;padding:4px 6px;font-weight:600">900 €</td>
-                </tr>
-                <tr class="dv-cost-row">
-                  <td><input type="text" id="dv-line-fixations-label" value="Fixations / structure" style="width:100%;border:none;background:transparent;font-size:12px"></td>
-                  <td><input type="number" id="dv-line-fixations-qty" value="1" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center" oninput="updateQuoteLine('fixations')"></td>
-                  <td><input type="text" id="dv-line-fixations-unit" value="forfait" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center"></td>
-                  <td><input type="number" id="dv-line-fixations-price" value="350" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:right" oninput="updateQuoteLine('fixations')"></td>
-                  <td id="dv-line-fixations-total" style="text-align:right;padding:4px 6px;font-weight:600">350 €</td>
-                </tr>
-                <tr class="dv-cost-row">
-                  <td><input type="text" id="dv-line-cabling-label" value="Câblage DC/AC + protections" style="width:100%;border:none;background:transparent;font-size:12px"></td>
-                  <td><input type="number" id="dv-line-cabling-qty" value="1" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center" oninput="updateQuoteLine('cabling')"></td>
-                  <td><input type="text" id="dv-line-cabling-unit" value="forfait" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center"></td>
-                  <td><input type="number" id="dv-line-cabling-price" value="250" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:right" oninput="updateQuoteLine('cabling')"></td>
-                  <td id="dv-line-cabling-total" style="text-align:right;padding:4px 6px;font-weight:600">250 €</td>
-                </tr>
-                <tr class="dv-cost-row">
-                  <td><input type="text" id="dv-line-labor-label" value="Main d'œuvre pose" style="width:100%;border:none;background:transparent;font-size:12px"></td>
-                  <td><input type="number" id="dv-line-labor-qty" value="2" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center" oninput="updateQuoteLine('labor')"></td>
-                  <td><input type="text" id="dv-line-labor-unit" value="jours" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center"></td>
-                  <td><input type="number" id="dv-line-labor-price" value="400" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:right" oninput="updateQuoteLine('labor')"></td>
-                  <td id="dv-line-labor-total" style="text-align:right;padding:4px 6px;font-weight:600">800 €</td>
-                </tr>
-                <tr class="dv-cost-row">
-                  <td><input type="text" id="dv-line-admin-label" value="Démarches administratives" style="width:100%;border:none;background:transparent;font-size:12px"></td>
-                  <td><input type="number" id="dv-line-admin-qty" value="1" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center" oninput="updateQuoteLine('admin')"></td>
-                  <td><input type="text" id="dv-line-admin-unit" value="forfait" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center"></td>
-                  <td><input type="number" id="dv-line-admin-price" value="200" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:right" oninput="updateQuoteLine('admin')"></td>
-                  <td id="dv-line-admin-total" style="text-align:right;padding:4px 6px;font-weight:600">200 €</td>
-                </tr>
-                <tr class="dv-cost-row">
-                  <td><input type="text" id="dv-line-misc-label" value="" placeholder="Ligne optionnelle" style="width:100%;border:none;background:transparent;font-size:12px"></td>
-                  <td><input type="number" id="dv-line-misc-qty" value="0" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center" oninput="updateQuoteLine('misc')"></td>
-                  <td><input type="text" id="dv-line-misc-unit" value="" style="width:100%;border:none;background:transparent;font-size:12px;text-align:center"></td>
-                  <td><input type="number" id="dv-line-misc-price" value="0" min="0" style="width:100%;border:none;background:transparent;font-size:12px;text-align:right" oninput="updateQuoteLine('misc')"></td>
-                  <td id="dv-line-misc-total" style="text-align:right;padding:4px 6px;font-weight:600">-</td>
-                </tr>
-              </tbody>
+              <tbody id="dv-lines-body"></tbody>
             </table>
+            </div>
+            <div id="dv-lines-actions" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center">
+              <button type="button" class="btn btn-accent btn-sm" onclick="QuoteLines.add()">+ Ajouter une ligne</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="QuoteLines.addPreset('battery')">+ Batterie</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="QuoteLines.addPreset('optimizers')">+ Optimiseurs</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="QuoteLines.addPreset('monitoring')">+ Monitoring</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="QuoteLines.addPreset('transport')">+ Transport</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="QuoteLines.addPreset('scaffold')">+ Échafaudage</button>
+            </div>
+            <input type="hidden" id="dv-quote-lines-json" value="">
 
             <div style="margin-top:12px;border-top:2px solid var(--color-border);padding-top:10px">
               <div style="display:flex;justify-content:flex-end">
-                <table style="width:280px;font-size:13px">
+                <table style="width:min(280px,100%);font-size:13px">
                   <tr>
                     <td style="padding:3px 8px">Sous-total HT</td>
-                    <td id="dv-total-ht" style="text-align:right;padding:3px 8px;font-weight:600">3 940 €</td>
+                    <td id="dv-total-ht" style="text-align:right;padding:3px 8px;font-weight:600">0 €</td>
                   </tr>
                   <tr id="dv-remise-row" style="color:var(--color-danger);display:none">
                     <td style="padding:3px 8px">Remise (<span id="dv-remise-pct">0</span>%)</td>
@@ -236,15 +205,15 @@ function initTabQuote() {
                   </tr>
                   <tr>
                     <td style="padding:3px 8px">Base HT</td>
-                    <td id="dv-base-ht" style="text-align:right;padding:3px 8px;font-weight:600">3 940 €</td>
+                    <td id="dv-base-ht" style="text-align:right;padding:3px 8px;font-weight:600">0 €</td>
                   </tr>
                   <tr>
                     <td style="padding:3px 8px">TVA (<span id="dv-tva-pct">10</span>%)</td>
-                    <td id="dv-total-tva" style="text-align:right;padding:3px 8px">394 €</td>
+                    <td id="dv-total-tva" style="text-align:right;padding:3px 8px">0 €</td>
                   </tr>
                   <tr style="background:var(--color-primary);color:#fff;border-radius:4px">
                     <td style="padding:6px 8px;font-weight:700;font-size:14px">TOTAL TTC</td>
-                    <td id="dv-total-ttc" style="text-align:right;padding:6px 8px;font-weight:700;font-size:14px">4 334 €</td>
+                    <td id="dv-total-ttc" style="text-align:right;padding:6px 8px;font-weight:700;font-size:14px">0 €</td>
                   </tr>
                 </table>
               </div>

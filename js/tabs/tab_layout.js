@@ -83,6 +83,9 @@ function initTabLayout() {
             <button type="button" class="btn btn-outline" style="width:100%" onclick="syncPanelLayoutFrom('grid')" title="Reprendre le nombre de panneaux du Système PV">
               ↺ Depuis Système PV
             </button>
+            <button type="button" class="btn btn-outline" style="width:100%" onclick="syncPanelLayoutFrom('offgrid')" title="Reprendre le nombre de panneaux du dimensionnement Autonome (hors réseau)">
+              ↺ Depuis Autonome
+            </button>
             <button type="button" class="btn btn-outline" style="width:100%" onclick="syncLayoutToCableLength()" title="Estimer la longueur de câble DC à partir de cette implantation (rangées, panneaux/rangée)">
               📏 Vers Câbles (longueur DC)
             </button>
@@ -192,11 +195,15 @@ function syncPanelLayoutFrom(source) {
     const el = document.getElementById(id);
     if (el) el.value = v;
   };
-
-  if (AppState.install) {
-    setVal('lay-tilt', AppState.install.tilt);
-    setVal('lay-azimuth', AppState.install.azimuth);
-  }
+  const getNum = (id) => {
+    const el = document.getElementById(id);
+    const n = el ? parseFloat(el.value) : NaN;
+    return isFinite(n) ? n : null;
+  };
+  const getStr = (id) => {
+    const v = document.getElementById(id)?.value;
+    return v ? v.trim() : '';
+  };
 
   // Format standard portrait ~1 : 1.56 (proche des panneaux résidentiels courants)
   const panelDimsFromM2 = (m2) => {
@@ -204,25 +211,61 @@ function syncPanelLayoutFrom(source) {
     return { w: Math.round(w * 100) / 100, h: Math.round(w * 1.56 * 100) / 100 };
   };
 
+  // Dimension panneau réelle (bibliothèque) : certaines fiches stockent en mm plutôt qu'en m.
+  const toMeters = (v) => {
+    const n = parseFloat(v);
+    if (!isFinite(n) || n <= 0) return null;
+    return n > 10 ? n / 1000 : n;
+  };
+
+  /** Cherche les dimensions réelles (m) d'un panneau par son nom de modèle dans PanelDB. */
+  const findPanelDims = (model) => {
+    if (!model || typeof PanelDB === 'undefined' || typeof PanelDB.list !== 'function') return null;
+    const hit = PanelDB.list().find(p => (p.model || '').trim().toLowerCase() === model.toLowerCase());
+    if (!hit) return null;
+    const w = toMeters(hit.largeur), h = toMeters(hit.hauteur);
+    return (w && h) ? { w, h } : null;
+  };
+
   let nPanels = null, surfaceNeeded = null, panelM2 = AppState.install?.panelM2;
+  let tilt = AppState.install?.tilt, azimuth = AppState.install?.azimuth;
+  let panelModel = null;
 
   if (source === 'sizing') {
     const rec = AppState.lastSizingResult;
     nPanels = rec?.nPanels ?? null;
     surfaceNeeded = rec?.surfaceNeeded ?? null;
+    panelModel = getStr('sz-panel-model');
   } else if (source === 'grid') {
     const params = AppState.lastGridParams;
     nPanels = params?.nPanels ?? null;
     surfaceNeeded = (params?.nPanels && params?.panelM2) ? params.nPanels * params.panelM2 : null;
     panelM2 = params?.panelM2 ?? panelM2;
+    panelModel = getStr('inp-panel-model');
+  } else if (source === 'offgrid') {
+    const rec = AppState.lastOffgridSizingResult;
+    const panelWp = getNum('og2-panel-wp') || AppState.install?.panelWp || 400;
+    nPanels = rec?.nPanels ?? (rec?.Ppeak ? Math.ceil((rec.Ppeak * 1000) / panelWp) : null);
+    panelM2 = getNum('og2-panel-m2') || panelM2;
+    surfaceNeeded = getNum('og2-surface') || (nPanels && panelM2 ? nPanels * panelM2 : null);
+    tilt = getNum('og2-tilt') ?? tilt;
+    azimuth = getNum('og2-azimuth') ?? azimuth;
+    panelModel = getStr('og2-panel-model');
   }
 
+  setVal('lay-tilt', tilt);
+  setVal('lay-azimuth', azimuth);
+
   if (nPanels) setVal('lay-npanels', nPanels);
-  if (panelM2) {
-    const { w, h } = panelDimsFromM2(panelM2);
-    setVal('lay-panel-w', w);
-    setVal('lay-panel-h', h);
+
+  // Dimensions réelles issues de la bibliothèque de panneaux si le modèle y figure,
+  // sinon on retombe sur le format standard 1:1.56 déduit de la surface unitaire.
+  const dims = findPanelDims(panelModel) || (panelM2 ? panelDimsFromM2(panelM2) : null);
+  if (dims) {
+    setVal('lay-panel-w', dims.w);
+    setVal('lay-panel-h', dims.h);
   }
+
   if (surfaceNeeded && surfaceNeeded > 0) {
     // Toiture un peu plus grande que le strict besoin (marge de pose)
     const side = Math.ceil(Math.sqrt(surfaceNeeded * 1.3) * 10) / 10;

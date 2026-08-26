@@ -29,9 +29,11 @@ const QuoteGen = (() => {
     const v = id => (document.getElementById(id)?.value || '').trim();
     const n = id => parseFloat(document.getElementById(id)?.value) || 0;
 
-    // Lignes de coût
-    const lineIds = ['panels','inverter','fixations','cabling','labor','admin','misc'];
-    const lines = lineIds.map(k => ({
+    // Lignes de coût (dynamiques via QuoteLines, repli sur les IDs classiques)
+    const keys = (typeof QuoteLines !== 'undefined' && QuoteLines.listKeys().length)
+      ? QuoteLines.listKeys()
+      : ['panels','inverter','battery','fixations','cabling','labor','admin','misc'];
+    const lines = keys.map(k => ({
       key: k,
       label:  v(`dv-line-${k}-label`),
       qty:    n(`dv-line-${k}-qty`),
