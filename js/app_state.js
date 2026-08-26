@@ -3,8 +3,9 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.36';
+const APP_VERSION = '2.0.37';
 // Historique :
+//   2.0.37 - MAJ Android : bandeau + barre de progression fiable (plus de toast sans suite)
 //   2.0.36 - Boussole : plus d’oscillation 90°↔300° (absolute vs relatif)
 //   2.0.35 - Partage projet sans serveur (clé courte + QR, sync Nostr E2E)
 //   2.0.34 - Catalogue Rexel (panneaux + onduleurs) + fiches PDF via visioneuse

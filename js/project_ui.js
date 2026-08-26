@@ -804,15 +804,57 @@ function _renderHubNews(box, current, releases, native = {}) {
 // Callback depuis le shell Qt (WebContainerMobile.notifyWebUpdaterState)
 window.__oseOnUpdaterState = function __oseOnUpdaterState(state, msg) {
   try {
-    if (typeof msg === 'string' && msg && typeof showToast === 'function') {
-      // toast déjà géré côté QML la plupart du temps — ne pas doubler
+    // 1=Checking 3=Downloading 4=Ready 5=Failed — barre visible dans le hub
+    _renderHubUpdateProgress(state, msg);
+    if (state !== 3) {
+      const hub = document.getElementById('startup-modal');
+      if (hub && hub.classList.contains('ose-hub-open') && typeof refreshHubNews === 'function')
+        refreshHubNews(false);
     }
-    // Rafraîchir la carte hub si visible
-    const hub = document.getElementById('startup-modal');
-    if (hub && hub.classList.contains('ose-hub-open') && typeof refreshHubNews === 'function')
-      refreshHubNews(false);
   } catch (_) {}
 };
+
+function _renderHubUpdateProgress(state, msg) {
+  let bar = document.getElementById('ose-hub-update-progress');
+  const hubBody = document.getElementById('startup-step-1');
+  if (!hubBody) return;
+  const downloading = state === 3 || state === 1;
+  const failed = state === 5;
+  const ready = state === 4;
+  if (!downloading && !failed && !ready) {
+    if (bar) bar.remove();
+    return;
+  }
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'ose-hub-update-progress';
+    bar.className = 'ose-hub-news-card update';
+    bar.style.marginBottom = '12px';
+    const news = document.getElementById('ose-hub-news');
+    if (news) hubBody.insertBefore(bar, news);
+    else hubBody.prepend(bar);
+  }
+  const pct = Math.max(0, Math.min(100, Math.round((window.__oseUpdaterProgress || 0) * 100)));
+  const bytes = Number(window.__oseUpdaterBytes || 0);
+  const mo = bytes > 0 ? (bytes / 1e6).toFixed(1) + ' Mo' : '';
+  const title = state === 1 ? 'Vérification…'
+    : state === 3 ? (msg || 'Téléchargement…')
+    : state === 4 ? 'Installation…'
+    : (msg || 'Échec de la mise à jour');
+  bar.innerHTML = `
+    <div class="ose-hub-news-kicker">${failed ? 'Erreur MAJ' : 'Mise à jour'}</div>
+    <h4 style="margin:4px 0 8px;font-size:14px">${_escHtml(title)}</h4>
+    ${downloading || ready ? `
+      <div style="height:8px;background:var(--color-border);border-radius:4px;overflow:hidden">
+        <div style="height:100%;width:${state === 1 ? 35 : Math.max(pct, 4)}%;background:var(--color-accent);transition:width .2s"></div>
+      </div>
+      <div class="ose-hub-news-meta" style="margin-top:6px">${pct > 0 ? pct + ' %' : ''}${mo ? ' · ' + mo : ''}</div>
+    ` : `
+      <div class="ose-hub-news-actions">
+        <button type="button" class="btn btn-accent btn-sm" onclick="installAvailableUpdate()">Réessayer</button>
+      </div>
+    `}`;
+}
 
 async function installAvailableUpdate() {
   function waitNativeBridge(ms) {

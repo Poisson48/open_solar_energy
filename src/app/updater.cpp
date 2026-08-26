@@ -284,7 +284,14 @@ void Updater::check()
 
 void Updater::startUpdate()
 {
-    if (m_state == Checking || m_state == Downloading)
+    // Si une vérif est déjà en cours (check au démarrage), ne pas abandonner :
+    // enchaîner le téléchargement dès que Available.
+    if (m_state == Checking) {
+        m_autoStartAfterCheck = true;
+        setStatusMessage(QStringLiteral("Vérification… téléchargement ensuite"));
+        return;
+    }
+    if (m_state == Downloading)
         return;
     if (m_state == Ready) {
         install();
@@ -334,17 +341,44 @@ void Updater::startApkDownload(const QUrl& url, bool apiAsset)
     // Suivre github.com → release-assets.githubusercontent.com (HTTPS)
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                      QNetworkRequest::NoLessSafeRedirectPolicy);
-    req.setTransferTimeout(120000);
+    // APK Qt ~25–40 Mo : laisser assez de marge sur réseau mobile
+    req.setTransferTimeout(10 * 60 * 1000);
 
     m_progress = 0.0;
+    m_bytesReceived = 0.0;
+    m_lastProgressPct = -1;
     emit progressChanged();
     setState(Downloading);
+    setStatusMessage(QStringLiteral("Téléchargement de la version %1…").arg(m_latestVersion));
 
     QNetworkReply* reply = m_net.get(req);
     m_reply = reply;
     connect(reply, &QNetworkReply::downloadProgress, this,
             [this](qint64 received, qint64 total) {
-        m_progress = total > 0 ? qreal(received) / qreal(total) : 0.0;
+        m_bytesReceived = qreal(received);
+        if (total > 0) {
+            m_progress = qreal(received) / qreal(total);
+            const int pct = int(m_progress * 100.0);
+            if (pct != m_lastProgressPct && (pct % 2 == 0 || pct >= 99 || m_lastProgressPct < 0)) {
+                m_lastProgressPct = pct;
+                setStatusMessage(
+                    QStringLiteral("Téléchargement… %1 % (%2 Mo / %3 Mo)")
+                        .arg(pct)
+                        .arg(received / 1e6, 0, 'f', 1)
+                        .arg(total / 1e6, 0, 'f', 1));
+            }
+        } else {
+            // Pas de Content-Length (CDN) : progression estimée ~30 Mo, plafond 92 %
+            constexpr qreal kEst = 30e6;
+            m_progress = qMin(0.92, qreal(received) / kEst);
+            const int pct = int(m_progress * 100.0);
+            if (pct != m_lastProgressPct) {
+                m_lastProgressPct = pct;
+                setStatusMessage(
+                    QStringLiteral("Téléchargement… %1 Mo")
+                        .arg(received / 1e6, 0, 'f', 1));
+            }
+        }
         emit progressChanged();
     });
     connect(reply, &QNetworkReply::readyRead, this, [reply, file]() {
@@ -379,6 +413,9 @@ void Updater::startApkDownload(const QUrl& url, bool apiAsset)
             return;
         }
 
+        m_progress = 1.0;
+        m_bytesReceived = qreal(size);
+        emit progressChanged();
         qInfo() << "[Updater] APK téléchargé" << m_apkPath << size << "octets";
         setState(Ready);
 #ifdef Q_OS_ANDROID

@@ -170,6 +170,8 @@ Item {
         const latest = JSON.stringify(String(root.updater.latestVersion || ""))
         const notes = JSON.stringify(String(root.updater.releaseNotes || "").slice(0, 4000))
         const avail = root.updater.updateAvailable ? "true" : "false"
+        const prog = Number(root.updater.progress || 0)
+        const bytes = Number(root.updater.bytesReceived || 0)
         webView.runJavaScript(
             "(function(){"
             + "window.__oseNativeVersion=" + ver + ";"
@@ -177,9 +179,10 @@ Item {
             + "window.__oseUpdaterLatest=" + latest + ";"
             + "window.__oseUpdaterNotes=" + notes + ";"
             + "window.__oseUpdaterAvailable=" + avail + ";"
+            + "window.__oseUpdaterProgress=" + prog + ";"
+            + "window.__oseUpdaterBytes=" + bytes + ";"
             + "if(typeof window.__oseOnUpdaterState==='function')"
             + "window.__oseOnUpdaterState(" + st + "," + msg + ");"
-            + "if(typeof refreshHubNews==='function')try{refreshHubNews(false);}catch(e){}"
             + "})();"
         )
     }
@@ -190,14 +193,27 @@ Item {
             if (!root.updater)
                 return
             const msg = root.updater.statusMessage
-            if (msg.length > 0) {
+            // Toast seulement hors téléchargement (sinon spam % / Mo)
+            if (msg.length > 0 && root.updater.state !== 3) {
                 const kind = root.updater.state === 5 ? "error"
                            : (root.updater.state === 2 ? "warning" : "")
                 notifyWebToast(msg, kind)
             }
             notifyWebUpdaterState()
+            if (root.updater.state !== 3
+                    && typeof refreshHubNews === "function") {
+                /* no-op: refresh via JS below */
+            }
+            if (root.updater.state !== 3) {
+                webView.runJavaScript(
+                    "if(typeof refreshHubNews==='function')try{refreshHubNews(false);}catch(e){}"
+                )
+            }
         }
         function onStatusMessageChanged() {
+            notifyWebUpdaterState()
+        }
+        function onProgressChanged() {
             notifyWebUpdaterState()
         }
     }

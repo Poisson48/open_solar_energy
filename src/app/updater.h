@@ -20,9 +20,11 @@ class Updater : public QObject {
     Q_PROPERTY(QString whatsNewNotes READ whatsNewNotes NOTIFY changelogChanged)
     Q_PROPERTY(bool hasWhatsNew READ hasWhatsNew NOTIFY changelogChanged)
     Q_PROPERTY(qreal progress READ progress NOTIFY progressChanged)
+    Q_PROPERTY(qreal bytesReceived READ bytesReceived NOTIFY progressChanged)
     Q_PROPERTY(bool updateAvailable READ updateAvailable NOTIFY stateChanged)
     Q_PROPERTY(bool downloading READ downloading NOTIFY stateChanged)
     Q_PROPERTY(bool readyToInstall READ readyToInstall NOTIFY stateChanged)
+    Q_PROPERTY(bool checking READ checking NOTIFY stateChanged)
     Q_PROPERTY(bool canInstall READ canInstall CONSTANT)
     Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY statusMessageChanged)
 
@@ -40,10 +42,12 @@ public:
     QString whatsNewNotes() const { return m_whatsNewNotes; }
     bool hasWhatsNew() const { return !m_whatsNewNotes.isEmpty(); }
     qreal progress() const { return m_progress; }
+    qreal bytesReceived() const { return m_bytesReceived; }
     bool canInstall() const;
     bool updateAvailable() const { return m_state == Available; }
     bool downloading() const { return m_state == Downloading; }
     bool readyToInstall() const { return m_state == Ready; }
+    bool checking() const { return m_state == Checking; }
     QString statusMessage() const { return m_statusMessage; }
 
     static bool isNewer(const QString& candidate, const QString& current);
@@ -87,6 +91,8 @@ private:
     QString m_apkPath;
     QString m_statusMessage;
     qreal m_progress = 0.0;
+    qreal m_bytesReceived = 0.0;
+    int m_lastProgressPct = -1;
     bool m_triedApiDownload = false;
     bool m_autoStartAfterCheck = false;
 };

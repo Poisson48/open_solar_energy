@@ -32,7 +32,7 @@ ApplicationWindow {
         }
 
         if (Updater.updateAvailable || Updater.downloading || Updater.readyToInstall
-                || Updater.state === 5) {
+                || Updater.checking || Updater.state === 5) {
             Updater.dismiss()
             return
         }
@@ -101,13 +101,15 @@ ApplicationWindow {
             }
         }
 
+        // Bandeau MAJ desktop (dans le flux). Sur Android → overlay ci-dessous.
         Rectangle {
-            id: updateBanner
+            id: updateBannerDesktop
             Layout.fillWidth: true
-            Layout.preferredHeight: visible ? (Qt.platform.os === "android" ? 72 : 56) : 0
-            visible: Updater.updateAvailable || Updater.downloading || Updater.readyToInstall || Updater.state === 5
+            Layout.preferredHeight: visible ? 56 : 0
+            visible: Qt.platform.os !== "android"
+                     && (Updater.updateAvailable || Updater.downloading || Updater.readyToInstall
+                         || Updater.checking || Updater.state === 5)
             color: Updater.state === 5 ? "#fdecea" : Theme.surfaceHigh
-            z: 10
             clip: true
 
             RowLayout {
@@ -123,7 +125,10 @@ ApplicationWindow {
                         elide: Text.ElideRight
                         font.weight: Font.DemiBold
                         text: {
-                            if (Updater.downloading) return "Téléchargement…"
+                            if (Updater.checking) return "Vérification des mises à jour…"
+                            if (Updater.downloading)
+                                return Updater.statusMessage.length > 0
+                                       ? Updater.statusMessage : "Téléchargement…"
                             if (Updater.readyToInstall)
                                 return "Version " + Updater.latestVersion + " prête"
                             if (Updater.state === 5)
@@ -137,7 +142,7 @@ ApplicationWindow {
                     }
                     Rectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 3
+                        Layout.preferredHeight: 4
                         radius: 2
                         visible: Updater.downloading
                         color: Theme.outline
@@ -145,47 +150,25 @@ ApplicationWindow {
                             height: parent.height
                             radius: 2
                             color: Theme.accent
-                            width: parent.width * Updater.progress
+                            width: Math.max(parent.width * Math.max(0, Updater.progress),
+                                            Updater.downloading && Updater.progress <= 0 ? 24 : 0)
                         }
-                    }
-                    Label {
-                        Layout.fillWidth: true
-                        visible: !Updater.downloading && Updater.state !== 5
-                        color: Theme.textDim
-                        font.pixelSize: 12
-                        text: Updater.readyToInstall
-                              ? (Qt.platform.os === "android"
-                                 ? "Android vous demandera confirmation"
-                                 : "Ouvrir la page de téléchargement")
-                              : ("Vous avez la v" + Updater.currentVersion)
                     }
                 }
 
                 Button {
                     flat: true
-                    visible: !Updater.downloading
+                    visible: !Updater.downloading && !Updater.checking
                     text: Updater.state === 5 ? "Réessayer"
                          : (Updater.readyToInstall ? "Installer"
                          : (Updater.canInstall ? "Mettre à jour" : "Télécharger"))
                     onClicked: {
                         if (Updater.state === 5) {
-                            // Échec : retenter install (APK déjà là) ou re-télécharger
-                            if (Updater.canInstall)
-                                Updater.install()
-                            else
-                                Updater.check()
+                            if (Updater.canInstall) Updater.install()
+                            else Updater.check()
                             return
                         }
-                        if (Updater.readyToInstall) {
-                            Updater.install()
-                            return
-                        }
-                        // Android : télécharger tout de suite (pas de dialog notes
-                        // qui masque le bandeau / bloque le flux).
-                        if (Qt.platform.os === "android" && Updater.canInstall) {
-                            Updater.download()
-                            return
-                        }
+                        if (Updater.readyToInstall) { Updater.install(); return }
                         if (Updater.releaseNotes.length > 0)
                             changelogDialog.openPending()
                         else
@@ -193,7 +176,7 @@ ApplicationWindow {
                     }
                 }
                 ToolButton {
-                    visible: !Updater.downloading
+                    visible: !Updater.downloading && !Updater.checking
                     text: "✕"
                     onClicked: Updater.dismiss()
                 }
@@ -212,6 +195,119 @@ ApplicationWindow {
                 item.bridge = AppController.bridge
                 if (item.updater !== undefined)
                     item.updater = Updater
+            }
+        }
+    }
+
+    // Android : bandeau en overlay au-dessus du WebView / hub (sinon invisible /
+    // confondu avec le toast JS seul).
+    Rectangle {
+        id: updateBannerAndroid
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        z: 100
+        height: visible ? 84 : 0
+        visible: Qt.platform.os === "android"
+                 && (Updater.updateAvailable || Updater.downloading || Updater.readyToInstall
+                     || Updater.checking || Updater.state === 5)
+        color: Updater.state === 5 ? "#fdecea" : Theme.surfaceHigh
+        clip: true
+
+        Rectangle {
+            anchors.bottom: parent.bottom
+            width: parent.width
+            height: 1
+            color: Theme.outline
+        }
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 12
+            anchors.rightMargin: 8
+            anchors.topMargin: 10
+            anchors.bottomMargin: 10
+            spacing: 8
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 6
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    maximumLineCount: 2
+                    font.weight: Font.DemiBold
+                    font.pixelSize: 13
+                    text: {
+                        if (Updater.checking) return "Vérification des mises à jour…"
+                        if (Updater.downloading)
+                            return Updater.statusMessage.length > 0
+                                   ? Updater.statusMessage : "Téléchargement…"
+                        if (Updater.readyToInstall)
+                            return "Version " + Updater.latestVersion + " prête — installation…"
+                        if (Updater.state === 5)
+                            return (Updater.statusMessage.length > 0
+                                    ? Updater.statusMessage
+                                    : "Échec de la mise à jour")
+                        return "Version " + Updater.latestVersion + " disponible"
+                    }
+                }
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 6
+                    radius: 3
+                    visible: Updater.downloading || Updater.checking
+                    color: Theme.outline
+                    Rectangle {
+                        id: androidProgressFill
+                        height: parent.height
+                        radius: 3
+                        color: Theme.accent
+                        width: {
+                            if (Updater.checking)
+                                return parent.width * 0.35
+                            return Math.max(parent.width * Math.max(0, Math.min(1, Updater.progress)),
+                                            Updater.progress <= 0 ? 28 : 0)
+                        }
+                        Behavior on width { NumberAnimation { duration: 180 } }
+                    }
+                    // Animation « indéterminée » tant que 0 Mo reçu
+                    SequentialAnimation on opacity {
+                        running: Updater.checking || (Updater.downloading && Updater.progress <= 0.02)
+                        loops: Animation.Infinite
+                        NumberAnimation { from: 0.45; to: 1.0; duration: 700 }
+                        NumberAnimation { from: 1.0; to: 0.45; duration: 700 }
+                    }
+                }
+                Label {
+                    Layout.fillWidth: true
+                    visible: Updater.downloading && Updater.bytesReceived > 0
+                    color: Theme.textDim
+                    font.pixelSize: 11
+                    text: (Updater.bytesReceived / 1e6).toFixed(1) + " Mo reçus"
+                }
+            }
+
+            Button {
+                flat: true
+                visible: !Updater.downloading && !Updater.checking
+                text: Updater.state === 5 ? "Réessayer"
+                     : (Updater.readyToInstall ? "Installer"
+                     : "Mettre à jour")
+                onClicked: {
+                    if (Updater.state === 5) {
+                        if (Updater.canInstall) Updater.install()
+                        else Updater.startUpdate()
+                        return
+                    }
+                    if (Updater.readyToInstall) { Updater.install(); return }
+                    Updater.startUpdate()
+                }
+            }
+            ToolButton {
+                visible: !Updater.downloading && !Updater.checking
+                text: "✕"
+                onClicked: Updater.dismiss()
             }
         }
     }
