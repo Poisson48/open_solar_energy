@@ -3,8 +3,9 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.35';
+const APP_VERSION = '2.0.36';
 // Historique :
+//   2.0.36 - Boussole : plus d’oscillation 90°↔300° (absolute vs relatif)
 //   2.0.35 - Partage projet sans serveur (clé courte + QR, sync Nostr E2E)
 //   2.0.34 - Catalogue Rexel (panneaux + onduleurs) + fiches PDF via visioneuse
 //   2.0.33 - Hub : Matériel au-dessus du hub (z-index) ; nouveautés = 3 dernières versions
