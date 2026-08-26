@@ -3,8 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.29';
+const APP_VERSION = '2.0.30';
 // Historique :
+//   2.0.30 - Mobile : caméra ombrage (CAMERA + WebView getUserMedia), safe-area,
+//            barre projet / onglets / graphiques responsive (Pixel & co)
 //   2.0.29 - Git complet téléphone + PC (isomorphic-git / IndexedDB) :
 //            commits, branches, restauration — même UX partout
 //   2.0.28 - Hub projets : carte Nouveautés / MAJ (notes GitHub + bouton Mettre à jour)

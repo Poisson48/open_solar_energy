@@ -135,6 +135,35 @@ void platformKeepScreenOn(bool on)
         "(Landroid/content/Context;Z)V", ctx.object(), static_cast<jboolean>(on));
 }
 
+bool platformRequestCameraPermission()
+{
+    const QJniObject ctx = androidContext();
+    if (!ctx.isValid())
+        return false;
+    return QJniObject::callStaticMethod<jboolean>(
+        kPlatformClass, "requestCameraPermission",
+        "(Landroid/content/Context;)Z", ctx.object());
+}
+
+QString platformPollCameraPermission()
+{
+    const QJniObject r = QJniObject::callStaticObjectMethod(
+        kPlatformClass, "pollCameraPermission", "()Ljava/lang/String;");
+    if (!r.isValid())
+        return {};
+    return r.toString();
+}
+
+bool platformHasCameraPermission()
+{
+    const QJniObject ctx = androidContext();
+    if (!ctx.isValid())
+        return false;
+    return QJniObject::callStaticMethod<jboolean>(
+        kPlatformClass, "hasCameraPermission",
+        "(Landroid/content/Context;)Z", ctx.object());
+}
+
 #else
 
 void initNotifications() {}
@@ -147,6 +176,9 @@ bool platformInstallApk(const QString&) { return false; }
 QString platformPollInstallStatus() { return {}; }
 void platformVibrate(int) {}
 void platformKeepScreenOn(bool) {}
+bool platformRequestCameraPermission() { return false; }
+QString platformPollCameraPermission() { return {}; }
+bool platformHasCameraPermission() { return false; }
 
 #endif
 

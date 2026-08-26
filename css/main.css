@@ -25,6 +25,11 @@
   --font-main: 'Segoe UI', Arial, sans-serif;
   --font-mono: 'Courier New', monospace;
   --color-bg-card: var(--color-surface);
+  --header-h: 54px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -72,9 +77,13 @@ header {
   background: var(--color-primary);
   color: #fff;
   padding: 0 20px;
+  padding-left: calc(20px + var(--safe-left));
+  padding-right: calc(20px + var(--safe-right));
+  padding-top: var(--safe-top);
   display: flex;
   align-items: center;
-  height: 54px;
+  height: calc(var(--header-h) + var(--safe-top));
+  box-sizing: border-box;
   gap: 16px;
   box-shadow: var(--shadow-md);
   position: sticky;
@@ -126,6 +135,7 @@ header .logo .logo-img {
   background: var(--color-primary);
   color: #fff;
   padding: 16px 18px;
+  padding-top: calc(16px + var(--safe-top));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -290,10 +300,12 @@ header .badge {
   align-items: center;
   gap: 10px;
   padding: 5px 16px;
+  padding-left: calc(16px + var(--safe-left));
+  padding-right: calc(16px + var(--safe-right));
   background: var(--color-primary-light, #1a4a7a);
   border-bottom: 1px solid rgba(255,255,255,0.12);
   position: sticky;
-  top: 54px;
+  top: calc(var(--header-h) + var(--safe-top));
   z-index: 99;
   min-width: 0;
   max-width: 100%;
@@ -456,7 +468,7 @@ header .badge {
 .app-layout {
   display: grid;
   grid-template-columns: 320px 1fr;
-  height: calc(100vh - 54px - 34px); /* header 54px + project-bar ~34px */
+  height: calc(100vh - var(--header-h) - 34px - var(--safe-top)); /* header + project-bar */
   min-width: 0;
   max-width: 100%;
 }
@@ -925,6 +937,14 @@ input:focus, select:focus, textarea:focus {
   overflow: hidden;
 }
 
+.ose-charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+  max-width: 100%;
+}
+
 /* ── TABLE ── */
 .data-table {
   width: 100%;
@@ -1235,7 +1255,7 @@ details.card > summary:focus-visible {
   .app-layout {
     grid-template-columns: 1fr;
     height: auto;
-    min-height: calc(100vh - 54px - 34px);
+    min-height: calc(100vh - var(--header-h) - 34px - var(--safe-top));
   }
   .sidebar {
     max-height: 55vh;
@@ -1250,13 +1270,19 @@ details.card > summary:focus-visible {
     min-height: 160px;
     max-height: 240px;
   }
+  /* Graphiques analyse : une colonne dès tablette portrait */
+  .ose-charts-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 @media (max-width: 640px) {
+  :root { --header-h: 48px; }
+
   header {
-    padding: 0 10px;
+    padding-left: calc(10px + var(--safe-left));
+    padding-right: calc(10px + var(--safe-right));
     gap: 8px;
-    height: 48px;
   }
   header h1 { font-size: 13px; }
   header .subtitle { display: none; }
@@ -1269,7 +1295,8 @@ details.card > summary:focus-visible {
     align-items: stretch;
     gap: 6px;
     padding: 6px 8px;
-    top: 48px;
+    padding-left: calc(8px + var(--safe-left));
+    padding-right: calc(8px + var(--safe-right));
   }
   .project-bar-meta {
     flex-direction: row;
@@ -1302,20 +1329,21 @@ details.card > summary:focus-visible {
   .project-bar-actions {
     display: flex;
     flex-wrap: nowrap;
-    gap: 4px;
+    gap: 6px;
     width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    padding-bottom: 2px;
   }
   .project-bar-actions::-webkit-scrollbar { display: none; }
   #project-bar .btn,
   #project-bar button {
     font-size: 11px;
-    padding: 5px 8px;
-    min-width: 0;
+    padding: 6px 10px;
+    min-width: max-content;
     width: auto;
-    flex: 1 1 0;
+    flex: 0 0 auto; /* ne pas écraser les libellés — scroll horizontal */
     justify-content: center;
     white-space: nowrap;
   }
@@ -1330,6 +1358,8 @@ details.card > summary:focus-visible {
 
   .tabs-bar {
     padding: 0 4px;
+    padding-left: calc(4px + var(--safe-left));
+    padding-right: calc(4px + var(--safe-right));
     gap: 0;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -1342,7 +1372,12 @@ details.card > summary:focus-visible {
     flex: 0 0 auto;
   }
   .tab-btn .tab-number { display: none; }
-  .tabs-content { padding: 10px; }
+  .tabs-content {
+    padding: 10px;
+    padding-left: calc(10px + var(--safe-left));
+    padding-right: calc(10px + var(--safe-right));
+    padding-bottom: calc(16px + var(--safe-bottom));
+  }
   .card { padding: 12px; }
   .card-title { font-size: 13px; gap: 6px; }
 
@@ -1361,13 +1396,23 @@ details.card > summary:focus-visible {
   .data-table { font-size: 11px; }
   .data-table th, .data-table td { padding: 5px 6px; }
 
-  .chart-container { height: 220px; }
+  .chart-container { height: 240px; max-width: 100%; }
+  .chart-container-sm { height: 200px; max-width: 100%; }
+  .ose-charts-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
   .coord-display { grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
 
   /* Grilles inline 3 cols → 2 cols */
   .tab-pane [style*="grid-template-columns:1fr 1fr 1fr"],
   .tab-pane [style*="grid-template-columns: 1fr 1fr 1fr"] {
     grid-template-columns: 1fr 1fr !important;
+  }
+  /* Grilles 2 cols de graphiques / KPI larges → 1 col */
+  .tab-pane .ose-charts-grid,
+  .card > [style*="grid-template-columns:1fr 1fr"][style*="gap:12px"] {
+    grid-template-columns: 1fr !important;
   }
 
   #startup-step-type > div[style*="grid-template-columns"] {
@@ -1377,10 +1422,38 @@ details.card > summary:focus-visible {
     grid-template-columns: 1fr !important;
   }
 
+  /* Photo ombrage : preview lisible, contrôles empilés */
+  #site-photo-wrap video {
+    max-height: min(48vh, 360px) !important;
+    width: 100%;
+    object-fit: cover;
+  }
+  #site-photo-wrap .ose-photo-controls {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  /* Boutons d’action site : pleine largeur empilés */
+  .ose-site-actions {
+    flex-direction: column !important;
+  }
+  .ose-site-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Texte long : ne pas déborder */
+  .ose-rec-params,
+  .ose-step-hint,
+  .ose-field-help {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
   #ose-toast {
-    left: 12px;
-    right: 12px;
-    bottom: 16px;
+    left: max(12px, var(--safe-left));
+    right: max(12px, var(--safe-right));
+    bottom: max(16px, var(--safe-bottom));
   }
 }
 
@@ -1389,6 +1462,11 @@ details.card > summary:focus-visible {
   .params-grid,
   .kpi-grid {
     grid-template-columns: 1fr;
+  }
+  #project-bar .btn,
+  #project-bar button {
+    font-size: 10px;
+    padding: 5px 8px;
   }
 }
 

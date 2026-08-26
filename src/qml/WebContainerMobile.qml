@@ -51,6 +51,11 @@ Item {
                 notifyWebToast("Sélecteur de fichiers indisponible", "error")
             return
         }
+        if (c === "request-camera") {
+            if (!AppController.requestCameraPermission())
+                notifyWebToast("Permission caméra indisponible", "error")
+            return
+        }
     }
 
     function notifyWebToast(message, kind) {
@@ -191,6 +196,9 @@ Item {
                 + "window.__oseSharePending={name:String(name),mime:String(mime||''),b64:String(b64)};"
                 + "oseCmd('share-file');},"
                 + "pickImportFile:function(){oseCmd('pick-import');},"
+                + "requestCameraPermission:function(){oseCmd('request-camera');},"
+                + "pollCameraPermission:function(){return window.__oseCamPoll?window.__oseCamPoll():null;},"
+                + "hasCameraPermission:function(){return !!window.__oseCamHas;},"
                 + "nativeReady:true"
                 + "};"
                 + "['gitSave','gitLog','gitRead','gitCheckout','gitBranches','gitCreateBranch','gitSwitchBranch'].forEach(function(k){"
@@ -214,7 +222,10 @@ Item {
                 + "window.webBridge={checkForUpdates:function(){oseCmd('check-updates');},"
                 + "openExternal:function(u){oseCmd('open:'+String(u));},"
                 + "shareFile:function(name,mime,b64){window.__oseSharePending={name:String(name),mime:String(mime||''),b64:String(b64)};oseCmd('share-file');},"
-                + "pickImportFile:function(){oseCmd('pick-import');},nativeReady:true};"
+                + "pickImportFile:function(){oseCmd('pick-import');},"
+                + "requestCameraPermission:function(){oseCmd('request-camera');},"
+                + "pollCameraPermission:function(){return window.__oseCamPoll?window.__oseCamPoll():null;},"
+                + "hasCameraPermission:function(){return !!window.__oseCamHas;},nativeReady:true};"
                 + "['gitSave','gitLog','gitRead','gitCheckout','gitBranches','gitCreateBranch','gitSwitchBranch'].forEach(function(k){"
                 + "if(typeof prev[k]==='function')window.webBridge[k]=prev[k];"
                 + "});"
@@ -232,6 +243,18 @@ Item {
             const imp = AppController.pollImportResult()
             if (imp)
                 deliverImportResult(imp)
+            // Synchronise le statut permission caméra vers le JS (poll async natif).
+            const cam = AppController.pollCameraPermission()
+            const hasCam = AppController.hasCameraPermission() ? "true" : "false"
+            const camJs = cam && cam.length > 0 ? JSON.stringify(String(cam)) : ""
+            webView.runJavaScript(
+                "(function(){"
+                + "window.__oseCamHas=" + hasCam + ";"
+                + (camJs ? ("window.__oseCamLast=" + camJs + ";") : "")
+                + "if(!window.__oseCamPoll)window.__oseCamPoll=function(){"
+                + "var v=window.__oseCamLast;window.__oseCamLast=null;return v;};"
+                + "})();"
+            )
         }
     }
 

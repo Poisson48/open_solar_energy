@@ -17,5 +17,10 @@ bool platformInstallApk(const QString& apkPath);
 QString platformPollInstallStatus();
 void platformVibrate(int ms);
 void platformKeepScreenOn(bool on);
+/** Demande CAMERA (Android). true si accordée ou dialogue lancé. */
+bool platformRequestCameraPermission();
+/** null / pending / granted / denied / unavailable */
+QString platformPollCameraPermission();
+bool platformHasCameraPermission();
 
 } // namespace app

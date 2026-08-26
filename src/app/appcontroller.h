@@ -32,6 +32,11 @@ public:
     Q_INVOKABLE bool pickImportFile();
     /** Poll résultat import : chaîne "ok\\tname\\tbase64" / "err\\tmsg" / vide. */
     Q_INVOKABLE QString pollImportResult();
+    /** Demande permission caméra Android (mode photo ombrage). */
+    Q_INVOKABLE bool requestCameraPermission();
+    /** Poll statut caméra : pending/granted/denied/unavailable/vide. */
+    Q_INVOKABLE QString pollCameraPermission();
+    Q_INVOKABLE bool hasCameraPermission();
 
 signals:
     void webUrlChanged();

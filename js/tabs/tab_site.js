@@ -77,7 +77,7 @@ function initTabSite() {
             <button type="button" class="btn btn-primary btn-sm" style="align-self:flex-end;margin-bottom:1px" onclick="SiteSurvey.addPointManual()">+ Point</button>
           </div>
 
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
+          <div class="ose-site-actions" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
             <button type="button" class="btn btn-accent" onclick="SiteSurvey.startPhotoMode()">📷 Mode photo + boussole</button>
             <button type="button" class="btn btn-outline" onclick="SiteSurvey.stopPhotoMode()">Stop photo</button>
             <button type="button" class="btn btn-outline" onclick="SiteSurvey.recompute()">Recalculer ombrage</button>
@@ -85,17 +85,17 @@ function initTabSite() {
           </div>
 
           <div id="site-photo-wrap" style="display:none;margin-top:12px;position:relative;border-radius:10px;overflow:hidden;background:#000">
-            <video id="site-photo-video" playsinline muted
-              style="width:100%;max-height:320px;object-fit:cover;display:block"></video>
+            <video id="site-photo-video" playsinline muted autoplay
+              style="width:100%;max-height:320px;object-fit:cover;display:block;background:#111"></video>
             <div style="position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center">
               <div style="width:36px;height:36px;border:2px solid #f5a623;border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,0.4)"></div>
             </div>
-            <div style="padding:10px;background:rgba(0,0,0,0.75);display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-              <div class="form-group" style="margin:0;flex:0 0 110px">
+            <div class="ose-photo-controls" style="padding:10px;background:rgba(0,0,0,0.75);display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <div class="form-group" style="margin:0;flex:1 1 120px;min-width:0">
                 <label for="site-photo-elev" style="color:#ddd;font-size:11px">Élév. override</label>
                 <input type="number" id="site-photo-elev" min="0" max="90" step="0.5" placeholder="auto" style="width:100%">
               </div>
-              <button type="button" class="btn btn-accent" onclick="SiteSurvey.addPointFromPhoto()">➕ Placer le point</button>
+              <button type="button" class="btn btn-accent" style="flex:1 1 auto" onclick="SiteSurvey.addPointFromPhoto()">➕ Placer le point</button>
             </div>
           </div>
         </div>

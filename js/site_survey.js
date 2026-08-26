@@ -232,6 +232,35 @@ const SiteSurvey = (() => {
     state.orientationBound = false;
   }
 
+  async function ensureNativeCameraPermission() {
+    const bridge = window.webBridge || window.nativeBridge;
+    if (!bridge || typeof bridge.requestCameraPermission !== 'function')
+      return true; // navigateur / desktop : getUserMedia gère tout
+    if (typeof bridge.hasCameraPermission === 'function' && bridge.hasCameraPermission())
+      return true;
+    try {
+      bridge.requestCameraPermission();
+    } catch (_) {
+      return true;
+    }
+    const deadline = Date.now() + 20000;
+    while (Date.now() < deadline) {
+      await new Promise(r => setTimeout(r, 200));
+      let st = null;
+      try {
+        st = typeof bridge.pollCameraPermission === 'function'
+          ? bridge.pollCameraPermission()
+          : (window.__oseCamLast || null);
+      } catch (_) {}
+      if (st === 'granted') return true;
+      if (st === 'denied' || st === 'unavailable') return false;
+      if (typeof bridge.hasCameraPermission === 'function' && bridge.hasCameraPermission())
+        return true;
+      // pending → continuer
+    }
+    return !!(typeof bridge.hasCameraPermission === 'function' && bridge.hasCameraPermission());
+  }
+
   async function startPhotoMode() {
     const ok = await startOrientation();
     if (!ok && !window.DeviceOrientationEvent) {
@@ -239,26 +268,49 @@ const SiteSurvey = (() => {
     }
     const video = document.getElementById('site-photo-video');
     const wrap = document.getElementById('site-photo-wrap');
+    const camOk = await ensureNativeCameraPermission();
+    if (!camOk) {
+      _toast('Permission caméra refusée — autorisez-la dans Paramètres → Apps → Open Solar.', 'error');
+      state.photoActive = true;
+      if (wrap) wrap.style.display = '';
+      updateCompassUI();
+      return;
+    }
     try {
       if (navigator.mediaDevices?.getUserMedia) {
         state.stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' } },
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
           audio: false,
         });
         if (video) {
+          video.setAttribute('playsinline', '');
+          video.setAttribute('muted', '');
+          video.muted = true;
           video.srcObject = state.stream;
           await video.play().catch(() => {});
         }
+        _toast('Tournez-vous, visez l’obstacle, ajoutez un point.');
       } else {
         _toast('Caméra indisponible — mode boussole seul.', 'warning');
       }
     } catch (err) {
-      _toast('Caméra : ' + (err.message || 'refusée') + ' — boussole seule OK.', 'warning');
+      const name = err?.name || '';
+      const msg = err?.message || String(err);
+      if (name === 'NotAllowedError' || /Permission|denied|NotAllowed/i.test(msg)) {
+        _toast('Caméra refusée — vérifiez Paramètres → Apps → Open Solar → Caméra.', 'error');
+      } else if (name === 'NotFoundError') {
+        _toast('Aucune caméra détectée sur cet appareil.', 'warning');
+      } else {
+        _toast('Caméra : ' + msg + ' — boussole seule OK.', 'warning');
+      }
     }
     state.photoActive = true;
     if (wrap) wrap.style.display = '';
     updateCompassUI();
-    _toast('Tournez-vous, visez l’obstacle, ajoutez un point.');
   }
 
   function stopPhotoMode() {

@@ -161,14 +161,21 @@
   /** Donut : répartition annuelle de l'énergie */
   Charts.renderSizingDonut = function (canvasId, result) {
     Charts.destroy(canvasId);
+    const narrow = typeof window !== 'undefined' && window.innerWidth < 700;
     new Chart(document.getElementById(canvasId), {
       type: 'doughnut',
       data: {
-        labels: [
-          `Autoconsommé (${result.annualAutoconsoKwh} kWh)`,
-          `Acheté réseau (${result.annualDeficit} kWh)`,
-          `Surplus injecté (${result.annualSurplus} kWh)`
-        ],
+        labels: narrow
+          ? [
+              `Autoconso ${result.annualAutoconsoKwh} kWh`,
+              `Réseau ${result.annualDeficit} kWh`,
+              `Surplus ${result.annualSurplus} kWh`
+            ]
+          : [
+              `Autoconsommé (${result.annualAutoconsoKwh} kWh)`,
+              `Acheté réseau (${result.annualDeficit} kWh)`,
+              `Surplus injecté (${result.annualSurplus} kWh)`
+            ],
         datasets: [{
           data: [result.annualAutoconsoKwh, result.annualDeficit, result.annualSurplus],
           backgroundColor: ['rgba(26,107,60,0.85)', 'rgba(198,40,40,0.70)', 'rgba(245,166,35,0.85)'],
@@ -178,8 +185,17 @@
       },
       options: {
         responsive: true, maintainAspectRatio: false,
+        layout: { padding: { bottom: 4 } },
         plugins: {
-          legend: { position: 'bottom', labels: { boxWidth: 14, padding: 10, font: { size: 11 } } }
+          legend: {
+            position: 'bottom',
+            labels: {
+              boxWidth: 12,
+              padding: narrow ? 8 : 10,
+              font: { size: narrow ? 10 : 11 },
+              textAlign: 'left'
+            }
+          }
         },
         cutout: '60%'
       }

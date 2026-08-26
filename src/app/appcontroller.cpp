@@ -33,6 +33,21 @@ QString AppController::pollImportResult()
     return platformPollImportResult();
 }
 
+bool AppController::requestCameraPermission()
+{
+    return platformRequestCameraPermission();
+}
+
+QString AppController::pollCameraPermission()
+{
+    return platformPollCameraPermission();
+}
+
+bool AppController::hasCameraPermission()
+{
+    return platformHasCameraPermission();
+}
+
 QString AppController::resolveWebRoot() const
 {
     const QByteArray env = qgetenv("OSE_WEB_ROOT");

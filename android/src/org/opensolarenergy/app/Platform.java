@@ -1,5 +1,6 @@
 package org.opensolarenergy.app;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.ContentValues;
@@ -30,6 +31,7 @@ public class Platform {
 
     public static final String ACTION_INSTALL_STATUS = "org.opensolarenergy.app.INSTALL_STATUS";
     public static final int REQ_PICK_IMPORT = 0x05E1;
+    public static final int REQ_CAMERA = 0x05E2;
 
     private static final String TAG = "OSE-Platform";
     private static final Object IMPORT_LOCK = new Object();
@@ -39,6 +41,10 @@ public class Platform {
 
     private static final Object INSTALL_LOCK = new Object();
     private static String sInstallStatus;
+
+    private static final Object CAMERA_LOCK = new Object();
+    /** null | "pending" | "granted" | "denied" | "unavailable" */
+    private static String sCameraPermStatus;
 
     public static boolean shareText(Context ctx, String text) {
         if (ctx == null)
@@ -392,5 +398,59 @@ public class Platform {
             else
                 activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         });
+    }
+
+    /** Appelé depuis OseActivity quand le dialogue runtime se termine. */
+    static void setCameraPermissionResult(String status) {
+        synchronized (CAMERA_LOCK) {
+            sCameraPermStatus = status;
+        }
+    }
+
+    /**
+     * Demande la permission caméra Android (runtime).
+     * @return true si déjà accordée ou dialogue lancé ; false si indisponible
+     */
+    public static boolean requestCameraPermission(Context ctx) {
+        if (!(ctx instanceof Activity)) {
+            setCameraPermissionResult("unavailable");
+            return false;
+        }
+        final Activity activity = (Activity) ctx;
+        if (Build.VERSION.SDK_INT < 23) {
+            setCameraPermissionResult("granted");
+            return true;
+        }
+        if (activity.checkSelfPermission(Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED) {
+            setCameraPermissionResult("granted");
+            return true;
+        }
+        setCameraPermissionResult("pending");
+        activity.runOnUiThread(() ->
+                activity.requestPermissions(new String[]{ Manifest.permission.CAMERA }, REQ_CAMERA));
+        return true;
+    }
+
+    /** @return null si rien de nouveau ; sinon pending/granted/denied/unavailable */
+    public static String pollCameraPermission() {
+        synchronized (CAMERA_LOCK) {
+            if (sCameraPermStatus == null)
+                return null;
+            String s = sCameraPermStatus;
+            // Garder "pending" jusqu'à granted/denied pour le poll JS
+            if (!"pending".equals(s))
+                sCameraPermStatus = null;
+            return s;
+        }
+    }
+
+    public static boolean hasCameraPermission(Context ctx) {
+        if (ctx == null)
+            return false;
+        if (Build.VERSION.SDK_INT < 23)
+            return true;
+        return ctx.checkSelfPermission(Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED;
     }
 }

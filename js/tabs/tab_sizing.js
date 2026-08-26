@@ -94,7 +94,7 @@ function initTabSizing() {
             <div class="form-group" style="margin-bottom:6px">
               <label style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
                 <span>Modèle de panneau</span>
-                <span style="display:inline-flex;gap:4px;flex-wrap:wrap">
+                <span style="display:inline-flex;gap:4px;flex-wrap:wrap;flex-shrink:0">
                   <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.saveFromForm('sz')" style="padding:2px 8px;font-size:10px">💾 Enregistrer</button>
                   <button type="button" class="btn btn-outline btn-sm" onclick="PanelDB.openLibraryModal('sz')" style="padding:2px 8px;font-size:10px">📋 Bibliothèque</button>
                 </span>

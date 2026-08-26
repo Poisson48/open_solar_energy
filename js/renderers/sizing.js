@@ -217,11 +217,9 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
           <button class="btn btn-outline btn-sm" onclick="Exporter.exportPDF()">📄 PDF rapport</button>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="ose-charts-grid">
         <div class="chart-container"><canvas id="${c1}"></canvas></div>
         <div class="chart-container"><canvas id="${c2}"></canvas></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
         <div class="chart-container"><canvas id="${c3}"></canvas></div>
         <div class="chart-container"><canvas id="${c4}"></canvas></div>
       </div>
