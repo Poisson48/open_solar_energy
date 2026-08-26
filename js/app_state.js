@@ -3,8 +3,9 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.37';
+const APP_VERSION = '2.0.38';
 // Historique :
+//   2.0.38 - Boussole mode photo : cap caméra correct téléphone debout (portrait/paysage)
 //   2.0.37 - MAJ Android : bandeau + barre de progression fiable (plus de toast sans suite)
 //   2.0.36 - Boussole : plus d’oscillation 90°↔300° (absolute vs relatif)
 //   2.0.35 - Partage projet sans serveur (clé courte + QR, sync Nostr E2E)

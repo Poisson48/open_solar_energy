@@ -13,7 +13,9 @@ const SiteSurvey = (() => {
     points: [],           // { az, elev, source?: 'manual'|'photo' }
     compassOffset: 0,     // ° ajoutés à la lecture brute (après correction écran)
     lastHeading: null,    // cap 0=N, déjà corrigé écran + offset
-    lastRawHeading: null, // cap capteur avant correction écran / offset
+    lastRawHeading: null, // cap avant offset utilisateur
+    lastAlpha: null,
+    lastWebkitHeading: null,
     lastPitch: null,      // pitch « écran » (°), ~90 = vertical / horizon
     lastElev: null,       // élévation regard 0–90° dérivée du pitch
     lastScreenAngle: 0,   // 0 portrait, 90/270 paysage…
@@ -182,16 +184,16 @@ const SiteSurvey = (() => {
       _toast('Activez d’abord la boussole (mode photo ou lecture).', 'warning');
       return;
     }
-    const ang = state.lastScreenAngle ?? screenAngle();
     const raw = state.lastRawHeading != null
       ? state.lastRawHeading
-      : _normAz(state.lastHeading - state.compassOffset - ang);
-    // affiché = raw + ang + offset → offset = vrai − (raw + ang)
-    const next = _normAz(trueHeading) - headingWithScreen(raw, ang);
+      : _normAz(state.lastHeading - state.compassOffset);
+    // affiché = raw + offset → offset = vrai − raw
+    const next = _normAz(trueHeading) - raw;
     setCompassOffset(next);
     state._smoothHeading = null;
-    if (state.lastRawHeading != null)
-      _applyOrientationSample(state.lastRawHeading, state.lastBeta, state.lastGamma);
+    _applyOrientationSample(
+      state.lastAlpha, state.lastBeta, state.lastGamma, state.lastWebkitHeading
+    );
     _toast(`Boussole calibrée (offset ${state.compassOffset.toFixed(1)}°).`);
   }
 
@@ -228,12 +230,75 @@ const SiteSurvey = (() => {
   }
 
   /**
+   * Cap boussole du regard caméra (vecteur sortant par l’arrière de l’écran),
+   * formule W3C Device Orientation — valable téléphone debout (portrait / paysage).
+   * alpha/beta/gamma doivent être absolus (référentiel terrestre).
+   */
+  function compassHeadingFromEuler(alpha, beta, gamma) {
+    const degtorad = Math.PI / 180;
+    const _x = (Number(beta) || 0) * degtorad;
+    const _y = (Number(gamma) || 0) * degtorad;
+    const _z = (Number(alpha) || 0) * degtorad;
+    const cX = Math.cos(_x);
+    const cY = Math.cos(_y);
+    const cZ = Math.cos(_z);
+    const sX = Math.sin(_x);
+    const sY = Math.sin(_y);
+    const sZ = Math.sin(_z);
+    // Composantes horizontales du vecteur « hors du dos de l’écran »
+    const Vx = -cZ * sY - sZ * sX * cY;
+    const Vy = -sZ * sY + cZ * sX * cY;
+    if (Math.abs(Vx) < 1e-10 && Math.abs(Vy) < 1e-10) return null;
+    let heading = Math.atan2(Vx, Vy) * (180 / Math.PI);
+    if (heading < 0) heading += 360;
+    return heading;
+  }
+
+  /** Écran quasi horizontal (à plat sur une table). */
+  function isDeviceFlat(beta, gamma) {
+    const b = Math.abs(Number(beta) || 0);
+    const g = Math.abs(Number(gamma) || 0);
+    return b < 25 && g < 25;
+  }
+
+  /**
    * Cap brut capteur (0=N) → cap dans le repère écran / viseur caméra.
-   * En paysage, alpha / webkitCompassHeading restent liés au haut matériel :
-   * on ajoute l’angle d’écran pour viser avec le centre du viewport.
+   * En paysage à plat seulement : on ajoute l’angle d’écran (axes liés au boîtier).
+   * Debout : inutile — compassHeadingFromEuler intègre déjà le roll.
    */
   function headingWithScreen(rawHeading, screenAng) {
     return _normAz(rawHeading + (screenAng || 0));
+  }
+
+  /**
+   * Cap utile pour le viseur :
+   *  - iOS : webkitCompassHeading (+ angle écran en paysage)
+   *  - à plat : 360−alpha (+ angle écran)
+   *  - debout portrait/paysage : formule W3C (direction caméra)
+   */
+  function computeCompassHeading(opts) {
+    const alpha = opts?.alpha;
+    const beta = opts?.beta;
+    const gamma = opts?.gamma;
+    const webkitHeading = opts?.webkitHeading;
+    const screenAng = opts?.screenAng || 0;
+
+    if (typeof webkitHeading === 'number' && !isNaN(webkitHeading))
+      return headingWithScreen(webkitHeading, screenAng);
+
+    if (typeof alpha !== 'number' || isNaN(alpha)) return null;
+
+    const b = (typeof beta === 'number' && !isNaN(beta)) ? beta : 0;
+    const g = (typeof gamma === 'number' && !isNaN(gamma)) ? gamma : 0;
+
+    if (isDeviceFlat(b, g))
+      return headingWithScreen(360 - alpha, screenAng);
+
+    const upright = compassHeadingFromEuler(alpha, b, g);
+    if (upright == null)
+      return headingWithScreen(360 - alpha, screenAng);
+    // Pas de +screenAng : alpha/beta/gamma sont dans le repère boîtier fixe
+    return _normAz(upright);
   }
 
   /**
@@ -272,20 +337,31 @@ const SiteSurvey = (() => {
     return state._smoothHeading;
   }
 
-  function _applyOrientationSample(rawHeading, beta, gamma) {
+  function _applyOrientationSample(alpha, beta, gamma, webkitHeading) {
     const ang = screenAngle();
     state.lastScreenAngle = ang;
+    if (typeof alpha === 'number' && !isNaN(alpha)) state.lastAlpha = alpha;
     if (typeof beta === 'number' && !isNaN(beta)) state.lastBeta = beta;
     if (typeof gamma === 'number' && !isNaN(gamma)) state.lastGamma = gamma;
+    if (typeof webkitHeading === 'number' && !isNaN(webkitHeading))
+      state.lastWebkitHeading = webkitHeading;
 
-    if (rawHeading != null && !isNaN(rawHeading)) {
-      state.lastRawHeading = _normAz(rawHeading);
-      const screenH = headingWithScreen(state.lastRawHeading, ang);
-      state.lastHeading = _smoothCompassHeading(correctedHeading(screenH));
+    const heading = computeCompassHeading({
+      alpha: state.lastAlpha,
+      beta: state.lastBeta,
+      gamma: state.lastGamma,
+      webkitHeading: state.lastWebkitHeading,
+      screenAng: ang,
+    });
+
+    if (heading != null && !isNaN(heading)) {
+      // lastRawHeading = cap avant offset utilisateur (pour calibration)
+      state.lastRawHeading = heading;
+      state.lastHeading = _smoothCompassHeading(correctedHeading(heading));
     }
 
-    if ((typeof beta === 'number' && !isNaN(beta))
-        || (typeof gamma === 'number' && !isNaN(gamma))) {
+    if ((typeof state.lastBeta === 'number')
+        || (typeof state.lastGamma === 'number')) {
       const pitch = screenPitchFromSensors(state.lastBeta, state.lastGamma, ang);
       state.lastPitch = pitch;
       state.lastElev = elevationFromScreenPitch(pitch);
@@ -294,25 +370,20 @@ const SiteSurvey = (() => {
     if (state.orientationBound || state.photoActive) redraw();
   }
 
-  function _rawHeadingFromEvent(e, absolute) {
-    // iOS : déjà un cap boussole (horaire depuis le nord)
-    if (typeof e.webkitCompassHeading === 'number' && !isNaN(e.webkitCompassHeading))
-      return e.webkitCompassHeading;
-    if (typeof e.alpha !== 'number' || isNaN(e.alpha)) return null;
-    // alpha relatif (référentiel arbitraire) ≠ cap : inutile pour la boussole
-    if (!absolute) return null;
-    // alpha absolu : 0 quand Y device → nord ; cap = 360 − alpha
-    return 360 - e.alpha;
-  }
-
   function _onOrientAbsolute(e) {
     state.gotAbsoluteOrient = true;
-    const raw = _rawHeadingFromEvent(e, true);
+    const webkit = (typeof e.webkitCompassHeading === 'number' && !isNaN(e.webkitCompassHeading))
+      ? e.webkitCompassHeading : null;
     _applyOrientationSample(
-      raw,
+      typeof e.alpha === 'number' ? e.alpha : state.lastAlpha,
       typeof e.beta === 'number' ? e.beta : state.lastBeta,
-      typeof e.gamma === 'number' ? e.gamma : state.lastGamma
+      typeof e.gamma === 'number' ? e.gamma : state.lastGamma,
+      // Sur Android absolute, préférer la formule W3C (pas webkit)
+      null
     );
+    // Si pas d’alpha mais webkit (rare), fallback
+    if ((typeof e.alpha !== 'number' || isNaN(e.alpha)) && webkit != null)
+      _applyOrientationSample(state.lastAlpha, state.lastBeta, state.lastGamma, webkit);
   }
 
   function _onOrientRelative(e) {
@@ -322,32 +393,36 @@ const SiteSurvey = (() => {
       _onOrientAbsolute(e);
       return;
     }
-    // iOS : pas d’event « absolute », mais webkitCompassHeading sur deviceorientation
-    const raw = _rawHeadingFromEvent(e, false);
-    if (raw == null && typeof e?.alpha === 'number' && !isNaN(e.alpha)
-        && typeof e.webkitCompassHeading !== 'number') {
-      // Dernier recours (desktop / vieux Android sans absolute) : traiter alpha comme absolu
-      // uniquement si aucune source absolute n’est jamais arrivée après un court délai.
-      if (!state._relativeAlphaFallback) return;
+    const webkit = (typeof e.webkitCompassHeading === 'number' && !isNaN(e.webkitCompassHeading))
+      ? e.webkitCompassHeading : null;
+    if (webkit != null) {
       _applyOrientationSample(
-        360 - e.alpha,
+        typeof e.alpha === 'number' ? e.alpha : state.lastAlpha,
         typeof e.beta === 'number' ? e.beta : state.lastBeta,
-        typeof e.gamma === 'number' ? e.gamma : state.lastGamma
+        typeof e.gamma === 'number' ? e.gamma : state.lastGamma,
+        webkit
       );
       return;
     }
-    _applyOrientationSample(
-      raw,
-      typeof e.beta === 'number' ? e.beta : state.lastBeta,
-      typeof e.gamma === 'number' ? e.gamma : state.lastGamma
-    );
+    if (typeof e?.alpha === 'number' && !isNaN(e.alpha)) {
+      // Dernier recours sans absolute : après délai, traiter comme absolu
+      if (!state._relativeAlphaFallback) return;
+      _applyOrientationSample(
+        e.alpha,
+        typeof e.beta === 'number' ? e.beta : state.lastBeta,
+        typeof e.gamma === 'number' ? e.gamma : state.lastGamma,
+        null
+      );
+    }
   }
 
   /** Recalcule cap/pitch si l’utilisateur tourne la tablette sans nouveau event capteur. */
   function _onScreenOrientationChange() {
-    if (state.lastRawHeading == null) return;
+    if (state.lastAlpha == null && state.lastWebkitHeading == null) return;
     state._smoothHeading = null; // reset lissage au flip portrait/paysage
-    _applyOrientationSample(state.lastRawHeading, state.lastBeta, state.lastGamma);
+    _applyOrientationSample(
+      state.lastAlpha, state.lastBeta, state.lastGamma, state.lastWebkitHeading
+    );
   }
 
   function _bindScreenOrientation() {
@@ -1122,5 +1197,6 @@ const SiteSurvey = (() => {
     // helpers orientation (tests + debug)
     screenAngle, screenAngleLabel, headingWithScreen,
     screenPitchFromSensors, elevationFromScreenPitch,
+    compassHeadingFromEuler, computeCompassHeading, isDeviceFlat,
   };
 })();

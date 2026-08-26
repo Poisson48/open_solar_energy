@@ -200,10 +200,6 @@ Item {
                 notifyWebToast(msg, kind)
             }
             notifyWebUpdaterState()
-            if (root.updater.state !== 3
-                    && typeof refreshHubNews === "function") {
-                /* no-op: refresh via JS below */
-            }
             if (root.updater.state !== 3) {
                 webView.runJavaScript(
                     "if(typeof refreshHubNews==='function')try{refreshHubNews(false);}catch(e){}"
