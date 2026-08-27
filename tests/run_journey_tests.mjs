@@ -87,7 +87,7 @@ console.log('\n═══ A. Hub démarrage ═══');
   });
   check('hub ouvert au démarrage', hub.open === true);
   check('APP_VERSION définie', !!hub.version && /^\d+\.\d+\.\d+/.test(hub.version), String(hub.version));
-  check('bouton Mises à jour présent', /mise/i.test(hub.majLabel || ''), hub.majLabel);
+  check('bouton Mises à jour présent', /mise|maj/i.test(hub.majLabel || ''), hub.majLabel);
   note('cartes projets dans hub', String(hub.cards));
 
   // Ouvrir démo via hub

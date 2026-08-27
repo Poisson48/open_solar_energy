@@ -3,8 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.58';
+const APP_VERSION = '2.0.59';
 // Historique :
+//   2.0.59 - Téléphone : vrai shell (barre compacte + menu ⋯, onglets courts,
+//            hub projets d’abord, inputs 16px, chrome masqué sous le hub)
 //   2.0.58 - Météo conservée (autosave + encoding compact) ; PC : pont Qt
 //            webBridge réellement enregistré (miroir projets) ; Chart.js
 //            ne crée plus de graphe sur canvas 0×0 (plantage Analyse horaire)

@@ -24,12 +24,7 @@
     {
       "severity": "info",
       "label": "boutons barre",
-      "detail": "7 chemin des Coteaux, 31(337x26) | (31x27) | Sauver(73x29) | Export(73x32) | 🔗 Partager(84x32) | Historique(92x32) | 📚 Matériel(81x32) | Projets(72x29) | ⚡ Réseau(88x29) | RéseauSans batterie, sur(0x0) | HybrideRéseau + batterie(0x0) | AutonomeHors réseau(0x0)"
-    },
-    {
-      "severity": "warn",
-      "label": "barre encore un peu haute",
-      "detail": "112px"
+      "detail": "7 chemin des Coteaux, 31(117x30) | (34x37) | Sauver(44x40) | Export(0x0) | 🔗 Partager(0x0) | Historique(0x0) | 📚 Matériel(0x0) | Projets(44x40) | ⚡ Réseau⚡(49x40) | RéseauSans batterie, sur(0x0) | HybrideRéseau + batterie(0x0) | AutonomeHors réseau(0x0) | ⋯(44x40) | Exporter(0x0) | 🔗 Partager(0x0) | Historique(0x0) | 📚 Matériel(0x0)"
     },
     {
       "severity": "info",
@@ -42,6 +37,6 @@
       "detail": ""
     }
   ],
-  "version": "2.0.58",
-  "at": "2026-08-27T13:18:22.224Z"
+  "version": "2.0.59",
+  "at": "2026-08-27T13:37:12.407Z"
 }

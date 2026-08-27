@@ -377,7 +377,14 @@ function bindSharedParamSync() {
           || (type === 'offgrid' && ['sizing', 'grid', 'tracker', 'optimizer'].includes(tab));
         btn.style.display = (!showAdv || typeHide) ? 'none' : '';
       });
-      advToggle.textContent = showAdv ? 'Masquer outils avancés' : 'Outils avancés';
+      const full = advToggle.querySelector('.tab-label-full');
+      const short = advToggle.querySelector('.tab-label-short');
+      if (full && short) {
+        full.textContent = showAdv ? 'Masquer outils' : 'Outils avancés';
+        short.textContent = showAdv ? 'Moins' : 'Plus';
+      } else {
+        advToggle.textContent = showAdv ? 'Masquer outils avancés' : 'Outils avancés';
+      }
       advToggle.setAttribute('aria-expanded', showAdv ? 'true' : 'false');
     };
     advToggle.addEventListener('click', () => {

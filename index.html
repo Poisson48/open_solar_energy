@@ -29,7 +29,7 @@
 <!-- ═══ BARRE PROJET ═════════════════════════════════════════ -->
 <div id="project-bar">
   <div class="project-bar-meta">
-    <input type="text" id="project-name-input" placeholder="Nom du projet…" aria-label="Nom du projet">
+    <input type="text" id="project-name-input" placeholder="Nom du projet…" aria-label="Nom du projet" enterkeyhint="done">
     <button type="button" id="project-bar-location" class="project-bar-location" onclick="activateTab('location')" title="Ouvrir l’onglet Lieu / météo" aria-label="Lieu du projet">
       📍 <span id="project-bar-location-text">—</span>
     </button>
@@ -40,12 +40,16 @@
   </div>
 
   <div class="project-bar-actions">
-    <button type="button" id="btn-save-project" onclick="saveCurrentProject()" title="Sauvegarder (Ctrl+S)">💾 Sauver</button>
-    <button type="button" class="btn btn-outline btn-sm" id="btn-export-project" onclick="exportCurrentProject()" title="Télécharger le projet en fichier .zip">📤 Export</button>
-    <button type="button" class="btn btn-outline btn-sm" id="btn-share-project" onclick="shareCurrentProject()" title="Partager ce projet (multi-appareils)">🔗 Partager</button>
-    <button type="button" class="btn btn-outline btn-sm" id="btn-git-history" onclick="openGitHistoryModal()" title="Historique des versions">🕐 Historique</button>
-    <button type="button" class="btn btn-outline btn-sm" id="btn-materiel" onclick="openMaterielModal()" title="Bibliothèque matériel (panneaux, onduleurs)">📚 Matériel</button>
-    <button type="button" id="btn-open-projects" onclick="openProjectsModal()" title="Gérer mes projets">📁 Projets</button>
+    <button type="button" id="btn-save-project" class="project-bar-primary" onclick="saveCurrentProject()" title="Sauvegarder (Ctrl+S)">
+      <span class="pba-full">💾 Sauver</span><span class="pba-short" aria-hidden="true">💾</span>
+    </button>
+    <button type="button" class="btn btn-outline btn-sm project-bar-secondary" id="btn-export-project" onclick="exportCurrentProject()" title="Télécharger le projet en fichier .zip">📤 Export</button>
+    <button type="button" class="btn btn-outline btn-sm project-bar-secondary" id="btn-share-project" onclick="shareCurrentProject()" title="Partager ce projet (multi-appareils)">🔗 Partager</button>
+    <button type="button" class="btn btn-outline btn-sm project-bar-secondary" id="btn-git-history" onclick="openGitHistoryModal()" title="Historique des versions">🕐 Historique</button>
+    <button type="button" class="btn btn-outline btn-sm project-bar-secondary" id="btn-materiel" onclick="openMaterielModal()" title="Bibliothèque matériel (panneaux, onduleurs)">📚 Matériel</button>
+    <button type="button" id="btn-open-projects" class="project-bar-primary" onclick="openProjectsModal()" title="Gérer mes projets">
+      <span class="pba-full">📁 Projets</span><span class="pba-short" aria-hidden="true">📁</span>
+    </button>
     <div class="ose-type-switcher" id="ose-type-switcher">
       <button type="button" id="install-type-badge" onclick="toggleInstallTypeMenu(event)" aria-haspopup="true" aria-expanded="false" title="Type d'installation — cliquer pour changer"></button>
       <div id="install-type-menu" class="ose-type-menu" role="menu" aria-label="Choisir le type d'installation" hidden>
@@ -64,6 +68,15 @@
           <span class="ose-type-menu-text"><strong>Autonome</strong><small>Hors réseau</small></span>
           <span class="ose-type-menu-check" aria-hidden="true">✓</span>
         </button>
+      </div>
+    </div>
+    <div class="project-bar-more">
+      <button type="button" id="btn-project-bar-more" class="btn btn-outline btn-sm" onclick="toggleProjectBarMore(event)" aria-haspopup="true" aria-expanded="false" title="Plus d’actions" aria-label="Plus d’actions">⋯</button>
+      <div id="project-bar-more-menu" class="project-bar-more-menu" role="menu" hidden>
+        <button type="button" role="menuitem" onclick="exportCurrentProject(); closeProjectBarMore()">📤 Exporter</button>
+        <button type="button" role="menuitem" onclick="shareCurrentProject(); closeProjectBarMore()">🔗 Partager</button>
+        <button type="button" role="menuitem" onclick="openGitHistoryModal(); closeProjectBarMore()">🕐 Historique</button>
+        <button type="button" role="menuitem" onclick="openMaterielModal(); closeProjectBarMore()">📚 Matériel</button>
       </div>
     </div>
   </div>
@@ -89,17 +102,14 @@
       <div class="ose-hub-toolbar">
         <div class="ose-hub-section-title">Mes projets</div>
         <div class="ose-hub-actions">
-          <button type="button" id="btn-check-updates" class="btn btn-outline btn-sm" onclick="checkForUpdates()" title="Vérifier les mises à jour">↻ Mises à jour</button>
-          <button type="button" class="btn btn-outline btn-sm" onclick="openMaterielModal()" title="Bibliothèque de panneaux et onduleurs">📚 Matériel</button>
-          <button type="button" class="btn btn-outline btn-sm" onclick="openJoinSharedProject()" title="Rejoindre un projet via clé ou URI">☁ Rejoindre</button>
-          <button type="button" class="btn btn-outline btn-sm" onclick="ProjectManager.exportAll()" title="Exporter tous les projets en JSON">⬇ Export tout</button>
-          <button type="button" class="btn btn-outline btn-sm" onclick="startImportProjects()" title="Importer JSON ou ZIP">📥 Importer</button>
+          <button type="button" class="btn btn-accent btn-sm ose-hub-primary-action" onclick="showInstallationTypeStep()">＋ Nouveau</button>
+          <button type="button" class="btn btn-outline btn-sm ose-hub-primary-action" onclick="openJoinSharedProject()" title="Rejoindre un projet via clé ou URI">☁ Rejoindre</button>
+          <button type="button" id="btn-check-updates" class="btn btn-outline btn-sm ose-hub-secondary-action" onclick="checkForUpdates()" title="Vérifier les mises à jour">↻ MAJ</button>
+          <button type="button" class="btn btn-outline btn-sm ose-hub-secondary-action" onclick="openMaterielModal()" title="Bibliothèque de panneaux et onduleurs">📚 Matériel</button>
+          <button type="button" class="btn btn-outline btn-sm ose-hub-secondary-action" onclick="ProjectManager.exportAll()" title="Exporter tous les projets en JSON">⬇ Export</button>
+          <button type="button" class="btn btn-outline btn-sm ose-hub-secondary-action" onclick="startImportProjects()" title="Importer JSON ou ZIP">📥 Import</button>
           <input type="file" id="ose-import-projects-input" accept=".json,.zip,application/json,application/zip" style="display:none" onchange="importProjectsFile(this)">
-          <button type="button" class="btn btn-accent btn-sm" onclick="showInstallationTypeStep()">＋ Nouveau</button>
         </div>
-      </div>
-      <div id="ose-hub-news" class="ose-hub-news" aria-live="polite">
-        <div class="ose-hub-news-loading">Chargement des nouveautés…</div>
       </div>
       <div class="ose-hub-projects-col">
       <div class="form-group ose-hub-search" style="margin-bottom:12px">
@@ -110,6 +120,9 @@
       </div>
       <div id="projects-list" class="ose-hub-list"></div>
       </div>
+      <div id="ose-hub-news" class="ose-hub-news" aria-live="polite">
+        <div class="ose-hub-news-loading">Chargement des nouveautés…</div>
+      </div>
     </div>
 
     <!-- Étape 1.5 : type d'installation -->
@@ -119,7 +132,7 @@
         <div style="font-size:16px;font-weight:700">Type d'installation</div>
       </div>
       <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 20px 32px">Ce choix détermine les onglets et calculs activés pour ce projet — à faire correspondre au raccordement réel du site.</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px">
+      <div class="ose-install-type-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px">
         <button onclick="selectInstallationType('grid')" style="background:var(--color-bg);border:2px solid var(--color-border);border-radius:12px;padding:22px 16px;cursor:pointer;text-align:center;transition:border-color .2s" onmouseover="this.style.borderColor='var(--color-accent)'" onmouseout="this.style.borderColor='var(--color-border)'">
           <div style="font-size:36px;margin-bottom:10px">⚡</div>
           <div style="font-size:14px;font-weight:700;color:var(--color-primary);margin-bottom:6px">Réseau sans stockage</div>
@@ -274,19 +287,19 @@
     <!-- Barre d'onglets -->
     <nav class="tabs-bar" role="tablist" aria-label="Parcours de calcul">
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-location" data-tab="location" data-tier="primary">
-        📍 Lieu
+        <span class="tab-label-full">📍 Lieu</span><span class="tab-label-short">Lieu</span>
       </button>
       <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-sizing" data-tab="sizing" data-tier="primary">
-        <span class="tab-number" aria-hidden="true">1</span>Dimensionnement
+        <span class="tab-label-full"><span class="tab-number" aria-hidden="true">1</span>Dimensionnement</span><span class="tab-label-short">1 Dim.</span>
       </button>
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-grid" data-tab="grid" data-tier="primary">
-        <span class="tab-number" aria-hidden="true">2</span>Système PV
+        <span class="tab-label-full"><span class="tab-number" aria-hidden="true">2</span>Système PV</span><span class="tab-label-short">2 PV</span>
       </button>
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-quote" data-tab="quote" data-tier="primary">
-        <span class="tab-number" aria-hidden="true">3</span>Devis
+        <span class="tab-label-full"><span class="tab-number" aria-hidden="true">3</span>Devis</span><span class="tab-label-short">3 Devis</span>
       </button>
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-offgrid" data-tab="offgrid" data-tier="primary">
-        <span class="tab-number" aria-hidden="true">🔋</span>Hors réseau
+        <span class="tab-label-full"><span class="tab-number" aria-hidden="true">🔋</span>Hors réseau</span><span class="tab-label-short">Auto</span>
       </button>
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-cables" data-tab="cables" data-tier="advanced" style="display:none">
         🔌 Câbles
@@ -310,7 +323,7 @@
         Site / Ombrage
       </button>
       <button type="button" id="btn-toggle-advanced-tabs" class="tab-btn tab-btn-more" aria-expanded="false" title="Site, câbles, météo, implantation, outils. Suiveur PV = aperçu indicatif, non calculé.">
-        Outils avancés
+        <span class="tab-label-full">Outils avancés</span><span class="tab-label-short">Plus</span>
       </button>
     </nav>
 
