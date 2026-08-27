@@ -2024,7 +2024,7 @@ details.card > summary:focus-visible {
 }
 
 .ose-demo-note {
-  display: block;
+  display: none;
   margin-top: 6px;
   padding: 6px 8px;
   background: rgba(245,166,35,0.12);
@@ -2033,9 +2033,8 @@ details.card > summary:focus-visible {
   font-size: 11px;
   line-height: 1.35;
 }
-/* display:block ci-dessus écrasait l’attribut HTML hidden → bandeau démo sur tous les projets */
-.ose-demo-note[hidden] {
-  display: none !important;
+.ose-demo-note.is-visible {
+  display: block;
 }
 .ose-demo-note.is-ready {
   background: rgba(46,125,50,0.10);

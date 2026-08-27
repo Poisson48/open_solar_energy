@@ -1,6 +1,6 @@
 set(OSE_WARN_FLAGS -Wall -Wextra -Wpedantic -Wno-unused-parameter)
 
-set(OSE_VERSION_NAME "2.0.66" CACHE STRING "Version affichée")
+set(OSE_VERSION_NAME "2.0.67" CACHE STRING "Version affichée")
 set(OSE_VERSION_CODE "20066" CACHE STRING "versionCode Android")
 
 add_library(applib STATIC

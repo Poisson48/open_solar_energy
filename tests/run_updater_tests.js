@@ -45,15 +45,15 @@ function versionCodeFromName(name) {
 
 console.log('\n═══ Updater / versions Android ═══');
 
-assert(isNewer('2.0.66', '2.0.65'), '2.0.66 > 2.0.65');
-assert(!isNewer('2.0.65', '2.0.66'), '2.0.65 ≯ 2.0.66');
-assert(isNewer('v2.0.66', '2.0.65'), 'strip v');
-assert(!isNewer('2.0.66', '2.0.66'), 'égal → pas newer');
+assert(isNewer('2.0.67', '2.0.66'), '2.0.67 > 2.0.66');
+assert(!isNewer('2.0.66', '2.0.67'), '2.0.66 ≯ 2.0.67');
+assert(isNewer('v2.0.67', '2.0.66'), 'strip v');
+assert(!isNewer('2.0.67', '2.0.67'), 'égal → pas newer');
 assert(isNewer('2.1.0', '2.0.99'), 'mineur gagne');
+assert(versionCodeFromName('2.0.67') === 20067, 'versionCode 2.0.67 → 20067');
 assert(versionCodeFromName('2.0.66') === 20066, 'versionCode 2.0.66 → 20066');
-assert(versionCodeFromName('2.0.65') === 20065, 'versionCode 2.0.65 → 20065');
-assert(versionCodeFromName('2.0.66') > versionCodeFromName('2.0.65'), 'codes monotones');
-assert(versionCodeFromName('2.0.66') > 185, 'code marketing > ancien git-count (~185)');
+assert(versionCodeFromName('2.0.67') > versionCodeFromName('2.0.66'), 'codes monotones');
+assert(versionCodeFromName('2.0.67') > 185, 'code marketing > ancien git-count (~185)');
 
 const releaseYml = fs.readFileSync(path.join(ROOT, '.github/workflows/release.yml'), 'utf8');
 assert(!/git rev-list --count HEAD/.test(releaseYml),
@@ -62,8 +62,8 @@ assert(/10000/.test(releaseYml) && /versionCode/.test(releaseYml),
   'release.yml : formule XXYYZZ présente');
 
 const man = fs.readFileSync(path.join(ROOT, 'android/AndroidManifest.xml'), 'utf8');
-assert(/android:versionCode="20066"/.test(man), 'manifest versionCode=20066');
-assert(/android:versionName="2\.0\.66"/.test(man), 'manifest versionName=2.0.66');
+assert(/android:versionCode="20067"/.test(man), 'manifest versionCode=20067');
+assert(/android:versionName="2\.0\.67"/.test(man), 'manifest versionName=2.0.67');
 assert(/InstallCallbackActivity/.test(man), 'InstallCallbackActivity déclarée');
 assert(/ApkFileProvider/.test(man), 'ApkFileProvider déclaré');
 assert(/android:exported="false"[\s\S]*InstallReceiver|InstallReceiver[\s\S]*android:exported="false"/.test(man)
@@ -88,15 +88,17 @@ assert(!/function openUpdateApkFallback/.test(pui), 'pas de openUpdateApkFallbac
 assert(!/Ouvrir l’APK \(navigateur\)/.test(pui), 'pas de bouton Ouvrir APK navigateur');
 assert(!/Ouverture du téléchargement APK/.test(pui), 'pas de toast ouverture APK');
 assert(!/window\.open\(target/.test(pui), 'checkForUpdates n’ouvre plus d’URL externe');
+assert(/is-visible/.test(pui) && /demo_ose_v2/.test(pui), 'bandeau démo : is-visible + ids démo');
 
 const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-assert(/main\.css\?v=2\.0\.66/.test(idx), 'CSS cache-bust ?v=2.0.66');
+assert(/main\.css\?v=2\.0\.67/.test(idx), 'CSS cache-bust ?v=2.0.67');
 assert(/setSizingLimitMode/.test(pui) || /setSizingLimitMode/.test(fs.readFileSync(path.join(ROOT, 'js/renderers/sizing.js'), 'utf8')),
   'modes limite dimensionnement');
 const tabSz = fs.readFileSync(path.join(ROOT, 'js/tabs/tab_sizing.js'), 'utf8');
 assert(/sz-lmode-objectif/.test(tabSz) && /sz-roof-length/.test(tabSz) && /sz-npanels-fixe/.test(tabSz),
   'UI Objectif / Toiture L×l / Nb. fixe');
 assert(!/placeholder="obligatoire"/.test(tabSz), 'surface plus marquée obligatoire');
+assert(!/Projet démo : des valeurs sont préremplies/.test(tabSz), 'plus de texte démo en dur dans le HTML');
 assert(/tab-label-short">Devis</.test(idx), 'label court Devis (sans « 3 »)');
 assert(!/tab-label-short">3 Devis</.test(idx), 'plus de « 3 Devis » en label court');
 
@@ -107,7 +109,8 @@ assert(/sz-daynight-enedis-note/.test(fs.readFileSync(path.join(ROOT, 'js/tabs/t
   'note Enedis sans masquer jour/nuit');
 assert(/ose-goal-hint/.test(fs.readFileSync(path.join(ROOT, 'js/renderers/sizing.js'), 'utf8')),
   'explication autoconso ≠ couverture / pas de prod nuit');
-assert(/\.ose-demo-note\[hidden\]/.test(css), 'bandeau démo masqué via [hidden]');
+assert(/\.ose-demo-note\s*\{[^}]*display:\s*none/.test(css), 'bandeau démo display:none par défaut');
+assert(/\.ose-demo-note\.is-visible\s*\{[^}]*display:\s*block/.test(css), 'bandeau démo visible via .is-visible');
 assert(/\.tab-btn > \.tab-label-short \{ display: none !important/.test(css),
   'CSS : short label masqué par défaut (!important)');
 assert(/\.tab-btn > \.tab-label-full \{ display: none !important/.test(css),

@@ -7,9 +7,7 @@ function initTabSizing() {
       <strong>Parcours dimensionnement</strong>
       <span>Suivez les étapes dans l’ordre. Un seul calcul à la fin — pas de chiffres dispersés.</span>
       <span class="ose-wizard-location-note">📍 Avant de calculer : vérifiez le lieu et la météo dans l’onglet <strong>📍 Lieu</strong> (ou cliquez le lieu dans la barre projet).</span>
-      <span id="ose-demo-prefill-note" class="ose-demo-note" hidden>
-        Projet démo : des valeurs sont préremplies (dont la surface). Modifiez-les ou créez un projet « Nouveau » pour partir de zéro.
-      </span>
+      <span id="ose-demo-prefill-note" class="ose-demo-note" hidden aria-hidden="true"></span>
     </div>
 
     <div class="tab-form-col">
