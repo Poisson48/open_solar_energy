@@ -45,15 +45,15 @@ function versionCodeFromName(name) {
 
 console.log('\n═══ Updater / versions Android ═══');
 
-assert(isNewer('2.0.61', '2.0.60'), '2.0.61 > 2.0.60');
-assert(!isNewer('2.0.60', '2.0.61'), '2.0.60 ≯ 2.0.61');
-assert(isNewer('v2.0.61', '2.0.60'), 'strip v');
-assert(!isNewer('2.0.61', '2.0.61'), 'égal → pas newer');
+assert(isNewer('2.0.62', '2.0.61'), '2.0.62 > 2.0.61');
+assert(!isNewer('2.0.61', '2.0.62'), '2.0.61 ≯ 2.0.62');
+assert(isNewer('v2.0.62', '2.0.61'), 'strip v');
+assert(!isNewer('2.0.62', '2.0.62'), 'égal → pas newer');
 assert(isNewer('2.1.0', '2.0.99'), 'mineur gagne');
+assert(versionCodeFromName('2.0.62') === 20062, 'versionCode 2.0.62 → 20062');
 assert(versionCodeFromName('2.0.61') === 20061, 'versionCode 2.0.61 → 20061');
-assert(versionCodeFromName('2.0.60') === 20060, 'versionCode 2.0.60 → 20060');
-assert(versionCodeFromName('2.0.61') > versionCodeFromName('2.0.60'), 'codes monotones');
-assert(versionCodeFromName('2.0.61') > 185, 'code marketing > ancien git-count (~185)');
+assert(versionCodeFromName('2.0.62') > versionCodeFromName('2.0.61'), 'codes monotones');
+assert(versionCodeFromName('2.0.62') > 185, 'code marketing > ancien git-count (~185)');
 
 const releaseYml = fs.readFileSync(path.join(ROOT, '.github/workflows/release.yml'), 'utf8');
 assert(!/git rev-list --count HEAD/.test(releaseYml),
@@ -62,8 +62,8 @@ assert(/10000/.test(releaseYml) && /versionCode/.test(releaseYml),
   'release.yml : formule XXYYZZ présente');
 
 const man = fs.readFileSync(path.join(ROOT, 'android/AndroidManifest.xml'), 'utf8');
-assert(/android:versionCode="20061"/.test(man), 'manifest versionCode=20061');
-assert(/android:versionName="2\.0\.61"/.test(man), 'manifest versionName=2.0.61');
+assert(/android:versionCode="20062"/.test(man), 'manifest versionCode=20062');
+assert(/android:versionName="2\.0\.62"/.test(man), 'manifest versionName=2.0.62');
 assert(/InstallCallbackActivity/.test(man), 'InstallCallbackActivity déclarée');
 assert(/ApkFileProvider/.test(man), 'ApkFileProvider déclaré');
 assert(/android:exported="false"[\s\S]*InstallReceiver|InstallReceiver[\s\S]*android:exported="false"/.test(man)
