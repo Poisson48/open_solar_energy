@@ -3,8 +3,9 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.44';
+const APP_VERSION = '2.0.45';
 // Historique :
+//   2.0.45 - AppImage : ne plus embarquer NSS (crash FATAL sur distros récentes)
 //   2.0.44 - Fix AppImage PC écran blanc : OSE_HAS_WEBENGINE sur applib +
 //            QtWebEngineQuick::initialize() + QtWebEngineProcess embarqué
 //   2.0.43 - Fix MAJ Android : Updater bien branché au WebView, permission d’install anticipée,
