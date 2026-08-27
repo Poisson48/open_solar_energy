@@ -14,20 +14,24 @@ jobs:
   appimage:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Dépendances
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ninja-build cmake rsync wget file \
-            libgl1-mesa-dev libfontconfig1 libfreetype6 \
-            libxkbcommon-dev libxkbcommon-x11-0 \
-            libxcb-cursor0 libxcb-icccm4 libxcb-image0 \
-            libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 \
-            libxcb-xinerama0 libxcb-xkb1 libxcb-util1
+          set -euo pipefail
+          for i in 1 2 3; do
+            sudo apt-get update -y && sudo apt-get install -y ninja-build cmake rsync wget file \
+              libgl1-mesa-dev libfontconfig1 libfreetype6 \
+              libxkbcommon-dev libxkbcommon-x11-0 \
+              libxcb-cursor0 libxcb-icccm4 libxcb-image0 \
+              libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 \
+              libxcb-xinerama0 libxcb-xkb1 libxcb-util1 && break
+            echo "apt tentatif $i échoué — nouvel essai…"
+            sleep $((i * 15))
+          done
           # libxkbcommon-x11 : dépendance du plugin xcb que linuxdeploy embarque.
       - name: Cache Qt
         id: cache-qt
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/Qt
           key: qt-desktop-${{ env.QT_VER }}-ose-webengine-serialport-v2
@@ -38,7 +42,7 @@ jobs:
           python3 -m aqt install-qt linux desktop "$QT_VER" linux_gcc_64 \
             -m qtwebengine qtwebview qtwebchannel qtpositioning qtserialport -O "$HOME/Qt"
       - name: Cache AppImage tools
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: build/appimage-tools
           key: appimage-tools-ose
@@ -51,7 +55,7 @@ jobs:
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$QT_ROOT"
           cmake --build build --target opensolarenergy -j"$(nproc)"
           QT_ROOT="$QT_ROOT" VERSION_NAME="$VERSION_NAME" bash scripts/build-appimage.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: opensolarenergy-appimage
           path: OpenSolarEnergy-*-x86_64.AppImage

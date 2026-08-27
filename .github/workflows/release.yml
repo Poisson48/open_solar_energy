@@ -31,7 +31,7 @@ jobs:
           fi
           REF="${REF#refs/tags/}"
           echo "ref=$REF" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           ref: ${{ steps.pick.outputs.ref }}
@@ -70,7 +70,7 @@ jobs:
     env:
       TAG: ${{ needs.version.outputs.ref }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           ref: ${{ needs.version.outputs.ref }}
@@ -86,7 +86,7 @@ jobs:
             printf '%s\n' "$NOTES"
             echo "OSE_EOF"
           } >> "$GITHUB_ENV"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           pattern: opensolarenergy-*
           merge-multiple: true
