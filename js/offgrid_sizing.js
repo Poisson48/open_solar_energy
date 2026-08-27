@@ -337,6 +337,8 @@ const OffgridSizing = (() => {
         const monthlyProfs = PvProfiles.buildMonthlyProfiles(weatherData, monthlyHtilt, losses, site.tilt, site.azimuth, lat, pvTech);
         pvSlotsFlat = PvProfiles.flattenToYear(monthlyProfs, daysArr);
       }
+      const shade = AppState.siteSurvey?.monthlyLoss;
+      if (shade && pvSlotsFlat) PvProfiles.applyMonthlyShade(pvSlotsFlat, daysArr, shade);
     }
 
     ppeaks.forEach(Ppeak => {

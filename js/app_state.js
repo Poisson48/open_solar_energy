@@ -3,8 +3,11 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.51';
+const APP_VERSION = '2.0.52';
 // Historique :
+//   2.0.52 - Calculs blindés : coincidence 30 min toujours (plus de min mensuel
+//            optimiste), météo horaire persistée, ombrage site mois/mois,
+//            badges précision, import météo auto après Enedis
 //   2.0.51 - Dimensionnement conservé si params inchangés ; UI PC : gap header,
 //            hub plein écran (type/nouveau), câbles AC défaut, sync install,
 //            Partager dans la barre projet

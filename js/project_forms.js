@@ -56,6 +56,13 @@ function sizingContextFingerprint() {
     ? AppState.monthlyKwhHp.map(v => Math.round(Number(v) || 0)).join(',')
     : '';
   const slots = AppState.hourlyEnedisData?.halfHourly?.length || 0;
+  const hw = AppState.hourlyWeatherData;
+  const hwSig = hw?.ghi?.length
+    ? `${hw.year || ''}:${hw.ghi.length}:${Math.round(Array.from(hw.ghi).reduce((s, v) => s + (v || 0), 0) / 1000)}`
+    : '';
+  const shade = Array.isArray(AppState.siteSurvey?.monthlyLoss)
+    ? AppState.siteSurvey.monthlyLoss.map(v => Math.round((Number(v) || 0) * 1000) / 1000).join(',')
+    : '';
   return JSON.stringify({
     lat: Math.round((AppState.location?.lat || 0) * 1e5) / 1e5,
     lon: Math.round((AppState.location?.lon || 0) * 1e5) / 1e5,
@@ -64,6 +71,8 @@ function sizingContextFingerprint() {
     hourlySlots: slots >= 48 * 365 ? slots : 0,
     year: AppState.enedisYear || AppState.hourlyEnedisData?.year || null,
     hp,
+    hourlyWx: hwSig,
+    siteShade: shade,
   });
 }
 
@@ -287,6 +296,16 @@ function buildProjectData() {
     ? { ...AppState.hourlyEnedisData, halfHourly: Array.from(AppState.hourlyEnedisData.halfHourly) }
     : null;
 
+  const hourlyWx = AppState.hourlyWeatherData?.ghi
+    ? {
+        year: AppState.hourlyWeatherData.year,
+        nHours: AppState.hourlyWeatherData.nHours,
+        ghi: Array.from(AppState.hourlyWeatherData.ghi),
+        dhi: Array.from(AppState.hourlyWeatherData.dhi || []),
+        temp: Array.from(AppState.hourlyWeatherData.temp || []),
+      }
+    : null;
+
   const existing = AppState.currentProjectId
     ? ProjectManager.get(AppState.currentProjectId)
     : null;
@@ -300,6 +319,7 @@ function buildProjectData() {
     updatedAt:        null,
     location:         { ...AppState.location },
     weatherData:      AppState.weatherData,
+    hourlyWeatherData: hourlyWx,
     hourlyEnedisData: enedisSerial,
     monthlyKwhHp:     AppState.monthlyKwhHp ? AppState.monthlyKwhHp.slice() : null,
     enedisYear:       AppState.enedisYear || null,
@@ -346,6 +366,7 @@ function resetForNewProject() {
   clearGridSizingResults();
   clearOffgridSizingResults();
   AppState.hourlyEnedisData        = null;
+  AppState.hourlyWeatherData       = null;
   AppState.monthlyKwhHp            = null;
   AppState.enedisYear              = null;
   AppState._includeIncentive       = true;

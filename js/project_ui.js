@@ -101,6 +101,15 @@ function loadProject(id) {
   AppState.hourlyEnedisData = project.hourlyEnedisData?.halfHourly
     ? { ...project.hourlyEnedisData, halfHourly: new Float32Array(project.hourlyEnedisData.halfHourly) }
     : null;
+  AppState.hourlyWeatherData = project.hourlyWeatherData?.ghi
+    ? {
+        year: project.hourlyWeatherData.year,
+        nHours: project.hourlyWeatherData.nHours,
+        ghi: new Float32Array(project.hourlyWeatherData.ghi),
+        dhi: new Float32Array(project.hourlyWeatherData.dhi || []),
+        temp: new Float32Array(project.hourlyWeatherData.temp || []),
+      }
+    : null;
   AppState.monthlyKwhHp = project.monthlyKwhHp ? project.monthlyKwhHp.slice() : null;
   AppState.enedisYear   = project.enedisYear || null;
   if (AppState.hourlyEnedisData && typeof HourlyModule?.setData === 'function') {

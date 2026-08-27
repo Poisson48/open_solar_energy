@@ -133,9 +133,18 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
       ? `à <strong>${targetPct}&nbsp;%</strong>` : ''}
   </p>`;
 
-  const slotBadge = rec.slotLevel
-    ? `<span class="ose-rec-badge ose-rec-badge-ok">Données Enedis 30 min</span>`
-    : `<span class="ose-rec-badge">Profil mensuel</span>`;
+  const slotBadge = (() => {
+    const load = rec.loadSource || (rec.slotLevel ? 'enedis_30min' : 'legacy');
+    const pv = rec.pvSource || 'monthly_shape';
+    const parts = [];
+    if (load === 'enedis_30min') parts.push('Enedis 30 min');
+    else if (load === 'synthetic_diurnal') parts.push('Profil conso 30 min');
+    if (pv === 'hourly_weather') parts.push('Météo horaire');
+    else parts.push('Forme PV mensuelle');
+    if (rec.siteShadeApplied) parts.push('Ombrage site');
+    const ok = load === 'enedis_30min' && pv === 'hourly_weather';
+    return `<span class="ose-rec-badge${ok ? ' ose-rec-badge-ok' : ''}" title="${rec.precisionMode || ''}">${parts.join(' · ')}</span>`;
+  })();
 
   const costBlock = rec.incentive > 0
     ? `<div class="kpi-value accent">${costTxt} €</div>
