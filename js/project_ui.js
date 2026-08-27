@@ -26,6 +26,7 @@ function updateProjectBar() {
   const clientEl = document.getElementById('project-bar-client');
   const c = AppState.currentClient;
   if (clientEl) clientEl.textContent = c.nom ? `Projet · ${c.nom}` : '';
+  if (typeof updateLocationUI === 'function') updateLocationUI();
 }
 
 // ══════════════════════════════════════════════════════════════

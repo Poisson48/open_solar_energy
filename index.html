@@ -30,9 +30,12 @@
 <div id="project-bar">
   <div class="project-bar-meta">
     <input type="text" id="project-name-input" placeholder="Nom du projet…" aria-label="Nom du projet">
+    <button type="button" id="project-bar-location" class="project-bar-location" onclick="activateTab('location')" title="Ouvrir l’onglet Lieu / météo" aria-label="Lieu du projet">
+      📍 <span id="project-bar-location-text">—</span>
+    </button>
     <div class="project-bar-meta-row">
       <span id="project-bar-client"></span>
-      <button type="button" id="btn-edit-project" onclick="openEditProjectModal()" title="Modifier le nom et les informations client" aria-label="Modifier le projet">✏️</button>
+      <button type="button" id="btn-edit-project" onclick="openEditProjectModal()" title="modifier le nom et les informations client" aria-label="Modifier le projet">✏️</button>
     </div>
   </div>
 
@@ -265,10 +268,59 @@
 <!-- ═══ LAYOUT PRINCIPAL ══════════════════════════════════════ -->
 <div class="app-layout">
 
-  <!-- ─── SIDEBAR ──────────────────────────────────────────── -->
-  <aside class="sidebar">
+  <!-- ─── PANNEAU PRINCIPAL ─────────────────────────────────── -->
+  <main class="main-panel">
 
-    <!-- Localisation (étape 1 — édition carte uniquement ici) -->
+    <!-- Barre d'onglets -->
+    <nav class="tabs-bar" role="tablist" aria-label="Parcours de calcul">
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-location" data-tab="location" data-tier="primary">
+        📍 Lieu
+      </button>
+      <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-sizing" data-tab="sizing" data-tier="primary">
+        <span class="tab-number" aria-hidden="true">1</span>Dimensionnement
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-grid" data-tab="grid" data-tier="primary">
+        <span class="tab-number" aria-hidden="true">2</span>Système PV
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-quote" data-tab="quote" data-tier="primary">
+        <span class="tab-number" aria-hidden="true">3</span>Devis
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-offgrid" data-tab="offgrid" data-tier="primary">
+        <span class="tab-number" aria-hidden="true">🔋</span>Hors réseau
+      </button>
+      <button type="button" id="btn-toggle-advanced-tabs" class="tab-btn tab-btn-more" aria-expanded="false" title="Site, câbles, météo, implantation, outils. Suiveur PV = aperçu indicatif, non calculé.">
+        Outils avancés
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-cables" data-tab="cables" data-tier="advanced" style="display:none">
+        🔌 Câbles
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-irradiation" data-tab="irradiation" data-tier="advanced" style="display:none">
+        Météo mensuelle
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-daily" data-tab="daily" data-tier="advanced" style="display:none">
+        Analyse horaire
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-tracker" data-tab="tracker" data-tier="advanced" style="display:none">
+        Suiveur PV
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-optimizer" data-tab="optimizer" data-tier="advanced" style="display:none">
+        Optimisation
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-layout" data-tab="layout" data-tier="advanced" style="display:none">
+        Implantation
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-site" data-tab="site" data-tier="advanced" style="display:none">
+        Site / Ombrage
+      </button>
+    </nav>
+
+    <!-- Contenu onglets - rempli dynamiquement par les fichiers js/tabs/*.js -->
+    <div class="tabs-content">
+      <div class="tab-pane" id="tab-location" role="tabpanel" aria-label="Localisation">
+        <div class="ose-location-layout" id="location-panel">
+
+    <!-- Localisation (édition carte + météo) -->
+    <div class="ose-location-forms">
     <div class="sidebar-section">
       <h3>Localisation <span id="map-lock-badge" class="map-lock-badge">🔒 Lieu verrouillé</span></h3>
       <p id="map-edit-hint" style="font-size:11px;color:var(--color-text-muted);margin:0 0 8px;line-height:1.45">
@@ -363,6 +415,8 @@
       </div>
     </div>
 
+    </div><!-- /.ose-location-forms -->
+
     <!-- Carte -->
     <div class="map-panel" id="map-panel">
       <div class="map-toolbar" id="map-toolbar">
@@ -386,53 +440,9 @@
       </div>
     </div>
 
-  </aside>
-
-  <!-- ─── PANNEAU PRINCIPAL ─────────────────────────────────── -->
-  <main class="main-panel">
-
-    <!-- Barre d'onglets -->
-    <nav class="tabs-bar" role="tablist" aria-label="Parcours de calcul">
-      <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-sizing" data-tab="sizing" data-tier="primary">
-        <span class="tab-number" aria-hidden="true">1</span>Dimensionnement
-      </button>
-      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-grid" data-tab="grid" data-tier="primary">
-        <span class="tab-number" aria-hidden="true">2</span>Système PV
-      </button>
-      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-quote" data-tab="quote" data-tier="primary">
-        <span class="tab-number" aria-hidden="true">3</span>Devis
-      </button>
-      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-offgrid" data-tab="offgrid" data-tier="primary">
-        <span class="tab-number" aria-hidden="true">🔋</span>Hors réseau
-      </button>
-      <button type="button" id="btn-toggle-advanced-tabs" class="tab-btn tab-btn-more" aria-expanded="false" title="Site, câbles, météo, implantation, outils. Suiveur PV = aperçu indicatif, non calculé.">
-        Outils avancés
-      </button>
-      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-cables" data-tab="cables" data-tier="advanced" style="display:none">
-        🔌 Câbles
-      </button>
-      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-irradiation" data-tab="irradiation" data-tier="advanced" style="display:none">
-        Météo mensuelle
-      </button>
-      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-daily" data-tab="daily" data-tier="advanced" style="display:none">
-        Analyse horaire
-      </button>
-      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-tracker" data-tab="tracker" data-tier="advanced" style="display:none">
-        Suiveur PV
-      </button>
-      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-optimizer" data-tab="optimizer" data-tier="advanced" style="display:none">
-        Optimisation
-      </button>
-      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-layout" data-tab="layout" data-tier="advanced" style="display:none">
-        Implantation
-      </button>
-      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-site" data-tab="site" data-tier="advanced" style="display:none">
-        Site / Ombrage
-      </button>
-    </nav>
-
-    <!-- Contenu onglets - rempli dynamiquement par les fichiers js/tabs/*.js -->
-    <div class="tabs-content">
+  
+        </div>
+      </div>
       <div class="tab-pane active" id="tab-sizing" role="tabpanel" aria-label="Dimensionnement"></div>
       <div class="tab-pane" id="tab-grid" role="tabpanel" aria-label="Système PV réseau"></div>
       <div class="tab-pane" id="tab-tracker" role="tabpanel" aria-label="Suiveur PV"></div>

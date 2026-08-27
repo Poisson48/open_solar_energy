@@ -329,6 +329,14 @@ function activateTab(tab) {
   if (tab === 'sizing' && typeof updateDemoPrefillNote === 'function')
     updateDemoPrefillNote();
   if (tab === 'cables' && typeof CablesUI !== 'undefined') CablesUI.prefill();
+  if (tab === 'location') {
+    // Leaflet doit recalculer la taille hors sidebar
+    setTimeout(() => {
+      if (AppState.map) {
+        try { AppState.map.invalidateSize(); } catch (_) {}
+      }
+    }, 50);
+  }
 }
 
 function initTabs() {

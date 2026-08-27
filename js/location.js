@@ -316,6 +316,14 @@ function updateLocationUI() {
   setTxt('coord-lat', AppState.location.lat.toFixed(4) + '°');
   setTxt('coord-lon', AppState.location.lon.toFixed(4) + '°');
   setTxt('coord-alt', AppState.location.alt + ' m');
+  // Libellé permanent dans la barre projet
+  const barLoc = document.getElementById('project-bar-location-text');
+  if (barLoc) {
+    const label = (cleanName || clientAddr || rawName || 'Lieu non défini').trim();
+    barLoc.textContent = label;
+    const btn = document.getElementById('project-bar-location');
+    if (btn) btn.title = `Lieu : ${label} — cliquer pour ouvrir l’onglet Lieu`;
+  }
 }
 
 // ── Bind coordonnées manuelles ───────────────────────────────
