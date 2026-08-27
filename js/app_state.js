@@ -3,9 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.70';
+const APP_VERSION = '2.0.71';
 /** Notes embarquées (hub) — utilisées si GitHub API/Atom indisponibles (403, offline). */
 const OSE_RELEASE_FEED = [
+  { ver: '2.0.71', notes: 'Ombrage site → dimensionnement (profil 30 min) ; Site avant Dim/Hors réseau.' },
   { ver: '2.0.70', notes: 'Hors réseau en 2e onglet (après Lieu) en mode autonome.' },
   { ver: '2.0.69', notes: 'Lieu : météo + terrain conservés une fois importés (réaffichage à la réouverture).' },
   { ver: '2.0.68', notes: 'Parcours onglets B : Lieu→Dim→Site→PV→Implantation→Câbles→Analyse→Devis (dernier) ; skip.' },
@@ -17,6 +18,7 @@ const OSE_RELEASE_FEED = [
   { ver: '2.0.62', notes: 'Audit clic des mises à jour PC + tablette.' },
 ];
 // Historique :
+//   2.0.71 - Ombrage 30 min → Dim/Hors réseau ; Site avant sizing
 //   2.0.70 - Hors réseau = 2e onglet (DOM)
 //   2.0.69 - Persistance Lieu : weatherMeta + terrain auto-sauvé ; statuts restaurés
 //   2.0.68 - Parcours B : 8 onglets primary, Devis en dernier, Passer/Continuer

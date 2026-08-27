@@ -85,7 +85,7 @@ function initTabSite() {
             <button type="button" class="btn btn-accent" onclick="SiteSurvey.startPhotoMode()">📷 Mode photo + boussole</button>
             <button type="button" class="btn btn-outline" onclick="SiteSurvey.stopPhotoMode()">Stop photo</button>
             <button type="button" class="btn btn-outline" onclick="SiteSurvey.recompute()">Recalculer ombrage</button>
-            <button type="button" class="btn btn-primary" onclick="SiteSurvey.applyShadingToLosses()">Appliquer aux pertes système</button>
+            <button type="button" class="btn btn-primary" onclick="SiteSurvey.applyShadingToLosses()">Appliquer au dimensionnement</button>
           </div>
 
           <div id="site-photo-wrap" style="display:none;margin-top:12px;position:relative;border-radius:10px;overflow:hidden;background:#000">
@@ -113,7 +113,7 @@ function initTabSite() {
         </div>
         <div class="ose-journey-nav">
           <button type="button" class="btn btn-outline" onclick="goNextPrimaryTab()">Passer →</button>
-          <button type="button" class="btn btn-primary" onclick="goNextPrimaryTab()">Continuer → Système PV</button>
+          <button type="button" class="btn btn-primary" id="site-journey-next" onclick="goNextPrimaryTab()">Continuer →</button>
         </div>
       </div>
     </div>
