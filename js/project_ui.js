@@ -221,9 +221,17 @@ function _updateDemoPrefillNoteContent(ready) {
   const note = document.getElementById('ose-demo-prefill-note');
   if (!note) return;
   const p = AppState.currentProjectId ? ProjectManager.get(AppState.currentProjectId) : null;
-  const show = !!(p && p.isDemo);
+  // Uniquement les seeds démo (ids fixes) — pas un projet renommé / réel
+  const show = !!(p && p.isDemo === true
+    && (p.id === 'demo_ose_v2' || p.id === 'demo_ose_hybrid_v1'));
   note.hidden = !show;
-  if (!show) return;
+  note.classList.toggle('is-visible', show);
+  note.setAttribute('aria-hidden', show ? 'false' : 'true');
+  if (!show) {
+    note.textContent = '';
+    note.classList.remove('is-ready');
+    return;
+  }
 
   const surf = document.getElementById('sz-surface')?.value;
   note.classList.toggle('is-ready', ready);
