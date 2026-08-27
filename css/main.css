@@ -514,6 +514,33 @@ header .badge {
   color: #fff;
   outline: none;
 }
+.project-bar-location {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: min(340px, 36vw);
+  padding: 4px 10px;
+  border: 1px solid rgba(255,255,255,0.28);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.92);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.project-bar-location:hover {
+  background: rgba(255,255,255,0.18);
+  border-color: rgba(255,255,255,0.5);
+}
+#project-bar-location-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 #project-bar #project-name-input::placeholder { color: rgba(255,255,255,0.45); }
 #project-bar #project-name-input:focus { border-color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.2); }
 #btn-save-project, #btn-open-projects {
@@ -620,23 +647,71 @@ body:not(.ose-hub-active) {
   flex-direction: column;
 }
 .app-layout {
-  display: grid;
-  grid-template-columns: 320px 1fr;
+  display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
   height: auto;
   max-width: 100%;
 }
 
-/* ── PANNEAU GAUCHE (localisation) ── */
-.sidebar {
-  background: var(--color-surface);
-  border-right: 1px solid var(--color-border);
+.main-panel {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
 }
 
+/* ── Onglet Lieu (ex-sidebar) ── */
+.ose-location-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 400px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+  min-height: min(70vh, 720px);
+  padding: 12px 14px 16px;
+  box-sizing: border-box;
+}
+.ose-location-forms {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: auto;
+  max-height: min(70vh, 720px);
+}
+.ose-location-layout .map-panel {
+  flex: 1;
+  min-height: 320px;
+  height: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.ose-location-layout .map-panel #map {
+  flex: 1;
+  min-height: 280px;
+}
+@media (max-width: 900px) {
+  .ose-location-layout {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+  .ose-location-forms {
+    max-height: none;
+  }
+  .ose-location-layout .map-panel {
+    min-height: 260px;
+  }
+}
+
+/* ── Ancienne sidebar (styles de section réutilisés) ── */
 .sidebar-section {
   padding: 14px 16px;
   border-bottom: 1px solid var(--color-border);
@@ -1464,7 +1539,7 @@ details.card > summary:focus-visible {
 @media print {
   header { position: static; }
   .app-layout { display: block; height: auto; }
-  .sidebar { display: none; }
+  #tab-location { display: none !important; }
   .tabs-bar { display: none; }
   .tab-pane { display: block !important; page-break-after: always; }
   .btn { display: none; }
@@ -1536,21 +1611,12 @@ details.card > summary:focus-visible {
   }
 }
 
-/* Tablette paysage : 2 colonnes, sidebar proportionnelle, carte lisible */
+/* Tablette paysage */
 @media (min-width: 900px) and (max-width: 1400px) and (orientation: landscape) {
   .app-layout {
-    grid-template-columns: minmax(260px, 32vw) 1fr;
     height: calc(100dvh - var(--header-h) - 34px - var(--safe-top));
   }
-  .sidebar {
-    max-height: none;
-    overflow-y: auto;
-  }
-  #map {
-    min-height: 140px;
-    max-height: none;
-  }
-  .map-panel {
+  .ose-location-layout .map-panel #map {
     min-height: 140px;
   }
   .tab-form-col {
@@ -1568,18 +1634,11 @@ details.card > summary:focus-visible {
   }
 }
 
-/* Tablette portrait : pile, mais plus d’espace que téléphone */
+/* Tablette portrait */
 @media (min-width: 600px) and (max-width: 900px) and (orientation: portrait) {
   .app-layout {
-    grid-template-columns: 1fr;
     height: auto;
     min-height: calc(100dvh - var(--header-h) - 34px - var(--safe-top));
-  }
-  .sidebar {
-    max-height: 40vh;
-    overflow-y: auto;
-    border-right: none;
-    border-bottom: 1px solid var(--color-border);
   }
   .tab-form-col {
     grid-template-columns: 1fr;
@@ -1623,27 +1682,17 @@ details.card > summary:focus-visible {
 
 @media (max-width: 900px) {
   .app-layout {
-    grid-template-columns: 1fr;
     height: auto;
     min-height: calc(100vh - var(--header-h) - 34px - var(--safe-top));
-  }
-  .sidebar {
-    max-height: 55vh;
-    overflow-y: auto;
-    border-right: none;
-    border-bottom: 1px solid var(--color-border);
   }
   .tab-form-col {
     grid-template-columns: 1fr;
   }
-  #map {
-    min-height: 160px;
-    max-height: 240px;
-  }
-  .map-panel:not(.map-panel-fs) {
+  .ose-location-layout .map-panel:not(.map-panel-fs) {
     max-height: 300px;
   }
-  .map-panel:not(.map-panel-fs) #map {
+  .ose-location-layout .map-panel:not(.map-panel-fs) #map {
+    min-height: 160px;
     max-height: none;
   }
   /* Graphiques analyse : une colonne dès tablette portrait / mobile */
@@ -1659,19 +1708,15 @@ details.card > summary:focus-visible {
   header .subtitle { display: none; }
   header .badge { display: none; }
   .app-layout {
-    grid-template-columns: minmax(180px, 38vw) 1fr;
     height: calc(100dvh - var(--header-h) - 34px - var(--safe-top));
     min-height: 0;
   }
-  .sidebar {
-    max-height: none;
-    overflow-y: auto;
-    border-right: 1px solid var(--color-border);
-    border-bottom: none;
+  .ose-location-layout {
+    grid-template-columns: minmax(180px, 42vw) 1fr;
+    min-height: 0;
   }
-  #map {
+  .ose-location-layout .map-panel #map {
     min-height: 80px;
-    max-height: none;
   }
   .tabs-content {
     padding: 8px;

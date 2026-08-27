@@ -385,7 +385,7 @@ function renderIrradiationData() {
 // ── Optimisation angle ──────────────────────────────────────────
 function calcOptimization() {
   if (!AppState.weatherData) {
-    showToast('Importez d\'abord les données météo (sidebar).', 'error');
+    showToast('Importez d\'abord les données météo (onglet Lieu).', 'error');
     return;
   }
   const el      = document.getElementById('optimizer-results');

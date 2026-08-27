@@ -6,7 +6,7 @@ function initTabOffgrid() {
     <div class="ose-wizard-intro">
       <strong>Parcours système autonome</strong>
       <span>Consommation → batterie → toiture/objectif, puis un seul calcul.</span>
-      <span class="ose-wizard-location-note">📍 Avant de calculer : vérifiez le lieu et la météo<span class="ose-loc-hint-desktop"> dans la colonne de gauche</span><span class="ose-loc-hint-mobile"> dans <strong>Localisation</strong> (au-dessus)</span> — sans eux, le dimensionnement ne peut pas démarrer.</span>
+      <span class="ose-wizard-location-note">📍 Avant de calculer : vérifiez le lieu et la météo dans l’onglet <strong>📍 Lieu</strong> (ou cliquez le lieu dans la barre projet).</span>
     </div>
 
     <div class="tab-form-col">
