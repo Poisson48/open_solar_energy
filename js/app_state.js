@@ -3,8 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.43';
+const APP_VERSION = '2.0.44';
 // Historique :
+//   2.0.44 - Fix AppImage PC écran blanc : OSE_HAS_WEBENGINE sur applib +
+//            QtWebEngineQuick::initialize() + QtWebEngineProcess embarqué
 //   2.0.43 - Fix MAJ Android : Updater bien branché au WebView, permission d’install anticipée,
 //            barre de progression animée, messages d’erreur plus justes
 //   2.0.42 - Sync live inclinaison/azimut/surface/panneau entre onglets + devis ;

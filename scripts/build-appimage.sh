@@ -63,9 +63,38 @@ OUTPUT="OpenSolarEnergy-${VERSION_NAME}-x86_64.AppImage"
 export OUTPUT
 
 cd "$ROOT/build"
+# 1) Remplir AppDir (libs Qt, plugins, qml) sans créer l’AppImage tout de suite.
 "$TOOLS/linuxdeploy" \
   --appdir "$APPDIR" \
   --plugin qt \
+  --desktop-file "$APPDIR/usr/share/applications/opensolarenergy.desktop" \
+  --icon-file "$APPDIR/usr/share/icons/hicolor/512x512/apps/opensolarenergy.png"
+
+# 2) Embarquer QtWebEngineProcess + ressources Chromium (souvent omis par le plugin).
+#    Layout attendu via qt.conf Prefix=../ → usr/libexec + usr/resources.
+libexec="$QT_ROOT/libexec/QtWebEngineProcess"
+[ -x "$libexec" ] || libexec="$QT_ROOT/lib/QtWebEngineProcess"
+[ -x "$libexec" ] || libexec="$QT_ROOT/bin/QtWebEngineProcess"
+if [ -x "$libexec" ]; then
+  mkdir -p "$APPDIR/usr/libexec" "$APPDIR/usr/resources" \
+           "$APPDIR/usr/translations/qtwebengine_locales"
+  cp -f "$libexec" "$APPDIR/usr/libexec/QtWebEngineProcess"
+  chmod +x "$APPDIR/usr/libexec/QtWebEngineProcess"
+  if [ -d "$QT_ROOT/resources" ]; then
+    cp -f "$QT_ROOT/resources"/*.pak "$QT_ROOT/resources"/icudtl.dat \
+      "$APPDIR/usr/resources/" 2>/dev/null || true
+  fi
+  if [ -d "$QT_ROOT/translations/qtwebengine_locales" ]; then
+    cp -f "$QT_ROOT/translations/qtwebengine_locales"/*.pak \
+      "$APPDIR/usr/translations/qtwebengine_locales/" 2>/dev/null || true
+  fi
+else
+  echo "Attention : QtWebEngineProcess introuvable sous $QT_ROOT" >&2
+fi
+
+# 3) Empaqueter l’AppImage final.
+"$TOOLS/linuxdeploy" \
+  --appdir "$APPDIR" \
   --output appimage \
   --desktop-file "$APPDIR/usr/share/applications/opensolarenergy.desktop" \
   --icon-file "$APPDIR/usr/share/icons/hicolor/512x512/apps/opensolarenergy.png"

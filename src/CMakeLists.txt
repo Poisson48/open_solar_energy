@@ -1,7 +1,7 @@
 set(OSE_WARN_FLAGS -Wall -Wextra -Wpedantic -Wno-unused-parameter)
 
-set(OSE_VERSION_NAME "2.0.43" CACHE STRING "Version affichée")
-set(OSE_VERSION_CODE "243" CACHE STRING "versionCode Android")
+set(OSE_VERSION_NAME "2.0.44" CACHE STRING "Version affichée")
+set(OSE_VERSION_CODE "244" CACHE STRING "versionCode Android")
 
 add_library(applib STATIC
     app/theme.cpp
@@ -87,8 +87,12 @@ if(ANDROID)
     set_property(TARGET opensolarenergy PROPERTY QT_ANDROID_VERSION_CODE "${OSE_VERSION_CODE}")
 else()
     if(TARGET Qt6::WebEngineQuick)
+        # OSE_HAS_WEBENGINE doit être sur applib : AppController (useWebEngine)
+        # y est compilé. PRIVATE sur opensolarenergy ne touchait que main.cpp →
+        # useWebEngine restait false, chargement de QtWebView sans plugin → écran blanc.
+        target_link_libraries(applib PUBLIC Qt6::WebEngineQuick Qt6::WebChannel)
+        target_compile_definitions(applib PUBLIC OSE_HAS_WEBENGINE)
         target_link_libraries(opensolarenergy PRIVATE Qt6::WebEngineQuick Qt6::WebChannel)
-        target_compile_definitions(opensolarenergy PRIVATE OSE_HAS_WEBENGINE)
     else()
         target_link_libraries(opensolarenergy PRIVATE Qt6::WebView)
     endif()
