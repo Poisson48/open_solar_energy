@@ -4,6 +4,8 @@
  * Fonctions partagées entre SizingEngine et OffgridSizing :
  *   buildMonthlyProfiles  — profil [12][48] kWh/kWc par slot 30 min
  *   flattenToYear         — aplatit [12][48] en Float32Array(nDays×48)
+ *   buildSyntheticLoadYear — conso 30 min synthétique (profil résidentiel FR)
+ *   applyMonthlyShade     — applique siteSurvey.monthlyLoss mois par mois
  *
  * Dépendances globales : SolarMath, DAYS_IN_MONTH (constants.js)
  */
@@ -12,6 +14,14 @@ const PvProfiles = (() => {
 
   // DAYS_IN_MONTH défini dans constants.js
   const DAYS = DAYS_IN_MONTH;
+
+  /** Poids horaires type résidentiel France (somme ≈ 1) — matin / soir plus élevés. */
+  const RESIDENTIAL_HOUR_WEIGHTS = [
+    0.020, 0.015, 0.012, 0.010, 0.012, 0.020,
+    0.030, 0.065, 0.075, 0.060, 0.040, 0.035,
+    0.040, 0.038, 0.035, 0.035, 0.040, 0.055,
+    0.080, 0.090, 0.085, 0.070, 0.055, 0.038
+  ];
 
   /**
    * Construit un profil PV demi-horaire normalisé par kWc, cohérent avec pvProduction mensuel.
@@ -69,5 +79,74 @@ const PvProfiles = (() => {
     return flat;
   }
 
-  return { buildMonthlyProfiles, flattenToYear };
+  /**
+   * Applique l’ombrage mensuel (siteSurvey.monthlyLoss, fraction 0–1) sur un profil [12][48]
+   * ou un flat année. Mutation in-place.
+   */
+  function applyMonthlyShade(profilesOrFlat, daysArr, monthlyLoss) {
+    if (!monthlyLoss || !monthlyLoss.length) return profilesOrFlat;
+    if (Array.isArray(profilesOrFlat) && profilesOrFlat[0] && profilesOrFlat[0].length === 48) {
+      for (let m = 0; m < 12; m++) {
+        const f = Math.max(0, Math.min(1, 1 - (Number(monthlyLoss[m]) || 0)));
+        const p = profilesOrFlat[m];
+        for (let s = 0; s < 48; s++) p[s] *= f;
+      }
+      return profilesOrFlat;
+    }
+    if (profilesOrFlat instanceof Float32Array && daysArr) {
+      let di = 0;
+      for (let m = 0; m < 12; m++) {
+        const f = Math.max(0, Math.min(1, 1 - (Number(monthlyLoss[m]) || 0)));
+        const n = daysArr[m] || 0;
+        for (let d = 0; d < n; d++, di++) {
+          const base = di * 48;
+          for (let s = 0; s < 48; s++) profilesOrFlat[base + s] *= f;
+        }
+      }
+    }
+    return profilesOrFlat;
+  }
+
+  /**
+   * Construit une année de conso 30 min (kWh/slot) à partir des totaux mensuels,
+   * en utilisant un profil diurnal résidentiel (évite min(prod,conso) mensuel trop optimiste).
+   *
+   * @param {number[]} monthlyKwh  12 totaux kWh
+   * @param {number}   [year]      pour jours bissextiles
+   * @returns {Float32Array}
+   */
+  function buildSyntheticLoadYear(monthlyKwh, year) {
+    const daysArr = (typeof getMonthlyDays === 'function' && year)
+      ? getMonthlyDays(year)
+      : DAYS.slice();
+    const wSum = RESIDENTIAL_HOUR_WEIGHTS.reduce((a, b) => a + b, 0);
+    const hourFrac = RESIDENTIAL_HOUR_WEIGHTS.map(w => w / wSum);
+    const totalDays = daysArr.reduce((s, d) => s + d, 0);
+    const flat = new Float32Array(totalDays * 48);
+    let di = 0;
+    for (let m = 0; m < 12; m++) {
+      const days = daysArr[m] || 30;
+      const monthTotal = Math.max(0, Number(monthlyKwh[m]) || 0);
+      const daily = days > 0 ? monthTotal / days : 0;
+      for (let d = 0; d < days; d++, di++) {
+        const base = di * 48;
+        for (let h = 0; h < 24; h++) {
+          const slotKwh = (daily * hourFrac[h]) / 2;
+          flat[base + h * 2]     = slotKwh;
+          flat[base + h * 2 + 1] = slotKwh;
+        }
+      }
+    }
+    return flat;
+  }
+
+  return {
+    buildMonthlyProfiles,
+    flattenToYear,
+    applyMonthlyShade,
+    buildSyntheticLoadYear,
+    RESIDENTIAL_HOUR_WEIGHTS,
+  };
 })();
+
+if (typeof module !== 'undefined' && module.exports) module.exports = PvProfiles;

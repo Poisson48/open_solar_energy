@@ -200,6 +200,7 @@ const PVGISImport = (() => {
         statusEl.textContent = `✓ Météo horaire ${year} - production jour/jour activée`;
         statusEl.style.display = 'block';
       }
+      if (typeof refreshSizingValidity === 'function') refreshSizingValidity();
     } catch (err) {
       console.error(err);
       setStatus(`✗ Import horaire échoué : ${err.message}`, 'error');
