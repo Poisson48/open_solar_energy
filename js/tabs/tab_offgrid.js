@@ -182,7 +182,7 @@ function initTabOffgrid() {
           </div>
         </details>
 
-        <p class="ose-field-help" style="margin-bottom:6px">4 · Lieu + météo (colonne gauche) et étapes 1 → 3 validées ? Lancez le dimensionnement.</p>
+        <p class="ose-field-help" style="margin-bottom:6px">4 · Lieu + météo (onglet <strong>📍 Lieu</strong>) et étapes 1 → 3 validées ? Lancez le dimensionnement.</p>
         <button class="btn btn-accent" id="btn-calc-offgrid2" style="width:100%;margin-bottom:8px">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
           Dimensionner mon système autonome

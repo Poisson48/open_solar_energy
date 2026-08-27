@@ -87,7 +87,7 @@ function initTabSizing() {
             <span class="ose-step-num">2</span>
             <div>
               <h3 class="ose-step-title">Toiture et panneaux</h3>
-              <p class="ose-step-hint">Surface dispo + orientation. Lieu = colonne gauche (« Modifier le lieu »). Terrain / ombrage = onglet <strong>Site / Ombrage</strong>.</p>
+              <p class="ose-step-hint">Surface dispo + orientation. Lieu / météo = onglet <strong>📍 Lieu</strong>. Terrain / ombrage = onglet <strong>Site / Ombrage</strong>.</p>
             </div>
           </div>
           <div class="ose-step-body">
@@ -275,7 +275,7 @@ function initTabSizing() {
             <span class="ose-step-num">4</span>
             <div>
               <h3 class="ose-step-title">Calculer</h3>
-              <p class="ose-step-hint">Lieu + météo (colonne gauche) et étapes 1 → 3 validés ? Lancez le dimensionnement.</p>
+              <p class="ose-step-hint">Lieu + météo (onglet <strong>📍 Lieu</strong>) et étapes 1 → 3 validés ? Lancez le dimensionnement.</p>
             </div>
           </div>
           <button class="btn btn-accent" id="btn-calc-sizing" style="width:100%">

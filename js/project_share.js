@@ -636,7 +636,7 @@ var ProjectShare = (() => {
         <div class="ose-share-dialog" role="dialog" aria-modal="true" aria-labelledby="ose-share-title">
           <div class="ose-share-head">
             <h3 id="ose-share-title">Partager le projet</h3>
-            <button type="button" class="btn btn-outline btn-sm" id="ose-share-close">✕</button>
+            <button type="button" class="btn btn-outline btn-sm" id="ose-share-close" aria-label="Fermer">✕</button>
           </div>
           <p class="ose-share-hint">Sans serveur : chiffrement de bout en bout via relais Nostr publics. Quiconque a la clé peut lire et modifier le projet.</p>
           <div id="ose-share-status" class="ose-share-status">Préparation…</div>
@@ -724,12 +724,13 @@ var ProjectShare = (() => {
         <div class="ose-share-dialog" role="dialog" aria-modal="true" aria-labelledby="ose-join-title">
           <div class="ose-share-head">
             <h3 id="ose-join-title">Rejoindre un projet</h3>
-            <button type="button" class="btn btn-outline btn-sm" id="ose-join-close">✕</button>
+            <button type="button" class="btn btn-outline btn-sm" id="ose-join-close" aria-label="Fermer">✕</button>
           </div>
           <p class="ose-share-hint">Collez la clé courte <strong>OSE-…</strong> ou l’URI <code>opensolar://join/…</code> (sans caméra sur PC).</p>
           <textarea id="ose-join-input" rows="3" placeholder="OSE-XXXX-XXXX-XXXX-XXXX&#10;ou opensolar://join/1/…" class="ose-share-input"></textarea>
           <div id="ose-join-status" class="ose-share-status"></div>
           <div class="ose-share-actions">
+            <button type="button" class="btn btn-outline" id="ose-join-cancel">Annuler</button>
             <button type="button" class="btn btn-primary" id="ose-join-go">Rejoindre</button>
           </div>
         </div>`;
@@ -737,18 +738,43 @@ var ProjectShare = (() => {
       overlay.addEventListener('click', (e) => {
         if (e.target === overlay) closeJoinModal();
       });
-      document.getElementById('ose-join-close').onclick = closeJoinModal;
-      document.getElementById('ose-join-go').onclick = () => submitJoin();
     }
+    // Toujours rebrancher (modale réutilisée) + garantir « Annuler » visible
+    const actions = overlay.querySelector('.ose-share-actions');
+    if (actions && !document.getElementById('ose-join-cancel')) {
+      const cancel = document.createElement('button');
+      cancel.type = 'button';
+      cancel.className = 'btn btn-outline';
+      cancel.id = 'ose-join-cancel';
+      cancel.textContent = 'Annuler';
+      actions.insertBefore(cancel, actions.firstChild);
+    }
+    const closeBtn = document.getElementById('ose-join-close');
+    if (closeBtn) {
+      closeBtn.setAttribute('aria-label', 'Fermer');
+      closeBtn.onclick = closeJoinModal;
+    }
+    const cancelBtn = document.getElementById('ose-join-cancel');
+    if (cancelBtn) cancelBtn.onclick = closeJoinModal;
+    const goBtn = document.getElementById('ose-join-go');
+    if (goBtn) goBtn.onclick = () => submitJoin();
+
     overlay.classList.add('open');
+    overlay.style.display = '';
+    overlay.style.pointerEvents = '';
     const input = document.getElementById('ose-join-input');
-    input.value = '';
-    document.getElementById('ose-join-status').textContent = '';
-    setTimeout(() => input.focus(), 50);
+    if (input) {
+      input.value = '';
+      document.getElementById('ose-join-status').textContent = '';
+      setTimeout(() => input.focus(), 50);
+    }
   }
 
   function closeJoinModal() {
-    document.getElementById('ose-join-modal')?.classList.remove('open');
+    const el = document.getElementById('ose-join-modal');
+    if (!el) return;
+    el.classList.remove('open');
+    el.style.pointerEvents = '';
   }
 
   async function submitJoin() {

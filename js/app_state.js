@@ -3,8 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.53';
+const APP_VERSION = '2.0.54';
 // Historique :
+//   2.0.54 - Re-audit UI : Annuler sur Rejoindre, onglets avancés scrollables
+//            (bouton collant), hints « Lieu » (plus « colonne gauche »)
 //   2.0.53 - Lieu dans un onglet dédié ; barre projet = nom + lieu seulement
 //            (plus de colonne localisation permanente)
 //   2.0.52 - Calculs blindés : coincidence 30 min toujours (plus de min mensuel

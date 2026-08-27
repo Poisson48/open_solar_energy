@@ -385,6 +385,12 @@ function bindSharedParamSync() {
       syncAdv();
     });
     window.__oseSyncAdvancedTabs = syncAdv;
+    window.__oseEnsureAdvancedTabs = () => {
+      if (!showAdv) {
+        showAdv = true;
+        syncAdv();
+      }
+    };
     syncAdv();
   }
 }

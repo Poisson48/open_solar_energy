@@ -311,10 +311,13 @@ function activateTab(tab) {
   });
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
   const btn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+  if (btn?.dataset.tier === 'advanced' && typeof window.__oseEnsureAdvancedTabs === 'function')
+    window.__oseEnsureAdvancedTabs();
   if (btn) {
     btn.classList.add('active');
     btn.setAttribute('aria-selected', 'true');
     btn.setAttribute('tabindex', '0');
+    try { btn.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' }); } catch (_) {}
   }
   const pane = document.getElementById('tab-' + tab);
   if (pane) pane.classList.add('active');
