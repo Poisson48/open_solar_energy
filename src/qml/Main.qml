@@ -72,23 +72,23 @@ ApplicationWindow {
         // Desktop only — sur Android la barre doublonne le header web et mange l’écran
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: visible ? 40 : 0
+            Layout.preferredHeight: visible ? 36 : 0
             visible: Qt.platform.os !== "android"
-            color: Theme.surface
-            border.color: Theme.outline
+            color: Theme.primary
             border.width: 0
             clip: true
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 12
+                anchors.leftMargin: 14
                 anchors.rightMargin: 8
                 spacing: 8
 
                 Label {
                     text: "Open Solar Energy  ·  v" + Updater.currentVersion
-                    color: Theme.textDim
+                    color: "#ffffff"
                     font.pixelSize: 12
+                    opacity: 0.9
                 }
                 Item { Layout.fillWidth: true }
                 Button {
@@ -97,6 +97,17 @@ ApplicationWindow {
                          : (Updater.state === 1 ? "Vérification…" : "Vérifier les mises à jour")
                     enabled: !Updater.downloading && Updater.state !== 1
                     onClicked: Updater.check()
+                    contentItem: Text {
+                        text: parent.text
+                        color: "#ffffff"
+                        font.pixelSize: 12
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    background: Rectangle {
+                        color: parent.hovered ? "#ffffff22" : "transparent"
+                        radius: 4
+                    }
                 }
             }
         }

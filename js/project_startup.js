@@ -44,7 +44,8 @@ function closeStartupModal() {
 }
 
 function showStartupStep1() {
-  document.getElementById('startup-step-1').style.display    = 'block';
+  // display '' pour laisser le CSS décider (grid desktop / block mobile)
+  document.getElementById('startup-step-1').style.display    = '';
   document.getElementById('startup-step-type').style.display = 'none';
   document.getElementById('startup-step-new').style.display  = 'none';
   const load = document.getElementById('startup-step-load');
@@ -55,7 +56,7 @@ function showStartupStep1() {
 
 function showInstallationTypeStep() {
   document.getElementById('startup-step-1').style.display    = 'none';
-  document.getElementById('startup-step-type').style.display = 'block';
+  document.getElementById('startup-step-type').style.display = '';
   document.getElementById('startup-step-new').style.display  = 'none';
   const load = document.getElementById('startup-step-load');
   if (load) load.style.display = 'none';
@@ -76,7 +77,7 @@ function selectInstallationType(type) {
 function showNewProjectForm() {
   document.getElementById('startup-step-1').style.display    = 'none';
   document.getElementById('startup-step-type').style.display = 'none';
-  document.getElementById('startup-step-new').style.display  = 'block';
+  document.getElementById('startup-step-new').style.display  = '';
   const load = document.getElementById('startup-step-load');
   if (load) load.style.display = 'none';
   document.getElementById('startup-project-name')?.focus();
