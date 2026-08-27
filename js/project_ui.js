@@ -99,6 +99,15 @@ function loadProject(id) {
     });
     if (best) AppState.weatherData = best.monthly;
   }
+  AppState.weatherMeta = project.weatherMeta ? { ...project.weatherMeta } : null;
+  // Migration : déduire la source depuis le libellé lieu si pas encore de meta
+  if (!AppState.weatherMeta?.source && AppState.weatherData && AppState.location?.name) {
+    const m = AppState.location.name.match(/\((PVGIS[^)]*|Open-Meteo)\)/);
+    if (m) {
+      const ghi = Math.round(AppState.weatherData.reduce((s, mo) => s + (mo.GHI || 0), 0));
+      AppState.weatherMeta = { source: m[1], ghiAnnual: ghi };
+    }
+  }
   AppState.hourlyEnedisData = deserializeEnedisHourly(project.hourlyEnedisData);
   AppState.hourlyWeatherData = deserializeHourlyWeather(project.hourlyWeatherData);
   AppState.monthlyKwhHp = project.monthlyKwhHp ? project.monthlyKwhHp.slice() : null;
@@ -140,19 +149,8 @@ function loadProject(id) {
 
   restoreFormState(project.formState);
 
-  // Restaurer le statut import météo (PVGIS / Open-Meteo)
-  if (AppState.weatherData && AppState.location?.name) {
-    const source = AppState.location.name.match(/\((PVGIS[^)]*|Open-Meteo)\)/)?.[1];
-    if (source) {
-      const totalGHI = Math.round(AppState.weatherData.reduce((s, m) => s + (m.GHI || 0), 0));
-      const statusEl = document.getElementById('pvgis-import-status');
-      if (statusEl) {
-        statusEl.style.color   = '#2e7d32';
-        statusEl.textContent   = `✓ ${source} - GHI annuel : ${totalGHI} kWh/m²/an`;
-        statusEl.style.display = 'block';
-      }
-    }
-  }
+  if (typeof restoreLocationSiteStatusUI === 'function')
+    restoreLocationSiteStatusUI();
 
   // Restaurer les indicateurs de statut Enedis
   if (AppState.enedisYear || AppState.hourlyEnedisData) {
@@ -216,6 +214,66 @@ function isLocationWeatherReady() {
   const hasWx = Array.isArray(wx) && wx.length >= 12;
   return !!(hasCoords && hasWx);
 }
+
+/**
+ * Réaffiche les bandeaux verts Lieu (météo mensuelle, horaire, terrain)
+ * à partir de AppState — sans re-télécharger.
+ */
+function restoreLocationSiteStatusUI() {
+  const wx = AppState.weatherData;
+  const meta = AppState.weatherMeta || {};
+  let source = meta.source;
+  if (!source && AppState.location?.name) {
+    source = AppState.location.name.match(/\((PVGIS[^)]*|Open-Meteo)\)/)?.[1] || '';
+  }
+  const statusEl = document.getElementById('pvgis-import-status');
+  if (statusEl) {
+    if (Array.isArray(wx) && wx.length >= 12) {
+      const ghi = meta.ghiAnnual
+        || Math.round(wx.reduce((s, m) => s + (m.GHI || 0), 0));
+      statusEl.style.color = '#2e7d32';
+      statusEl.textContent = source
+        ? `✓ ${source} - GHI annuel : ${ghi} kWh/m²/an`
+        : `✓ Météo chargée — GHI annuel : ${ghi} kWh/m²/an`;
+      statusEl.style.display = 'block';
+    } else {
+      statusEl.textContent = '';
+      statusEl.style.display = 'none';
+    }
+  }
+
+  const hourlyEl = document.getElementById('hourly-weather-status');
+  if (hourlyEl) {
+    const hw = AppState.hourlyWeatherData;
+    const year = meta.hourlyYear || hw?.year;
+    if (hw && (hw.nHours || hw.ghi?.length)) {
+      hourlyEl.textContent = year
+        ? `✓ Météo horaire ${year} - production jour/jour activée`
+        : `✓ Météo horaire - production jour/jour activée`;
+      hourlyEl.style.display = 'block';
+    } else {
+      hourlyEl.textContent = '';
+      hourlyEl.style.display = 'none';
+    }
+  }
+
+  // Terrain : SiteSurvey.updateTerrainUI si chargé, sinon statut depuis siteSurvey.terrain
+  if (typeof SiteSurvey !== 'undefined' && typeof SiteSurvey.loadFromAppState === 'function') {
+    // Ne pas recharger tout si déjà synchro — updateTerrainUI via redraw path
+    const t = AppState.siteSurvey?.terrain;
+    const el = document.getElementById('terrain-import-status');
+    if (el) {
+      if (t && Number.isFinite(Number(t.tilt))) {
+        el.style.color = '#2e7d32';
+        el.textContent = `✓ Terrain : ${t.tilt}° · az ${t.azimuth > 0 ? '+' : ''}${t.azimuth}° · ${Math.round(t.alt)} m`;
+        el.style.display = 'block';
+      } else if (!AppState.siteSurvey?.terrain) {
+        // laisser SiteSurvey gérer si état interne a le terrain
+      }
+    }
+  }
+}
+window.restoreLocationSiteStatusUI = restoreLocationSiteStatusUI;
 
 function _updateDemoPrefillNoteContent(ready) {
   const note = document.getElementById('ose-demo-prefill-note');

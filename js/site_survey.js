@@ -759,6 +759,8 @@ const SiteSurvey = (() => {
       const msg = `✓ Terrain : ${state.terrain.tilt}° · az ${state.terrain.azimuth > 0 ? '+' : ''}${state.terrain.azimuth}° · ${Math.round(state.terrain.alt)} m`;
       _setTerrainStatus(msg, 'success');
       _toast(`Terrain : inclinaison ~${state.terrain.tilt}° · azimut ${state.terrain.azimuth}° (0=Sud)`);
+      if (typeof persistCurrentProjectQuiet === 'function')
+        persistCurrentProjectQuiet('Import terrain (relief)');
     } catch (err) {
       console.error(err);
       _setTerrainStatus('✗ Import terrain échoué : ' + (err.message || err), 'error');
@@ -794,6 +796,8 @@ const SiteSurvey = (() => {
     }
     if (typeof renderPanelLayoutTab === 'function') renderPanelLayoutTab();
     _toast('Inclinaison / orientation appliquées au projet.');
+    if (typeof persistCurrentProjectQuiet === 'function')
+      persistCurrentProjectQuiet('Application terrain → inclinaison/azimut');
   }
 
   function applyShadingToLosses() {

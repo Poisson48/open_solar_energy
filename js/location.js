@@ -249,12 +249,17 @@ function setLocation(key) {
   if (!loc) return;
   AppState.location = { lat: loc.lat, lon: loc.lon, alt: loc.alt, name: loc.name };
   AppState.weatherData = loc.monthly;
+  const ghi = Math.round(loc.monthly.reduce((s, m) => s + (m.GHI || 0), 0));
+  AppState.weatherMeta = { source: 'Démo locale', ghiAnnual: ghi };
   updateLocationUI();
   updateMapMarker();
   document.querySelectorAll('.preset-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.loc === key);
   });
   if (typeof refreshSizingValidity === 'function') refreshSizingValidity();
+  if (typeof restoreLocationSiteStatusUI === 'function') restoreLocationSiteStatusUI();
+  if (typeof persistCurrentProjectQuiet === 'function')
+    persistCurrentProjectQuiet(`Lieu démo ${key}`);
 }
 
 // ── Définir localisation par coordonnées ────────────────────
@@ -277,6 +282,8 @@ function setLocationCoords(lat, lon) {
     AppState.weatherData = loc.monthly;
     AppState.location.alt = loc.alt;
     AppState.location.name = `${loc.name} (approx.)`;
+    const ghi = Math.round(loc.monthly.reduce((s, m) => s + (m.GHI || 0), 0));
+    AppState.weatherMeta = { source: 'Démo locale', ghiAnnual: ghi };
     document.querySelectorAll('.preset-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.loc === bestKey);
     });
@@ -287,6 +294,9 @@ function setLocationCoords(lat, lon) {
   updateLocationUI();
   updateMapMarker();
   if (typeof refreshSizingValidity === 'function') refreshSizingValidity();
+  if (typeof restoreLocationSiteStatusUI === 'function') restoreLocationSiteStatusUI();
+  if (typeof persistCurrentProjectQuiet === 'function')
+    persistCurrentProjectQuiet('Mise à jour lieu');
 }
 
 function updateMapMarker() {

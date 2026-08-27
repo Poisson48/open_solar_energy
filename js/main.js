@@ -366,6 +366,10 @@ function activateTab(tab) {
       if (AppState.map) {
         try { AppState.map.invalidateSize(); } catch (_) {}
       }
+      if (typeof restoreLocationSiteStatusUI === 'function') restoreLocationSiteStatusUI();
+      if (typeof SiteSurvey !== 'undefined') {
+        SiteSurvey.loadFromAppState();
+      }
     }, 50);
   }
 }
