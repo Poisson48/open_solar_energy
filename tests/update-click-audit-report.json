@@ -1,0 +1,221 @@
+{
+  "at": "2026-08-27T14:37:18.778Z",
+  "version": "2.0.62",
+  "viewports": {
+    "pc": {
+      "ok": [
+        {
+          "label": "APP_VERSION",
+          "detail": "2.0.62"
+        },
+        {
+          "label": "hub ouvert au démarrage",
+          "detail": ""
+        },
+        {
+          "label": "clic MAJ → feedback UI",
+          "detail": "NOUVEAUTÉS\nImpossible de charger les news\n\nHTTP 403\n\nRéessayer\nVérifier les MAJ"
+        },
+        {
+          "label": "clic Vérifier/Réessayer dans carte news",
+          "detail": ""
+        },
+        {
+          "label": "carte news hub visible",
+          "detail": "NOUVEAUTÉS Impossible de charger les news HTTP 403 Réessayer Vérifie"
+        },
+        {
+          "label": "pas d’overflow hub MAJ",
+          "detail": "Δ=0"
+        },
+        {
+          "label": "carte « Nouvelle version » visible",
+          "detail": ""
+        },
+        {
+          "label": "clic Voir plus → expanded",
+          "detail": ""
+        },
+        {
+          "label": "clic Mettre à jour → progression ou toast",
+          "detail": "Ouverture du téléchargement APK…"
+        },
+        {
+          "label": "état updater 1",
+          "detail": "MISE À JOUR EN COURS Vérification… En cours…"
+        },
+        {
+          "label": "état updater 3",
+          "detail": "MISE À JOUR EN COURS Téléchargement… 42 % · 12.0 Mo"
+        },
+        {
+          "label": "état updater 4",
+          "detail": "MISE À JOUR EN COURS Prêt à installer · 12.0 Mo Confirmez l’"
+        },
+        {
+          "label": "état updater 5",
+          "detail": "ERREUR MAJ Échec simulé réseau Échec simulé réseau Réessay"
+        },
+        {
+          "label": "clic Réessayer",
+          "detail": ""
+        },
+        {
+          "label": "re-clic MAJ hub",
+          "detail": ""
+        },
+        {
+          "label": "aucune pageerror",
+          "detail": ""
+        }
+      ],
+      "fail": [],
+      "notes": []
+    },
+    "tablet": {
+      "ok": [
+        {
+          "label": "APP_VERSION",
+          "detail": "2.0.62"
+        },
+        {
+          "label": "hub ouvert au démarrage",
+          "detail": ""
+        },
+        {
+          "label": "clic MAJ → feedback UI",
+          "detail": "NOUVEAUTÉS\nImpossible de charger les news\n\nHTTP 403\n\nRéessayer\nVérifier les MAJ"
+        },
+        {
+          "label": "clic Vérifier/Réessayer dans carte news",
+          "detail": ""
+        },
+        {
+          "label": "carte news hub visible",
+          "detail": "NOUVEAUTÉS Impossible de charger les news HTTP 403 Réessayer Vérifie"
+        },
+        {
+          "label": "pas d’overflow hub MAJ",
+          "detail": "Δ=0"
+        },
+        {
+          "label": "carte « Nouvelle version » visible",
+          "detail": ""
+        },
+        {
+          "label": "clic Voir plus → expanded",
+          "detail": ""
+        },
+        {
+          "label": "clic Mettre à jour → progression ou toast",
+          "detail": "Ouverture du téléchargement APK…"
+        },
+        {
+          "label": "état updater 1",
+          "detail": "MISE À JOUR EN COURS Vérification… En cours…"
+        },
+        {
+          "label": "état updater 3",
+          "detail": "MISE À JOUR EN COURS Téléchargement… 42 % · 12.0 Mo"
+        },
+        {
+          "label": "état updater 4",
+          "detail": "MISE À JOUR EN COURS Prêt à installer · 12.0 Mo Confirmez l’"
+        },
+        {
+          "label": "état updater 5",
+          "detail": "ERREUR MAJ Échec simulé réseau Échec simulé réseau Réessay"
+        },
+        {
+          "label": "clic Réessayer",
+          "detail": ""
+        },
+        {
+          "label": "re-clic MAJ hub",
+          "detail": ""
+        },
+        {
+          "label": "aucune pageerror",
+          "detail": ""
+        }
+      ],
+      "fail": [],
+      "notes": []
+    },
+    "tablet-ls": {
+      "ok": [
+        {
+          "label": "APP_VERSION",
+          "detail": "2.0.62"
+        },
+        {
+          "label": "hub ouvert au démarrage",
+          "detail": ""
+        },
+        {
+          "label": "clic MAJ → feedback UI",
+          "detail": "NOUVEAUTÉS\nImpossible de charger les news\n\nHTTP 403\n\nRéessayer\nVérifier les MAJ"
+        },
+        {
+          "label": "clic Vérifier/Réessayer dans carte news",
+          "detail": ""
+        },
+        {
+          "label": "carte news hub visible",
+          "detail": "NOUVEAUTÉS Impossible de charger les news HTTP 403 Réessayer Vérifie"
+        },
+        {
+          "label": "pas d’overflow hub MAJ",
+          "detail": "Δ=0"
+        },
+        {
+          "label": "carte « Nouvelle version » visible",
+          "detail": ""
+        },
+        {
+          "label": "clic Voir plus → expanded",
+          "detail": ""
+        },
+        {
+          "label": "clic Mettre à jour → progression ou toast",
+          "detail": "Ouverture du téléchargement APK…"
+        },
+        {
+          "label": "état updater 1",
+          "detail": "MISE À JOUR EN COURS Vérification… En cours…"
+        },
+        {
+          "label": "état updater 3",
+          "detail": "MISE À JOUR EN COURS Téléchargement… 42 % · 12.0 Mo"
+        },
+        {
+          "label": "état updater 4",
+          "detail": "MISE À JOUR EN COURS Prêt à installer · 12.0 Mo Confirmez l’"
+        },
+        {
+          "label": "état updater 5",
+          "detail": "ERREUR MAJ Échec simulé réseau Échec simulé réseau Réessay"
+        },
+        {
+          "label": "clic Réessayer",
+          "detail": ""
+        },
+        {
+          "label": "re-clic MAJ hub",
+          "detail": ""
+        },
+        {
+          "label": "aucune pageerror",
+          "detail": ""
+        }
+      ],
+      "fail": [],
+      "notes": []
+    }
+  },
+  "notes": [
+    "Pont Qt / PackageInstaller non testables en Chromium — états updater simulés via __oseOnUpdaterState",
+    "Téléchargement AppImage / APK réel : valider sur shell Qt + scripts/test-android-update-adb.sh"
+  ],
+  "fails": 0
+}

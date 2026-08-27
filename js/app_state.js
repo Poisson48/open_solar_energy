@@ -3,8 +3,11 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.61';
+const APP_VERSION = '2.0.62';
 // Historique :
+//   2.0.62 - Audit clic MAJ PC + tablette (tests/run_update_click_audit.mjs) :
+//            bouton ↻ MAJ, carte news, Mettre à jour, barre progression
+//            (états updater simulés), Réessayer
 //   2.0.61 - Audit clic-par-clic (desktop + tablette + téléphone) + passe
 //            responsive Android/tablette ; aucun bug UI bloquant trouvé ;
 //            script tests/run_click_audit.mjs livré
