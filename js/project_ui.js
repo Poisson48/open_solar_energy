@@ -858,7 +858,7 @@ let _hubNewsFetching = false;
 /**
  * Affiche les nouveautés / MAJ sur le hub projets.
  * Sources (dans l’ordre) : mémoire → API GitHub → flux Atom → localStorage → notes embarquées.
- * Ne montre jamais « Impossible de charger les news ».
+ * Ne montre jamais d’écran d’échec réseau : toujours un fallback local.
  */
 async function refreshHubNews(force) {
   const box = document.getElementById('ose-hub-news');
