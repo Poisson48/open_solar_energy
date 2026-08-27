@@ -7,7 +7,7 @@ import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from '/data/leo/memoire_des_cevennes/node_modules/playwright/index.mjs';
+import { chromium } from './playwright.mjs';
 
 const ROOT = join(fileURLToPath(import.meta.url), '../..');
 const MIME = {
@@ -42,7 +42,6 @@ const url = `http://127.0.0.1:${port}/`;
 
 const browser = await chromium.launch({
   headless: true,
-  executablePath: '/snap/bin/chromium',
   args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
 });
 const page = await browser.newPage();

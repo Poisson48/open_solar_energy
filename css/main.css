@@ -1669,8 +1669,8 @@ details.card > summary:focus-visible {
     scrollbar-width: none;
   }
   .project-bar-actions::-webkit-scrollbar { display: none; }
-  #project-bar .btn,
-  #project-bar button {
+  #project-bar .project-bar-actions .btn,
+  #project-bar .project-bar-actions button {
     flex: 0 0 auto;
     white-space: nowrap;
   }
@@ -1750,16 +1750,25 @@ details.card > summary:focus-visible {
   #project-bar {
     display: flex;
     flex-direction: column;
+    flex-wrap: nowrap;
     align-items: stretch;
     gap: 6px;
     padding: 6px 8px;
     padding-left: calc(8px + var(--safe-left));
     padding-right: calc(8px + var(--safe-right));
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
   }
   .project-bar-meta {
+    flex: 0 0 auto;
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: center;
     gap: 6px;
+    width: 100%;
+    max-width: 100%;
     min-width: 0;
   }
   .project-bar-meta-row {
@@ -1770,12 +1779,17 @@ details.card > summary:focus-visible {
     display: none; /* évite une 3e ligne — visible via Éditer */
   }
   #project-bar #project-name-input {
-    max-width: none;
-    flex: 1;
+    max-width: 100%;
+    flex: 1 1 100%;
     min-width: 0;
-    width: auto;
+    width: 100%;
     font-size: 12px;
     padding: 5px 8px;
+  }
+  .project-bar-location {
+    flex: 1 1 auto;
+    min-width: 0 !important;
+    max-width: calc(100% - 44px);
   }
   #btn-edit-project {
     padding: 5px 8px;
@@ -1789,21 +1803,31 @@ details.card > summary:focus-visible {
     flex-wrap: nowrap;
     gap: 6px;
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    flex: 0 0 auto;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     padding-bottom: 2px;
+    box-sizing: border-box;
   }
   .project-bar-actions::-webkit-scrollbar { display: none; }
-  #project-bar .btn,
-  #project-bar button {
+  /* Actions only — pas .project-bar-location (sinon min-width:max-content → overflow page) */
+  #project-bar .project-bar-actions .btn,
+  #project-bar .project-bar-actions button {
     font-size: 11px;
     padding: 6px 10px;
     min-width: max-content;
     width: auto;
-    flex: 0 0 auto; /* ne pas écraser les libellés — scroll horizontal */
+    flex: 0 0 auto;
     justify-content: center;
     white-space: nowrap;
+  }
+  #project-bar .project-bar-location,
+  #project-bar #btn-edit-project {
+    min-width: 0;
+    max-width: 100%;
   }
   .ose-type-switcher { flex: 0 0 auto; }
   #install-type-badge {
@@ -1934,8 +1958,8 @@ details.card > summary:focus-visible {
   .kpi-grid {
     grid-template-columns: 1fr;
   }
-  #project-bar .btn,
-  #project-bar button {
+  #project-bar .project-bar-actions .btn,
+  #project-bar .project-bar-actions button {
     font-size: 10px;
     padding: 5px 8px;
   }

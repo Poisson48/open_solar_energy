@@ -6,7 +6,7 @@ import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync, writeFileSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from '/data/leo/memoire_des_cevennes/node_modules/playwright/index.mjs';
+import { chromium } from './playwright.mjs';
 
 const ROOT = join(fileURLToPath(import.meta.url), '../..');
 const MIME = {
@@ -62,7 +62,6 @@ check('Pas de bouton ← Retour dans le hub', !/btn-hub-back/.test(indexHtml) &&
 
 const browser = await chromium.launch({
   headless: true,
-  executablePath: '/snap/bin/chromium',
   args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
 });
 
@@ -217,8 +216,11 @@ console.log('\n═══ 4. Parcours nouveau projet + dimensionnement ═══'
 
   await page.click('button:has-text("Nouveau"), [onclick*="showInstallationTypeStep"]');
   await page.waitForTimeout(200);
-  const typeVisible = await page.evaluate(() =>
-    document.getElementById('startup-step-type')?.style.display === 'block');
+  const typeVisible = await page.evaluate(() => {
+    const el = document.getElementById('startup-step-type');
+    // showInstallationTypeStep remet display à '' (CSS), pas forcément 'block'
+    return !!el && getComputedStyle(el).display !== 'none';
+  });
   check('Étape type installation', typeVisible);
 
   await page.evaluate(() => selectInstallationType('grid'));

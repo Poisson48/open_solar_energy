@@ -6,7 +6,7 @@ import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from '/data/leo/memoire_des_cevennes/node_modules/playwright/index.mjs';
+import { chromium } from './playwright.mjs';
 
 const ROOT = join(fileURLToPath(import.meta.url), '../..');
 const MIME = {
@@ -52,7 +52,6 @@ const url = `http://127.0.0.1:${port}/`;
 
 const browser = await chromium.launch({
   headless: true,
-  executablePath: '/snap/bin/chromium',
   args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
 });
 
@@ -168,17 +167,13 @@ for (const vp of VIEWPORTS) {
   const appTracks = layoutInfo.appCols.trim().split(/\s+/).filter(t => t && t !== '/' && !t.startsWith('['));
   const isLandscape = vp.width > vp.height;
   const expectChartOneCol = vp.width <= 900 && !(isLandscape && vp.height <= 520);
-  const expectAppTwoCol = (isLandscape && vp.height <= 520) || vp.width > 900;
   if (expectChartOneCol) {
     check('graphiques en 1 colonne', tracks.length <= 1, layoutInfo.chartCols);
   } else {
     check('graphiques en 2 colonnes', tracks.length >= 2, layoutInfo.chartCols);
   }
-  if (expectAppTwoCol) {
-    check('app-layout 2 colonnes (sidebar|contenu)', appTracks.length >= 2, layoutInfo.appCols);
-  } else {
-    check('app-layout 1 colonne (empilé)', appTracks.length <= 1, layoutInfo.appCols);
-  }
+  // Lieu est un onglet : app-layout = colonne unique (plus de grille sidebar|contenu)
+  check('app-layout sans sidebar permanente', appTracks.length <= 1, layoutInfo.appCols);
 
   check('aucune pageerror', pageErrors.length === 0, pageErrors.slice(0, 2).join(' | '));
   await page.close();
