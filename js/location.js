@@ -324,6 +324,7 @@ function updateLocationUI() {
     const btn = document.getElementById('project-bar-location');
     if (btn) btn.title = `Lieu : ${label} — cliquer pour ouvrir l’onglet Lieu`;
   }
+  if (typeof updateWizardIntroStatus === 'function') updateWizardIntroStatus();
 }
 
 // ── Bind coordonnées manuelles ───────────────────────────────

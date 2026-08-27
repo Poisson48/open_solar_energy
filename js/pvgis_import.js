@@ -363,6 +363,8 @@ const PVGISImport = (() => {
       AppState.location.name = AppState.location.name
         .replace(/ \(PVGIS[^)]*\)/, '').replace(/ \(Open-Meteo\)/, '') + tag;
       document.getElementById('loc-name').textContent = AppState.location.name;
+      if (typeof updateWizardIntroStatus === 'function') updateWizardIntroStatus();
+      else if (typeof updateLocationUI === 'function') updateLocationUI();
 
       const totalGHI = weather.reduce((s, m) => s + m.GHI, 0);
       setStatus(`✓ ${source} - GHI annuel : ${Math.round(totalGHI)} kWh/m²/an`, 'success');

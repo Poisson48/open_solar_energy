@@ -210,18 +210,76 @@ function loadProject(id) {
   }, 100);
 }
 
-function updateDemoPrefillNote() {
+function _escHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** Lieu + météo prêts pour un calcul ? */
+function isLocationWeatherReady() {
+  const loc = AppState.location;
+  const hasCoords = !!(loc && Number.isFinite(Number(loc.lat)) && Number.isFinite(Number(loc.lon)));
+  const wx = AppState.weatherData;
+  const hasWx = Array.isArray(wx) && wx.length >= 12;
+  return !!(hasCoords && hasWx);
+}
+
+function _updateDemoPrefillNoteContent(ready) {
   const note = document.getElementById('ose-demo-prefill-note');
   if (!note) return;
   const p = AppState.currentProjectId ? ProjectManager.get(AppState.currentProjectId) : null;
   const show = !!(p && p.isDemo);
   note.hidden = !show;
-  if (show) {
-    const surf = document.getElementById('sz-surface')?.value;
+  if (!show) return;
+
+  const surf = document.getElementById('sz-surface')?.value;
+  note.classList.toggle('is-ready', ready);
+  if (ready) {
     note.textContent = surf
-      ? `Projet démo : valeurs préremplies (surface ${surf} m², conso, etc.). Modifiez-les ou créez « Nouveau » pour partir de zéro.`
-      : `Projet démo : certaines valeurs sont préremplies. Créez « Nouveau » pour un parcours à blanc.`;
+      ? `✓ Démo prête (surface ${surf} m², conso, etc. préremplies). Modifiez si besoin, ou « Nouveau » pour partir de zéro.`
+      : `✓ Démo prête — valeurs préremplies. Modifiez-les ou créez « Nouveau » pour un parcours à blanc.`;
+  } else {
+    note.textContent = surf
+      ? `Projet démo : valeurs préremplies (surface ${surf} m², conso, etc.). Vérifiez le lieu, puis calculez — ou créez « Nouveau » pour partir de zéro.`
+      : `Projet démo : certaines valeurs sont préremplies. Vérifiez le lieu / météo avant de calculer.`;
   }
+}
+
+/**
+ * Bandeaux d’intro (dimensionnement / hors-réseau) :
+ * warning « vérifiez le lieu » → confirmé dès que lieu + météo sont OK.
+ */
+function updateWizardIntroStatus() {
+  const ready = isLocationWeatherReady();
+  const rawName = (AppState.location?.name || '').trim();
+  const cleanName = rawName
+    .replace(/ \(Open-Meteo\)| \(PVGIS[^)]*\)| \(approx\.\)/gi, '')
+    .replace(/\s*\(démo[^)]*\)/gi, '')
+    .replace(/\s*\(demo[^)]*\)/gi, '')
+    .trim();
+  const place = cleanName || (AppState.currentClient?.adresse || '').trim();
+
+  document.querySelectorAll('.ose-wizard-location-note').forEach((el) => {
+    el.classList.toggle('is-ready', ready);
+    if (ready) {
+      el.innerHTML = place
+        ? `✓ Lieu et météo confirmés — <strong>${_escHtml(place)}</strong>. Vous pouvez lancer le calcul.`
+        : `✓ Lieu et météo confirmés. Vous pouvez lancer le calcul.`;
+    } else {
+      el.innerHTML =
+        `📍 Avant de calculer : vérifiez le lieu et la météo dans l’onglet <strong>📍 Lieu</strong> (ou cliquez le lieu dans la barre projet).`;
+    }
+  });
+
+  _updateDemoPrefillNoteContent(ready);
+}
+
+/** Alias historique (chargement projet / onglet sizing). */
+function updateDemoPrefillNote() {
+  updateWizardIntroStatus();
 }
 
 // ══════════════════════════════════════════════════════════════

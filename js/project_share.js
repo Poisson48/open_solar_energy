@@ -223,27 +223,32 @@ var ProjectShare = (() => {
 
   async function makeSnapEvent(project, share, mat) {
     const rev = (share.rev || 0) + 1;
+    const savedAt = Date.now();
+    // Horodatage de save : source de vérité LWW multi-appareils
+    if (!project.updatedAt) project.updatedAt = new Date(savedAt).toISOString();
+    share.savedAt = savedAt;
     const payload = {
       v: 1,
       t: 'snap',
       rev,
       by: deviceId(),
-      at: Date.now(),
+      at: savedAt,
       project: _stripForSync(project),
     };
     const content = await encryptPayload(mat.aesRaw, mat.channelTag, JSON.stringify(payload));
     const evt = {
       kind: KIND,
-      created_at: Math.floor(Date.now() / 1000),
+      created_at: Math.floor(savedAt / 1000),
       tags: [
         ['d', mat.channelTag],
         ['t', mat.channelTag],
         ['rev', String(rev)],
+        ['at', String(savedAt)],
       ],
       content,
       pubkey: mat.pubHex,
     };
-    return { event: signEvent(evt, mat.privHex), rev, payload };
+    return { event: signEvent(evt, mat.privHex), rev, payload, savedAt };
   }
 
   function _stripForSync(project) {
@@ -253,6 +258,7 @@ var ProjectShare = (() => {
         enabled: true,
         keyB64: p.share.keyB64,
         rev: p.share.rev || 0,
+        savedAt: p.share.savedAt || 0,
       };
     }
     // Relais Nostr ~64 Ko : les courbes Enedis 30 min dépassent souvent la limite
@@ -391,9 +397,10 @@ var ProjectShare = (() => {
 
     const keyBytes = keyBytesFromShare(share);
     const mat = await deriveMaterial(keyBytes);
-    const { event, rev } = await makeSnapEvent(project, share, mat);
+    const { event, rev, savedAt } = await makeSnapEvent(project, share, mat);
     share.rev = rev;
-    ProjectManager.save(project);
+    share.savedAt = savedAt;
+    ProjectManager.save(project, { keepUpdatedAt: true });
 
     const n = await publishEvent(event);
     subscribeForProject(project);
@@ -416,25 +423,59 @@ var ProjectShare = (() => {
     }).catch((e) => console.warn('[ProjectShare] sub', e));
   }
 
+  /** Instant de la save (ms) — pour last-write-wins. */
+  function _snapTimeMs(payload, project) {
+    if (payload && Number(payload.at) > 0) return Number(payload.at);
+    const shareAt = project?.share?.savedAt;
+    if (Number(shareAt) > 0) return Number(shareAt);
+    const u = project?.updatedAt || payload?.project?.updatedAt;
+    const parsed = Date.parse(u || '');
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  /**
+   * La save la plus récente gagne (horodatage), rev en départage.
+   * Chaque appareil garde une copie locale ; on n’applique le distant que s’il est plus neuf.
+   */
+  function _shouldApplyRemote(local, payload) {
+    if (!local?.share) return false;
+    if (payload.by && payload.by === deviceId()) return false;
+    const remoteTs = _snapTimeMs(payload, payload.project);
+    const localTs = _snapTimeMs(null, local);
+    const remoteRev = payload.rev || 0;
+    const localRev = local.share.rev || 0;
+    const SKEW = 250; // ms — anti-rebond
+    if (remoteTs > localTs + SKEW) return true;
+    if (remoteTs + SKEW < localTs) return false;
+    // Horodatages équivalents → révision
+    if (remoteRev > localRev) return true;
+    return false;
+  }
+
   function _onRemoteSnap(projectId, payload) {
-    if (payload.by && payload.by === deviceId()) return;
     const local = ProjectManager.get(projectId);
     if (!local?.share) return;
-    const remoteRev = payload.rev || 0;
-    if (remoteRev <= (local.share.rev || 0)) return;
+    if (!_shouldApplyRemote(local, payload)) return;
 
     const incoming = payload.project;
     if (!incoming || typeof incoming !== 'object') return;
 
-    // Fusion : garder l’id local + clé de partage, prendre le contenu distant
+    const remoteRev = payload.rev || 0;
+    const remoteTs = _snapTimeMs(payload, incoming);
+    const updatedAt = incoming.updatedAt
+      || (remoteTs ? new Date(remoteTs).toISOString() : new Date().toISOString());
+
+    // Fusion : garder l’id local + clé de partage, prendre le contenu distant (LWW)
     const merged = {
       ...incoming,
       id: local.id,
+      updatedAt,
       share: {
         ...local.share,
         enabled: true,
         keyB64: local.share.keyB64,
-        rev: remoteRev,
+        rev: Math.max(local.share.rev || 0, remoteRev),
+        savedAt: remoteTs || local.share.savedAt || 0,
       },
       isDemo: false,
     };
@@ -443,14 +484,14 @@ var ProjectShare = (() => {
       merged.hourlyEnedisData = local.hourlyEnedisData;
     if (incoming.weatherDataOmitted && local.weatherData)
       merged.weatherData = local.weatherData;
-    ProjectManager.save(merged);
+
+    // Ne pas réécrire updatedAt à « maintenant » : garder l’horodatage de la save distante
+    ProjectManager.save(merged, { keepUpdatedAt: true });
 
     if (typeof showToast === 'function')
-      showToast(`☁ Projet mis à jour (rev ${remoteRev})`);
+      showToast(`☁ Projet synchronisé (save la plus récente)`);
 
     if (AppState.currentProjectId === projectId && typeof loadProject === 'function') {
-      // Recharger seulement si on n’est pas en train d’éditer agressivement :
-      // pour v1 on recharge pour rester cohérent multi-appareil.
       loadProject(projectId);
     }
     if (typeof _refreshProjectLists === 'function') _refreshProjectLists();
@@ -461,9 +502,11 @@ var ProjectShare = (() => {
     if (!project?.share?.enabled || !project.share.keyB64) return false;
     const keyBytes = keyBytesFromShare(project.share);
     const mat = await deriveMaterial(keyBytes);
-    const { event, rev } = await makeSnapEvent(project, project.share, mat);
+    const { event, rev, savedAt } = await makeSnapEvent(project, project.share, mat);
     project.share.rev = rev;
-    ProjectManager.save(project);
+    project.share.savedAt = savedAt;
+    // Conserver l’updatedAt de la save locale (déjà posé par ProjectManager.save)
+    ProjectManager.save(project, { keepUpdatedAt: true });
     const n = await publishEvent(event);
     return n > 0;
   }
@@ -487,9 +530,10 @@ var ProjectShare = (() => {
       const existing = ProjectManager.list().find((p) => p.share?.keyB64 === _bytesToB64(keyBytes));
       if (existing) {
         existing.share.enabled = true;
+        if (existing.share.savedAt == null) existing.share.savedAt = 0;
         ProjectManager.save(existing);
-        subscribeForProject(existing);
         if (typeof ProjectManager.flushBackup === 'function') ProjectManager.flushBackup();
+        subscribeForProject(existing);
         return { project: existing, shortKey, already: true };
       }
 
@@ -501,10 +545,13 @@ var ProjectShare = (() => {
           id: ProjectManager.newId(),
           name: payload.project.name || title,
           isDemo: false,
+          updatedAt: payload.project.updatedAt
+            || (payload.at ? new Date(payload.at).toISOString() : new Date().toISOString()),
           share: {
             enabled: true,
             keyB64: _bytesToB64(keyBytes),
             rev: payload.rev || 0,
+            savedAt: Number(payload.at) || Date.now(),
             createdAt: new Date().toISOString(),
           },
         };
@@ -523,13 +570,14 @@ var ProjectShare = (() => {
             enabled: true,
             keyB64: _bytesToB64(keyBytes),
             rev: 0,
+            savedAt: 0,
             createdAt: new Date().toISOString(),
           },
         };
       }
-      ProjectManager.save(project);
-      subscribeForProject(project);
+      ProjectManager.save(project, { keepUpdatedAt: true });
       if (typeof ProjectManager.flushBackup === 'function') ProjectManager.flushBackup();
+      subscribeForProject(project);
       return { project, shortKey, empty: !payload };
     } finally {
       _joining = false;
@@ -640,7 +688,7 @@ var ProjectShare = (() => {
             <h3 id="ose-share-title">Partager le projet</h3>
             <button type="button" class="btn btn-outline btn-sm" id="ose-share-close" aria-label="Fermer">✕</button>
           </div>
-          <p class="ose-share-hint">Sans serveur : chiffrement de bout en bout via relais Nostr publics. Quiconque a la clé peut lire et modifier le projet.</p>
+          <p class="ose-share-hint">Sans serveur : chiffrement de bout en bout via relais Nostr publics. Chaque appareil garde une copie locale ; la sauvegarde la plus récente écrase l’ancienne. Quiconque a la clé peut lire et modifier le projet.</p>
           <div id="ose-share-status" class="ose-share-status">Préparation…</div>
           <div class="ose-share-qr" id="ose-share-qr"></div>
           <label class="ose-share-label">Clé courte (saisie sur PC)</label>
@@ -849,6 +897,9 @@ var ProjectShare = (() => {
     onProjectSaved,
     stopAll,
     deviceId,
+    // exposé pour tests
+    _shouldApplyRemote,
+    _snapTimeMs,
   };
 })();
 
