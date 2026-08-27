@@ -2625,7 +2625,8 @@ img, canvas, svg, video, iframe {
   background: rgba(26, 107, 60, 0.08);
 }
 .pba-short { display: none; }
-.tab-label-short { display: none; }
+.tab-btn > .tab-label-short { display: none !important; }
+.tab-btn > .tab-label-full { display: inline !important; }
 
 @media (max-width: 720px) {
   :root { --header-h: 44px; }
@@ -2727,8 +2728,9 @@ img, canvas, svg, video, iframe {
     left: auto !important;
   }
 
-  .tab-label-full { display: none; }
-  .tab-label-short { display: inline; }
+  .tab-btn > .tab-label-full { display: none !important; }
+  .tab-btn > .tab-label-short { display: inline !important; }
+  .tab-btn .tab-number { display: none !important; }
   .tabs-bar {
     padding: 0 2px;
     padding-left: calc(2px + var(--safe-left));
@@ -2914,8 +2916,9 @@ img, canvas, svg, video, iframe {
   .project-bar-more { display: inline-flex; }
   .pba-full { display: none; }
   .pba-short { display: inline; }
-  .tab-label-full { display: none; }
-  .tab-label-short { display: inline; }
+  .tab-btn > .tab-label-full { display: none !important; }
+  .tab-btn > .tab-label-short { display: inline !important; }
+  .tab-btn .tab-number { display: none !important; }
   input[type="text"],
   input[type="number"],
   input[type="search"],

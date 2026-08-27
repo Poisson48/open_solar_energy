@@ -119,9 +119,18 @@ void WebHost::handleRequest(QTcpSocket* socket, const QByteArray& request)
         socket->write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n");
         return;
     }
+    const QByteArray ctype = mimeType(path);
+    // Android WebView cache agressivement : sans no-cache, une MAJ APK
+    // peut servir un index.html neuf avec un css/main.css obsolète
+    // → labels d’onglets doublés (« 3Devis3 Devis »).
+    QByteArray cache = "Cache-Control: no-cache, must-revalidate\r\n";
+    if (ctype.startsWith("text/html") || ctype.startsWith("text/css")
+        || ctype.startsWith("application/javascript") || ctype.startsWith("text/javascript")) {
+      cache = "Cache-Control: no-store\r\n";
+    }
     const QByteArray header = QByteArray("HTTP/1.1 200 OK\r\nContent-Type: ")
-        + mimeType(path) + "\r\nContent-Length: " + QByteArray::number(body.size())
-        + "\r\nConnection: close\r\n\r\n";
+        + ctype + "\r\nContent-Length: " + QByteArray::number(body.size())
+        + "\r\n" + cache + "Connection: close\r\n\r\n";
     socket->write(header + body);
 }
 
