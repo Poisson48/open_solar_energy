@@ -14,10 +14,11 @@ var ProjectShare = (() => {
   const KIND = 30078;
   const SCHEME = 'opensolar';
   const RELAYS = [
-    'wss://relay.damus.io',
     'wss://nos.lol',
     'wss://relay.nostr.band',
     'wss://offchain.pub',
+    'wss://nostr.mom',
+    'wss://relay.damus.io', // parfois 503 — en dernier recours
   ];
   const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
   const DEVICE_KEY = 'ose_share_device_id';

@@ -3,8 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.56';
+const APP_VERSION = '2.0.57';
 // Historique :
+//   2.0.57 - Mobile : plus de scroll horizontal (barre projet) ; relays Nostr
+//            réordonnés ; tests responsive alignés (Lieu = onglet)
 //   2.0.56 - Partage : copie locale sur chaque appareil + LWW (save la plus
 //            récente gagne) ; intro wizard « lieu confirmé » si météo OK
 //   2.0.55 - Persistance projets : profil WebEngine disque (plus OffTheRecord),
