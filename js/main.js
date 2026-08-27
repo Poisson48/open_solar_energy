@@ -78,17 +78,17 @@ function applyInstallationType(type) {
   const badge = document.getElementById('install-type-badge');
   if (badge) {
     if (type === 'hybrid') {
-      badge.textContent = '⚡🔋 Hybride';
+      badge.innerHTML = '<span class="pba-full">⚡🔋 Hybride</span><span class="pba-short">⚡🔋</span>';
       badge.style.color = 'var(--color-primary)';
       badge.style.borderColor = 'var(--color-primary)';
       badge.style.background = 'rgba(30,90,200,0.08)';
     } else if (type === 'grid') {
-      badge.textContent = '⚡ Réseau';
+      badge.innerHTML = '<span class="pba-full">⚡ Réseau</span><span class="pba-short">⚡</span>';
       badge.style.color = 'var(--color-accent)';
       badge.style.borderColor = 'var(--color-accent)';
       badge.style.background = 'rgba(245,166,35,0.08)';
     } else {
-      badge.textContent = '🔋 Autonome';
+      badge.innerHTML = '<span class="pba-full">🔋 Autonome</span><span class="pba-short">🔋</span>';
       badge.style.color = 'var(--color-primary)';
       badge.style.borderColor = 'var(--color-primary)';
       badge.style.background = 'rgba(30,90,200,0.08)';

@@ -1147,10 +1147,36 @@ async function checkForUpdates() {
 // ══════════════════════════════════════════════════════════════
 //  INIT : hub projets au démarrage (pas d'ouverture auto)
 // ══════════════════════════════════════════════════════════════
+function closeProjectBarMore() {
+  const menu = document.getElementById('project-bar-more-menu');
+  const btn = document.getElementById('btn-project-bar-more');
+  if (menu) menu.hidden = true;
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+
+function toggleProjectBarMore(event) {
+  event?.stopPropagation?.();
+  const menu = document.getElementById('project-bar-more-menu');
+  const btn = document.getElementById('btn-project-bar-more');
+  if (!menu || !btn) return;
+  const open = menu.hidden;
+  try {
+    const typeMenu = document.getElementById('install-type-menu');
+    if (typeMenu) typeMenu.hidden = true;
+  } catch (_) {}
+  menu.hidden = !open;
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
 function initProjectUI() {
   // Hub unique : pas de fermeture par clic extérieur
+  document.addEventListener('click', (e) => {
+    const more = document.querySelector('.project-bar-more');
+    if (more && !more.contains(e.target)) closeProjectBarMore();
+  });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
+      closeProjectBarMore();
       if (handleAndroidBack()) return;
       return;
     }
