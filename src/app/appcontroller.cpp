@@ -98,6 +98,8 @@ bool AppController::init()
     emit webUrlChanged();
     QObject::connect(&m_bridge, &WebBridge::checkUpdatesRequested,
                      &m_updater, &Updater::check);
+    QObject::connect(&m_bridge, &WebBridge::startUpdateRequested,
+                     &m_updater, &Updater::startUpdate);
     m_updater.check();
     return true;
 }

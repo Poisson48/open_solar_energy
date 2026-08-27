@@ -94,6 +94,11 @@ void WebBridge::checkForUpdates()
     emit checkUpdatesRequested();
 }
 
+void WebBridge::startUpdate()
+{
+    emit startUpdateRequested();
+}
+
 QString WebBridge::openFileDialog()
 {
 #ifdef OSE_HAS_WIDGETS

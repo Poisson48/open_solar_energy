@@ -1,14 +1,17 @@
 #include "updater.h"
 #include "platform.h"
 
+#include <QCoreApplication>
 #include <QDesktopServices>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QProcess>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QUrl>
@@ -33,6 +36,21 @@ QString stripV(QString v)
     return v;
 }
 
+/** Score d’un asset AppImage (plus haut = mieux). -1 = à ignorer. */
+int appImageScore(const QString& name)
+{
+    if (!name.endsWith(QStringLiteral(".AppImage"), Qt::CaseInsensitive))
+        return -1;
+    const QString n = name.toLower();
+    if (n.contains(QStringLiteral("aarch64")) || n.contains(QStringLiteral("arm64"))
+        || n.contains(QStringLiteral("armhf")) || n.contains(QStringLiteral("armv7")))
+        return 0;
+    if (n.contains(QStringLiteral("x86_64")) || n.contains(QStringLiteral("amd64"))
+        || n.contains(QStringLiteral("x64")))
+        return 3;
+    return 1;
+}
+
 } // namespace
 
 Updater::Updater(QObject* parent) : QObject(parent) {}
@@ -46,8 +64,19 @@ bool Updater::canInstall() const
 {
 #ifdef Q_OS_ANDROID
     return true;
+#elif defined(Q_OS_LINUX)
+    return true; // AppImage : téléchargement + remplacement / relance
 #else
     return false;
+#endif
+}
+
+QString Updater::packageSuffix() const
+{
+#ifdef Q_OS_ANDROID
+    return QStringLiteral(".apk");
+#else
+    return QStringLiteral(".AppImage");
 #endif
 }
 
@@ -242,14 +271,27 @@ void Updater::check()
                 m_releaseUrl = obj.value(QStringLiteral("html_url")).toString();
                 m_apkUrl.clear();
                 m_apkApiUrl.clear();
+                m_packageIsAppImage = false;
+                int bestScore = -1;
                 for (const QJsonValue& a : obj.value(QStringLiteral("assets")).toArray()) {
                     const QJsonObject asset = a.toObject();
                     const QString name = asset.value(QStringLiteral("name")).toString();
-                    if (name.endsWith(QStringLiteral(".apk"), Qt::CaseInsensitive)) {
+#ifdef Q_OS_ANDROID
+                    if (!name.endsWith(QStringLiteral(".apk"), Qt::CaseInsensitive))
+                        continue;
+                    const int score = 1;
+#else
+                    const int score = appImageScore(name);
+                    if (score <= 0)
+                        continue;
+#endif
+                    if (score > bestScore) {
+                        bestScore = score;
                         m_apkUrl = asset.value(QStringLiteral("browser_download_url")).toString();
-                        // URL API (Accept: octet-stream) — secours si le CDN échoue
                         m_apkApiUrl = asset.value(QStringLiteral("url")).toString();
-                        break;
+#ifndef Q_OS_ANDROID
+                        m_packageIsAppImage = true;
+#endif
                     }
                 }
             }
@@ -264,8 +306,8 @@ void Updater::check()
         }
 
         if (canInstall() && m_apkUrl.isEmpty() && m_apkApiUrl.isEmpty()) {
-            qWarning() << "[Updater] release" << bestNewer << "sans APK";
-            m_statusMessage = QStringLiteral("Version %1 trouvée mais APK introuvable sur GitHub")
+            qWarning() << "[Updater] release" << bestNewer << "sans paquet installable";
+            m_statusMessage = QStringLiteral("Version %1 trouvée mais fichier d’install introuvable sur GitHub")
                                   .arg(bestNewer);
             m_latestVersion = bestNewer;
             m_autoStartAfterCheck = false;
@@ -325,29 +367,25 @@ void Updater::startApkDownload(const QUrl& url, bool apiAsset)
 {
     const QString dir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
     QDir().mkpath(dir);
-    m_apkPath = dir + QStringLiteral("/opensolarenergy-") + m_latestVersion
-              + QStringLiteral(".apk");
+    const QString suffix = packageSuffix();
+    m_apkPath = dir + QStringLiteral("/opensolarenergy-") + m_latestVersion + suffix;
     QFile::remove(m_apkPath);
 
     auto* file = new QFile(m_apkPath);
     if (!file->open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         delete file;
-        m_statusMessage = QStringLiteral("Impossible d'écrire l'APK");
+        m_statusMessage = QStringLiteral("Impossible d'écrire le fichier de mise à jour");
         setState(Failed);
         return;
     }
 
     QNetworkRequest req{ url };
     req.setRawHeader("User-Agent", "OpenSolarEnergy");
-    if (apiAsset) {
-        // Téléchargement via l’API GitHub (pas le CDN browser)
+    if (apiAsset)
         req.setRawHeader("Accept", "application/octet-stream");
-    }
-    // Suivre github.com → release-assets.githubusercontent.com (HTTPS)
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                      QNetworkRequest::NoLessSafeRedirectPolicy);
-    // APK Qt ~25–40 Mo : laisser assez de marge sur réseau mobile
-    req.setTransferTimeout(10 * 60 * 1000);
+    req.setTransferTimeout(15 * 60 * 1000);
 
     m_progress = 0.0;
     m_bytesReceived = 0.0;
@@ -373,8 +411,7 @@ void Updater::startApkDownload(const QUrl& url, bool apiAsset)
                         .arg(total / 1e6, 0, 'f', 1));
             }
         } else {
-            // Pas de Content-Length (CDN) : progression estimée ~30 Mo, plafond 92 %
-            constexpr qreal kEst = 30e6;
+            const qreal kEst = m_packageIsAppImage ? 140e6 : 30e6;
             m_progress = qMin(0.92, qreal(received) / kEst);
             const int pct = int(m_progress * 100.0);
             if (pct != m_lastProgressPct) {
@@ -399,11 +436,11 @@ void Updater::startApkDownload(const QUrl& url, bool apiAsset)
         file->deleteLater();
         reply->deleteLater();
 
-        if (reply->error() != QNetworkReply::NoError || size < 10000) {
+        const qint64 minSize = m_packageIsAppImage ? 5000000 : 10000;
+        if (reply->error() != QNetworkReply::NoError || size < minSize) {
             QFile::remove(m_apkPath);
             qWarning() << "[Updater] download failed:" << reply->errorString()
                        << "size=" << size << "api=" << apiAsset << reply->url();
-            // Secours : une seule fois via l’URL API GitHub
             if (!apiAsset && !m_apkApiUrl.isEmpty() && !m_triedApiDownload) {
                 m_triedApiDownload = true;
                 setStatusMessage(QStringLiteral("Nouvel essai de téléchargement…"));
@@ -412,7 +449,7 @@ void Updater::startApkDownload(const QUrl& url, bool apiAsset)
             }
             m_statusMessage = reply->error() != QNetworkReply::NoError
                 ? QStringLiteral("Téléchargement impossible : %1").arg(reply->errorString())
-                : QStringLiteral("APK téléchargé vide ou incomplet (%1 Mo)")
+                : QStringLiteral("Fichier téléchargé vide ou incomplet (%1 Mo)")
                       .arg(QString::number(size / 1e6, 'f', 1));
             setState(Failed);
             return;
@@ -421,11 +458,15 @@ void Updater::startApkDownload(const QUrl& url, bool apiAsset)
         m_progress = 1.0;
         m_bytesReceived = qreal(size);
         emit progressChanged();
-        qInfo() << "[Updater] APK téléchargé" << m_apkPath << size << "octets";
+        if (m_packageIsAppImage) {
+            QFile::setPermissions(m_apkPath,
+                QFile::permissions(m_apkPath)
+                    | QFileDevice::ExeOwner | QFileDevice::ExeUser
+                    | QFileDevice::ExeGroup | QFileDevice::ExeOther);
+        }
+        qInfo() << "[Updater] paquet téléchargé" << m_apkPath << size << "octets";
         setState(Ready);
 #ifdef Q_OS_ANDROID
-        // Enchaîner tout de suite : sinon l’utilisateur croit que ça a planté
-        // après le téléchargement (bandeau « prête » souvent ignoré).
         install();
 #endif
     });
@@ -449,39 +490,107 @@ void Updater::download()
 
 void Updater::install()
 {
-    // Autoriser une nouvelle tentative après Failed (permission « apps inconnues », etc.)
-    // si l’APK est déjà sur disque.
-    const bool apkReady = !m_apkPath.isEmpty() && QFile::exists(m_apkPath);
-    if (canInstall() && apkReady && (m_state == Ready || m_state == Failed)) {
+    const bool pkgReady = !m_apkPath.isEmpty() && QFile::exists(m_apkPath);
+    if (canInstall() && pkgReady && (m_state == Ready || m_state == Failed)) {
         if (m_state == Failed)
             setState(Ready);
         setStatusMessage(QStringLiteral("Lancement de l'installation…"));
-        if (platformInstallApk(m_apkPath)) {
+        if (installDownloadedPackage())
             return;
-        }
-        const QString st = platformPollInstallStatus();
-        if (st.startsWith(QLatin1String("need_perm\t"))) {
-            m_statusMessage = st.mid(10);
+        if (m_state != Failed) {
+            m_statusMessage = QStringLiteral(
+                "Installation impossible — réessayez ou lancez le fichier téléchargé");
             setState(Failed);
-            return;
         }
-        if (st.startsWith(QLatin1String("err\t"))) {
-            m_statusMessage = st.mid(4);
-            setState(Failed);
-            return;
-        }
-        m_statusMessage = QStringLiteral(
-            "Installation impossible — autorisez « Installer des apps inconnues » pour Open Solar, puis réessayez");
-        setState(Failed);
         return;
     }
-    // Pas d’APK local : (re)télécharger plutôt que d’ouvrir seulement GitHub
     if (canInstall() && (!m_apkUrl.isEmpty() || !m_apkApiUrl.isEmpty())) {
         download();
         return;
     }
     if (!m_releaseUrl.isEmpty())
         QDesktopServices::openUrl(QUrl(m_releaseUrl));
+}
+
+bool Updater::installDownloadedPackage()
+{
+#ifdef Q_OS_ANDROID
+    if (platformInstallApk(m_apkPath))
+        return true;
+    const QString st = platformPollInstallStatus();
+    if (st.startsWith(QLatin1String("need_perm\t"))) {
+        m_statusMessage = st.mid(10);
+        setState(Failed);
+        return false;
+    }
+    if (st.startsWith(QLatin1String("err\t"))) {
+        m_statusMessage = st.mid(4);
+        setState(Failed);
+        return false;
+    }
+    m_statusMessage = QStringLiteral(
+        "Installation impossible — autorisez « Installer des apps inconnues » pour Open Solar, puis réessayez");
+    setState(Failed);
+    return false;
+#else
+    QFile::setPermissions(m_apkPath,
+        QFile::permissions(m_apkPath)
+            | QFileDevice::ExeOwner | QFileDevice::ExeUser
+            | QFileDevice::ExeGroup | QFileDevice::ExeOther);
+
+    const QString currentAppImage = QString::fromLocal8Bit(qgetenv("APPIMAGE"));
+    if (!currentAppImage.isEmpty() && QFile::exists(currentAppImage)) {
+        const QString dir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
+        QDir().mkpath(dir);
+        const QString scriptPath = dir + QStringLiteral("/ose-apply-appimage.sh");
+        QFile script(scriptPath);
+        if (!script.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+            m_statusMessage = QStringLiteral("Impossible d’écrire le script de mise à jour");
+            setState(Failed);
+            return false;
+        }
+        script.write(QByteArrayLiteral(
+            "#!/bin/bash\n"
+            "NEW=\"$1\"\n"
+            "OLD=\"$2\"\n"
+            "for i in $(seq 1 40); do\n"
+            "  if ! pgrep -f \"$OLD\" >/dev/null 2>&1; then break; fi\n"
+            "  sleep 0.25\n"
+            "done\n"
+            "sleep 0.4\n"
+            "chmod +x \"$NEW\" || true\n"
+            "if cp -f \"$NEW\" \"$OLD\" 2>/dev/null; then\n"
+            "  chmod +x \"$OLD\" || true\n"
+            "  rm -f \"$NEW\"\n"
+            "  exec \"$OLD\"\n"
+            "else\n"
+            "  exec \"$NEW\"\n"
+            "fi\n"));
+        script.close();
+        QFile::setPermissions(scriptPath,
+            QFile::permissions(scriptPath)
+                | QFileDevice::ExeOwner | QFileDevice::ExeUser);
+        if (!QProcess::startDetached(QStringLiteral("/bin/bash"),
+                                     { scriptPath, m_apkPath, currentAppImage })) {
+            m_statusMessage = QStringLiteral("Impossible de lancer le script de mise à jour");
+            setState(Failed);
+            return false;
+        }
+        setStatusMessage(QStringLiteral("Redémarrage pour appliquer la v%1…").arg(m_latestVersion));
+        QCoreApplication::quit();
+        return true;
+    }
+
+    if (!QProcess::startDetached(m_apkPath, {})) {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(m_apkPath).absolutePath()));
+        m_statusMessage = QStringLiteral("AppImage téléchargée — lancez-la depuis le dossier ouvert");
+        setState(Failed);
+        return false;
+    }
+    setStatusMessage(QStringLiteral("Nouvelle version lancée"));
+    QCoreApplication::quit();
+    return true;
+#endif
 }
 
 void Updater::dismiss()

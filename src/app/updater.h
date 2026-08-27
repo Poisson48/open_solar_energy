@@ -76,6 +76,8 @@ private:
     void setStatusMessage(const QString& msg);
     void rebuildDerivedNotes();
     void startApkDownload(const QUrl& url, bool apiAsset);
+    bool installDownloadedPackage();
+    QString packageSuffix() const;
     static QString formatEntries(const QVariantList& entries);
 
     QNetworkAccessManager m_net;
@@ -95,6 +97,7 @@ private:
     int m_lastProgressPct = -1;
     bool m_triedApiDownload = false;
     bool m_autoStartAfterCheck = false;
+    bool m_packageIsAppImage = false;
 };
 
 } // namespace app
