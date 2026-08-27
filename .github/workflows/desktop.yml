@@ -30,13 +30,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/Qt
-          key: qt-desktop-${{ env.QT_VER }}-ose-webengine-v1
+          key: qt-desktop-${{ env.QT_VER }}-ose-webengine-serialport-v2
       - name: Install Qt
         if: steps.cache-qt.outputs.cache-hit != 'true'
         run: |
           python3 -m pip install --user aqtinstall
           python3 -m aqt install-qt linux desktop "$QT_VER" linux_gcc_64 \
-            -m qtwebengine qtwebview qtwebchannel qtpositioning -O "$HOME/Qt"
+            -m qtwebengine qtwebview qtwebchannel qtpositioning qtserialport -O "$HOME/Qt"
       - name: Cache AppImage tools
         uses: actions/cache@v4
         with:
