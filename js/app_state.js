@@ -3,8 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.63';
+const APP_VERSION = '2.0.64';
 // Historique :
+//   2.0.64 - Android : plus de labels onglets doublés (« 3 Devis ») — CSS
+//            cache-bust + no-store WebHost ; labels courts Dim./PV/Devis
 //   2.0.63 - MAJ : suppression totale du fallback « ouvrir APK / navigateur » ;
 //            install uniquement via pont Qt (AppImage / Android)
 //   2.0.62 - Audit clic MAJ PC + tablette (tests/run_update_click_audit.mjs) :
