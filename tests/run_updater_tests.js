@@ -45,15 +45,15 @@ function versionCodeFromName(name) {
 
 console.log('\n═══ Updater / versions Android ═══');
 
-assert(isNewer('2.0.70', '2.0.69'), '2.0.70 > 2.0.69');
-assert(!isNewer('2.0.69', '2.0.70'), '2.0.69 ≯ 2.0.70');
-assert(isNewer('v2.0.70', '2.0.69'), 'strip v');
-assert(!isNewer('2.0.70', '2.0.70'), 'égal → pas newer');
+assert(isNewer('2.0.71', '2.0.69'), '2.0.71 > 2.0.69');
+assert(!isNewer('2.0.69', '2.0.71'), '2.0.69 ≯ 2.0.71');
+assert(isNewer('v2.0.71', '2.0.69'), 'strip v');
+assert(!isNewer('2.0.71', '2.0.71'), 'égal → pas newer');
 assert(isNewer('2.1.0', '2.0.99'), 'mineur gagne');
-assert(versionCodeFromName('2.0.70') === 20070, 'versionCode 2.0.70 → 20070');
+assert(versionCodeFromName('2.0.71') === 20071, 'versionCode 2.0.71 → 20071');
 assert(versionCodeFromName('2.0.69') === 20069, 'versionCode 2.0.69 → 20069');
-assert(versionCodeFromName('2.0.70') > versionCodeFromName('2.0.69'), 'codes monotones');
-assert(versionCodeFromName('2.0.70') > 185, 'code marketing > ancien git-count (~185)');
+assert(versionCodeFromName('2.0.71') > versionCodeFromName('2.0.69'), 'codes monotones');
+assert(versionCodeFromName('2.0.71') > 185, 'code marketing > ancien git-count (~185)');
 
 const releaseYml = fs.readFileSync(path.join(ROOT, '.github/workflows/release.yml'), 'utf8');
 assert(!/git rev-list --count HEAD/.test(releaseYml),
@@ -62,12 +62,12 @@ assert(/10000/.test(releaseYml) && /versionCode/.test(releaseYml),
   'release.yml : formule XXYYZZ présente');
 
 const man = fs.readFileSync(path.join(ROOT, 'android/AndroidManifest.xml'), 'utf8');
-assert(/android:versionCode="20070"/.test(man), 'manifest versionCode=20070');
-assert(/android:versionName="2\.0\.70"/.test(man), 'manifest versionName=2.0.70');
+assert(/android:versionCode="20071"/.test(man), 'manifest versionCode=20071');
+assert(/android:versionName="2\.0\.71"/.test(man), 'manifest versionName=2.0.71');
 assert(/InstallCallbackActivity/.test(man), 'InstallCallbackActivity déclarée');
 assert(/ApkFileProvider/.test(man), 'ApkFileProvider déclaré');
 assert(/android:exported="false"[\s\S]*InstallReceiver|InstallReceiver[\s\S]*android:exported="false"/.test(man)
-  || /Platform\$InstallReceiver"[\s\S]*?android:exported="false"/.test(man),
+    || /Platform\$InstallReceiver"[\s\S]*?android:exported="false"/.test(man),
   'InstallReceiver non exporté (callback = Activity)');
 
 const plat = fs.readFileSync(
@@ -94,7 +94,7 @@ assert(/weatherMeta/.test(pui) && /weatherMeta/.test(fs.readFileSync(path.join(R
   'weatherMeta persisté dans le projet');
 
 const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-assert(/main\.css\?v=2\.0\.70/.test(idx), 'CSS cache-bust ?v=2.0.70');
+assert(/main\.css\?v=2\.0\.71/.test(idx), 'CSS cache-bust ?v=2.0.71');
 assert(/setSizingLimitMode/.test(pui) || /setSizingLimitMode/.test(fs.readFileSync(path.join(ROOT, 'js/renderers/sizing.js'), 'utf8')),
   'modes limite dimensionnement');
 const tabSz = fs.readFileSync(path.join(ROOT, 'js/tabs/tab_sizing.js'), 'utf8');
@@ -104,7 +104,7 @@ assert(!/placeholder="obligatoire"/.test(tabSz), 'surface plus marquée obligato
 assert(!/Projet démo : des valeurs sont préremplies/.test(tabSz), 'plus de texte démo en dur dans le HTML');
 assert(/tab-label-short">Devis</.test(idx), 'label court Devis (sans « 3 »)');
 assert(!/tab-label-short">3 Devis</.test(idx), 'plus de « 3 Devis » en label court');
-// Parcours B : Devis = 8e primary, pas juste après PV
+// Site avant Dim / Hors réseau (ombrage 30 min → dimensionnement)
 const primaryTabs = [...idx.matchAll(/data-tab="([^"]+)"[^>]*data-tier="primary"/g)].map(m => m[1]);
 assert(primaryTabs.includes('quote') && primaryTabs.includes('site') && primaryTabs.includes('daily'),
   'primary inclut site, daily, quote');
@@ -112,22 +112,32 @@ const quoteIdx = primaryTabs.indexOf('quote');
 const sizingIdx = primaryTabs.indexOf('sizing');
 const siteIdx = primaryTabs.indexOf('site');
 const gridIdx = primaryTabs.indexOf('grid');
-assert(primaryTabs[0] === 'location' && primaryTabs[1] === 'offgrid' && primaryTabs[2] === 'sizing',
-  'ordre DOM : Lieu → Hors réseau → Dim.');
-assert(sizingIdx < siteIdx && siteIdx < gridIdx && gridIdx < quoteIdx,
-  'ordre Dim → Site → PV → … → Devis');
-assert(primaryTabs.indexOf('offgrid') < primaryTabs.indexOf('quote'),
-  'Hors réseau avant Devis');
+const offgridIdx = primaryTabs.indexOf('offgrid');
+assert(primaryTabs[0] === 'location' && primaryTabs[1] === 'site',
+  'ordre DOM : Lieu → Site');
+assert(siteIdx < offgridIdx && siteIdx < sizingIdx && sizingIdx < gridIdx && gridIdx < quoteIdx,
+  'ordre Site → Dim/Hors réseau → PV → … → Devis');
+assert(offgridIdx < quoteIdx, 'Hors réseau avant Devis');
 assert(quoteIdx > primaryTabs.indexOf('daily'),
   'Devis après Analyse');
 const mainJs = fs.readFileSync(path.join(ROOT, 'js/main.js'), 'utf8');
 assert(/function goNextPrimaryTab/.test(mainJs) && /PRIMARY_FLOW_GRID/.test(mainJs),
   'goNextPrimaryTab + PRIMARY_FLOW_GRID');
+assert(/PRIMARY_FLOW_OFFGRID.*site.*offgrid|location', 'site', 'offgrid'/.test(mainJs.replace(/\s+/g, ' ')),
+  'flow autonome : Site avant Hors réseau');
 assert(/ose-journey-nav/.test(fs.readFileSync(path.join(ROOT, 'js/tabs/tab_site.js'), 'utf8')),
   'Passer/Continuer sur Site');
-assert(/Import terrain \(relief\)/.test(fs.readFileSync(path.join(ROOT, 'js/site_survey.js'), 'utf8')),
+assert(/Appliquer au dimensionnement/.test(fs.readFileSync(path.join(ROOT, 'js/tabs/tab_site.js'), 'utf8')),
+  'bouton ombrage → dimensionnement');
+const siteSurvey = fs.readFileSync(path.join(ROOT, 'js/site_survey.js'), 'utf8');
+assert(/persist\(\);\s*\/\/ halfHourlyKeep|persist\(\); \/\/ halfHourlyKeep|halfHourlyKeep doit être dans AppState/.test(siteSurvey),
+  'recompute persiste halfHourlyKeep');
+assert(/Import terrain \(relief\)/.test(siteSurvey),
   'terrain auto-sauvegardé');
-
+assert(/half === 0 \? 0\.25 : 0\.75/.test(fs.readFileSync(path.join(ROOT, 'js/solar_math.js'), 'utf8')),
+  'ensoleillement géométrie 30 min');
+assert(/applySiteShade/.test(fs.readFileSync(path.join(ROOT, 'js/offgrid_sizing.js'), 'utf8')),
+  'offgrid applique ombrage site');
 const css = fs.readFileSync(path.join(ROOT, 'css/main.css'), 'utf8');
 assert(/clearEnedisLoad/.test(fs.readFileSync(path.join(ROOT, 'js/hourly_module.js'), 'utf8')),
   'clearEnedisLoad pour retrouver jour/nuit');

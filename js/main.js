@@ -9,22 +9,27 @@
 // 'grid'    = raccordé réseau, sans batterie
 // 'hybrid'  = raccordé réseau + batterie (autoconso maximisée, surplus injecté)
 // 'offgrid' = autonome, hors réseau
-// Parcours B (réseau/hybride) : Lieu → Dim → Site → PV → Implantation → Câbles → Analyse → Devis
+// Parcours : Lieu → Site/Ombrage → Dim/Hors réseau → … → Devis
+// (ombrage 30 min avant dimensionnement : plus de PV / batterie si besoin)
 const TABS_GRID_ONLY    = ['sizing', 'grid', 'tracker', 'optimizer'];
 const TABS_OFFGRID_ONLY = ['offgrid'];
 const GRID_LIKE_TYPES   = ['grid', 'hybrid'];
 /** Ordre du parcours principal (Devis toujours en dernier). */
-const PRIMARY_FLOW_GRID    = ['location', 'sizing', 'site', 'grid', 'layout', 'cables', 'daily', 'quote'];
-const PRIMARY_FLOW_OFFGRID = ['location', 'offgrid', 'site', 'layout', 'cables', 'daily', 'quote'];
+const PRIMARY_FLOW_GRID    = ['location', 'site', 'sizing', 'grid', 'layout', 'cables', 'daily', 'quote'];
+const PRIMARY_FLOW_OFFGRID = ['location', 'site', 'offgrid', 'layout', 'cables', 'daily', 'quote'];
 // Libellés lisibles installateur (badge + menu déroulant barre projet)
 const INSTALL_TYPE_LABELS = { grid: 'Réseau', hybrid: 'Hybride', offgrid: 'Autonome' };
+const PRIMARY_TAB_LABELS = {
+  location: 'Lieu', site: 'Site / Ombrage', sizing: 'Dimensionnement',
+  offgrid: 'Hors réseau', grid: 'Système PV', layout: 'Implantation',
+  cables: 'Câbles', daily: 'Analyse', quote: 'Devis',
+};
 
 function getPrimaryTabFlow() {
   return (AppState.installationType === 'offgrid') ? PRIMARY_FLOW_OFFGRID : PRIMARY_FLOW_GRID;
 }
 
-/** Passe à l’onglet primary suivant visible (skip libre). */
-function goNextPrimaryTab() {
+function peekNextPrimaryTab() {
   const flow = getPrimaryTabFlow();
   const cur = AppState.activeTab
     || document.querySelector('.tab-btn.active')?.dataset?.tab
@@ -35,13 +40,31 @@ function goNextPrimaryTab() {
     const id = flow[k];
     const btn = document.querySelector(`.tab-btn[data-tab="${id}"]`);
     if (!btn || btn.style.display === 'none') continue;
-    if (typeof activateTab === 'function') activateTab(id);
-    if (typeof writeInstallToTab === 'function') writeInstallToTab(id);
     return id;
   }
   return null;
 }
+
+/** Met à jour le libellé « Continuer → … » de l’onglet Site. */
+function refreshJourneyNavLabels() {
+  const next = peekNextPrimaryTab();
+  const el = document.getElementById('site-journey-next');
+  if (!el) return;
+  el.textContent = next
+    ? `Continuer → ${PRIMARY_TAB_LABELS[next] || next}`
+    : 'Continuer →';
+}
+
+/** Passe à l’onglet primary suivant visible (skip libre). */
+function goNextPrimaryTab() {
+  const id = peekNextPrimaryTab();
+  if (!id) return null;
+  if (typeof activateTab === 'function') activateTab(id);
+  if (typeof writeInstallToTab === 'function') writeInstallToTab(id);
+  return id;
+}
 window.goNextPrimaryTab = goNextPrimaryTab;
+window.refreshJourneyNavLabels = refreshJourneyNavLabels;
 
 function applyInstallationType(type) {
   AppState.installationType = type;
@@ -129,6 +152,7 @@ function applyInstallationType(type) {
     btn.classList.toggle('active', on);
     btn.setAttribute('aria-current', on ? 'true' : 'false');
   });
+  if (typeof refreshJourneyNavLabels === 'function') refreshJourneyNavLabels();
 }
 
 // ── Menu déroulant du type d'installation (barre projet) ────────
@@ -353,8 +377,12 @@ function activateTab(tab) {
   if (tab === 'layout' && typeof renderPanelLayoutTab === 'function') renderPanelLayoutTab();
   if (tab === 'site' && typeof SiteSurvey !== 'undefined') {
     SiteSurvey.loadFromAppState();
-    SiteSurvey.redraw();
+    // Ancien projet : points sans profil 30 min → recalcul + persist
+    const st = SiteSurvey.getState?.();
+    if (st?.points?.length && !st.halfHourlyKeep) SiteSurvey.recompute();
+    else SiteSurvey.redraw();
   }
+  if (typeof refreshJourneyNavLabels === 'function') refreshJourneyNavLabels();
   if (tab === 'sizing' || tab === 'offgrid') {
     if (typeof updateWizardIntroStatus === 'function') updateWizardIntroStatus();
     else if (typeof updateDemoPrefillNote === 'function') updateDemoPrefillNote();

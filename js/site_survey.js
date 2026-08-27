@@ -800,26 +800,31 @@ const SiteSurvey = (() => {
       persistCurrentProjectQuiet('Application terrain → inclinaison/azimut');
   }
 
+  /**
+   * Enregistre l’ombrage demi-heure dans le projet pour le Dimensionnement /
+   * Hors réseau (plus de panneaux / batterie si besoin).
+   * Ne gonfle PAS les pertes système (% ) : l’ombrage est déjà appliqué
+   * créneau par créneau (évite le double comptage).
+   */
   function applyShadingToLosses() {
+    if (!state.points.length) {
+      _toast('Ajoutez des points d’horizon avant d’appliquer l’ombrage.', 'warning');
+      return;
+    }
     recompute();
     const shade = state.annualLossPct || 0;
-    const baseEl = document.getElementById('sz-losses');
-    const base = parseFloat(baseEl?.value) || 14;
-    // Remplacer une éventuelle composante ombrage précédente : on ajoute sur base « système »
-    // Heuristique : pertes système hors ombrage ~14 %, on fixe pertes = 14 + shade (plafonné)
-    const next = Math.min(45, Math.round((14 + shade) * 10) / 10);
-    ['sz-losses', 'inp-losses', 'og2-losses'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = next;
-    });
-    if (typeof AppState !== 'undefined' && AppState.install)
-      AppState.install.losses = next;
-    _toast(`Pertes système → ${next}% (base ~14 % + ombrage ${shade} %).`);
+    const slots = state.halfHourlyKeep?.length === 12;
+    _toast(slots
+      ? `Ombrage ${shade} % enregistré (profil 30 min) — relancez Dimensionner / Hors réseau.`
+      : `Ombrage ${shade} % enregistré — relancez Dimensionner / Hors réseau.`);
+    if (typeof persistCurrentProjectQuiet === 'function')
+      persistCurrentProjectQuiet('Ombrage site → dimensionnement');
   }
 
   function recompute() {
     const lat = AppState?.location?.lat ?? 46;
     computeShading(lat);
+    persist(); // halfHourlyKeep doit être dans AppState avant Dimensionner
     updateResultsUI();
     redraw();
   }
@@ -1146,7 +1151,7 @@ const SiteSurvey = (() => {
       <div style="display:flex;flex-direction:column;gap:4px">${bars}</div>
       <p style="font-size:11px;color:var(--color-text-muted);margin-top:8px;line-height:1.4">
         Part du rayonnement <em>direct</em> masquée par le profil d’horizon (diffuse conservée).
-        Appliquez aux pertes système pour le dimensionnement.
+        Profil <strong>30 min</strong> envoyé au dimensionnement (PV / batterie) — relancez Dimensionner après modification.
       </p>`;
     renderPointsList();
   }

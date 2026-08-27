@@ -409,19 +409,17 @@ const SolarMath = (() => {
           const dhiVal  = Math.max(0, Math.min(dhi[h] || 0, ghiVal));
           const tempVal = temp[h] !== undefined ? temp[h] : 15;
 
-          // Heure solaire = heure UTC + correction longitude (données Open-Meteo en UTC)
-          const solarHour = hh + 0.5 + lonCorr;  // milieu du pas + correction
-          const Htilt_h   = transposeHourlyReal(ghiVal, dhiVal, lat, tilt, azimuth, doy, solarHour);
-
-          // Correction thermique NOCT
-          const Tcell   = tempVal + 25 * Htilt_h / 800;
-          const PR_temp = 1 + gamma * Math.max(0, Tcell - 25);
-          const PR      = Math.max(0.5, lossF * Math.min(1, PR_temp));
-
-          // kWh/kWc pour cette heure, réparti en 2 slots 30min égaux
-          const kwh_h = Htilt_h * PR / 1000;
-          slots[h * 2]     = kwh_h / 2;
-          slots[h * 2 + 1] = kwh_h / 2;
+          // Deux créneaux 30 min : géométrie solaire distincte (GHI horaire ÷ 2)
+          // pour coincider avec l’ombrage site demi-heure.
+          for (let half = 0; half < 2; half++) {
+            const solarHour = hh + (half === 0 ? 0.25 : 0.75) + lonCorr;
+            const Htilt = transposeHourlyReal(ghiVal, dhiVal, lat, tilt, azimuth, doy, solarHour);
+            const Tcell = tempVal + 25 * Htilt / 800;
+            const PR_temp = 1 + gamma * Math.max(0, Tcell - 25);
+            const PR = Math.max(0.5, lossF * Math.min(1, PR_temp));
+            // Htilt (W/m²) × 0,5 h → kWh/m²/kWc pour le créneau
+            slots[h * 2 + half] = Htilt * PR / 1000 * 0.5;
+          }
         }
       }
     }
