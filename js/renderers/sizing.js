@@ -46,6 +46,9 @@ function calcSizing() {
   AppState.lastSizingResult     = recommended;
   AppState.lastSizingCandidates = allCandidates;
   AppState.lastSizingInput      = input;
+  AppState.lastSizingContext    = typeof sizingContextFingerprint === 'function'
+    ? sizingContextFingerprint()
+    : null;
   renderSizingResults(recommended, allCandidates, currentBill, annualConso);
 
   if (typeof gitAutoSave === 'function' && recommended) {

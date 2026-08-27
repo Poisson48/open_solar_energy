@@ -86,12 +86,15 @@ header {
   display: flex;
   align-items: center;
   height: calc(var(--header-h) + var(--safe-top));
+  min-height: calc(var(--header-h) + var(--safe-top));
   box-sizing: border-box;
   gap: 16px;
   box-shadow: var(--shadow-md);
   position: sticky;
   top: 0;
   z-index: 100;
+  /* body en flex column : ne pas écraser la hauteur sticky du project-bar */
+  flex-shrink: 0;
 }
 
 header .logo {
@@ -436,13 +439,14 @@ header .badge {
   z-index: 99;
   min-width: 0;
   max-width: 100%;
+  flex-shrink: 0;
 }
 .project-bar-meta {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 200px;
+  min-width: 160px;
 }
 .project-bar-meta-row {
   display: flex;
@@ -473,16 +477,35 @@ header .badge {
 #btn-edit-project::after {
   content: " Éditer";
 }
+@media (max-width: 1100px) {
+  #project-bar {
+    flex-wrap: wrap;
+  }
+  .project-bar-meta {
+    flex: 1 1 calc(100% - 12px);
+    min-width: 200px;
+  }
+  #project-bar #project-name-input {
+    max-width: none;
+    min-width: 180px;
+  }
+  #btn-edit-project::after {
+    content: "";
+  }
+}
 .project-bar-actions {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-shrink: 0;
+  flex: 0 1 auto;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 #project-bar #project-name-input {
-  flex: 1;
-  max-width: 280px;
-  min-width: 0;
+  flex: 1 1 180px;
+  max-width: 320px;
+  min-width: 140px;
   padding: 4px 10px;
   border: 1px solid rgba(255,255,255,0.3);
   border-radius: 6px;
@@ -504,7 +527,7 @@ header .badge {
   white-space: nowrap;
   flex-shrink: 0;
 }
-#btn-export-project, #btn-git-history {
+#btn-export-project, #btn-git-history, #btn-share-project, #btn-materiel {
   border-color: rgba(255,255,255,0.3);
   color: rgba(255,255,255,0.85);
 }
@@ -1299,9 +1322,9 @@ input:focus, select:focus, textarea:focus {
   border-radius: var(--radius);
   font-size: 12px;
   margin-bottom: 10px;
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
+  /* block : évite que <strong> inline scinde le texte en colonnes flex */
+  display: block;
+  line-height: 1.45;
 }
 
 .alert-info { background: #e3f2fd; border: 1px solid #90caf9; color: #1565c0; }
@@ -1497,6 +1520,8 @@ details.card > summary:focus-visible {
   display: grid;
   grid-template-columns: 310px 1fr;
   gap: 16px;
+  /* Évite une colonne résultats vide étirée à la hauteur du formulaire */
+  align-items: start;
 }
 .tab-form-col-half {
   display: grid;
@@ -2289,8 +2314,9 @@ details.card > summary:focus-visible {
   }
 }
 
-/* Desktop / AppImage PC : hub plein écran, 2 colonnes (projets | nouveautés) */
-@media (min-width: 1000px) {
+/* Desktop / AppImage PC : hub plein écran, 2 colonnes (projets | nouveautés)
+   Seuil 900px (ex-1000) pour éviter le retour brutal à 720px près de 1024. */
+@media (min-width: 900px) {
   .ose-hub.ose-hub-open {
     background: var(--color-surface, #fff);
   }
@@ -2360,9 +2386,10 @@ details.card > summary:focus-visible {
   #startup-step-new {
     flex: 1;
     overflow: auto;
-    max-width: 1100px;
+    max-width: none;
     width: 100%;
-    margin: 0 auto;
+    margin: 0;
+    padding: 0 28px 24px;
     box-sizing: border-box;
   }
 }

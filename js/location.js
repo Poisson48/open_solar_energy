@@ -254,6 +254,7 @@ function setLocation(key) {
   document.querySelectorAll('.preset-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.loc === key);
   });
+  if (typeof refreshSizingValidity === 'function') refreshSizingValidity();
 }
 
 // ── Définir localisation par coordonnées ────────────────────
@@ -285,6 +286,7 @@ function setLocationCoords(lat, lon) {
   }
   updateLocationUI();
   updateMapMarker();
+  if (typeof refreshSizingValidity === 'function') refreshSizingValidity();
 }
 
 function updateMapMarker() {

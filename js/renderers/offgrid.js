@@ -23,6 +23,10 @@ function calcOffgridSizing() {
   AppState.lastOffgridSizingAnnual    = annual_conso;
   AppState.lastOffgridSizingTech      = tech;
   AppState.lastOffgridSizingHourly    = useHourly;
+  AppState.lastOffgridSizingInput     = input;
+  AppState.lastOffgridSizingContext   = typeof sizingContextFingerprint === 'function'
+    ? sizingContextFingerprint()
+    : null;
   renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, useHourly);
 
   // Commit git après dimensionnement hors-réseau
@@ -330,6 +334,12 @@ function selectOffgridCandidate(ppeak, battKwh) {
   const cand = list.find(c => Number(c.Ppeak) === p && Number(c.C_batt_gross) === b);
   if (!cand) {
     showToast('Configuration introuvable dans la matrice.', 'warning');
+    return;
+  }
+  // Candidats restaurés depuis un projet sont allégés (sans bilans mensuels) :
+  // la case heatmap reste cliquable pour info, mais le détail complet exige un recalcul.
+  if (!cand.monthly) {
+    showToast('Relancez Dimensionner pour explorer le détail des autres configs.', 'warning');
     return;
   }
   AppState.lastOffgridSizingResult = cand;

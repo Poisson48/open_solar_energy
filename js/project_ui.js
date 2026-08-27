@@ -64,7 +64,28 @@ function loadProject(id) {
   const project = ProjectManager.get(id);
   if (!project) return;
 
+  AppState._restoringProject = true;
   AppState.currentProjectId = project.id;
+  // Éviter de garder le dimensionnement du projet précédent (mémoire + UI)
+  if (typeof clearGridSizingResults === 'function') clearGridSizingResults();
+  else {
+    AppState.lastSizingResult = null;
+    AppState.lastSizingCandidates = null;
+    AppState.lastSizingInput = null;
+    AppState.lastSizingContext = null;
+  }
+  if (typeof clearOffgridSizingResults === 'function') clearOffgridSizingResults();
+  else {
+    AppState.lastOffgridSizingResult = null;
+    AppState.lastOffgridSizingRecommended = null;
+    AppState.lastOffgridSizingEconomic = null;
+    AppState.lastOffgridSizingCandidates = null;
+    AppState.lastOffgridSizingInput = null;
+    AppState.lastOffgridSizingContext = null;
+    AppState.lastOffgridSizingAnnual = null;
+    AppState.lastOffgridSizingTech = null;
+    AppState.lastOffgridSizingHourly = null;
+  }
   AppState.location = { ...project.location };
   if (project.weatherData) {
     AppState.weatherData = project.weatherData;
@@ -162,8 +183,8 @@ function loadProject(id) {
   showToast(`✓ Projet "${project.name}" chargé`);
 
   setTimeout(() => {
-    // Pas de calcul auto : le parcours est étape par étape (l’utilisateur clique Dimensionner).
-    // On rafraîchit seulement les affichages non décisifs.
+    // Pas de recalcul auto : on restaure le dimensionnement déjà calculé s’il est
+    // encore valide (mêmes paramètres influents), sinon placeholder.
     if (typeof calcGridPanels        === 'function') calcGridPanels();
     if (typeof renderIrradiationData === 'function') renderIrradiationData();
     if (typeof HourlyModule?.computeAllMonths === 'function' && AppState.hourlyEnedisData)
@@ -173,6 +194,9 @@ function loadProject(id) {
     });
     if (typeof updateQuoteTotals === 'function') updateQuoteTotals();
     updateDemoPrefillNote();
+    if (typeof restoreCalcResultsFromProject === 'function')
+      restoreCalcResultsFromProject(project);
+    AppState._restoringProject = false;
   }, 100);
 }
 
@@ -199,6 +223,15 @@ async function exportCurrentProject() {
     return;
   }
   await ProjectManager.exportOneZip(AppState.currentProjectId);
+}
+
+function shareCurrentProject() {
+  if (!AppState.currentProjectId) {
+    showToast('Sauvegardez d\'abord le projet avant de le partager.', 'warning');
+    return;
+  }
+  if (typeof openProjectShare === 'function') openProjectShare(AppState.currentProjectId);
+  else showToast('Partage indisponible.', 'error');
 }
 
 // ══════════════════════════════════════════════════════════════

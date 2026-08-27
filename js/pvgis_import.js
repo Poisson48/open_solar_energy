@@ -367,6 +367,7 @@ const PVGISImport = (() => {
       setStatus(`✓ ${source} - GHI annuel : ${Math.round(totalGHI)} kWh/m²/an`, 'success');
       showWeatherPreview(weather, source);
       if (typeof showToast === 'function') showToast(`☀️ Météo ${source} - ${Math.round(totalGHI)} kWh/m²/an`);
+      if (typeof refreshSizingValidity === 'function') refreshSizingValidity();
     } catch (err) {
       console.error(err);
       setStatus(`✗ Import météo échoué : ${err.message}`, 'error');

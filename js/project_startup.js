@@ -60,6 +60,8 @@ function showInstallationTypeStep() {
   document.getElementById('startup-step-new').style.display  = 'none';
   const load = document.getElementById('startup-step-load');
   if (load) load.style.display = 'none';
+  const sub = document.getElementById('ose-hub-sub');
+  if (sub) sub.textContent = 'Choisissez le type d’installation';
 }
 
 /** Nouveau projet : même hub, étape type d'installation */
@@ -80,6 +82,8 @@ function showNewProjectForm() {
   document.getElementById('startup-step-new').style.display  = '';
   const load = document.getElementById('startup-step-load');
   if (load) load.style.display = 'none';
+  const sub = document.getElementById('ose-hub-sub');
+  if (sub) sub.textContent = 'Nommez le projet et renseignez le client';
   document.getElementById('startup-project-name')?.focus();
 }
 
