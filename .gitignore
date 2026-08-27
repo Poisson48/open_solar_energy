@@ -48,6 +48,8 @@ desktop.ini
 # Tests
 coverage/
 validation/
+tests/artifacts/
+
 
 # Local memory (claude context)
 memory/
