@@ -10,7 +10,7 @@
   <script>document.addEventListener('DOMContentLoaded',function(){var b=document.getElementById('version-badge');if(b&&typeof APP_VERSION!=='undefined')b.textContent='v'+APP_VERSION+' - Open Source';});</script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <!-- ?v= : force le WebView Android à recharger le CSS après MAJ (sinon labels double) -->
-  <link rel="stylesheet" href="css/main.css?v=2.0.71">
+  <link rel="stylesheet" href="css/main.css?v=2.0.72">
 </head>
 <body class="ose-hub-active">
 
@@ -285,7 +285,7 @@
   <!-- ─── PANNEAU PRINCIPAL ─────────────────────────────────── -->
   <main class="main-panel">
 
-    <!-- Barre d'onglets — Site/Ombrage avant Dim / Hors réseau (ombrage 30 min) -->
+    <!-- Barre d'onglets — Dim/Hors réseau avant Analyse ; Site avant Dim -->
     <nav class="tabs-bar" role="tablist" aria-label="Parcours de calcul">
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-location" data-tab="location" data-tier="primary">
         <span class="tab-label-full"><span class="tab-number" aria-hidden="true">1</span>Lieu</span><span class="tab-label-short">Lieu</span>
@@ -302,14 +302,14 @@
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-grid" data-tab="grid" data-tier="primary">
         <span class="tab-label-full"><span class="tab-number" aria-hidden="true">4</span>Système PV</span><span class="tab-label-short">PV</span>
       </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-daily" data-tab="daily" data-tier="primary">
+        <span class="tab-label-full"><span class="tab-number" aria-hidden="true">5</span>Analyse</span><span class="tab-label-short">Anal.</span>
+      </button>
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-layout" data-tab="layout" data-tier="primary">
-        <span class="tab-label-full"><span class="tab-number" aria-hidden="true">5</span>Implantation</span><span class="tab-label-short">Implan.</span>
+        <span class="tab-label-full"><span class="tab-number" aria-hidden="true">6</span>Implantation</span><span class="tab-label-short">Implan.</span>
       </button>
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-cables" data-tab="cables" data-tier="primary">
-        <span class="tab-label-full"><span class="tab-number" aria-hidden="true">6</span>Câbles</span><span class="tab-label-short">Câbles</span>
-      </button>
-      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-daily" data-tab="daily" data-tier="primary">
-        <span class="tab-label-full"><span class="tab-number" aria-hidden="true">7</span>Analyse</span><span class="tab-label-short">Anal.</span>
+        <span class="tab-label-full"><span class="tab-number" aria-hidden="true">7</span>Câbles</span><span class="tab-label-short">Câbles</span>
       </button>
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-quote" data-tab="quote" data-tier="primary">
         <span class="tab-label-full"><span class="tab-number" aria-hidden="true">8</span>Devis</span><span class="tab-label-short">Devis</span>

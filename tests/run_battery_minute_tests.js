@@ -109,5 +109,35 @@ const keep2 = Array.from({ length: 12 }, () => new Float32Array(48).fill(0.5));
 PvProfiles.applySiteShade(pv3, daysTiny, { halfHourlyKeep: keep2, monthlyLoss: new Array(12).fill(0.9) });
 assert(Math.abs(pv3[0] - 0.5) < 1e-6, 'applySiteShade utilise halfHourlyKeep (0.5)');
 
+const twoH = [0.5, 0.4, 0.3, 0.5, 0.8, 1.0, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5]; // sum 8
+const flat2h = PvProfiles.buildTwoHourLoadYear(null, twoH, 2023);
+assert(!!flat2h && flat2h.length >= 48 * 365, 'buildTwoHourLoadYear longueur');
+const day2h = Array.from(flat2h.slice(0, 48)).reduce((a, b) => a + b, 0);
+assert(Math.abs(day2h - 8) < 0.05, `profil 2h jour ≈ 8 kWh (${day2h.toFixed(2)})`);
+const nightFrom2h = PvProfiles.nightKwhFromTwoHour(twoH);
+assert(nightFrom2h > 1.5 && nightFrom2h < 3, `nuit depuis 2h ≈ 2 (${nightFrom2h.toFixed(2)})`);
+
+// Offgrid : jour/nuit dicte plancher batterie
+const wx = Array.from({ length: 12 }, (_, i) => ({
+  GHI: 80 + i * 5, DHI: 30, T_avg: 15,
+}));
+ctx.AppState.weatherData = wx;
+ctx.AppState.location = { lat: 43.6, lon: 1.4 };
+ctx.AppState.siteSurvey = null;
+ctx.AppState.hourlyEnedisData = null;
+ctx.AppState.hourlyWeatherData = null;
+const inputDN = {
+  site: { tilt: 30, azimuth: 0, maxSurfaceM2: 40, panelWattPeak: 400, panelSurfaceM2: 1.96, losses: 14, nPanelsFixed: 0 },
+  conso: { dailyWh: new Array(12).fill(0), dayKwhPerDay: 8, nightKwhPerDay: 4, twoHourKwh: null },
+  battery: { type: 'lfp', capacityKwh: 0 },
+  sizing: { targetCoveragePct: 90, pvCostPerKwp: 650, bosCost: 500 },
+};
+const out = OffgridSizing.run(inputDN, wx, 43.6);
+assert(!!out.recommended, 'offgrid jour/nuit → recommandation');
+assert(out.minBattFromNight >= 4 / 0.8 - 0.2, `plancher batt. nuit (${out.minBattFromNight})`);
+assert(out.recommended.C_batt_gross + 0.05 >= out.minBattFromNight,
+  `batt. reco ≥ plancher nuit (${out.recommended.C_batt_gross} ≥ ${out.minBattFromNight})`);
+assert(out.loadSource === 'day_night', `loadSource day_night (${out.loadSource})`);
+
 console.log(fails === 0 ? '\nOK\n' : `\n${fails} échec(s)\n`);
 process.exit(fails === 0 ? 0 : 1);

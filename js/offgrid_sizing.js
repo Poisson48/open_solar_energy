@@ -282,7 +282,15 @@ const OffgridSizing = (() => {
     );
 
     // Consommation journalière par mois (Wh/j)
-    const dailyConso = Array.from({length:12}, (_, i) => conso.dailyWh[i] || conso.dailyWh[0]);
+    let dailyConso = Array.from({length:12}, (_, i) => conso.dailyWh[i] || conso.dailyWh[0]);
+    const dayK = Math.max(0, Number(conso.dayKwhPerDay) || 0);
+    const nightK = Math.max(0, Number(conso.nightKwhPerDay) || 0);
+    const twoHour = Array.isArray(conso.twoHourKwh) ? conso.twoHourKwh : null;
+    const twoHourSum = twoHour ? twoHour.reduce((a, b) => a + (Number(b) || 0), 0) : 0;
+    if ((!dailyConso.some(v => v > 0)) && (twoHourSum > 0 || dayK + nightK > 0)) {
+      const wh = (twoHourSum > 0 ? twoHourSum : (dayK + nightK)) * 1000;
+      dailyConso = Array.from({ length: 12 }, () => wh);
+    }
     const knownYearEarly = AppState.hourlyEnedisData?.year || AppState.enedisYear || null;
     const daysEarly      = knownYearEarly ? getMonthlyDays(knownYearEarly) : DAYS;
     const annual_conso   = dailyConso.reduce((s, v, i) => s + v * daysEarly[i], 0) / 1000;
@@ -306,6 +314,18 @@ const OffgridSizing = (() => {
       const step = fullAutonomy ? 0.25 : 0.5;
       for (let p = 0.5; p <= PpeakMax + 0.01; p = Math.round((p + step) * 100) / 100) ppeaks.push(p);
     }
+    // Capacité batterie : calée sur la conso de NUIT (pas de PV 21h–6h)
+    let nightKwhTyp = nightK;
+    if (twoHourSum > 0 && typeof PvProfiles !== 'undefined' && PvProfiles.nightKwhFromTwoHour)
+      nightKwhTyp = Math.max(nightKwhTyp, PvProfiles.nightKwhFromTwoHour(twoHour));
+    if (nightKwhTyp <= 0 && (dayK + nightK) <= 0) {
+      // Sans split : ~40 % du jour type en « nuit » (profil résidentiel)
+      nightKwhTyp = Math.max(...dailyConso) / 1000 * 0.4;
+    }
+    const minBattFromNight = nightKwhTyp > 0
+      ? Math.ceil((nightKwhTyp / Math.max(0.4, tech.dod)) * 10) / 10
+      : 1;
+
     // Plafond batterie : en mode autonomie totale, il faut couvrir des semaines sans soleil
     // → jusqu'à 15× la conso journalière max (au lieu de 5×), et jusqu'à 300 kWh
     let maxDailyKwh = Math.max(...dailyConso) / 1000;
@@ -320,10 +340,14 @@ const OffgridSizing = (() => {
     const battCeil   = Math.min(ceiling, Math.max(10, Math.ceil(maxDailyKwh * multiplier)));
     const fullBatts  = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50, 60, 75, 100, 125, 150, 200, 250, 300];
     // Capacité saisie par l'utilisateur → une seule valeur ; sinon recherche auto
+    // (plancher = 1 nuit de conso / DoD pour ne pas sous-dimensionner)
     const fixedBatt  = battery.capacityKwh > 0 ? battery.capacityKwh : null;
     const batts      = fixedBatt
       ? [Math.round(fixedBatt * 10) / 10]
-      : fullBatts.filter(b => b <= battCeil);
+      : fullBatts.filter(b => b <= battCeil && b + 0.05 >= minBattFromNight);
+    if (!fixedBatt && batts.length === 0) {
+      batts.push(Math.min(battCeil, Math.max(minBattFromNight, 1)));
+    }
 
     const allCandidates = [];
 
@@ -351,9 +375,20 @@ const OffgridSizing = (() => {
     );
 
     const monthlyKwhFromDaily = dailyConso.map((whDay, i) => (whDay / 1000) * (daysArr[i] || 30));
-    const loadSlots = hasEnedisSlots
-      ? enedis.halfHourly
-      : PvProfiles.buildSyntheticLoadYear(monthlyKwhFromDaily, yearForDays);
+    let loadSlots;
+    let loadSource = 'synthetic_diurnal';
+    if (hasEnedisSlots) {
+      loadSlots = enedis.halfHourly;
+      loadSource = 'enedis_30min';
+    } else if (twoHourSum > 0) {
+      loadSlots = PvProfiles.buildTwoHourLoadYear(monthlyKwhFromDaily, twoHour, yearForDays);
+      loadSource = 'two_hour';
+    } else if (dayK > 0 || nightK > 0) {
+      loadSlots = PvProfiles.buildDayNightLoadYear(monthlyKwhFromDaily, dayK, nightK, yearForDays);
+      loadSource = 'day_night';
+    } else {
+      loadSlots = PvProfiles.buildSyntheticLoadYear(monthlyKwhFromDaily, yearForDays);
+    }
 
     ppeaks.forEach(Ppeak => {
       batts.forEach(C_batt_gross => {
@@ -418,10 +453,22 @@ const OffgridSizing = (() => {
         .sort((a, b) => a.systemCost - b.systemCost)[0];
     }
 
-    const useHourly = !!(AppState.hourlyEnedisData);
+    const useHourly = loadSource === 'enedis_30min';
     // Préférer la conso réelle Enedis (slot-par-slot) à la conso formulaire
     const real_annual_conso = recommended?.total_conso ?? Math.round(annual_conso);
-    return { recommended, economic, allCandidates, monthlyHtilt, tech, annual_conso: real_annual_conso, useHourly };
+    if (recommended) {
+      recommended.loadSource = loadSource;
+      recommended.minBattFromNight = minBattFromNight;
+      recommended.nightKwhTyp = Math.round(nightKwhTyp * 100) / 100;
+      recommended.siteShadeApplied = !!(
+        (typeof AppState !== 'undefined') &&
+        (AppState.siteSurvey?.halfHourlyKeep?.length === 12 || AppState.siteSurvey?.monthlyLoss?.length === 12)
+      );
+    }
+    return {
+      recommended, economic, allCandidates, monthlyHtilt, tech,
+      annual_conso: real_annual_conso, useHourly, loadSource, minBattFromNight,
+    };
   }
 
   // ── Lecture du formulaire ─────────────────────────────────────
@@ -436,11 +483,18 @@ const OffgridSizing = (() => {
       return isNaN(v) ? null : v;
     };
 
-    // Consommation mensuelle (Wh/j par mois, ou uniforme si non renseigné)
+    // Consommation : Wh/j mensuel, ou dérivé jour/nuit / profil 2 h
     const defaultDay = getVal('og2-daily-default');
-    const dailyWh = Array.from({length:12}, (_, i) => {
-      const v = getVal(`og2-day-${i+1}`);
-      return v > 0 ? v : defaultDay;
+    const dayKwh = getVal('og2-load-day');
+    const nightKwh = getVal('og2-load-night');
+    const twoHourKwh = Array.from({ length: 12 }, (_, i) => getVal(`og2-2h-${i}`));
+    const twoHourSum = twoHourKwh.reduce((a, b) => a + b, 0);
+    const fromDayNightWh = (dayKwh + nightKwh) > 0 ? (dayKwh + nightKwh) * 1000 : 0;
+    const fromTwoHourWh = twoHourSum > 0 ? twoHourSum * 1000 : 0;
+    const fallbackWh = defaultDay || fromTwoHourWh || fromDayNightWh;
+    const dailyWh = Array.from({ length: 12 }, (_, i) => {
+      const v = getVal(`og2-day-${i + 1}`);
+      return v > 0 ? v : fallbackWh;
     });
 
     const fixeMode  = document.getElementById('og2-pmode-fixe')?.classList.contains('active');
@@ -459,7 +513,12 @@ const OffgridSizing = (() => {
         nPanelsFixed,
         tech: (typeof AppState !== 'undefined' && AppState.install?.tech) || 'crystSi'
       },
-      conso: { dailyWh },
+      conso: {
+        dailyWh,
+        dayKwhPerDay: dayKwh,
+        nightKwhPerDay: nightKwh,
+        twoHourKwh: twoHourSum > 0 ? twoHourKwh : null,
+      },
       battery: {
         type: getStr('og2-batt-tech') || 'lfp',
         capacityKwh: getVal('og2-batt-kwh') || 0

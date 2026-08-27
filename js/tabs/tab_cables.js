@@ -199,7 +199,7 @@ function initTabCables() {
 
       <div class="ose-journey-nav">
         <button type="button" class="btn btn-outline" onclick="goNextPrimaryTab()">Passer →</button>
-        <button type="button" class="btn btn-primary" onclick="goNextPrimaryTab()">Continuer → Analyse</button>
+        <button type="button" class="btn btn-primary" onclick="goNextPrimaryTab()">Continuer → Devis</button>
       </div>
 
     </div>`;

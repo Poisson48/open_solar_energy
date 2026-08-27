@@ -15,8 +15,8 @@ const TABS_GRID_ONLY    = ['sizing', 'grid', 'tracker', 'optimizer'];
 const TABS_OFFGRID_ONLY = ['offgrid'];
 const GRID_LIKE_TYPES   = ['grid', 'hybrid'];
 /** Ordre du parcours principal (Devis toujours en dernier). */
-const PRIMARY_FLOW_GRID    = ['location', 'site', 'sizing', 'grid', 'layout', 'cables', 'daily', 'quote'];
-const PRIMARY_FLOW_OFFGRID = ['location', 'site', 'offgrid', 'layout', 'cables', 'daily', 'quote'];
+const PRIMARY_FLOW_GRID    = ['location', 'site', 'sizing', 'grid', 'daily', 'layout', 'cables', 'quote'];
+const PRIMARY_FLOW_OFFGRID = ['location', 'site', 'offgrid', 'daily', 'layout', 'cables', 'quote'];
 // Libellés lisibles installateur (badge + menu déroulant barre projet)
 const INSTALL_TYPE_LABELS = { grid: 'Réseau', hybrid: 'Hybride', offgrid: 'Autonome' };
 const PRIMARY_TAB_LABELS = {
@@ -45,14 +45,15 @@ function peekNextPrimaryTab() {
   return null;
 }
 
-/** Met à jour le libellé « Continuer → … » de l’onglet Site. */
+/** Met à jour les libellés « Continuer → … » (Site, Hors réseau, Analyse). */
 function refreshJourneyNavLabels() {
   const next = peekNextPrimaryTab();
-  const el = document.getElementById('site-journey-next');
-  if (!el) return;
-  el.textContent = next
-    ? `Continuer → ${PRIMARY_TAB_LABELS[next] || next}`
-    : 'Continuer →';
+  const label = next ? (PRIMARY_TAB_LABELS[next] || next) : null;
+  ['site-journey-next', 'offgrid-journey-next', 'daily-journey-next'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = label ? `Continuer → ${label}` : 'Continuer →';
+  });
 }
 
 /** Passe à l’onglet primary suivant visible (skip libre). */

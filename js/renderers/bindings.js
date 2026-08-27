@@ -39,10 +39,35 @@ function bindBatteryInfo(prefix = 'og2') {
     const usableStr = capacity > 0
       ? ` · <strong>${Math.round(capacity * tech.dod * 10) / 10} kWh utiles</strong> sur ${capacity} kWh brut`
       : '';
-    el.innerHTML = `DoD ${tech.dod * 100}% · η ${tech.eta * 100}% · ${tech.cycles} cycles · ~${tech.costPerKwh} €/kWh${bmsStr}${usableStr}`;
+
+    let nightHint = '';
+    if (prefix === 'og2') {
+      const day = parseFloat(document.getElementById('og2-load-day')?.value) || 0;
+      const night = parseFloat(document.getElementById('og2-load-night')?.value) || 0;
+      let nightK = night;
+      if (nightK <= 0 && typeof PvProfiles !== 'undefined') {
+        const twoH = Array.from({ length: 12 }, (_, i) =>
+          parseFloat(document.getElementById(`og2-2h-${i}`)?.value) || 0);
+        if (twoH.some(v => v > 0)) nightK = PvProfiles.nightKwhFromTwoHour(twoH);
+      }
+      if (nightK > 0) {
+        const minGross = Math.ceil((nightK / tech.dod) * 10) / 10;
+        nightHint = `<br>Nuit <strong>${nightK.toFixed(1)} kWh</strong> (PV=0) → batterie brute min ≈ <strong>${minGross} kWh</strong> (1 nuit).`;
+        if (!(capacity > 0))
+          nightHint += ' Laissez vide pour rechercher au-dessus de ce plancher.';
+      }
+    }
+
+    el.innerHTML = `DoD ${tech.dod * 100}% · η ${tech.eta * 100}% · ${tech.cycles} cycles · ~${tech.costPerKwh} €/kWh${bmsStr}${usableStr}${nightHint}`;
   }
   sel.addEventListener('change', update);
   kwhInput?.addEventListener('input', update);
+  if (prefix === 'og2') {
+    ['og2-load-day', 'og2-load-night',
+      ...Array.from({ length: 12 }, (_, i) => `og2-2h-${i}`)].forEach(id => {
+      document.getElementById(id)?.addEventListener('input', update);
+    });
+  }
   update();
 }
 
@@ -94,17 +119,53 @@ function bindSizingLiveTotal() {
 function bindOffgridLiveTotal() {
   const defInput    = document.getElementById('og2-daily-default');
   const monthInputs = Array.from({length: 12}, (_, i) => document.getElementById(`og2-day-${i + 1}`));
+  const dayEl = document.getElementById('og2-load-day');
+  const nightEl = document.getElementById('og2-load-night');
+  const hintEl = document.getElementById('og2-daynight-hint');
+  const twoHInputs = Array.from({ length: 12 }, (_, i) => document.getElementById(`og2-2h-${i}`));
   function update() {
     const def   = parseFloat(defInput?.value) || 0;
-    const total = monthInputs.reduce((s, el, i) => {
+    const day = parseFloat(dayEl?.value) || 0;
+    const night = parseFloat(nightEl?.value) || 0;
+    const dailyDN = day + night;
+    const twoHSum = twoHInputs.reduce((s, el) => s + (parseFloat(el?.value) || 0), 0);
+    const monthSumWh = monthInputs.reduce((s, el, i) => {
       const v = parseFloat(el?.value) || 0;
       return s + (v > 0 ? v : def) * DAYS_IN_MONTH[i];
-    }, 0) / 1000;
+    }, 0);
+    const fromDN = dailyDN > 0 ? dailyDN * 365 : 0;
+    const from2h = twoHSum > 0 ? twoHSum * 365 : 0;
+    const total = monthSumWh > 0
+      ? monthSumWh / 1000
+      : (from2h || fromDN);
     const el = document.getElementById('og2-annual-total');
-    if (el) el.textContent = `Total annuel : ${Math.round(total).toLocaleString('fr')} kWh/an`;
+    if (el) {
+      let txt = `Total annuel : ${Math.round(total).toLocaleString('fr')} kWh/an`;
+      if (monthSumWh <= 0 && from2h > 0) txt += ' (profil 2 h × 365)';
+      else if (monthSumWh <= 0 && fromDN > 0) txt += ' (jour/nuit × 365)';
+      else if (monthSumWh > 0 && dailyDN > 0)
+        txt += ` · profil ${day.toFixed(1)}/${night.toFixed(1)} kWh/j`;
+      el.textContent = txt;
+    }
+    if (hintEl) {
+      if (twoHSum > 0) {
+        const nK = (typeof PvProfiles !== 'undefined')
+          ? PvProfiles.nightKwhFromTwoHour(twoHInputs.map(e => parseFloat(e?.value) || 0))
+          : 0;
+        hintEl.textContent = `Profil 2 h : ${twoHSum.toFixed(1)} kWh/j dont ~${nK.toFixed(1)} kWh la nuit → batterie dimensionnée sur la nuit.`;
+      } else if (dailyDN <= 0) {
+        hintEl.textContent = 'Recommandé pour la batterie : ex. 8 kWh jour + 4 kWh nuit. Sinon Wh/j, profil 2 h ou Enedis.';
+      } else {
+        const pctN = Math.round(100 * night / dailyDN);
+        hintEl.textContent = `≈ ${day.toFixed(1)} kWh le jour + ${night.toFixed(1)} kWh la nuit (${pctN} % nuit) — la batterie couvre surtout la nuit.`;
+      }
+    }
   }
   defInput?.addEventListener('input', update);
   monthInputs.forEach(el => el?.addEventListener('input', update));
+  dayEl?.addEventListener('input', update);
+  nightEl?.addEventListener('input', update);
+  twoHInputs.forEach(el => el?.addEventListener('input', update));
   update();
 }
 

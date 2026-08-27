@@ -45,15 +45,15 @@ function versionCodeFromName(name) {
 
 console.log('\n═══ Updater / versions Android ═══');
 
-assert(isNewer('2.0.71', '2.0.69'), '2.0.71 > 2.0.69');
-assert(!isNewer('2.0.69', '2.0.71'), '2.0.69 ≯ 2.0.71');
-assert(isNewer('v2.0.71', '2.0.69'), 'strip v');
-assert(!isNewer('2.0.71', '2.0.71'), 'égal → pas newer');
+assert(isNewer('2.0.72', '2.0.69'), '2.0.72 > 2.0.69');
+assert(!isNewer('2.0.69', '2.0.72'), '2.0.69 ≯ 2.0.72');
+assert(isNewer('v2.0.72', '2.0.69'), 'strip v');
+assert(!isNewer('2.0.72', '2.0.72'), 'égal → pas newer');
 assert(isNewer('2.1.0', '2.0.99'), 'mineur gagne');
-assert(versionCodeFromName('2.0.71') === 20071, 'versionCode 2.0.71 → 20071');
+assert(versionCodeFromName('2.0.72') === 20072, 'versionCode 2.0.72 → 20072');
 assert(versionCodeFromName('2.0.69') === 20069, 'versionCode 2.0.69 → 20069');
-assert(versionCodeFromName('2.0.71') > versionCodeFromName('2.0.69'), 'codes monotones');
-assert(versionCodeFromName('2.0.71') > 185, 'code marketing > ancien git-count (~185)');
+assert(versionCodeFromName('2.0.72') > versionCodeFromName('2.0.69'), 'codes monotones');
+assert(versionCodeFromName('2.0.72') > 185, 'code marketing > ancien git-count (~185)');
 
 const releaseYml = fs.readFileSync(path.join(ROOT, '.github/workflows/release.yml'), 'utf8');
 assert(!/git rev-list --count HEAD/.test(releaseYml),
@@ -62,8 +62,8 @@ assert(/10000/.test(releaseYml) && /versionCode/.test(releaseYml),
   'release.yml : formule XXYYZZ présente');
 
 const man = fs.readFileSync(path.join(ROOT, 'android/AndroidManifest.xml'), 'utf8');
-assert(/android:versionCode="20071"/.test(man), 'manifest versionCode=20071');
-assert(/android:versionName="2\.0\.71"/.test(man), 'manifest versionName=2.0.71');
+assert(/android:versionCode="20072"/.test(man), 'manifest versionCode=20072');
+assert(/android:versionName="2\.0\.72"/.test(man), 'manifest versionName=2.0.72');
 assert(/InstallCallbackActivity/.test(man), 'InstallCallbackActivity déclarée');
 assert(/ApkFileProvider/.test(man), 'ApkFileProvider déclaré');
 assert(/android:exported="false"[\s\S]*InstallReceiver|InstallReceiver[\s\S]*android:exported="false"/.test(man)
@@ -94,7 +94,7 @@ assert(/weatherMeta/.test(pui) && /weatherMeta/.test(fs.readFileSync(path.join(R
   'weatherMeta persisté dans le projet');
 
 const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-assert(/main\.css\?v=2\.0\.71/.test(idx), 'CSS cache-bust ?v=2.0.71');
+assert(/main\.css\?v=2\.0\.72/.test(idx), 'CSS cache-bust ?v=2.0.72');
 assert(/setSizingLimitMode/.test(pui) || /setSizingLimitMode/.test(fs.readFileSync(path.join(ROOT, 'js/renderers/sizing.js'), 'utf8')),
   'modes limite dimensionnement');
 const tabSz = fs.readFileSync(path.join(ROOT, 'js/tabs/tab_sizing.js'), 'utf8');
@@ -115,16 +115,27 @@ const gridIdx = primaryTabs.indexOf('grid');
 const offgridIdx = primaryTabs.indexOf('offgrid');
 assert(primaryTabs[0] === 'location' && primaryTabs[1] === 'site',
   'ordre DOM : Lieu → Site');
-assert(siteIdx < offgridIdx && siteIdx < sizingIdx && sizingIdx < gridIdx && gridIdx < quoteIdx,
-  'ordre Site → Dim/Hors réseau → PV → … → Devis');
+const dailyIdx = primaryTabs.indexOf('daily');
+const layoutIdx = primaryTabs.indexOf('layout');
+assert(siteIdx < offgridIdx && siteIdx < sizingIdx && sizingIdx < gridIdx,
+  'ordre Site → Dim/Hors réseau → PV');
+assert(offgridIdx < dailyIdx && sizingIdx < dailyIdx && dailyIdx < layoutIdx && layoutIdx < quoteIdx,
+  'Dim/Hors réseau → Analyse → Implantation → … → Devis');
 assert(offgridIdx < quoteIdx, 'Hors réseau avant Devis');
-assert(quoteIdx > primaryTabs.indexOf('daily'),
-  'Devis après Analyse');
+assert(quoteIdx > dailyIdx, 'Devis après Analyse');
 const mainJs = fs.readFileSync(path.join(ROOT, 'js/main.js'), 'utf8');
 assert(/function goNextPrimaryTab/.test(mainJs) && /PRIMARY_FLOW_GRID/.test(mainJs),
   'goNextPrimaryTab + PRIMARY_FLOW_GRID');
-assert(/PRIMARY_FLOW_OFFGRID.*site.*offgrid|location', 'site', 'offgrid'/.test(mainJs.replace(/\s+/g, ' ')),
-  'flow autonome : Site avant Hors réseau');
+assert(/'location', 'site', 'offgrid', 'daily'/.test(mainJs.replace(/\s+/g, ' ')),
+  'flow autonome : Site → Hors réseau → Analyse');
+assert(/og2-load-day/.test(fs.readFileSync(path.join(ROOT, 'js/tabs/tab_offgrid.js'), 'utf8')),
+  'UI autonome conso jour/nuit');
+assert(/og2-2h-\$\{i\}|og2-2h-0/.test(fs.readFileSync(path.join(ROOT, 'js/tabs/tab_offgrid.js'), 'utf8')),
+  'UI autonome profil 2 h');
+assert(/buildTwoHourLoadYear/.test(fs.readFileSync(path.join(ROOT, 'js/pv_profiles.js'), 'utf8')),
+  'buildTwoHourLoadYear');
+assert(/minBattFromNight/.test(fs.readFileSync(path.join(ROOT, 'js/offgrid_sizing.js'), 'utf8')),
+  'plancher batterie depuis conso nuit');
 assert(/ose-journey-nav/.test(fs.readFileSync(path.join(ROOT, 'js/tabs/tab_site.js'), 'utf8')),
   'Passer/Continuer sur Site');
 assert(/Appliquer au dimensionnement/.test(fs.readFileSync(path.join(ROOT, 'js/tabs/tab_site.js'), 'utf8')),
@@ -157,6 +168,7 @@ assert(/Cache-Control: no-store/.test(host), 'WebHost : no-store pour html/css/j
 
 const appState = fs.readFileSync(path.join(ROOT, 'js/app_state.js'), 'utf8');
 assert(/OSE_RELEASE_FEED/.test(appState), 'notes embarquées OSE_RELEASE_FEED');
+assert(/og2-load-day/.test(appState), 'persist conso jour autonome');
 assert(!/Impossible de charger les news/.test(pui), 'plus de message d’échec news utilisateur');
 assert(/_fetchHubReleasesFromAtom/.test(pui), 'fallback Atom GitHub');
 assert(/_bundledHubReleases/.test(pui), 'fallback notes embarquées');
