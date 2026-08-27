@@ -45,15 +45,15 @@ function versionCodeFromName(name) {
 
 console.log('\n═══ Updater / versions Android ═══');
 
-assert(isNewer('2.0.69', '2.0.68'), '2.0.69 > 2.0.68');
-assert(!isNewer('2.0.68', '2.0.69'), '2.0.68 ≯ 2.0.69');
-assert(isNewer('v2.0.69', '2.0.68'), 'strip v');
-assert(!isNewer('2.0.69', '2.0.69'), 'égal → pas newer');
+assert(isNewer('2.0.70', '2.0.69'), '2.0.70 > 2.0.69');
+assert(!isNewer('2.0.69', '2.0.70'), '2.0.69 ≯ 2.0.70');
+assert(isNewer('v2.0.70', '2.0.69'), 'strip v');
+assert(!isNewer('2.0.70', '2.0.70'), 'égal → pas newer');
 assert(isNewer('2.1.0', '2.0.99'), 'mineur gagne');
+assert(versionCodeFromName('2.0.70') === 20070, 'versionCode 2.0.70 → 20070');
 assert(versionCodeFromName('2.0.69') === 20069, 'versionCode 2.0.69 → 20069');
-assert(versionCodeFromName('2.0.68') === 20068, 'versionCode 2.0.68 → 20068');
-assert(versionCodeFromName('2.0.69') > versionCodeFromName('2.0.68'), 'codes monotones');
-assert(versionCodeFromName('2.0.69') > 185, 'code marketing > ancien git-count (~185)');
+assert(versionCodeFromName('2.0.70') > versionCodeFromName('2.0.69'), 'codes monotones');
+assert(versionCodeFromName('2.0.70') > 185, 'code marketing > ancien git-count (~185)');
 
 const releaseYml = fs.readFileSync(path.join(ROOT, '.github/workflows/release.yml'), 'utf8');
 assert(!/git rev-list --count HEAD/.test(releaseYml),
@@ -62,8 +62,8 @@ assert(/10000/.test(releaseYml) && /versionCode/.test(releaseYml),
   'release.yml : formule XXYYZZ présente');
 
 const man = fs.readFileSync(path.join(ROOT, 'android/AndroidManifest.xml'), 'utf8');
-assert(/android:versionCode="20069"/.test(man), 'manifest versionCode=20069');
-assert(/android:versionName="2\.0\.69"/.test(man), 'manifest versionName=2.0.69');
+assert(/android:versionCode="20070"/.test(man), 'manifest versionCode=20070');
+assert(/android:versionName="2\.0\.70"/.test(man), 'manifest versionName=2.0.70');
 assert(/InstallCallbackActivity/.test(man), 'InstallCallbackActivity déclarée');
 assert(/ApkFileProvider/.test(man), 'ApkFileProvider déclaré');
 assert(/android:exported="false"[\s\S]*InstallReceiver|InstallReceiver[\s\S]*android:exported="false"/.test(man)
@@ -94,7 +94,7 @@ assert(/weatherMeta/.test(pui) && /weatherMeta/.test(fs.readFileSync(path.join(R
   'weatherMeta persisté dans le projet');
 
 const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-assert(/main\.css\?v=2\.0\.69/.test(idx), 'CSS cache-bust ?v=2.0.69');
+assert(/main\.css\?v=2\.0\.70/.test(idx), 'CSS cache-bust ?v=2.0.70');
 assert(/setSizingLimitMode/.test(pui) || /setSizingLimitMode/.test(fs.readFileSync(path.join(ROOT, 'js/renderers/sizing.js'), 'utf8')),
   'modes limite dimensionnement');
 const tabSz = fs.readFileSync(path.join(ROOT, 'js/tabs/tab_sizing.js'), 'utf8');
@@ -112,10 +112,13 @@ const quoteIdx = primaryTabs.indexOf('quote');
 const sizingIdx = primaryTabs.indexOf('sizing');
 const siteIdx = primaryTabs.indexOf('site');
 const gridIdx = primaryTabs.indexOf('grid');
+assert(primaryTabs[0] === 'location' && primaryTabs[1] === 'offgrid' && primaryTabs[2] === 'sizing',
+  'ordre DOM : Lieu → Hors réseau → Dim.');
 assert(sizingIdx < siteIdx && siteIdx < gridIdx && gridIdx < quoteIdx,
   'ordre Dim → Site → PV → … → Devis');
-assert(primaryTabs[primaryTabs.length - 1] === 'offgrid' || primaryTabs.filter(t => t !== 'offgrid').pop() === 'quote'
-  || quoteIdx > primaryTabs.indexOf('daily'),
+assert(primaryTabs.indexOf('offgrid') < primaryTabs.indexOf('quote'),
+  'Hors réseau avant Devis');
+assert(quoteIdx > primaryTabs.indexOf('daily'),
   'Devis après Analyse');
 const mainJs = fs.readFileSync(path.join(ROOT, 'js/main.js'), 'utf8');
 assert(/function goNextPrimaryTab/.test(mainJs) && /PRIMARY_FLOW_GRID/.test(mainJs),
