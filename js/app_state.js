@@ -3,9 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.67';
+const APP_VERSION = '2.0.68';
 /** Notes embarquées (hub) — utilisées si GitHub API/Atom indisponibles (403, offline). */
 const OSE_RELEASE_FEED = [
+  { ver: '2.0.68', notes: 'Parcours onglets B : Lieu→Dim→Site→PV→Implantation→Câbles→Analyse→Devis (dernier) ; skip sur étapes avancées.' },
   { ver: '2.0.67', notes: 'Hotfix : bandeau « Projet démo » invisible hors démos (CSS + ids démo uniquement).' },
   { ver: '2.0.66', notes: 'Dimensionnement : Objectif / Toiture L×l / Nb. fixe ; jour/nuit toujours visible ; clarif. autoconso ≠ couverture.' },
   { ver: '2.0.65', notes: 'Hub : news fiables via flux Atom GitHub et notes embarquées (plus d’écran d’échec réseau).' },
@@ -13,9 +14,9 @@ const OSE_RELEASE_FEED = [
   { ver: '2.0.63', notes: 'MAJ : plus de fallback « ouvrir APK navigateur » ; install via AppImage / Android uniquement.' },
   { ver: '2.0.62', notes: 'Audit clic des mises à jour PC + tablette.' },
   { ver: '2.0.61', notes: 'Audit clic-par-clic desktop / tablette / téléphone.' },
-  { ver: '2.0.60', notes: 'Batterie minute + nuit ; MAJ Android PackageInstaller ; UI téléphone sans débordement.' },
 ];
 // Historique :
+//   2.0.68 - Parcours B : 8 onglets primary, Devis en dernier, Passer/Continuer
 //   2.0.67 - Hotfix bandeau démo : display:none par défaut + is-visible
 //            seulement pour demo_ose_v2 / demo_ose_hybrid_v1
 //   2.0.66 - Dimensionnement : surface non obligatoire ; modes Objectif /

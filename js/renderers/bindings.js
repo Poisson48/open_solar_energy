@@ -408,10 +408,10 @@ function bindSharedParamSync() {
       const full = advToggle.querySelector('.tab-label-full');
       const short = advToggle.querySelector('.tab-label-short');
       if (full && short) {
-        full.textContent = showAdv ? 'Masquer outils' : 'Outils avancés';
+        full.textContent = showAdv ? 'Masquer' : 'Plus';
         short.textContent = showAdv ? 'Moins' : 'Plus';
       } else {
-        advToggle.textContent = showAdv ? 'Masquer outils avancés' : 'Outils avancés';
+        advToggle.textContent = showAdv ? 'Masquer' : 'Plus';
       }
       advToggle.setAttribute('aria-expanded', showAdv ? 'true' : 'false');
     };

@@ -138,6 +138,10 @@ function initTabLayout() {
             ⚠️ Le tableau de panneaux dépasse la surface de toiture disponible — réduisez le nombre de panneaux, augmentez les rangées ou agrandissez la toiture.
           </div>
         </div>
+        <div class="ose-journey-nav">
+          <button type="button" class="btn btn-outline" onclick="goNextPrimaryTab()">Passer →</button>
+          <button type="button" class="btn btn-primary" onclick="goNextPrimaryTab()">Continuer → Câbles</button>
+        </div>
       </div>
 
     </div>`;

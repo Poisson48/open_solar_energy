@@ -329,7 +329,8 @@ const CablesUI = (() => {
     }
 
     showToast('✓ Ligne de câblage envoyée au devis');
-    if (typeof activateTab === 'function') activateTab('quote');
+    if (typeof goNextPrimaryTab === 'function') goNextPrimaryTab();
+    else if (typeof activateTab === 'function') activateTab('daily');
   }
 
   return {
