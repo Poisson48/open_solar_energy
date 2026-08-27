@@ -3,8 +3,9 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.48';
+const APP_VERSION = '2.0.49';
 // Historique :
+//   2.0.49 - PC : Installer applique l’AppImage (plus d’ouverture GitHub)
 //   2.0.48 - PC : croix / Alt+F4 quitte vraiment (fix Main.qml manquant en 2.0.47)
 //   2.0.47 - PC : croix / Alt+F4 quitte vraiment (plus de flux retour Android)
 //   2.0.46 - UI PC : hub plein écran 2 colonnes, plus de bandes latérales

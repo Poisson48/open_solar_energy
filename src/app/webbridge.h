@@ -20,6 +20,8 @@ public slots:
     bool openPdfFromUrl(const QString& url);
     QString openFileDialog();
     void checkForUpdates();
+    /** Hub web « Mettre à jour » / Installer → Updater::startUpdate. */
+    void startUpdate();
     QJsonObject gitSave(const QString& projectId, const QString& projectJson, const QString& message);
     QJsonArray gitLog(const QString& projectId);
     QString gitCheckout(const QString& projectId, const QString& hash);
@@ -30,6 +32,7 @@ public slots:
 
 signals:
     void checkUpdatesRequested();
+    void startUpdateRequested();
 
 private:
     QString projectDir(const QString& projectId) const;
