@@ -163,6 +163,7 @@ const AppAPI = (() => {
    */
   function setWeatherData(data) {
     AppState.weatherData = data;
+    if (typeof updateWizardIntroStatus === 'function') updateWizardIntroStatus();
     return AppAPI;
   }
 

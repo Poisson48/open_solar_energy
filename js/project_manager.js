@@ -76,10 +76,13 @@ const ProjectManager = (() => {
     return list().find(p => p.id === id) || null;
   }
 
-  function save(project) {
+  function save(project, opts = {}) {
     const projects = list();
     const idx = projects.findIndex(p => p.id === project.id);
-    project.updatedAt = new Date().toISOString();
+    if (!opts.keepUpdatedAt)
+      project.updatedAt = new Date().toISOString();
+    else if (!project.updatedAt)
+      project.updatedAt = new Date().toISOString();
     if (idx >= 0) {
       project.createdAt = projects[idx].createdAt || project.updatedAt;
       projects[idx] = project;

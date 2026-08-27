@@ -1972,6 +1972,26 @@ details.card > summary:focus-visible {
   font-size: 12px !important;
   line-height: 1.4;
 }
+.ose-wizard-location-note.is-ready {
+  background: #e8f5e9;
+  border-color: #a5d6a7;
+  color: #1b5e20 !important;
+}
+
+.ose-demo-note {
+  display: block;
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: rgba(245,166,35,0.12);
+  border-radius: 6px;
+  color: #9a5b00;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.ose-demo-note.is-ready {
+  background: rgba(46,125,50,0.10);
+  color: #1b5e20;
+}
 
 .ose-step {
   margin-bottom: 12px;
@@ -2095,16 +2115,6 @@ details.card > summary:focus-visible {
   color: var(--color-text-muted);
   margin: 0 0 10px;
   line-height: 1.4;
-}
-.ose-demo-note {
-  display: block;
-  margin-top: 6px;
-  padding: 6px 8px;
-  background: rgba(245,166,35,0.12);
-  border-radius: 6px;
-  color: #9a5b00;
-  font-size: 11px;
-  line-height: 1.35;
 }
 .ose-field-required-flash {
   outline: 2px solid var(--color-accent) !important;

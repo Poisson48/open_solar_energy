@@ -3,8 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.55';
+const APP_VERSION = '2.0.56';
 // Historique :
+//   2.0.56 - Partage : copie locale sur chaque appareil + LWW (save la plus
+//            récente gagne) ; intro wizard « lieu confirmé » si météo OK
 //   2.0.55 - Persistance projets : profil WebEngine disque (plus OffTheRecord),
 //            miroir natif projects_backup.json (survit MAJ AppImage/APK + join)
 //   2.0.54 - Re-audit UI : Annuler sur Rejoindre, onglets avancés scrollables
