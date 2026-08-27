@@ -5,7 +5,7 @@
 
 function calcSizing() {
   if (!AppState.weatherData) {
-    showToast('Sélectionnez un lieu avec des données météo (colonne gauche).', 'error');
+    showToast('Sélectionnez un lieu avec des données météo (onglet 📍 Lieu).', 'error');
     return;
   }
   const input      = SizingEngine.readFormInput();

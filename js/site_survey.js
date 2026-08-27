@@ -651,7 +651,7 @@ const SiteSurvey = (() => {
     const lat = AppState.location?.lat;
     const lon = AppState.location?.lon;
     if (lat == null || lon == null) {
-      _toast('Fixez d’abord le lieu (Localisation).', 'warning');
+      _toast('Fixez d’abord le lieu (onglet 📍 Lieu).', 'warning');
       _setTerrainStatus('✗ Fixez d’abord le lieu sur la carte', 'error');
       return;
     }
