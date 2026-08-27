@@ -49,10 +49,21 @@ function applyInstallationType(type) {
       first.click();
   }
 
+  // Répercuter AppState.install sur l’onglet visible (activateTab seul ne le fait pas)
+  const syncTab = AppState.activeTab
+    || document.querySelector('.tab-btn.active')?.dataset?.tab;
+  if (syncTab && typeof writeInstallToTab === 'function') writeInstallToTab(syncTab);
+  if (GRID_LIKE_TYPES.includes(type) && syncTab !== 'sizing' && typeof writeInstallToTab === 'function')
+    writeInstallToTab('sizing');
+  if (type === 'offgrid' && syncTab !== 'offgrid' && typeof writeInstallToTab === 'function')
+    writeInstallToTab('offgrid');
+
   // Afficher/masquer l'étape batterie du parcours dimensionnement (onglet sizing)
   const battStep = document.getElementById('sz-battery-step');
   if (battStep) battStep.style.display = (type === 'hybrid') ? '' : 'none';
   if (typeof updateSizingBatteryHelp === 'function') updateSizingBatteryHelp();
+  // Type d’install (ex. hybride ↔ réseau) change le moteur de dimensionnement
+  if (typeof refreshSizingValidity === 'function') refreshSizingValidity();
 
   // Rappel : la batterie hybride profite particulièrement des données Enedis 30 min
   const hybridEnedisNote = document.getElementById('sz-hybrid-enedis-note');
@@ -390,6 +401,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   bindSizingLiveTotal();
   bindBatteryInfo('og2');
   bindBatteryInfo('sz');
+  if (typeof bindSizingResultGuards === 'function') bindSizingResultGuards();
   bindOffgridLiveTotal();
   bindSharedParamSync();
   initQuoteTab();

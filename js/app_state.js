@@ -3,8 +3,11 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.50';
+const APP_VERSION = '2.0.51';
 // Historique :
+//   2.0.51 - Dimensionnement conservé si params inchangés ; UI PC : gap header,
+//            hub plein écran (type/nouveau), câbles AC défaut, sync install,
+//            Partager dans la barre projet
 //   2.0.50 - AppImage : NSS vraiment exclus (appimagetool, plus de re-inject linuxdeploy)
 //   2.0.49 - PC : Installer applique l’AppImage (plus d’ouverture GitHub)
 //   2.0.48 - PC : croix / Alt+F4 quitte vraiment (fix Main.qml manquant en 2.0.47)
@@ -122,12 +125,17 @@ const AppState = {
   lastOffgridResult:      null,
   lastSizingResult:       null,
   lastSizingInput:        null,
+  lastSizingContext:      null,   // empreinte lieu/météo/Enedis au moment du calcul
   lastOffgridSizingResult: null,
+  lastOffgridSizingInput: null,
+  lastOffgridSizingContext: null,
   // Recommandations d'origine (calculées une fois par OffgridSizing.run, non écrasées par
   // la sélection d'une case de la heatmap) — servent à garder "recommandé" et "sélectionné"
   // visibles séparément, et à afficher la config "Économique" à côté de "Autonome".
   lastOffgridSizingRecommended: null,
   lastOffgridSizingEconomic:    null,
+  // true pendant loadProject / restoreFormState — ne pas invalider le dimensionnement
+  _restoringProject: false,
 
   // Gestion de projets
   currentProjectId: null,   // null = projet non sauvegardé

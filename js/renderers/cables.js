@@ -154,7 +154,14 @@ const CablesUI = (() => {
 
   // ── Helpers longueur / électrique (AC) ──
   function estimateAcLength(opts = {}) {
-    const len = CableCalc.estimateAcLength({ distance: numVal('cbl-ac-dist') || 0 });
+    const distEl = document.getElementById('cbl-ac-dist');
+    const raw = distEl?.value;
+    // Distance vide → défaut résidentiel 8 m (sinon L=0 bloque Calculer)
+    const distance = (raw === '' || raw == null)
+      ? (opts.defaultDistance ?? 8)
+      : Math.max(0, numVal('cbl-ac-dist') || 0);
+    if ((raw === '' || raw == null) && distEl) distEl.value = String(distance);
+    const len = CableCalc.estimateAcLength({ distance });
     setVal('cbl-ac-l', len);
     if (!opts.silent && typeof showToast === 'function') showToast(`Longueur AC estimée : ${len} m (aller)`);
   }
