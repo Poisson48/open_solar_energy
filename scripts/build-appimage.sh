@@ -94,7 +94,6 @@ fi
 
 # Ne pas embarquer NSS/NSPR de Ubuntu 22.04 : sur distros récentes (NSS ≥ 3.108)
 # Chromium charge libsoftokn3 système + libnssutil3 AppImage → FATAL nss_error=-5925.
-# Laisser le linker utiliser les libs système.
 rm -f "$APPDIR/usr/lib"/libnss3.so* \
       "$APPDIR/usr/lib"/libnssutil3.so* \
       "$APPDIR/usr/lib"/libnspr4.so* \
@@ -103,12 +102,10 @@ rm -f "$APPDIR/usr/lib"/libnss3.so* \
       "$APPDIR/usr/lib"/libsmime3.so* \
       "$APPDIR/usr/lib"/libssl3.so*
 
-# 3) Empaqueter l’AppImage final.
-"$TOOLS/linuxdeploy" \
-  --appdir "$APPDIR" \
-  --output appimage \
-  --desktop-file "$APPDIR/usr/share/applications/opensolarenergy.desktop" \
-  --icon-file "$APPDIR/usr/share/icons/hicolor/512x512/apps/opensolarenergy.png"
+# 3) Empaqueter avec appimagetool (PAS un 2e linuxdeploy : il ré-injecte NSS).
+fetch appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+cd "$ROOT/build"
+ARCH=x86_64 "$TOOLS/appimagetool" "$APPDIR" "$OUTPUT"
 
 mkdir -p "$OUT_DIR"
 mv "$ROOT/build/$OUTPUT" "$OUT_DIR/$OUTPUT"
