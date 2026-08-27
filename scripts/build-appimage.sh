@@ -92,6 +92,17 @@ else
   echo "Attention : QtWebEngineProcess introuvable sous $QT_ROOT" >&2
 fi
 
+# Ne pas embarquer NSS/NSPR de Ubuntu 22.04 : sur distros récentes (NSS ≥ 3.108)
+# Chromium charge libsoftokn3 système + libnssutil3 AppImage → FATAL nss_error=-5925.
+# Laisser le linker utiliser les libs système.
+rm -f "$APPDIR/usr/lib"/libnss3.so* \
+      "$APPDIR/usr/lib"/libnssutil3.so* \
+      "$APPDIR/usr/lib"/libnspr4.so* \
+      "$APPDIR/usr/lib"/libplc4.so* \
+      "$APPDIR/usr/lib"/libplds4.so* \
+      "$APPDIR/usr/lib"/libsmime3.so* \
+      "$APPDIR/usr/lib"/libssl3.so*
+
 # 3) Empaqueter l’AppImage final.
 "$TOOLS/linuxdeploy" \
   --appdir "$APPDIR" \
