@@ -22,8 +22,14 @@ ApplicationWindow {
 
     ChangelogDialog { id: changelogDialog }
 
-    // Bouton retour Android : comme Colo Course — modales / hub d’abord, quit seulement à la racine.
+    // Android : bouton retour = fermer modales/hub d’abord, double-appui pour quitter.
+    // Desktop : croix / Alt+F4 doit toujours quitter (ne pas recycler le flux « back » Android).
     onClosing: function (close) {
+        if (Qt.platform.os !== "android") {
+            close.accepted = true
+            return
+        }
+
         close.accepted = false
 
         if (changelogDialog.opened) {
@@ -40,15 +46,13 @@ ApplicationWindow {
         const web = webLoader.item
         if (web && typeof web.tryHandleBack === "function") {
             web.tryHandleBack(function (handled) {
-                if (!handled) {
-                    close.accepted = true
-                    window.close()
-                }
+                if (!handled)
+                    Qt.quit()
             })
             return
         }
 
-        close.accepted = true
+        Qt.quit()
     }
 
     Component.onCompleted: {
