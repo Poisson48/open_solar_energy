@@ -45,15 +45,15 @@ function versionCodeFromName(name) {
 
 console.log('\n═══ Updater / versions Android ═══');
 
-assert(isNewer('2.0.72', '2.0.69'), '2.0.72 > 2.0.69');
-assert(!isNewer('2.0.69', '2.0.72'), '2.0.69 ≯ 2.0.72');
-assert(isNewer('v2.0.72', '2.0.69'), 'strip v');
-assert(!isNewer('2.0.72', '2.0.72'), 'égal → pas newer');
+assert(isNewer('2.0.73', '2.0.69'), '2.0.73 > 2.0.69');
+assert(!isNewer('2.0.69', '2.0.73'), '2.0.69 ≯ 2.0.73');
+assert(isNewer('v2.0.73', '2.0.69'), 'strip v');
+assert(!isNewer('2.0.73', '2.0.73'), 'égal → pas newer');
 assert(isNewer('2.1.0', '2.0.99'), 'mineur gagne');
-assert(versionCodeFromName('2.0.72') === 20072, 'versionCode 2.0.72 → 20072');
+assert(versionCodeFromName('2.0.73') === 20073, 'versionCode 2.0.73 → 20073');
 assert(versionCodeFromName('2.0.69') === 20069, 'versionCode 2.0.69 → 20069');
-assert(versionCodeFromName('2.0.72') > versionCodeFromName('2.0.69'), 'codes monotones');
-assert(versionCodeFromName('2.0.72') > 185, 'code marketing > ancien git-count (~185)');
+assert(versionCodeFromName('2.0.73') > versionCodeFromName('2.0.69'), 'codes monotones');
+assert(versionCodeFromName('2.0.73') > 185, 'code marketing > ancien git-count (~185)');
 
 const releaseYml = fs.readFileSync(path.join(ROOT, '.github/workflows/release.yml'), 'utf8');
 assert(!/git rev-list --count HEAD/.test(releaseYml),
@@ -62,8 +62,8 @@ assert(/10000/.test(releaseYml) && /versionCode/.test(releaseYml),
   'release.yml : formule XXYYZZ présente');
 
 const man = fs.readFileSync(path.join(ROOT, 'android/AndroidManifest.xml'), 'utf8');
-assert(/android:versionCode="20072"/.test(man), 'manifest versionCode=20072');
-assert(/android:versionName="2\.0\.72"/.test(man), 'manifest versionName=2.0.72');
+assert(/android:versionCode="20073"/.test(man), 'manifest versionCode=20073');
+assert(/android:versionName="2\.0\.73"/.test(man), 'manifest versionName=2.0.73');
 assert(/InstallCallbackActivity/.test(man), 'InstallCallbackActivity déclarée');
 assert(/ApkFileProvider/.test(man), 'ApkFileProvider déclaré');
 assert(/android:exported="false"[\s\S]*InstallReceiver|InstallReceiver[\s\S]*android:exported="false"/.test(man)
@@ -94,7 +94,7 @@ assert(/weatherMeta/.test(pui) && /weatherMeta/.test(fs.readFileSync(path.join(R
   'weatherMeta persisté dans le projet');
 
 const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-assert(/main\.css\?v=2\.0\.72/.test(idx), 'CSS cache-bust ?v=2.0.72');
+assert(/main\.css\?v=2\.0\.73/.test(idx), 'CSS cache-bust ?v=2.0.73');
 assert(/setSizingLimitMode/.test(pui) || /setSizingLimitMode/.test(fs.readFileSync(path.join(ROOT, 'js/renderers/sizing.js'), 'utf8')),
   'modes limite dimensionnement');
 const tabSz = fs.readFileSync(path.join(ROOT, 'js/tabs/tab_sizing.js'), 'utf8');
@@ -172,6 +172,20 @@ assert(/og2-load-day/.test(appState), 'persist conso jour autonome');
 assert(!/Impossible de charger les news/.test(pui), 'plus de message d’échec news utilisateur');
 assert(/_fetchHubReleasesFromAtom/.test(pui), 'fallback Atom GitHub');
 assert(/_bundledHubReleases/.test(pui), 'fallback notes embarquées');
+
+assert(!/actions\/checkout@v4/.test(fs.readFileSync(path.join(ROOT, '.github/workflows/release.yml'), 'utf8')),
+  'release.yml : checkout@v5+');
+assert(/actions\/setup-java@v5/.test(fs.readFileSync(path.join(ROOT, '.github/workflows/android.yml'), 'utf8')),
+  'android.yml : setup-java@v5');
+assert(/actions\/cache@v5/.test(fs.readFileSync(path.join(ROOT, '.github/workflows/desktop.yml'), 'utf8')),
+  'desktop.yml : cache@v5');
+assert(/actions\/upload-artifact@v5/.test(fs.readFileSync(path.join(ROOT, '.github/workflows/android.yml'), 'utf8')),
+  'android.yml : upload-artifact@v5');
+assert(/actions\/download-artifact@v5/.test(fs.readFileSync(path.join(ROOT, '.github/workflows/release.yml'), 'utf8')),
+  'release.yml : download-artifact@v5');
+assert(/node-version: "22"/.test(fs.readFileSync(path.join(ROOT, '.github/workflows/ci.yml'), 'utf8')),
+  'ci.yml : Node 22');
+
 
 console.log(fails === 0 ? '\nOK\n' : `\n${fails} échec(s)\n`);
 process.exit(fails === 0 ? 0 : 1);

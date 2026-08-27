@@ -3,9 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.72';
+const APP_VERSION = '2.0.73';
 /** Notes embarquées (hub) — utilisées si GitHub API/Atom indisponibles (403, offline). */
 const OSE_RELEASE_FEED = [
+  { ver: '2.0.73', notes: 'CI : Actions Node 24 (plus de warnings checkout/java/cache) ; apt retry.' },
   { ver: '2.0.72', notes: 'Autonome : jour/nuit + profil 2 h ; Dim avant Analyse ; batt. calée sur la nuit.' },
   { ver: '2.0.71', notes: 'Ombrage site → dimensionnement (profil 30 min) ; Site avant Dim/Hors réseau.' },
   { ver: '2.0.70', notes: 'Hors réseau en 2e onglet (après Lieu) en mode autonome.' },
@@ -19,6 +20,7 @@ const OSE_RELEASE_FEED = [
   { ver: '2.0.62', notes: 'Audit clic des mises à jour PC + tablette.' },
 ];
 // Historique :
+//   2.0.73 - CI Actions Node 24 + apt retry
 //   2.0.72 - Autonome jour/nuit + 2h ; Dim avant Analyse ; batt. nuit
 //   2.0.71 - Ombrage 30 min → Dim/Hors réseau ; Site avant sizing
 //   2.0.70 - Hors réseau = 2e onglet (DOM)
