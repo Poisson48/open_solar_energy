@@ -9,6 +9,7 @@
 #include <QtWidgets/QFileDialog>
 #endif
 #include <QJsonDocument>
+#include <QJsonParseError>
 #include <QProcess>
 #include <QRegularExpression>
 #include <QStandardPaths>
@@ -243,6 +244,43 @@ QJsonObject WebBridge::gitSwitchBranch(const QString& projectId, const QString& 
     p.start(QStringLiteral("git"), {QStringLiteral("checkout"), safe});
     p.waitForFinished(10000);
     return {{QStringLiteral("ok"), true}};
+}
+
+static QString projectsBackupPath()
+{
+    const QString dir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir().mkpath(dir);
+    return dir + QStringLiteral("/projects_backup.json");
+}
+
+bool WebBridge::saveProjectsBackup(const QString& json)
+{
+    if (json.isEmpty() || json.size() > 80 * 1024 * 1024) // garde-fou 80 Mo
+        return false;
+    QJsonParseError err;
+    const QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8(), &err);
+    if (err.error != QJsonParseError::NoError || !doc.isArray())
+        return false;
+    QFile f(projectsBackupPath());
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        return false;
+    const qint64 n = f.write(doc.toJson(QJsonDocument::Compact));
+    f.close();
+    return n > 0;
+}
+
+QString WebBridge::loadProjectsBackup() const
+{
+    QFile f(projectsBackupPath());
+    if (!f.open(QIODevice::ReadOnly))
+        return {};
+    const QByteArray raw = f.readAll();
+    f.close();
+    QJsonParseError err;
+    const QJsonDocument doc = QJsonDocument::fromJson(raw, &err);
+    if (err.error != QJsonParseError::NoError || !doc.isArray())
+        return {};
+    return QString::fromUtf8(doc.toJson(QJsonDocument::Compact));
 }
 
 } // namespace app

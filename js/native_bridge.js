@@ -8,6 +8,11 @@
     if (!obj) return;
     global.webBridge = obj;
     global.nativeBridge = obj;
+    // Après connexion Qt : retenter restauration projets (localStorage vide / MAJ)
+    try {
+      if (typeof ProjectManager !== 'undefined' && ProjectManager.list)
+        ProjectManager.list();
+    } catch (_) {}
   }
 
   function connectQt() {

@@ -30,10 +30,23 @@ Item {
         }
     }
 
+    // Profil DISQUE obligatoire : le profil par défaut QML était OffTheRecord
+    // (--disable-databases) → localStorage/IndexedDB perdus à chaque redémarrage / MAJ.
+    WebEngineProfile {
+        id: oseProfile
+        storageName: "OpenSolarEnergy"
+        offTheRecord: false
+        persistentCookiesPolicy: WebEngineProfile.ForcePersistentCookies
+        httpCacheType: WebEngineProfile.DiskHttpCache
+    }
+
     WebEngineView {
         id: webView
         anchors.fill: parent
         url: root.webUrl
         webChannel: channel
+        profile: oseProfile
+        settings.localStorageEnabled: true
+        settings.javascriptEnabled: true
     }
 }

@@ -1,5 +1,5 @@
 /**
- * project_manager.js - Gestion de projets (localStorage)
+ * project_manager.js - Gestion de projets (localStorage + miroir natif AppImage/APK)
  *
  * Un projet contient :
  *   - Métadonnées : id, name, description, createdAt, updatedAt
@@ -12,10 +12,59 @@
 const ProjectManager = (() => {
 
   const STORAGE_KEY = 'ose_projects_v1';
+  let _backupRestored = false;
+
+  function _bridge() {
+    return (typeof getNativeBridge === 'function' ? getNativeBridge() : null)
+        || (typeof window !== 'undefined' ? (window.webBridge || window.nativeBridge) : null)
+        || null;
+  }
+
+  /** Restaure depuis le fichier natif si localStorage est vide (ex. profil OTR / MAJ). */
+  function _restoreFromNativeBackupIfNeeded() {
+    if (_backupRestored) return;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          _backupRestored = true;
+          return;
+        }
+      }
+    } catch { /* continue restore */ }
+
+    const b = _bridge();
+    // Pont Qt pas encore prêt → réessayer plus tard (native_bridge appellera list())
+    if (!b || typeof b.loadProjectsBackup !== 'function') return;
+
+    _backupRestored = true;
+    try {
+      const backup = b.loadProjectsBackup();
+      if (!backup || typeof backup !== 'string' || backup.length < 3) return;
+      const parsed = JSON.parse(backup);
+      if (!Array.isArray(parsed) || parsed.length === 0) return;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+      console.info('[ProjectManager] Restauré', parsed.length, 'projet(s) depuis la sauvegarde native');
+    } catch (e) {
+      console.warn('[ProjectManager] restore backup:', e);
+    }
+  }
+
+  function _mirrorToNative(projects) {
+    try {
+      const b = _bridge();
+      if (!b || typeof b.saveProjectsBackup !== 'function') return;
+      b.saveProjectsBackup(JSON.stringify(projects));
+    } catch (e) {
+      console.warn('[ProjectManager] mirror backup:', e);
+    }
+  }
 
   // ── CRUD ──────────────────────────────────────────────────────
 
   function list() {
+    _restoreFromNativeBackupIfNeeded();
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       const projects = raw ? JSON.parse(raw) : [];
@@ -40,9 +89,12 @@ const ProjectManager = (() => {
     }
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+      _mirrorToNative(projects);
       return true;
     } catch (e) {
       console.error('ProjectManager: localStorage plein ?', e);
+      // Dernière chance : miroir natif seul (récupérable au prochain démarrage)
+      try { _mirrorToNative(projects); } catch (_) {}
       return false;
     }
   }
@@ -50,6 +102,7 @@ const ProjectManager = (() => {
   function remove(id) {
     const projects = list().filter(p => p.id !== id);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+    _mirrorToNative(projects);
   }
 
   function clone(id, newName) {
@@ -82,8 +135,7 @@ const ProjectManager = (() => {
   }
 
   async function _downloadOrShare(filename, data, mime) {
-    const bridge = (typeof getNativeBridge === 'function' ? getNativeBridge() : null)
-                || window.webBridge || null;
+    const bridge = _bridge();
     if (bridge?.shareFile) {
       let b64;
       if (typeof data === 'string') {
@@ -123,7 +175,7 @@ const ProjectManager = (() => {
   async function exportOne(id) {
     const project = get(id);
     if (!project) return;
-    const safeName = (project.name || 'projet').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const safeName = (project.name || 'projet').replace(/[^a-z0-9]+/gi, '_').toLowerCase();
     const filename = `ose_${safeName}_${new Date().toISOString().slice(0, 10)}.json`;
     await _downloadOrShare(filename, JSON.stringify(project, null, 2), 'application/json');
   }
@@ -132,7 +184,7 @@ const ProjectManager = (() => {
   async function exportOneZip(id) {
     const project = get(id);
     if (!project) return;
-    const safeName = (project.name || 'projet').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const safeName = (project.name || 'projet').replace(/[^a-z0-9]+/gi, '_').toLowerCase();
     const zip = new JSZip();
 
     // Séparer les données Enedis volumineuses du JSON principal
@@ -190,15 +242,22 @@ const ProjectManager = (() => {
         added++;
       });
       localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+      _mirrorToNative(existing);
       return { added };
     } catch (e) {
       return { error: e.message };
     }
   }
 
+  /** Force une resync miroir (après join / import). */
+  function flushBackup() {
+    _mirrorToNative(list());
+  }
+
   return {
     list, get, save, remove, clone, newId,
     exportAll, exportOne, exportOneZip, importOne, importFromJSON,
+    flushBackup,
     _downloadOrShare,
   };
 })();
