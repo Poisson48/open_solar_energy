@@ -215,6 +215,53 @@ const PvProfiles = (() => {
   }
 
   /**
+   * Année de conso 30 min depuis un profil 2 h (12 blocs kWh/jour typique).
+   * monthlyKwh (optionnel) scale l’énergie ; sinon somme des 12 blocs = jour type.
+   */
+  function buildTwoHourLoadYear(monthlyKwh, twoHourKwhPerDay, year) {
+    const daysArr = (typeof getMonthlyDays === 'function' && year)
+      ? getMonthlyDays(year)
+      : DAYS.slice();
+    const shape = Array.from({ length: 12 }, (_, i) =>
+      Math.max(0, Number(twoHourKwhPerDay?.[i]) || 0));
+    const shapeSum = shape.reduce((a, b) => a + b, 0);
+    const dailyTyp = shapeSum;
+
+    const months = Array.from({ length: 12 }, (_, m) => {
+      const raw = Math.max(0, Number(monthlyKwh?.[m]) || 0);
+      if (raw > 0) return raw;
+      if (dailyTyp > 0) return dailyTyp * (daysArr[m] || 0);
+      return 0;
+    });
+
+    const totalDays = daysArr.reduce((s, d) => s + d, 0);
+    const flat = new Float32Array(totalDays * 48);
+    let di = 0;
+    for (let m = 0; m < 12; m++) {
+      const days = daysArr[m] || 0;
+      const monthTotal = months[m];
+      const daily = days > 0 ? monthTotal / days : 0;
+      for (let d = 0; d < days; d++, di++) {
+        const base = di * 48;
+        for (let b = 0; b < 12; b++) {
+          const blockShare = shapeSum > 0 ? shape[b] / shapeSum : 1 / 12;
+          const blockKwh = daily * blockShare;
+          const perSlot = blockKwh / 4; // 4 × 30 min
+          for (let s = 0; s < 4; s++) flat[base + b * 4 + s] = perSlot;
+        }
+      }
+    }
+    return flat;
+  }
+
+  /** Conso nuit (kWh/j) estimée depuis un profil 2 h (blocs 22–6h + moitié 20–22). */
+  function nightKwhFromTwoHour(twoHourKwhPerDay) {
+    const s = Array.from({ length: 12 }, (_, i) => Math.max(0, Number(twoHourKwhPerDay?.[i]) || 0));
+    // indices : 0=0-2, 1=2-4, 2=4-6, 10=20-22, 11=22-24
+    return s[0] + s[1] + s[2] + s[11] + 0.5 * s[10];
+  }
+
+  /**
    * Construit une année de conso 30 min (kWh/slot) à partir des totaux mensuels,
    * en utilisant un profil diurnal résidentiel (évite min(prod,conso) mensuel trop optimiste).
    *
@@ -255,6 +302,8 @@ const PvProfiles = (() => {
     applySiteShade,
     buildSyntheticLoadYear,
     buildDayNightLoadYear,
+    buildTwoHourLoadYear,
+    nightKwhFromTwoHour,
     RESIDENTIAL_HOUR_WEIGHTS,
     NIGHT_HOURS,
   };

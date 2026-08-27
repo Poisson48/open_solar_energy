@@ -4,50 +4,79 @@
  */
 
 function calcOffgridSizing() {
-  if (!AppState.weatherData) { showToast('Sélectionnez un lieu avec des données météo.', 'error'); return; }
-  const input      = OffgridSizing.readFormInput();
-  const totalConso = input.conso.dailyWh.reduce((s, v) => s + v, 0);
-  const hasEnedis  = !!(AppState.hourlyEnedisData?.halfHourly?.length);
-  if (totalConso === 0 && !hasEnedis) {
-    showToast('Renseignez la consommation journalière (Wh/j) ou importez un fichier Enedis.', 'error');
+  if (!AppState.weatherData) {
+    showToast('Onglet Lieu : importez d’abord la météo (nécessaire au dimensionnement).', 'error');
     return;
   }
-  const { recommended: rec, economic, allCandidates, tech, annual_conso, useHourly } =
-    OffgridSizing.run(input, AppState.weatherData, AppState.location.lat);
-  AppState.lastOffgridSizingResult    = rec;
-  // Recommandations d'origine, figées pour cette exécution — la sélection d'une
-  // case de la heatmap ne les écrase pas (cf. selectOffgridCandidate).
+  const input = OffgridSizing.readFormInput();
+  const totalConso = input.conso.dailyWh.reduce((s, v) => s + v, 0);
+  const hasEnedis = !!(AppState.hourlyEnedisData?.halfHourly?.length);
+  const hasDayNight = (input.conso.dayKwhPerDay > 0 || input.conso.nightKwhPerDay > 0);
+  const hasTwoHour = Array.isArray(input.conso.twoHourKwh)
+    && input.conso.twoHourKwh.some(v => v > 0);
+  if (totalConso === 0 && !hasEnedis && !hasDayNight && !hasTwoHour) {
+    showToast('Renseignez conso jour/nuit (ou profil 2 h / Wh/j / Enedis).', 'error');
+    return;
+  }
+  const {
+    recommended: rec, economic, allCandidates, tech, annual_conso, useHourly, loadSource,
+  } = OffgridSizing.run(input, AppState.weatherData, AppState.location.lat);
+  AppState.lastOffgridSizingResult = rec;
   AppState.lastOffgridSizingRecommended = rec;
-  AppState.lastOffgridSizingEconomic    = economic;
+  AppState.lastOffgridSizingEconomic = economic;
   AppState.lastOffgridSizingCandidates = allCandidates;
-  AppState.lastOffgridSizingAnnual    = annual_conso;
-  AppState.lastOffgridSizingTech      = tech;
-  AppState.lastOffgridSizingHourly    = useHourly;
-  AppState.lastOffgridSizingInput     = input;
-  AppState.lastOffgridSizingContext   = typeof sizingContextFingerprint === 'function'
+  AppState.lastOffgridSizingAnnual = annual_conso;
+  AppState.lastOffgridSizingTech = tech;
+  AppState.lastOffgridSizingHourly = useHourly;
+  AppState.lastOffgridSizingLoadSource = loadSource;
+  AppState.lastOffgridSizingInput = input;
+  AppState.lastOffgridSizingContext = typeof sizingContextFingerprint === 'function'
     ? sizingContextFingerprint()
     : null;
-  renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, useHourly);
+  renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, useHourly, loadSource);
 
-  // Commit git après dimensionnement hors-réseau
+  // Panneaux + batterie dictés par le calcul → implant / devis
+  if (rec && typeof applyOffgridRecommendation === 'function') {
+    applyOffgridRecommendation({ quiet: true });
+    const layN = document.getElementById('lay-npanels');
+    if (layN && rec.nPanels) {
+      layN.value = rec.nPanels;
+      layN.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }
+
   if (typeof gitAutoSave === 'function' && rec) {
     gitAutoSave(`Calcul hors-réseau — ${rec.Ppeak} kWc · ${rec.C_batt_gross} kWh batterie`);
   }
 }
 
-function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, hourlyMode) {
+function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, hourlyMode, loadSource) {
   const el = document.getElementById('offgrid2-results');
   if (!rec) {
     el.innerHTML = '<div class="alert alert-warning">Aucune configuration trouvée - réduisez la cible ou augmentez la surface.</div>';
     return;
   }
 
+  const src = loadSource || rec.loadSource || AppState.lastOffgridSizingLoadSource || '';
+  const srcLabel = ({
+    enedis_30min: 'Enedis 30 min',
+    two_hour: 'Profil 2 h',
+    day_night: 'Conso jour/nuit',
+    synthetic_diurnal: 'Profil type',
+  })[src] || (hourlyMode ? 'Enedis' : 'Conso');
+  const shadeOn = !!(rec.siteShadeApplied || AppState.siteSurvey?.halfHourlyKeep);
+  const parts = [srcLabel];
+  if (shadeOn) parts.push('Ombrage site');
+  if (AppState.hourlyWeatherData?.ghi?.length >= 24 * 365) parts.push('Météo horaire');
+  else parts.push('Météo Lieu');
+  if (rec.nightKwhTyp > 0)
+    parts.push(`Nuit ${rec.nightKwhTyp} kWh → batt. ≥ ${rec.minBattFromNight} kWh`);
+  const sourceBadge = `<span style="font-size:11px;background:#e8f5e9;color:var(--color-success);padding:2px 8px;border-radius:10px;margin-left:8px">${parts.join(' · ')}</span>`;
+
   const c1    = 'chart-og1-' + Date.now();
   const c2    = 'chart-og2-' + Date.now();
   const hmId  = 'hm-og-' + Date.now();
-  const hourlyBadge = hourlyMode
-    ? `<span style="font-size:11px;background:#e8f5e9;color:var(--color-success);padding:2px 8px;border-radius:10px;margin-left:8px">Simulation heure/heure (données Enedis)</span>`
-    : `<span style="font-size:11px;background:var(--color-bg);color:var(--color-text-muted);padding:2px 8px;border-radius:10px;margin-left:8px">Profil journalier moyen</span>`;
+  const hourlyBadge = sourceBadge;
 
   const tableRows = rec.monthly.map(m => {
     const cls = m.deficit_days === 0 ? 'color:var(--color-success)' : m.deficit_days <= 3 ? 'color:var(--color-accent-dark)' : 'color:var(--color-danger)';
@@ -349,7 +378,7 @@ function selectOffgridCandidate(ppeak, battKwh) {
       : { label: 'Batterie', dod: 0.8 });
   const annual = AppState.lastOffgridSizingAnnual ?? cand.annual_conso ?? 0;
   const hourly = !!AppState.lastOffgridSizingHourly;
-  renderOffgridSizingResults(cand, list, tech, annual, hourly);
+  renderOffgridSizingResults(cand, list, tech, annual, hourly, AppState.lastOffgridSizingLoadSource);
   showToast(`Config sélectionnée : ${cand.Ppeak} kWc · ${cand.C_batt_gross} kWh · ${cand.coverageRate} %`);
   const el = document.getElementById('offgrid2-results');
   if (el) try { el.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (_) {}
@@ -359,10 +388,11 @@ function selectOffgridCandidate(ppeak, battKwh) {
  * Figé la recommandation hors-réseau dans le formulaire (nb panneaux + batterie)
  * pour que le devis / recalculs partent de ces valeurs.
  */
-function applyOffgridRecommendation() {
+function applyOffgridRecommendation(opts = {}) {
+  const quiet = !!opts.quiet;
   const rec = AppState.lastOffgridSizingResult;
   if (!rec || !rec.nPanels) {
-    showToast('Lancez d\'abord un dimensionnement autonome.', 'warning');
+    if (!quiet) showToast('Lancez d\'abord un dimensionnement autonome.', 'warning');
     return false;
   }
 
@@ -380,7 +410,15 @@ function applyOffgridRecommendation() {
     battEl.dispatchEvent(new Event('input'));
   }
 
+  const layN = document.getElementById('lay-npanels');
+  if (layN) {
+    layN.value = rec.nPanels;
+    layN.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
   AppState.offgridRecommendationApplied = true;
-  showToast(`✓ Recommandation appliquée : ${rec.nPanels} panneaux (${rec.Ppeak} kWc) · batterie ${rec.C_batt_gross} kWh`);
+  if (!quiet) {
+    showToast(`✓ Recommandation appliquée : ${rec.nPanels} panneaux (${rec.Ppeak} kWc) · batterie ${rec.C_batt_gross} kWh`);
+  }
   return true;
 }

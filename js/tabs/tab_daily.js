@@ -73,7 +73,7 @@ function initTabDaily() {
 
       <div class="ose-journey-nav">
         <button type="button" class="btn btn-outline" onclick="goNextPrimaryTab()">Passer →</button>
-        <button type="button" class="btn btn-primary" onclick="goNextPrimaryTab()">Continuer → Devis</button>
+        <button type="button" class="btn btn-primary" id="daily-journey-next" onclick="goNextPrimaryTab()">Continuer → Implantation</button>
       </div>
 
     </div>`;

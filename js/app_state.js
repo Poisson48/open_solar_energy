@@ -3,9 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.71';
+const APP_VERSION = '2.0.72';
 /** Notes embarquées (hub) — utilisées si GitHub API/Atom indisponibles (403, offline). */
 const OSE_RELEASE_FEED = [
+  { ver: '2.0.72', notes: 'Autonome : jour/nuit + profil 2 h ; Dim avant Analyse ; batt. calée sur la nuit.' },
   { ver: '2.0.71', notes: 'Ombrage site → dimensionnement (profil 30 min) ; Site avant Dim/Hors réseau.' },
   { ver: '2.0.70', notes: 'Hors réseau en 2e onglet (après Lieu) en mode autonome.' },
   { ver: '2.0.69', notes: 'Lieu : météo + terrain conservés une fois importés (réaffichage à la réouverture).' },
@@ -18,6 +19,7 @@ const OSE_RELEASE_FEED = [
   { ver: '2.0.62', notes: 'Audit clic des mises à jour PC + tablette.' },
 ];
 // Historique :
+//   2.0.72 - Autonome jour/nuit + 2h ; Dim avant Analyse ; batt. nuit
 //   2.0.71 - Ombrage 30 min → Dim/Hors réseau ; Site avant sizing
 //   2.0.70 - Hors réseau = 2e onglet (DOM)
 //   2.0.69 - Persistance Lieu : weatherMeta + terrain auto-sauvé ; statuts restaurés
@@ -266,6 +268,8 @@ const PROJECT_FIELDS = [
   'grid-panel-mode','grid-npanels-fixe',
   // Hors réseau
   'og2-daily-default',
+  'og2-load-day', 'og2-load-night',
+  ...Array.from({length:12}, (_,i) => `og2-2h-${i}`),
   ...Array.from({length:12}, (_,i) => `og2-day-${i+1}`),
   'og2-batt-tech','og2-batt-kwh','og2-tilt','og2-azimuth','og2-surface',
   'og2-panel-model','og2-panel-wp','og2-panel-m2','og2-losses','og2-target-coverage',

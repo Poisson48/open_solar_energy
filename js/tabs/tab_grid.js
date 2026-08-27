@@ -173,7 +173,7 @@ function initTabGrid() {
             → Appliquer au Dimensionnement
           </button>
           <div class="ose-journey-nav" style="margin-top:10px">
-            <button type="button" class="btn btn-primary" style="width:100%" onclick="goNextPrimaryTab()">Continuer → Implantation</button>
+            <button type="button" class="btn btn-primary" style="width:100%" onclick="goNextPrimaryTab()">Continuer → Analyse</button>
           </div>
         </div>
       </div>
