@@ -3,8 +3,16 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.59';
+const APP_VERSION = '2.0.60';
 // Historique :
+//   2.0.60 - Batterie : simu minute/année (nuit + ombrage créneau) ;
+//            MAJ Android : confirmation PackageInstaller via Activity
+//            (plus de BroadcastReceiver bloqué en arrière-plan) + fallback
+//            ACTION_VIEW ; versionCode = XXYYZZ (2.0.60→20060) ; retry après
+//            permission « apps inconnues » ;
+//            conso jour/nuit manuelle (2 champs) sans Enedis 30 min ;
+//            Android : plus de débordement devis/analyse (grilles minmax(0),
+//            tables en scroll interne) — tests responsive renforcés
 //   2.0.59 - Téléphone : vrai shell (barre compacte + menu ⋯, onglets courts,
 //            hub projets d’abord, inputs 16px, chrome masqué sous le hub)
 //   2.0.58 - Météo conservée (autosave + encoding compact) ; PC : pont Qt
@@ -210,6 +218,7 @@ const PROJECT_FIELDS = [
   // Dimensionnement EDF
   'sz-tariff','sz-price-base','sz-price-hp','sz-price-hc','sz-subscription',
   ...Array.from({length:12}, (_,i) => `sz-kwh-${i+1}`),
+  'sz-load-day','sz-load-night',
   'sz-tilt','sz-azimuth','sz-surface','sz-panel-model','sz-panel-wp','sz-panel-m2','sz-losses','sz-tech',
   'sz-panel-voc','sz-panel-isc','sz-panel-vmp','sz-panel-imp','sz-panel-bifacial',
   'sz-strategy','sz-target-coverage','sz-cost-kwp','sz-cost-total','sz-feedin',

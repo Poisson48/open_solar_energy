@@ -108,6 +108,113 @@ const PvProfiles = (() => {
   }
 
   /**
+   * Ombrage demi-heure (siteSurvey.halfHourlyKeep[12][48]) — créneau par créneau.
+   * Préférer à applyMonthlyShade pour la batterie (matin ombré ≠ après-midi clair).
+   */
+  function applyTemporalShade(profilesOrFlat, daysArr, halfHourlyKeep) {
+    if (!halfHourlyKeep || halfHourlyKeep.length !== 12) return profilesOrFlat;
+    if (Array.isArray(profilesOrFlat) && profilesOrFlat[0] && profilesOrFlat[0].length === 48) {
+      for (let m = 0; m < 12; m++) {
+        const keep = halfHourlyKeep[m];
+        const p = profilesOrFlat[m];
+        if (!keep || !p) continue;
+        for (let s = 0; s < 48; s++) {
+          const k = Number(keep[s]);
+          p[s] *= Math.max(0, Math.min(1, Number.isFinite(k) ? k : 1));
+        }
+      }
+      return profilesOrFlat;
+    }
+    if (profilesOrFlat && typeof profilesOrFlat.length === 'number' && daysArr) {
+      let di = 0;
+      for (let m = 0; m < 12; m++) {
+        const keep = halfHourlyKeep[m];
+        const n = daysArr[m] || 0;
+        for (let d = 0; d < n; d++, di++) {
+          const base = di * 48;
+          for (let s = 0; s < 48; s++) {
+            const k = keep ? Number(keep[s]) : 1;
+            const f = Math.max(0, Math.min(1, Number.isFinite(k) ? k : 1));
+            profilesOrFlat[base + s] *= f;
+          }
+        }
+      }
+    }
+    return profilesOrFlat;
+  }
+
+  /** Applique ombrage site : temporel si dispo, sinon forfait mensuel. */
+  function applySiteShade(profilesOrFlat, daysArr, siteSurvey) {
+    if (!siteSurvey) return profilesOrFlat;
+    if (siteSurvey.halfHourlyKeep?.length === 12)
+      return applyTemporalShade(profilesOrFlat, daysArr, siteSurvey.halfHourlyKeep);
+    if (siteSurvey.monthlyLoss?.length === 12)
+      return applyMonthlyShade(profilesOrFlat, daysArr, siteSurvey.monthlyLoss);
+    return profilesOrFlat;
+  }
+
+  /** Heures « nuit » alignées batterie (sizing/offgrid) : 21h–6h. */
+  const NIGHT_HOURS = [21, 22, 23, 0, 1, 2, 3, 4, 5];
+
+  /**
+   * Année de conso 30 min à partir d’un split jour/nuit (kWh/jour typique).
+   * Les totaux mensuels (facture) restent la référence d’énergie ; le split
+   * ne fait que répartir chaque jour entre créneaux jour vs nuit.
+   * Si monthlyKwh est vide/nul et day+night > 0 → mois = (day+night)×jours.
+   *
+   * @param {number[]} monthlyKwh
+   * @param {number}   dayKwhPerDay    conso typique 6h–21h (kWh/j)
+   * @param {number}   nightKwhPerDay  conso typique 21h–6h (kWh/j)
+   * @param {number}   [year]
+   * @returns {Float32Array}
+   */
+  function buildDayNightLoadYear(monthlyKwh, dayKwhPerDay, nightKwhPerDay, year) {
+    const daysArr = (typeof getMonthlyDays === 'function' && year)
+      ? getMonthlyDays(year)
+      : DAYS.slice();
+    const day = Math.max(0, Number(dayKwhPerDay) || 0);
+    const night = Math.max(0, Number(nightKwhPerDay) || 0);
+    const dailyTyp = day + night;
+    const nightSet = new Set(NIGHT_HOURS);
+    const nNightH = NIGHT_HOURS.length;
+    const nDayH = 24 - nNightH;
+
+    const months = Array.from({ length: 12 }, (_, m) => {
+      const raw = Math.max(0, Number(monthlyKwh?.[m]) || 0);
+      if (raw > 0) return raw;
+      if (dailyTyp > 0) return dailyTyp * (daysArr[m] || 0);
+      return 0;
+    });
+
+    const totalDays = daysArr.reduce((s, d) => s + d, 0);
+    const flat = new Float32Array(totalDays * 48);
+    let di = 0;
+    for (let m = 0; m < 12; m++) {
+      const days = daysArr[m] || 0;
+      const monthTotal = months[m];
+      const daily = days > 0 ? monthTotal / days : 0;
+      // Ratio jour/nuit depuis la saisie ; si seulement un côté, tout de ce côté
+      let dayShare = 0.5;
+      if (dailyTyp > 0) dayShare = day / dailyTyp;
+      else dayShare = nDayH / 24;
+      const dayPart = daily * dayShare;
+      const nightPart = daily * (1 - dayShare);
+      const dayPerHour = nDayH > 0 ? dayPart / nDayH : 0;
+      const nightPerHour = nNightH > 0 ? nightPart / nNightH : 0;
+
+      for (let d = 0; d < days; d++, di++) {
+        const base = di * 48;
+        for (let h = 0; h < 24; h++) {
+          const slot = (nightSet.has(h) ? nightPerHour : dayPerHour) / 2;
+          flat[base + h * 2] = slot;
+          flat[base + h * 2 + 1] = slot;
+        }
+      }
+    }
+    return flat;
+  }
+
+  /**
    * Construit une année de conso 30 min (kWh/slot) à partir des totaux mensuels,
    * en utilisant un profil diurnal résidentiel (évite min(prod,conso) mensuel trop optimiste).
    *
@@ -144,8 +251,12 @@ const PvProfiles = (() => {
     buildMonthlyProfiles,
     flattenToYear,
     applyMonthlyShade,
+    applyTemporalShade,
+    applySiteShade,
     buildSyntheticLoadYear,
+    buildDayNightLoadYear,
     RESIDENTIAL_HOUR_WEIGHTS,
+    NIGHT_HOURS,
   };
 })();
 

@@ -30,7 +30,8 @@ const SiteSurvey = (() => {
     gotAbsoluteOrient: false,
     _smoothHeading: null,
     stream: null,
-    monthlyLoss: null,    // [12] fraction beam perdue 0–1
+    monthlyLoss: null,    // [12] fraction beam perdue 0–1 (moyenne mensuelle)
+    halfHourlyKeep: null, // [12][48] facteur multiplicatif PV restant (0–1) par demi-heure typique
     annualLossPct: 0,
     terrain: null,        // { tilt, azimuth, slopePct, source }
   };
@@ -107,12 +108,14 @@ const SiteSurvey = (() => {
   }
 
   /**
-   * Fraction de l'énergie directe perdue (ombre) par mois + annuelle.
-   * Diffuse considérée disponible même à l'ombre.
+   * Ombrage : moyenne mensuelle + profil demi-heure (pour simu batterie créneau/nuit).
+   * Le soleil est échantillonné à la minute (jour médian du mois) puis agrégé en 48 slots.
+   * À l’ombre : la composante directe est perdue, le diffus reste (facteur ≈ 1 − beamShare).
    */
   function computeShading(lat) {
     const weather = (typeof AppState !== 'undefined') ? AppState.weatherData : null;
     const monthly = [];
+    const halfHourlyKeep = Array.from({ length: 12 }, () => new Float32Array(48).fill(1));
     let sumBeam = 0, sumLost = 0;
 
     for (let m = 1; m <= 12; m++) {
@@ -122,25 +125,46 @@ const SiteSurvey = (() => {
       const dhi = weather?.[m - 1]?.DHI || 40;
       const beamShare = Math.max(0.15, Math.min(0.85, (ghi - dhi) / Math.max(1, ghi)));
 
-      for (let h = 5; h <= 19; h += 0.5) {
+      const slotBeam = new Float32Array(48);
+      const slotLost = new Float32Array(48);
+
+      // 1 minute → demi-heure ( ind 0..47 )
+      for (let mi = 0; mi < 24 * 60; mi++) {
+        const h = mi / 60;
         const sun = sunPos(lat, day, h);
         if (sun.elev <= 0) continue;
-        const w = Math.sin(sun.elev * DEG); // proxy énergie
+        const w = Math.sin(sun.elev * DEG);
+        const s = Math.min(47, Math.floor(mi / 30));
+        slotBeam[s] += w;
         beam += w;
-        if (sun.elev < horizonElevAt(sun.az)) lost += w;
+        if (sun.elev < horizonElevAt(sun.az)) {
+          slotLost[s] += w;
+          lost += w;
+        }
       }
+
+      for (let s = 0; s < 48; s++) {
+        if (slotBeam[s] <= 0) {
+          halfHourlyKeep[m - 1][s] = 1;
+          continue;
+        }
+        const shadeFrac = slotLost[s] / slotBeam[s]; // 0..1 de beam perdu
+        // PV AC ≈ beam + diffus : on retire beamShare × shadeFrac
+        halfHourlyKeep[m - 1][s] = Math.max(0, Math.min(1, 1 - beamShare * shadeFrac));
+      }
+
       const frac = beam > 0 ? lost / beam : 0;
       monthly.push(frac);
-      // Pondération mensuelle par GHI
       sumBeam += ghi * beamShare;
       sumLost += ghi * beamShare * frac;
     }
 
     state.monthlyLoss = monthly;
+    state.halfHourlyKeep = halfHourlyKeep;
     state.annualLossPct = sumBeam > 0
       ? Math.round((sumLost / sumBeam) * 1000) / 10
       : Math.round((monthly.reduce((s, v) => s + v, 0) / 12) * 1000) / 10;
-    return { monthly, annualLossPct: state.annualLossPct };
+    return { monthly, halfHourlyKeep, annualLossPct: state.annualLossPct };
   }
 
   function addPoint(az, elev, source = 'manual') {
@@ -166,6 +190,7 @@ const SiteSurvey = (() => {
   function clearPoints() {
     state.points = [];
     state.monthlyLoss = null;
+    state.halfHourlyKeep = null;
     state.annualLossPct = 0;
     persist();
     redraw();
@@ -1170,6 +1195,9 @@ const SiteSurvey = (() => {
       points: state.points.map(p => ({ ...p })),
       annualLossPct: state.annualLossPct,
       monthlyLoss: state.monthlyLoss ? state.monthlyLoss.slice() : null,
+      halfHourlyKeep: state.halfHourlyKeep
+        ? state.halfHourlyKeep.map(row => Array.from(row))
+        : null,
       terrain: state.terrain ? { ...state.terrain } : null,
       compassOffset: state.compassOffset,
     };
@@ -1181,6 +1209,9 @@ const SiteSurvey = (() => {
     state.points = Array.isArray(s.points) ? s.points.map(p => ({ ...p })) : [];
     state.annualLossPct = s.annualLossPct || 0;
     state.monthlyLoss = s.monthlyLoss ? s.monthlyLoss.slice() : null;
+    state.halfHourlyKeep = Array.isArray(s.halfHourlyKeep) && s.halfHourlyKeep.length === 12
+      ? s.halfHourlyKeep.map(row => new Float32Array(row))
+      : null;
     state.terrain = s.terrain ? { ...s.terrain } : null;
     if (typeof s.compassOffset === 'number') state.compassOffset = s.compassOffset;
     redraw();

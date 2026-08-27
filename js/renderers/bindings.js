@@ -54,12 +54,40 @@ function updateSizingBatteryHelp() {
 
 function bindSizingLiveTotal() {
   const inputs = Array.from({length: 12}, (_, i) => document.getElementById(`sz-kwh-${i + 1}`));
+  const dayEl = document.getElementById('sz-load-day');
+  const nightEl = document.getElementById('sz-load-night');
+  const hintEl = document.getElementById('sz-daynight-hint');
   function updateTotal() {
-    const total = inputs.reduce((s, el) => s + (parseFloat(el?.value) || 0), 0);
-    const el    = document.getElementById('sz-annual-total');
-    if (el) el.textContent = `Total annuel : ${total.toLocaleString('fr')} kWh/an`;
+    const monthSum = inputs.reduce((s, el) => s + (parseFloat(el?.value) || 0), 0);
+    const day = parseFloat(dayEl?.value) || 0;
+    const night = parseFloat(nightEl?.value) || 0;
+    const daily = day + night;
+    const fromDayNight = daily > 0
+      ? daily * ((typeof DAYS_IN_MONTH !== 'undefined')
+          ? DAYS_IN_MONTH.reduce((a, b) => a + b, 0) : 365)
+      : 0;
+    const total = monthSum > 0 ? monthSum : fromDayNight;
+    const el = document.getElementById('sz-annual-total');
+    if (el) {
+      let txt = `Total annuel : ${Math.round(total).toLocaleString('fr')} kWh/an`;
+      if (monthSum <= 0 && fromDayNight > 0)
+        txt += ` (depuis jour/nuit × 365)`;
+      else if (monthSum > 0 && daily > 0)
+        txt += ` · profil ${day.toFixed(1)}/${night.toFixed(1)} kWh/j`;
+      el.textContent = txt;
+    }
+    if (hintEl) {
+      if (daily <= 0)
+        hintEl.textContent = 'Laissez vide pour un profil résidentiel type, ou importez Enedis 30 min.';
+      else {
+        const pctN = Math.round(100 * night / daily);
+        hintEl.textContent = `≈ ${(day).toFixed(1)} kWh le jour + ${(night).toFixed(1)} kWh la nuit (${pctN} % la nuit) → ~${Math.round(fromDayNight).toLocaleString('fr')} kWh/an.`;
+      }
+    }
   }
   inputs.forEach(el => el?.addEventListener('input', updateTotal));
+  dayEl?.addEventListener('input', updateTotal);
+  nightEl?.addEventListener('input', updateTotal);
   updateTotal();
 }
 

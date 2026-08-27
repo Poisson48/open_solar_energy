@@ -2,6 +2,7 @@ package org.opensolarenergy.app;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.ActivityOptions;
 import android.content.BroadcastReceiver;
 import android.content.ContentValues;
 import android.content.Context;
@@ -26,6 +27,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.channels.FileChannel;
 
 public class Platform {
 
@@ -41,6 +43,10 @@ public class Platform {
 
     private static final Object INSTALL_LOCK = new Object();
     private static String sInstallStatus;
+    /** APK en attente après ouverture des réglages « apps inconnues ». */
+    private static String sPendingApkPath;
+    /** true seulement après need_perm — un seul retry au retour dans l’app. */
+    private static boolean sRetryAfterPerm;
 
     private static final Object CAMERA_LOCK = new Object();
     /** null | "pending" | "granted" | "denied" | "unavailable" */
@@ -348,17 +354,60 @@ public class Platform {
             setInstallStatus("err\tAPK introuvable ou vide");
             return false;
         }
+        synchronized (INSTALL_LOCK) {
+            sPendingApkPath = apkPath;
+        }
 
         // Android 8+ : sans cette autorisation, PackageInstaller échoue sans UI.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             PackageManager pm = ctx.getPackageManager();
             if (pm != null && !pm.canRequestPackageInstalls()) {
                 ensureInstallPermission(ctx);
-                setInstallStatus("need_perm\tAutorisez « Installer des apps inconnues » pour Open Solar, puis retapez Installer");
+                synchronized (INSTALL_LOCK) {
+                    sRetryAfterPerm = true;
+                }
+                setInstallStatus("need_perm\tAutorisez « Installer des apps inconnues » pour Open Solar, puis revenez dans l’app");
                 return false;
             }
         }
 
+        if (installApkWithPackageInstaller(ctx, apk))
+            return true;
+        // Fallback fiable : Intent ACTION_VIEW (écran install système).
+        return installApkWithViewIntent(ctx, apk);
+    }
+
+    /**
+     * Relance l’install après retour des réglages (permission accordée).
+     * Appelé depuis OseActivity.onResume.
+     */
+    public static boolean retryPendingInstallIfReady(Context ctx) {
+        if (ctx == null)
+            return false;
+        synchronized (INSTALL_LOCK) {
+            if (!sRetryAfterPerm)
+                return false;
+            sRetryAfterPerm = false;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            PackageManager pm = ctx.getPackageManager();
+            if (pm == null || !pm.canRequestPackageInstalls())
+                return false;
+        }
+        String path;
+        synchronized (INSTALL_LOCK) {
+            path = sPendingApkPath;
+        }
+        if (path == null || path.isEmpty())
+            return false;
+        File apk = new File(path);
+        if (!apk.isFile() || apk.length() == 0)
+            return false;
+        Log.i(TAG, "retryPendingInstallIfReady " + path);
+        return installApk(ctx, path);
+    }
+
+    private static boolean installApkWithPackageInstaller(Context ctx, File apk) {
         PackageInstaller.Session session = null;
         try {
             PackageInstaller installer = ctx.getPackageManager().getPackageInstaller();
@@ -380,28 +429,60 @@ public class Platform {
                 session.fsync(out);
             }
 
-            Intent status = new Intent(ACTION_INSTALL_STATUS).setPackage(ctx.getPackageName());
+            // getActivity (pas getBroadcast) : la confirmation système n’est plus
+            // bloquée en « background activity launch » sur Android 10–14.
+            Intent status = new Intent(ctx, InstallCallbackActivity.class);
+            status.setAction(ACTION_INSTALL_STATUS);
             int flags = android.app.PendingIntent.FLAG_UPDATE_CURRENT;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
                 flags |= android.app.PendingIntent.FLAG_MUTABLE;
 
-            android.app.PendingIntent pending = android.app.PendingIntent.getBroadcast(
+            android.app.PendingIntent pending = android.app.PendingIntent.getActivity(
                     ctx, sessionId, status, flags);
             session.commit(pending.getIntentSender());
             setInstallStatus("pending\tConfirmation Android…");
             return true;
         } catch (Exception e) {
-            Log.e(TAG, "installApk", e);
+            Log.e(TAG, "installApkWithPackageInstaller", e);
             if (session != null) {
                 try { session.abandon(); } catch (Exception ignored) {}
             }
-            String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
-            setInstallStatus("err\t" + msg);
             return false;
         } finally {
             if (session != null) {
                 try { session.close(); } catch (Exception ignored) {}
             }
+        }
+    }
+
+    /** Copie l’APK dans le cache app + ACTION_VIEW via ContentProvider. */
+    private static boolean installApkWithViewIntent(Context ctx, File apk) {
+        try {
+            File dest = ApkFileProvider.updateFile(ctx);
+            copyFile(apk, dest);
+            Uri uri = ApkFileProvider.updateUri();
+            Intent view = new Intent(Intent.ACTION_VIEW);
+            view.setDataAndType(uri, "application/vnd.android.package-archive");
+            view.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            view.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(view);
+            setInstallStatus("pending\tConfirmez l'installation sur l'écran Android");
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "installApkWithViewIntent", e);
+            String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            setInstallStatus("err\tInstallation impossible : " + msg);
+            return false;
+        }
+    }
+
+    private static void copyFile(File src, File dest) throws Exception {
+        try (FileChannel in = new FileInputStream(src).getChannel();
+             FileChannel out = new FileOutputStream(dest).getChannel()) {
+            long size = in.size();
+            long pos = 0;
+            while (pos < size)
+                pos += in.transferTo(pos, size - pos, out);
         }
     }
 
@@ -422,46 +503,70 @@ public class Platform {
         }
     }
 
+    /** Statut PackageInstaller (Activity callback ou ancien BroadcastReceiver). */
+    public static void handlePackageInstallerResult(Context ctx, Intent intent) {
+        if (intent == null)
+            return;
+        int status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS,
+                                        PackageInstaller.STATUS_FAILURE);
+        String msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
+        Log.i(TAG, "PackageInstaller status=" + status + " msg=" + msg);
+
+        if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
+            Intent confirm;
+            if (Build.VERSION.SDK_INT >= 33)
+                confirm = intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent.class);
+            else
+                confirm = intent.getParcelableExtra(Intent.EXTRA_INTENT);
+            if (confirm == null) {
+                setInstallStatus("err\tÉcran de confirmation Android manquant");
+                return;
+            }
+            if (!(ctx instanceof Activity))
+                confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try {
+                if (Build.VERSION.SDK_INT >= 34) {
+                    ActivityOptions opts = ActivityOptions.makeBasic();
+                    opts.setPendingIntentBackgroundActivityStartMode(
+                            ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED);
+                    ctx.startActivity(confirm, opts.toBundle());
+                } else {
+                    ctx.startActivity(confirm);
+                }
+                setInstallStatus("pending\tConfirmez l'installation sur l'écran Android");
+            } catch (Exception e) {
+                Log.e(TAG, "start confirm", e);
+                // Dernier recours : ACTION_VIEW sur le fichier déjà téléchargé
+                String path;
+                synchronized (INSTALL_LOCK) {
+                    path = sPendingApkPath;
+                }
+                if (path != null && installApkWithViewIntent(ctx, new File(path)))
+                    return;
+                setInstallStatus("err\tImpossible d'ouvrir la confirmation Android");
+            }
+            return;
+        }
+        if (status == PackageInstaller.STATUS_SUCCESS) {
+            synchronized (INSTALL_LOCK) {
+                sPendingApkPath = null;
+            }
+            setInstallStatus("ok\tInstallation réussie — redémarrez l'app si besoin");
+            return;
+        }
+        if (status == PackageInstaller.STATUS_FAILURE_ABORTED) {
+            setInstallStatus("err\tInstallation annulée");
+            return;
+        }
+        String detail = (msg != null && !msg.isEmpty()) ? msg : ("code " + status);
+        setInstallStatus("err\tÉchec installation : " + detail);
+    }
+
+    /** Conservé pour compat ; le chemin principal passe par InstallCallbackActivity. */
     public static class InstallReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context ctx, Intent intent) {
-            if (intent == null)
-                return;
-            int status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS,
-                                            PackageInstaller.STATUS_FAILURE);
-            String msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
-            Log.i(TAG, "InstallReceiver status=" + status + " msg=" + msg);
-
-            if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
-                Intent confirm;
-                if (Build.VERSION.SDK_INT >= 33)
-                    confirm = intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent.class);
-                else
-                    confirm = intent.getParcelableExtra(Intent.EXTRA_INTENT);
-                if (confirm == null) {
-                    setInstallStatus("err\tÉcran de confirmation Android manquant");
-                    return;
-                }
-                confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                try {
-                    ctx.startActivity(confirm);
-                    setInstallStatus("pending\tConfirmez l'installation sur l'écran Android");
-                } catch (Exception e) {
-                    Log.e(TAG, "start confirm", e);
-                    setInstallStatus("err\tImpossible d'ouvrir la confirmation Android");
-                }
-                return;
-            }
-            if (status == PackageInstaller.STATUS_SUCCESS) {
-                setInstallStatus("ok\tInstallation réussie — redémarrez l'app si besoin");
-                return;
-            }
-            if (status == PackageInstaller.STATUS_FAILURE_ABORTED) {
-                setInstallStatus("err\tInstallation annulée");
-                return;
-            }
-            String detail = (msg != null && !msg.isEmpty()) ? msg : ("code " + status);
-            setInstallStatus("err\tÉchec installation : " + detail);
+            handlePackageInstallerResult(ctx, intent);
         }
     }
 

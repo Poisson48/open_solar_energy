@@ -39,8 +39,15 @@ jobs:
         run: |
           REF="${{ steps.pick.outputs.ref }}"
           echo "ref=$REF" >> "$GITHUB_OUTPUT"
-          echo "name=${REF#v}" >> "$GITHUB_OUTPUT"
-          echo "code=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
+          NAME="${REF#v}"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          # versionCode marketing : 2.0.60 → 20060 (monotone, aligné versionName).
+          # Ne plus utiliser git rev-list (opaque, et < codes locaux type 260).
+          IFS=. read -r MA MI PA _ <<< "${NAME}."
+          MA=${MA:-0}; MI=${MI:-0}; PA=${PA:-0}
+          CODE=$((10#$MA * 10000 + 10#$MI * 100 + 10#$PA))
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "versionCode Android = $CODE (depuis $NAME)"
 
   apk:
     needs: version

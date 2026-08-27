@@ -175,6 +175,70 @@ for (const vp of VIEWPORTS) {
   // Lieu est un onglet : app-layout = colonne unique (plus de grille sidebar|contenu)
   check('app-layout sans sidebar permanente', appTracks.length <= 1, layoutInfo.appCols);
 
+  // Débordement réel par onglet (hors tuiles Leaflet) — le scrollWidth seul ment
+  async function tabOverflow(tab) {
+    await page.click(`.tab-btn[data-tab="${tab}"]`, { force: true }).catch(() => {});
+    await page.waitForTimeout(220);
+    return page.evaluate((tabName) => {
+      const cw = document.documentElement.clientWidth;
+      const pane = document.getElementById('tab-' + tabName);
+      if (!pane) return { ok: false, detail: 'pane missing' };
+
+      function inXScroll(el) {
+        let p = el.parentElement;
+        while (p && p !== document.body) {
+          const st = getComputedStyle(p);
+          const ox = st.overflowX;
+          if ((ox === 'auto' || ox === 'scroll' || ox === 'clip') && p.clientWidth <= cw + 1)
+            return true;
+          // table display:block + overflow-x auto on itself
+          if (p.tagName === 'TABLE') {
+            const ts = getComputedStyle(p);
+            if ((ts.overflowX === 'auto' || ts.overflowX === 'scroll') && p.clientWidth <= cw + 1)
+              return true;
+          }
+          p = p.parentElement;
+        }
+        const self = getComputedStyle(el);
+        if ((self.overflowX === 'auto' || self.overflowX === 'scroll') && el.clientWidth <= cw + 1)
+          return true;
+        return false;
+      }
+
+      let worst = 0;
+      let who = '';
+      for (const el of pane.querySelectorAll('*')) {
+        if (el.classList?.contains('leaflet-tile')) continue;
+        const st = getComputedStyle(el);
+        if (st.display === 'none' || st.visibility === 'hidden') continue;
+        const r = el.getBoundingClientRect();
+        if (r.width < 8 || r.height < 8) continue;
+        const over = r.right - cw;
+        if (over <= 8) continue;
+        if (inXScroll(el)) continue;
+        if (over > worst) {
+          worst = over;
+          who = (el.id || el.className || el.tagName).toString().slice(0, 40);
+        }
+      }
+      const pageDelta = document.documentElement.scrollWidth - cw;
+      return {
+        ok: worst <= 8 && pageDelta <= 8,
+        detail: worst > 8 ? `${who}+${Math.round(worst)}px` : (pageDelta > 8 ? `pageΔ${pageDelta}` : '0'),
+      };
+    }, tab);
+  }
+  for (const tab of ['sizing', 'quote', 'grid', 'daily']) {
+    if (tab === 'daily') {
+      await page.evaluate(() => {
+        if (typeof window.__oseEnsureAdvancedTabs === 'function') window.__oseEnsureAdvancedTabs();
+      });
+      await page.waitForTimeout(80);
+    }
+    const o = await tabOverflow(tab);
+    check(`pas de débordement UI (${tab})`, o.ok, o.detail);
+  }
+
   check('aucune pageerror', pageErrors.length === 0, pageErrors.slice(0, 2).join(' | '));
   await page.close();
 }

@@ -82,16 +82,17 @@ const SizingEngine = (() => {
     return monthly;
   }
 
-  // ── Autoconsommation slot-à-slot AVEC batterie hybride (réseau + stockage) ──
-  // Même schéma que _calcSlotMetrics, mais le surplus PV charge la batterie
-  // avant export réseau, et le déficit est d'abord couvert par la batterie
-  // avant import réseau. Reprend le schéma de simulation de
-  // offgrid_sizing.js::simulateYearSlots (charge/décharge SOC slot-à-slot).
+  // ── Autoconsommation minute-par-minute AVEC batterie hybride ──
+  // Données sources : créneaux 30 min (Enedis / météo). Chaque créneau est
+  // découpé en 30 pas d’1 minute (énergie conservée). La nuit : PV≈0, conso>0
+  // → décharge batterie avant import réseau. Ombrage déjà appliqué sur pvSlotsFlat
+  // (demi-heure via PvProfiles.applySiteShade), pas un simple % forfaitaire ici.
   function _calcSlotMetricsWithBattery(pvSlotsFlat, Ppeak, loadSlots, daysArr, C_usable, eta) {
     const monthly = Array.from({length: 12}, (_, i) => ({
       month: i + 1, name: MONTH_NAMES[i],
       prod: 0, conso: 0, autoconsoKwh: 0, autoconsoDirect: 0, autoconsoBatt: 0,
-      surplus: 0, deficit: 0, battCharge: 0, battDischarge: 0
+      surplus: 0, deficit: 0, battCharge: 0, battDischarge: 0,
+      nightBattDischarge: 0, nightConso: 0
     }));
     let soc = C_usable * 0.5;
     let dayIdx = 0;
@@ -102,28 +103,35 @@ const SizingEngine = (() => {
         for (let s = 0; s < 48; s++) {
           const idx = dayIdx * 48 + s;
           if (idx >= nSlots) break;
-          const c = loadSlots[idx] || 0;
-          const p = (pvSlotsFlat[idx] || 0) * Ppeak;
-          monthly[m].prod  += p;
-          monthly[m].conso += c;
-          const direct = Math.min(p, c);
-          monthly[m].autoconsoDirect += direct;
-          const balance = p - c;
-          if (balance >= 0) {
-            // Surplus → charge batterie, le reste part au réseau (injection)
-            const room   = Math.max(0, C_usable - soc);
-            const stored = Math.min(balance * eta, room);
-            soc = Math.min(C_usable, soc + stored);
-            monthly[m].battCharge += stored;
-            monthly[m].surplus    += Math.max(0, balance - stored / eta);
-          } else {
-            // Déficit → décharge batterie, le reste vient du réseau
-            const needed    = -balance;
-            const fromBatt  = Math.min(needed, soc);
-            soc -= fromBatt;
-            monthly[m].battDischarge   += fromBatt;
-            monthly[m].autoconsoBatt   += fromBatt;
-            monthly[m].deficit         += needed - fromBatt;
+          const hour = Math.floor(s / 2);
+          const isNight = hour < 6 || hour >= 21;
+          // kWh du créneau 30 min → débit constant par minute
+          const pMin = ((pvSlotsFlat[idx] || 0) * Ppeak) / 30;
+          const cMin = (loadSlots[idx] || 0) / 30;
+          for (let min = 0; min < 30; min++) {
+            const p = pMin;
+            const c = cMin;
+            monthly[m].prod  += p;
+            monthly[m].conso += c;
+            if (isNight) monthly[m].nightConso += c;
+            const direct = Math.min(p, c);
+            monthly[m].autoconsoDirect += direct;
+            const balance = p - c;
+            if (balance >= 0) {
+              const room   = Math.max(0, C_usable - soc);
+              const stored = Math.min(balance * eta, room);
+              soc = Math.min(C_usable, soc + stored);
+              monthly[m].battCharge += stored;
+              monthly[m].surplus    += Math.max(0, balance - stored / eta);
+            } else {
+              const needed   = -balance;
+              const fromBatt = Math.min(needed, soc);
+              soc -= fromBatt;
+              monthly[m].battDischarge += fromBatt;
+              monthly[m].autoconsoBatt += fromBatt;
+              monthly[m].deficit       += needed - fromBatt;
+              if (isNight) monthly[m].nightBattDischarge += fromBatt;
+            }
           }
         }
         dayIdx++;
@@ -152,10 +160,9 @@ const SizingEngine = (() => {
     });
   }
 
-  /** Ombrage mensuel site (fraction beam perdue 0–1) si profil horizon calculé. */
-  function _siteMonthlyLoss() {
-    const ml = typeof AppState !== 'undefined' ? AppState.siteSurvey?.monthlyLoss : null;
-    return (Array.isArray(ml) && ml.length === 12) ? ml : null;
+  /** Ombrage site (profil demi-heure ou forfait mensuel). */
+  function _siteSurveyShade() {
+    return (typeof AppState !== 'undefined') ? AppState.siteSurvey : null;
   }
 
   // ── Moteur principal ───────────────────────────────────────────
@@ -208,7 +215,9 @@ const SizingEngine = (() => {
     const hasEnedisSlots = !!(enedis?.halfHourly?.length >= 48 * 365);
     const yearForDays = enedis?.year || (typeof AppState !== 'undefined' && AppState.enedisYear) || null;
     const daysArrYear = yearForDays ? getMonthlyDays(yearForDays) : DAYS;
-    const monthlyShade = _siteMonthlyLoss();
+    const siteShade = _siteSurveyShade();
+    const hasTemporalShade = !!(siteShade?.halfHourlyKeep?.length === 12);
+    const hasMonthlyShade = !!(siteShade?.monthlyLoss?.length === 12);
 
     // 4b. Batterie hybride (réseau + stockage) — optionnelle
     const useBattery = !!(sizing.battery?.enabled && sizing.battery.capacityKwh > 0);
@@ -227,13 +236,13 @@ const SizingEngine = (() => {
         hourlyWx, site.tilt, site.azimuth, site.losses, site.tech, lat,
         (typeof AppState !== 'undefined' && AppState.location?.lon) || 0
       );
-      if (monthlyShade) PvProfiles.applyMonthlyShade(pvProfilesPerKwc, daysArrYear, monthlyShade);
+      PvProfiles.applySiteShade(pvProfilesPerKwc, daysArrYear, siteShade);
       pvSource = 'hourly_weather';
     } else {
       const monthlyProfs = PvProfiles.buildMonthlyProfiles(
         weatherData, monthlyHtilt, site.losses, site.tilt, site.azimuth, lat, site.tech
       );
-      if (monthlyShade) PvProfiles.applyMonthlyShade(monthlyProfs, null, monthlyShade);
+      PvProfiles.applySiteShade(monthlyProfs, null, siteShade);
       pvProfilesPerKwc = PvProfiles.flattenToYear(monthlyProfs, daysArrYear);
       pvSource = 'monthly_shape';
     }
@@ -243,12 +252,18 @@ const SizingEngine = (() => {
     if (hasEnedisSlots) {
       loadSlots = enedis.halfHourly;
       loadSource = 'enedis_30min';
+    } else if ((bill.dayKwhPerDay > 0 || bill.nightKwhPerDay > 0)) {
+      loadSlots = PvProfiles.buildDayNightLoadYear(
+        bill.monthlyKwh, bill.dayKwhPerDay || 0, bill.nightKwhPerDay || 0, yearForDays
+      );
+      loadSource = 'day_night';
     } else {
       loadSlots = PvProfiles.buildSyntheticLoadYear(bill.monthlyKwh, yearForDays);
       loadSource = 'synthetic_diurnal';
     }
 
-    const precisionMode = `${loadSource}+${pvSource}${monthlyShade ? '+site_shade' : ''}`;
+    const shadeTag = hasTemporalShade ? '+shade_hh' : (hasMonthlyShade ? '+site_shade' : '');
+    const precisionMode = `${loadSource}+${pvSource}${shadeTag}${useBattery ? '+batt_1min' : ''}`;
 
     // 5. Balayage de 0.5 à PpeakMax (pas 0.1 kWc)
     const allCandidates = [];
@@ -342,7 +357,9 @@ const SizingEngine = (() => {
         loadSource,
         pvSource,
         precisionMode,
-        siteShadeApplied: !!monthlyShade,
+        siteShadeApplied: !!(hasTemporalShade || hasMonthlyShade),
+        siteShadeTemporal: hasTemporalShade,
+        batteryMinuteSim: !!useBattery,
         monthlyMetrics
       });
     }
@@ -364,14 +381,34 @@ const SizingEngine = (() => {
     const getVal = id => parseFloat(document.getElementById(id)?.value) || 0;
     const getStr = id => document.getElementById(id)?.value || '';
 
-    const monthlyKwh = Array.from({length:12}, (_, i) =>
+    const monthlyKwhRaw = Array.from({length:12}, (_, i) =>
       getVal(`sz-kwh-${i+1}`)
     );
+    const dayKwhPerDay = (() => {
+      const el = document.getElementById('sz-load-day');
+      if (!el || el.value === '') return 0;
+      return Math.max(0, parseFloat(el.value) || 0);
+    })();
+    const nightKwhPerDay = (() => {
+      const el = document.getElementById('sz-load-night');
+      if (!el || el.value === '') return 0;
+      return Math.max(0, parseFloat(el.value) || 0);
+    })();
+    const dailyTyp = dayKwhPerDay + nightKwhPerDay;
+    const daysArrBill = (typeof DAYS_IN_MONTH !== 'undefined') ? DAYS_IN_MONTH : [31,28,31,30,31,30,31,31,30,31,30,31];
+    const hasMonthly = monthlyKwhRaw.some(v => v > 0);
+    const monthlyKwh = hasMonthly
+      ? monthlyKwhRaw
+      : (dailyTyp > 0
+          ? daysArrBill.map(d => dailyTyp * d)
+          : monthlyKwhRaw);
 
     return {
       bill: {
         tariff:             getStr('sz-tariff'),
         monthlyKwh,
+        dayKwhPerDay,
+        nightKwhPerDay,
         monthlyKwh_hp:      (typeof AppState !== 'undefined' && AppState.monthlyKwhHp) || null,
         priceBase:          getVal('sz-price-base') || FinanceCalc.TARIFS.base.price,
         priceHpHc: {
