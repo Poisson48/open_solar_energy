@@ -3,8 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.62';
+const APP_VERSION = '2.0.63';
 // Historique :
+//   2.0.63 - MAJ : suppression totale du fallback « ouvrir APK / navigateur » ;
+//            install uniquement via pont Qt (AppImage / Android)
 //   2.0.62 - Audit clic MAJ PC + tablette (tests/run_update_click_audit.mjs) :
 //            bouton ↻ MAJ, carte news, Mettre à jour, barre progression
 //            (états updater simulés), Réessayer

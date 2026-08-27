@@ -978,38 +978,10 @@ function _renderHubUpdateProgress(state, msg) {
       <p class="ose-hub-news-meta" style="margin:0 0 8px;line-height:1.4">${_escHtml(msg || 'Échec')}</p>
       <div class="ose-hub-news-actions">
         <button type="button" class="btn btn-accent btn-sm" onclick="installAvailableUpdate()">Réessayer</button>
-        <button type="button" class="btn btn-outline btn-sm" onclick="openUpdateApkFallback()">Ouvrir l’APK (navigateur)</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="checkForUpdates()">Vérifier à nouveau</button>
       </div>
     `}`;
   try { bar.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {}
-}
-
-function _latestCachedApk() {
-  const list = _hubNewsCache?.releases || [];
-  const current = (typeof window.__oseNativeVersion === 'string' && window.__oseNativeVersion)
-    || (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '0.0.0');
-  for (const r of list) {
-    if (r.apk && _isNewerVersion(r.ver, current)) return r;
-  }
-  return list.find(r => r.apk) || null;
-}
-
-function openUpdateApkFallback() {
-  const hit = _latestCachedApk();
-  const url = hit?.apk || hit?.url;
-  if (!url) {
-    showToast('Lien APK introuvable — ouvrez la page GitHub.', 'error');
-    return;
-  }
-  const bridge = (typeof getNativeBridge === 'function' ? getNativeBridge() : null)
-              || window.webBridge || null;
-  showToast('Ouverture du téléchargement APK…', 'warning');
-  try {
-    if (bridge?.openExternal) bridge.openExternal(url);
-    else window.open(url, '_blank');
-  } catch (e) {
-    showToast('Impossible d’ouvrir : ' + (e.message || e), 'error');
-  }
 }
 
 async function installAvailableUpdate() {
@@ -1036,19 +1008,18 @@ async function installAvailableUpdate() {
     const bridge = await waitNativeBridge(2500);
     if (bridge?.startUpdate) {
       bridge.startUpdate();
-      // Watchdog : si le natif ne passe pas en téléchargement, fallback APK
+      // Watchdog : si le natif ne passe pas en téléchargement, afficher l’erreur (pas d’ouverture navigateur)
       clearTimeout(window.__oseUpdateWatchdog);
       window.__oseUpdateWatchdog = setTimeout(() => {
         const st = Number(window.__oseUpdaterState || 0);
         const prog = Number(window.__oseUpdaterProgress || 0);
         if (!window.__oseUpdateRequested) return;
-        if (st === 3 && prog > 0.02) return; // téléchargement OK
+        if (st === 3 && prog > 0.02) return;
         if (st === 4) return;
         if (st === 5) return;
-        // st 0/1/2 après 18s = téléchargement jamais démarré (pont ou check bloqué)
         const hint = st === 1
-          ? 'Vérification trop longue. Réessayez ou ouvrez l’APK ci-dessous.'
-          : 'Le téléchargement ne démarre pas. Réessayez, ou ouvrez l’APK ci-dessous.';
+          ? 'Vérification trop longue. Réessayez depuis le hub.'
+          : 'Le téléchargement ne démarre pas. Réessayez — la MAJ passe uniquement par l’app (AppImage / Android).';
         _renderHubUpdateProgress(5, hint);
       }, 18000);
       return;
@@ -1058,10 +1029,13 @@ async function installAvailableUpdate() {
       showToast('Vérification des mises à jour…');
       return;
     }
-    openUpdateApkFallback();
+    // Navigateur / pas de pont Qt : jamais ouvrir d’APK ou d’onglet externe
+    _renderHubUpdateProgress(5,
+      'Mise à jour in-app indisponible ici. Utilisez l’AppImage (PC) ou l’APK (Android) — pas de téléchargement navigateur.');
+    showToast('MAJ uniquement dans l’app native (AppImage / Android)', 'warning');
   } catch (e) {
+    _renderHubUpdateProgress(5, 'Mise à jour impossible : ' + (e.message || e));
     showToast('Mise à jour impossible : ' + (e.message || e), 'error');
-    openUpdateApkFallback();
   }
 }
 
@@ -1102,7 +1076,7 @@ async function checkForUpdates() {
       return;
     }
 
-    // Sans pont Qt (navigateur) : info seulement — pas de nav WebView vers l’APK
+    // Sans pont Qt : vérifier via GitHub et mettre à jour le hub — jamais window.open / APK
     const res = await fetch(
       'https://api.github.com/repos/Poisson48/open_solar_energy/releases?per_page=15',
       { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'OpenSolarEnergy' } }
@@ -1118,25 +1092,12 @@ async function checkForUpdates() {
       if (_isNewerVersion(ver, current) && (!best || _isNewerVersion(ver, best.ver)))
         best = { ver, url: r.html_url, apk: _apkAssetUrl(r), name: r.name };
     }
+    if (typeof refreshHubNews === 'function') await refreshHubNews(true);
     if (!best) {
       showToast(`✓ Vous avez la dernière version (v${current})`);
       return;
     }
-    const isAndroid = /Android/i.test(navigator.userAgent || '');
-    if (isAndroid) {
-      // Dernier recours sans pont natif : ouvrir l’APK dans le navigateur système
-      const target = best.apk || best.url;
-      showToast(`v${best.ver} disponible — ouverture du téléchargement…`, 'warning');
-      if (target) {
-        try { window.open(target, '_blank'); } catch (_) {}
-      }
-      return;
-    }
-    showToast(`Nouvelle version v${best.ver} disponible`, 'warning');
-    const open = (u) => window.open(u, '_blank', 'noopener');
-    const target = best.apk || best.url;
-    if (confirm(`Open Solar Energy v${best.ver} est disponible.\nVous avez la v${current}.\n\nOuvrir le téléchargement ?`))
-      open(target);
+    showToast(`Nouvelle version v${best.ver} — installez via l’AppImage ou l’app Android`, 'warning');
   } catch (e) {
     showToast('Impossible de vérifier les mises à jour : ' + (e.message || e), 'error');
   } finally {
