@@ -169,7 +169,7 @@ console.log('\n═══ B. Dimensionnement + hypothèses financières ═══
     };
   });
   check('champs hypothèses présents (défauts)', r.fields.esc === '3' && r.fields.disc === '4' && r.fields.deg === '0.5' && r.fields.years === '25', JSON.stringify(r.fields));
-  check('surface + conso démo OK', parseFloat(r.fields.surface) > 0 && parseFloat(r.fields.jan) > 0, `surf=${r.fields.surface} jan=${r.fields.jan}`);
+  check('conso démo OK (surface non obligatoire)', parseFloat(r.fields.jan) > 0, `jan=${r.fields.jan}`);
   check('cartes objectif présentes', r.hasGoalCards === true);
   check('dimensionnement produit une reco', r.hasRec && r.ppeak > 0, `Ppeak=${r.ppeak} n=${r.nPanels}`);
   check('objectif 90 % autoconso respecté', r.autoconso >= 89.5, String(r.autoconso));

@@ -49,14 +49,37 @@ const HourlyModule = (() => {
     const status = document.getElementById('hourly-data-status');
     if (status) {
       if (_rawData) {
-        status.textContent = `✓ Enedis 30 min chargé (${_rawYear || ''}) — utilisé pour le dimensionnement / batterie`;
+        status.textContent = `✓ Enedis 30 min chargé (${_rawYear || ''}) — prioritaire pour le dimensionnement / batterie`;
         status.style.display = '';
       } else {
         status.textContent = '';
       }
     }
+    // Ne plus masquer jour/nuit : sinon dès qu’un projet a (ou hérite) d’Enedis 30 min,
+    // l’utilisateur croit que les champs ont disparu.
     const dn = document.getElementById('sz-daynight-block');
-    if (dn) dn.style.display = _rawData ? 'none' : '';
+    if (dn) {
+      dn.style.display = '';
+      dn.classList.toggle('ose-daynight-enedis-active', !!_rawData);
+    }
+    const note = document.getElementById('sz-daynight-enedis-note');
+    if (note) note.style.display = _rawData ? '' : 'none';
+  }
+
+  /** Oublier Enedis 30 min pour repasser sur la saisie jour / nuit. */
+  function clearEnedisLoad() {
+    _rawData = null;
+    _rawYear = null;
+    if (typeof AppState !== 'undefined') {
+      AppState.hourlyEnedisData = null;
+      AppState.enedisYear = null;
+    }
+    const csv = document.getElementById('sz-csv-status');
+    if (csv) { csv.textContent = ''; csv.style.display = 'none'; }
+    _updateSourceStatus();
+    if (typeof refreshSizingValidity === 'function') refreshSizingValidity();
+    if (typeof showToast === 'function')
+      showToast('Enedis 30 min retiré — utilisez conso jour / nuit (ou les mois).');
   }
 
   /**
@@ -498,6 +521,7 @@ const HourlyModule = (() => {
 
   return {
     setData,
+    clearEnedisLoad,
     getHourlyConsumptionProfile,
     getHourlyPvProduction,
     simulateDailyBattery,

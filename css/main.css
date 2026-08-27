@@ -2033,6 +2033,10 @@ details.card > summary:focus-visible {
   font-size: 11px;
   line-height: 1.35;
 }
+/* display:block ci-dessus écrasait l’attribut HTML hidden → bandeau démo sur tous les projets */
+.ose-demo-note[hidden] {
+  display: none !important;
+}
 .ose-demo-note.is-ready {
   background: rgba(46,125,50,0.10);
   color: #1b5e20;
@@ -2139,6 +2143,16 @@ details.card > summary:focus-visible {
 .ose-goal-miss {
   background: #fff8e1;
   color: #e65100;
+}
+.ose-goal-hint {
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin: -6px 0 12px;
+  line-height: 1.45;
+  background: #e3f2fd;
+  color: #0d47a1;
+  border: 1px solid #90caf9;
 }
 .tab-btn-more {
   margin-left: auto;

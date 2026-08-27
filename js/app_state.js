@@ -3,9 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.65';
+const APP_VERSION = '2.0.66';
 /** Notes embarquées (hub) — utilisées si GitHub API/Atom indisponibles (403, offline). */
 const OSE_RELEASE_FEED = [
+  { ver: '2.0.66', notes: 'Dimensionnement : Objectif / Toiture L×l / Nb. fixe ; bandeau démo corrigé ; jour/nuit toujours visible ; clarif. autoconso ≠ couverture.' },
   { ver: '2.0.65', notes: 'Hub : news fiables via flux Atom GitHub et notes embarquées (plus d’écran d’échec réseau).' },
   { ver: '2.0.64', notes: 'Android : correction onglets doublés (« 3 Devis ») ; CSS cache-bust ; labels Dim./PV/Devis.' },
   { ver: '2.0.63', notes: 'MAJ : plus de fallback « ouvrir APK navigateur » ; install via AppImage / Android uniquement.' },
@@ -15,6 +16,8 @@ const OSE_RELEASE_FEED = [
   { ver: '2.0.59', notes: 'Shell téléphone : barre compacte, menu ⋯, hub projets d’abord.' },
 ];
 // Historique :
+//   2.0.66 - Dimensionnement : surface non obligatoire ; modes Objectif /
+//            Toiture L×l / Nb. fixe (comme Système PV)
 //   2.0.65 - Hub news : plus jamais « Impossible de charger » — Atom GitHub
 //            + notes embarquées OSE_RELEASE_FEED (API rate-limit 403)
 //   2.0.64 - Android : plus de labels onglets doublés (« 3 Devis ») — CSS
@@ -242,6 +245,7 @@ const PROJECT_FIELDS = [
   ...Array.from({length:12}, (_,i) => `sz-kwh-${i+1}`),
   'sz-load-day','sz-load-night',
   'sz-tilt','sz-azimuth','sz-surface','sz-panel-model','sz-panel-wp','sz-panel-m2','sz-losses','sz-tech',
+  'sz-limit-mode','sz-roof-length','sz-roof-width','sz-npanels-fixe',
   'sz-panel-voc','sz-panel-isc','sz-panel-vmp','sz-panel-imp','sz-panel-bifacial',
   'sz-strategy','sz-target-coverage','sz-cost-kwp','sz-cost-total','sz-feedin',
   'sz-elec-escalation','sz-discount-rate','sz-panel-degradation','sz-finance-years',

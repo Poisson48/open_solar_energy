@@ -62,8 +62,13 @@ function initTabSizing() {
               🔋 Batterie hybride : Enedis <strong>30 min</strong> = le plus précis. Sinon saisissez la conso <strong>jour / nuit</strong> ci-dessous (2 chiffres) pour simuler correctement la décharge nocturne.
             </div>
             <div id="sz-daynight-block" class="ose-daynight-block" style="margin-bottom:10px;padding:10px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-surface-2,rgba(0,0,0,0.03))">
-              <div style="font-size:12px;font-weight:700;color:var(--color-primary);margin-bottom:4px">Répartition jour / nuit (sans Enedis 30 min)</div>
-              <p class="ose-field-help" style="margin:0 0 8px">Deux chiffres suffisent : conso typique <strong>par jour</strong>. Jour = 6h–21h, nuit = 21h–6h (comme la simu batterie). Les mois ci-dessous restent optionnels (saisonnalité) — s’ils sont vides, on projette sur l’année.</p>
+              <div style="font-size:12px;font-weight:700;color:var(--color-primary);margin-bottom:4px">Répartition jour / nuit</div>
+              <p id="sz-daynight-enedis-note" class="alert alert-info" style="font-size:11px;margin:0 0 8px;display:none">
+                Un profil <strong>Enedis 30 min</strong> est actif (prioritaire). Les champs ci-dessous sont ignorés tant qu’il est chargé.
+                <button type="button" class="btn btn-outline btn-sm" style="margin-left:6px;padding:2px 8px;font-size:10px"
+                  onclick="event.stopPropagation();HourlyModule.clearEnedisLoad()">Utiliser jour / nuit à la place</button>
+              </p>
+              <p class="ose-field-help" style="margin:0 0 8px">Deux chiffres suffisent : conso typique <strong>par jour</strong>. Jour = 6h–21h, nuit = 21h–6h. Les mois ci-dessous restent optionnels (saisonnalité).</p>
               <div class="form-row" style="gap:8px;margin-bottom:0">
                 <div class="form-group" style="flex:1">
                   <label for="sz-load-day">Conso jour</label>
@@ -103,7 +108,7 @@ function initTabSizing() {
             <span class="ose-step-num">2</span>
             <div>
               <h3 class="ose-step-title">Toiture et panneaux</h3>
-              <p class="ose-step-hint">Surface dispo + orientation. Lieu / météo = onglet <strong>📍 Lieu</strong>. Terrain / ombrage = onglet <strong>Site / Ombrage</strong>.</p>
+              <p class="ose-step-hint">Panneaux + orientation. Limite = objectif, toiture L×l, ou nombre fixe. Lieu = onglet <strong>📍 Lieu</strong>.</p>
             </div>
           </div>
           <div class="ose-step-body">
@@ -133,10 +138,36 @@ function initTabSizing() {
                 </div>
                 <div class="input-unit"><input type="number" id="sz-azimuth" value="0" min="-180" max="180"><span class="unit-tag">°</span></div>
               </div>
-              <div class="form-group">
-                <label for="sz-surface">Surface dispo <span class="ose-req">*</span></label>
-                <div class="input-unit"><input type="number" id="sz-surface" value="" min="1" step="0.1" placeholder="obligatoire" required aria-required="true"><span class="unit-tag">m²</span></div>
-                <p class="ose-field-help">Sans surface, le calcul ne démarre pas (aucune valeur inventée).</p>
+              <div class="form-group" style="grid-column:1/-1;margin-bottom:4px">
+                <label style="margin-bottom:6px">Comment limiter la puissance ?</label>
+                <input type="hidden" id="sz-limit-mode" value="objectif">
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px" role="group" aria-label="Mode de limite">
+                  <button type="button" id="sz-lmode-objectif" class="btn btn-outline btn-sm active" onclick="setSizingLimitMode('objectif')" style="padding:4px 10px;font-size:11px" title="Selon l’objectif (autoconso / couverture / ROI) — pas de surface requise">🎯 Objectif</button>
+                  <button type="button" id="sz-lmode-surface" class="btn btn-outline btn-sm" onclick="setSizingLimitMode('surface')" style="padding:4px 10px;font-size:11px" title="Plafond = longueur × largeur de toiture">🏠 Toiture L×l</button>
+                  <button type="button" id="sz-lmode-fixe" class="btn btn-outline btn-sm" onclick="setSizingLimitMode('fixe')" style="padding:4px 10px;font-size:11px" title="Nombre de panneaux imposé">✏️ Nb. fixe</button>
+                </div>
+                <p id="sz-limit-help" class="ose-field-help" style="margin:0 0 8px">Par défaut : selon l’objectif (étape 3). Pas de m² obligatoires — un m² seul ne veut rien dire sans L × l.</p>
+              </div>
+              <div id="sz-roof-dims-wrap" style="display:none;grid-column:1/-1">
+                <div class="params-grid" style="margin:0">
+                  <div class="form-group">
+                    <label for="sz-roof-length">Longueur toiture</label>
+                    <div class="input-unit"><input type="number" id="sz-roof-length" value="" min="0.1" step="0.1" placeholder="ex. 8" oninput="syncSizingRoofSurface()"><span class="unit-tag">m</span></div>
+                  </div>
+                  <div class="form-group">
+                    <label for="sz-roof-width">Largeur (pente)</label>
+                    <div class="input-unit"><input type="number" id="sz-roof-width" value="" min="0.1" step="0.1" placeholder="ex. 4" oninput="syncSizingRoofSurface()"><span class="unit-tag">m</span></div>
+                  </div>
+                </div>
+              </div>
+              <div id="sz-surface-wrap" class="form-group" style="display:none">
+                <label for="sz-surface" id="sz-surface-label">Surface utile (= L × l)</label>
+                <div class="input-unit"><input type="number" id="sz-surface" value="" min="0" step="0.1" placeholder="L × l" readonly><span class="unit-tag">m²</span></div>
+                <p id="sz-surface-help" class="ose-field-help">Calculée depuis longueur × largeur — pas un m² inventé à la main.</p>
+              </div>
+              <div id="sz-npanels-fixe-wrap" class="form-group" style="display:none">
+                <label for="sz-npanels-fixe">Nombre de panneaux</label>
+                <div class="input-unit"><input type="number" id="sz-npanels-fixe" value="8" min="1" step="1"><span class="unit-tag">u</span></div>
               </div>
               <div class="form-group">
                 <label for="sz-panel-wp">Panneaux (Wc)</label>
@@ -208,11 +239,11 @@ function initTabSizing() {
             <div class="ose-goal-cards" id="sz-goal-cards" role="radiogroup" aria-label="Objectif de dimensionnement">
               <button type="button" class="ose-goal-card active" data-strategy="autoconso_pct" aria-pressed="true">
                 <strong>Autoconsommation cible</strong>
-                <span>Ex. 90 % : presque toute la production est consommée chez vous (souvent installation plus petite).</span>
+                <span>Ex. 90 % : presque toute la <em>production</em> est consommée chez vous (souvent peu de panneaux). ≠ couverture de facture. Les panneaux ne produisent pas la nuit.</span>
               </button>
               <button type="button" class="ose-goal-card" data-strategy="bill_coverage_pct" aria-pressed="false">
                 <strong>Couverture de facture</strong>
-                <span>Ex. 70 % : l’électricité PV couvre 70 % de votre conso annuelle (souvent plus de panneaux).</span>
+                <span>Ex. 70 % : le PV couvre 70 % de votre <em>conso</em> annuelle (souvent plus de panneaux ; le reste vient du réseau, surtout la nuit).</span>
               </button>
               <button type="button" class="ose-goal-card" data-strategy="roi_optimal" aria-pressed="false">
                 <strong>Meilleur retour sur investissement</strong>
@@ -227,7 +258,7 @@ function initTabSizing() {
             <div class="form-group" style="margin-top:12px" id="sz-target-coverage-group">
               <label for="sz-target-coverage" id="sz-target-coverage-label">Taux d’autoconsommation cible</label>
               <div class="input-unit"><input type="number" id="sz-target-coverage" value="90" min="10" max="100"><span class="unit-tag">%</span></div>
-              <p id="sz-target-help" class="ose-field-help">Sans batterie, 90&nbsp;% d’autoconso est réaliste avec une petite puissance. 90&nbsp;% de couverture de facture est un autre objectif.</p>
+              <p id="sz-target-help" class="ose-field-help">Autoconso = prod utilisée sur place ÷ prod totale (pas la nuit). Couverture = part de votre conso annuelle. 90&nbsp;% d’autoconso → souvent une petite puissance ; 70&nbsp;% de couverture → plus de panneaux.</p>
             </div>
 
             <details class="ose-advanced-block">
