@@ -30,6 +30,13 @@ public slots:
     QJsonObject gitCreateBranch(const QString& projectId, const QString& branchName);
     QJsonObject gitSwitchBranch(const QString& projectId, const QString& branchName);
 
+    /**
+     * Miroir disque de ose_projects_v1 (survit au redémarrage / MAJ AppImage même
+     * si le profil WebEngine était éphémère). AppDataLocation/projects_backup.json
+     */
+    bool saveProjectsBackup(const QString& json);
+    QString loadProjectsBackup() const;
+
 signals:
     void checkUpdatesRequested();
     void startUpdateRequested();

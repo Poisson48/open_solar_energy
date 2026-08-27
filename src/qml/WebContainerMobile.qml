@@ -104,6 +104,18 @@ Item {
                 })
             return
         }
+        if (c === "save-projects-backup") {
+            webView.runJavaScript(
+                "(function(){try{return String(window.__oseBackupPending||'');}catch(e){return '';}})()",
+                function (json) {
+                    try {
+                        if (root.bridge && root.bridge.saveProjectsBackup)
+                            root.bridge.saveProjectsBackup(String(json || ""))
+                    } catch (e) {}
+                    webView.runJavaScript("window.__oseBackupPending=null")
+                })
+            return
+        }
         if (c === "pick-import") {
             if (!AppController.pickImportFile())
                 notifyWebToast("Sélecteur de fichiers indisponible", "error")
@@ -272,6 +284,8 @@ Item {
                 + "shareFile:function(name,mime,b64){"
                 + "window.__oseSharePending={name:String(name),mime:String(mime||''),b64:String(b64)};"
                 + "oseCmd('share-file');},"
+                + "saveProjectsBackup:function(json){window.__oseBackupPending=String(json||'');oseCmd('save-projects-backup');return true;},"
+                + "loadProjectsBackup:function(){return window.__oseProjectsBackup||'';},"
                 + "pickImportFile:function(){oseCmd('pick-import');},"
                 + "requestCameraPermission:function(){oseCmd('request-camera');},"
                 + "pollCameraPermission:function(){return window.__oseCamPoll?window.__oseCamPoll():null;},"
@@ -288,6 +302,16 @@ Item {
                 + (ver ? ("window.__oseNativeVersion='" + ver + "';") : "")
                 + "})();"
             )
+            // Précharger le miroir projets pour restauration si localStorage vide
+            try {
+                const backup = (root.bridge && root.bridge.loadProjectsBackup)
+                    ? String(root.bridge.loadProjectsBackup() || "")
+                    : ""
+                if (backup.length > 2) {
+                    const js = JSON.stringify(backup)
+                    webView.runJavaScript("window.__oseProjectsBackup=" + js + ";")
+                }
+            } catch (e) {}
         }
 
         function pollCmdQueue() {
@@ -303,6 +327,8 @@ Item {
                 + "openPdf:function(name,b64){window.__osePdfPending={name:String(name),b64:String(b64)};oseCmd('open-pdf');return true;},"
                 + "openPdfFromUrl:function(u){oseCmd('open-pdf-url:'+String(u));return true;},"
                 + "shareFile:function(name,mime,b64){window.__oseSharePending={name:String(name),mime:String(mime||''),b64:String(b64)};oseCmd('share-file');},"
+                + "saveProjectsBackup:function(json){window.__oseBackupPending=String(json||'');oseCmd('save-projects-backup');return true;},"
+                + "loadProjectsBackup:function(){return window.__oseProjectsBackup||'';},"
                 + "pickImportFile:function(){oseCmd('pick-import');},"
                 + "requestCameraPermission:function(){oseCmd('request-camera');},"
                 + "pollCameraPermission:function(){return window.__oseCamPoll?window.__oseCamPoll():null;},"

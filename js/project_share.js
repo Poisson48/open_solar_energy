@@ -489,6 +489,7 @@ var ProjectShare = (() => {
         existing.share.enabled = true;
         ProjectManager.save(existing);
         subscribeForProject(existing);
+        if (typeof ProjectManager.flushBackup === 'function') ProjectManager.flushBackup();
         return { project: existing, shortKey, already: true };
       }
 
@@ -528,6 +529,7 @@ var ProjectShare = (() => {
       }
       ProjectManager.save(project);
       subscribeForProject(project);
+      if (typeof ProjectManager.flushBackup === 'function') ProjectManager.flushBackup();
       return { project, shortKey, empty: !payload };
     } finally {
       _joining = false;

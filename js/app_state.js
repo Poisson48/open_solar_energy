@@ -3,8 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.54';
+const APP_VERSION = '2.0.55';
 // Historique :
+//   2.0.55 - Persistance projets : profil WebEngine disque (plus OffTheRecord),
+//            miroir natif projects_backup.json (survit MAJ AppImage/APK + join)
 //   2.0.54 - Re-audit UI : Annuler sur Rejoindre, onglets avancés scrollables
 //            (bouton collant), hints « Lieu » (plus « colonne gauche »)
 //   2.0.53 - Lieu dans un onglet dédié ; barre projet = nom + lieu seulement

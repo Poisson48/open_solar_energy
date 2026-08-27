@@ -11,6 +11,8 @@
 
 #ifdef OSE_HAS_WEBENGINE
 #  include <QtWebEngineQuick/qtwebenginequickglobal.h>
+#  include <QWebEngineProfile>
+#  include <QWebEngineSettings>
 #endif
 
 int main(int argc, char* argv[])
@@ -27,6 +29,17 @@ int main(int argc, char* argv[])
     app.setApplicationVersion(QStringLiteral(OSE_APP_VERSION));
     app.setWindowIcon(QIcon(QStringLiteral(":/web/packaging/open-solar-energy.png")));
     QQuickStyle::setStyle(QStringLiteral("Material"));
+
+#ifdef OSE_HAS_WEBENGINE
+    // Renforcer la persistance du profil par défaut (localStorage / IndexedDB).
+    // Le WebEngineView utilise aussi un WebEngineProfile nommé dans QML.
+    {
+        QWebEngineProfile* profile = QWebEngineProfile::defaultProfile();
+        profile->setPersistentCookiesPolicy(QWebEngineProfile::ForcePersistentCookies);
+        profile->settings()->setAttribute(QWebEngineSettings::LocalStorageEnabled, true);
+        profile->settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls, true);
+    }
+#endif
 
     app::initNotifications();
 
