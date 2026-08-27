@@ -180,19 +180,32 @@ const SizingEngine = (() => {
       SolarMath.tiltedIrradiation(m.GHI, m.DHI, lat, site.tilt, site.azimuth, i + 1)
     );
 
-    // 2. Contrainte physique — JAMAIS de surface inventée (ex-défaut 30 m² silencieux)
-    if (!site.maxSurfaceM2 || site.maxSurfaceM2 <= 0) {
-      return {
-        recommended: null,
-        allCandidates: [],
-        monthlyHtilt,
-        currentBill: 0,
-        annualConso: 0,
-        error: 'missing_surface',
-      };
+    // 2. Limite de puissance : objectif (libre / plafond optionnel) | toiture | nb fixe
+    const panelM2 = site.panelSurfaceM2 || 1.96;
+    const panelWp = site.panelWattPeak || 400;
+    const limitMode = site.limitMode || 'objectif';
+    let nPanelsMax;
+    let PpeakMax;
+    let forcedNPanels = 0;
+
+    if (limitMode === 'fixe' && site.nPanelsFixed > 0) {
+      forcedNPanels = Math.floor(site.nPanelsFixed);
+      nPanelsMax = forcedNPanels;
+      PpeakMax = Math.min(20, (forcedNPanels * panelWp) / 1000);
+    } else if (limitMode === 'surface') {
+      if (!site.maxSurfaceM2 || site.maxSurfaceM2 <= 0) {
+        return {
+          recommended: null, allCandidates: [], monthlyHtilt,
+          currentBill: 0, annualConso: 0, error: 'missing_surface',
+        };
+      }
+      nPanelsMax = Math.floor(site.maxSurfaceM2 / panelM2);
+      PpeakMax = Math.min(20, (nPanelsMax * panelWp) / 1000);
+    } else {
+      // Objectif : balayage libre jusqu’à 20 kWc (pas de plafond m² — un m² seul n’a pas de sens)
+      PpeakMax = 20;
+      nPanelsMax = Math.floor((PpeakMax * 1000) / panelWp);
     }
-    const nPanelsMax = Math.floor(site.maxSurfaceM2 / (site.panelSurfaceM2 || 1.96));
-    const PpeakMax = Math.min(20, (nPanelsMax * (site.panelWattPeak || 400)) / 1000);
     if (nPanelsMax < 1 || PpeakMax < 0.5) {
       return {
         recommended: null,
@@ -200,7 +213,7 @@ const SizingEngine = (() => {
         monthlyHtilt,
         currentBill: 0,
         annualConso: bill.monthlyKwh.reduce((s, k) => s + k, 0),
-        error: 'surface_too_small',
+        error: limitMode === 'fixe' ? 'invalid_npanels' : 'surface_too_small',
       };
     }
 
@@ -364,11 +377,18 @@ const SizingEngine = (() => {
       });
     }
 
-    const recommended = selectOptimal(
+    let recommended = selectOptimal(
       allCandidates,
       sizing.strategy,
       sizing.targetCoveragePct
     );
+    // Mode nb. fixe : forcer le candidat à ce nombre de panneaux
+    if (forcedNPanels > 0 && allCandidates.length) {
+      const hit = allCandidates.find(c => c.nPanels === forcedNPanels)
+        || allCandidates.reduce((best, c) =>
+          (!best || Math.abs(c.nPanels - forcedNPanels) < Math.abs(best.nPanels - forcedNPanels)) ? c : best, null);
+      if (hit) recommended = hit;
+    }
 
     // Expose currentBill dans recommended pour l'accès via AppAPI.getResults('sizing')
     if (recommended) recommended.currentBill = Math.round(currentBill);
@@ -421,6 +441,10 @@ const SizingEngine = (() => {
         tilt:            getVal('sz-tilt')        || 30,
         azimuth:         getVal('sz-azimuth')     || 0,
         maxSurfaceM2:    getVal('sz-surface'),
+        limitMode:       getStr('sz-limit-mode') || 'objectif',
+        nPanelsFixed:    getVal('sz-npanels-fixe'),
+        roofLengthM:     getVal('sz-roof-length'),
+        roofWidthM:      getVal('sz-roof-width'),
         panelWattPeak:   getVal('sz-panel-wp')    || 400,
         panelSurfaceM2:  getVal('sz-panel-m2')    || 1.96,
         losses:          getVal('sz-losses')      || 14,

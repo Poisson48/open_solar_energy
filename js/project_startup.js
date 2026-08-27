@@ -282,6 +282,8 @@ function seedDemoProject() {
   const panelWp = '425';
   const panelM2 = '2.00';
   const surface = '24';
+  const roofL = '8';
+  const roofW = '3';
   const tilt = '32';
   const azimuth = '-15';
   const losses = '12';
@@ -296,6 +298,9 @@ function seedDemoProject() {
     ...Object.fromEntries(monthlyKwh.map((v, i) => [`sz-kwh-${i + 1}`, String(v)])),
     'sz-tilt': tilt,
     'sz-azimuth': azimuth,
+    'sz-limit-mode': 'objectif',
+    'sz-roof-length': roofL,
+    'sz-roof-width': roofW,
     'sz-surface': surface,
     'sz-panel-model': panelModel,
     'sz-panel-wp': panelWp,
@@ -453,6 +458,8 @@ function seedDemoHybridProject() {
   const panelWp = '430';
   const panelM2 = '2.00';
   const surface = '28';
+  const roofL = '7';
+  const roofW = '4';
   const tilt = '28';
   const azimuth = '0';
   const losses = '12';
@@ -468,6 +475,9 @@ function seedDemoHybridProject() {
     ...Object.fromEntries(monthlyKwh.map((v, i) => [`sz-kwh-${i + 1}`, String(v)])),
     'sz-tilt': tilt,
     'sz-azimuth': azimuth,
+    'sz-limit-mode': 'objectif',
+    'sz-roof-length': roofL,
+    'sz-roof-width': roofW,
     'sz-surface': surface,
     'sz-panel-model': panelModel,
     'sz-panel-wp': panelWp,

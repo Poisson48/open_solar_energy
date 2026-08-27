@@ -127,6 +127,8 @@ function restoreFormState(fields) {
     setPanelMode('grid', fields['grid-panel-mode'] || 'surface');
     setPanelMode('og2',  fields['og2-panel-mode']  || 'surface');
   }
+  if (typeof setSizingLimitMode === 'function')
+    setSizingLimitMode(fields['sz-limit-mode'] || 'objectif');
   // Lignes devis dynamiques (JSON ou migration anciens champs)
   if (typeof QuoteLines !== 'undefined') QuoteLines.afterRestore(fields);
   else if (typeof updateQuoteTotals === 'function') updateQuoteTotals();
@@ -448,6 +450,8 @@ function resetForNewProject() {
   AppState.hourlyWeatherData       = null;
   AppState.monthlyKwhHp            = null;
   AppState.enedisYear              = null;
+  if (typeof HourlyModule !== 'undefined' && typeof HourlyModule.setData === 'function')
+    HourlyModule.setData(null);
   AppState._includeIncentive       = true;
   AppState.siteSurvey              = null;
   if (typeof SiteSurvey !== 'undefined') {

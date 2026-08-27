@@ -8,6 +8,7 @@ function calcSizing() {
     showToast('Sélectionnez un lieu avec des données météo (onglet 📍 Lieu).', 'error');
     return;
   }
+  if (typeof syncSizingRoofSurface === 'function') syncSizingRoofSurface();
   const input      = SizingEngine.readFormInput();
   const annualConso = input.bill.monthlyKwh.reduce((s, k) => s + k, 0);
   if (annualConso === 0) {
@@ -19,28 +20,35 @@ function calcSizing() {
       || document.getElementById('sz-kwh-1')?.focus();
     return;
   }
-  if (!input.site.maxSurfaceM2) {
-    showToast('Étape 2 : indiquez la surface de toiture disponible (m²).', 'warning');
-    const surf = document.getElementById('sz-surface');
-    if (surf) {
-      surf.classList.add('ose-field-required-flash');
-      surf.focus();
-      setTimeout(() => surf.classList.remove('ose-field-required-flash'), 2200);
-    }
+  const limitMode = input.site.limitMode || 'objectif';
+  if (limitMode === 'surface' && !input.site.maxSurfaceM2) {
+    showToast('Mode toiture : indiquez longueur × largeur.', 'warning');
+    document.getElementById('sz-roof-length')?.focus();
     document.querySelector('.ose-step[data-step="2"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     document.getElementById('sizing-results').innerHTML = `<div class="result-placeholder">
-      <p><strong>Surface manquante</strong><br>
-      Indiquez la surface dispo en toiture (étape 2) — sans ça, aucun dimensionnement.</p>
+      <p><strong>Toiture incomplète</strong><br>
+      Renseignez <strong>longueur × largeur</strong> (m) — la surface m² se calcule toute seule.</p>
     </div>`;
+    return;
+  }
+  if (limitMode === 'fixe' && !(input.site.nPanelsFixed > 0)) {
+    showToast('Mode nb. fixe : indiquez le nombre de panneaux.', 'warning');
+    document.getElementById('sz-npanels-fixe')?.focus();
     return;
   }
   const { recommended, allCandidates, currentBill, error } =
     SizingEngine.run(input, AppState.weatherData, AppState.location.lat);
-  if (error === 'surface_too_small' || !recommended) {
-    showToast('Surface trop petite pour placer au moins un panneau.', 'error');
+  if (error === 'missing_surface') {
+    showToast('Mode toiture : longueur × largeur requis.', 'warning');
+    return;
+  }
+  if (error === 'invalid_npanels' || error === 'surface_too_small' || !recommended) {
+    showToast(error === 'invalid_npanels'
+      ? 'Nombre de panneaux trop faible.'
+      : 'Surface / plafond trop petit pour un panneau.', 'error');
     document.getElementById('sizing-results').innerHTML = `<div class="result-placeholder">
-      <p>Surface insuffisante (${input.site.maxSurfaceM2} m²) pour le panneau choisi
-      (${input.site.panelSurfaceM2} m²). Augmentez la surface (étape 2).</p>
+      <p>Impossible de placer au moins un panneau avec la limite choisie
+      (${input.site.panelSurfaceM2} m² / panneau).</p>
     </div>`;
     return;
   }
@@ -99,40 +107,64 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
     + (rec.systemCost > 0 ? `, pour environ <strong>${costTxt}&nbsp;€</strong> après aide` : '')
     + '.';
 
-  const strategy = AppState.lastSizingInput?.sizing?.strategy || '';
-  const targetPct = AppState.lastSizingInput?.sizing?.targetCoveragePct;
+  const strategy = AppState.lastSizingInput?.sizing?.strategy
+    || document.getElementById('sz-strategy')?.value
+    || '';
+  const targetPct = AppState.lastSizingInput?.sizing?.targetCoveragePct
+    ?? (parseFloat(document.getElementById('sz-target-coverage')?.value) || null);
+  const limitMode = AppState.lastSizingInput?.site?.limitMode
+    || document.getElementById('sz-limit-mode')?.value
+    || 'objectif';
   const usedSurface = AppState.lastSizingInput?.site?.maxSurfaceM2;
   const strategyLabel = {
     autoconso_pct: 'Autoconsommation cible',
     bill_coverage_pct: 'Couverture de facture',
     roi_optimal: 'Meilleur ROI',
     autoconso_max: 'Max. kWh autoconsommés',
-  }[strategy] || strategy;
+  }[strategy] || strategy || '—';
 
   let goalNote = '';
   if (strategy === 'autoconso_pct' && targetPct) {
     const ok = rec.autoconsoRate + 0.05 >= targetPct;
-    goalNote = ok
-      ? `<div class="ose-goal-met">Objectif atteint : ≥ ${targetPct}&nbsp;% d’autoconsommation.</div>`
-      : `<div class="ose-goal-miss">Objectif ${targetPct}&nbsp;% d’autoconso non atteint
-          (obtenu : ${rec.autoconsoRate.toLocaleString('fr')}&nbsp;%
-          avec ${usedSurface} m² saisis).</div>`;
+    if (ok) {
+      const lowCover = rec.coverageRate < Math.min(50, targetPct);
+      goalNote = `<div class="ose-goal-met">Objectif atteint : ≥ ${targetPct}&nbsp;% d’autoconsommation
+        (part de la <em>production</em> utilisée sur place).</div>`
+        + (lowCover
+          ? `<div class="ose-goal-hint">Les panneaux ne produisent <strong>pas la nuit</strong>.
+            Ici toute la (petite) production du jour est consommée sur place
+            → <strong>${rec.autoconsoRate.toLocaleString('fr')}&nbsp;%</strong> d’autoconso,
+            mais seulement <strong>${rec.coverageRate.toLocaleString('fr')}&nbsp;%</strong> de votre facture.
+            Pour plus de panneaux / plus de couverture, choisissez l’objectif
+            <strong>Couverture de facture</strong> (étape 3).</div>`
+          : '');
+    } else {
+      goalNote = `<div class="ose-goal-miss">Objectif ${targetPct}&nbsp;% d’autoconso non atteint
+          (obtenu : ${rec.autoconsoRate.toLocaleString('fr')}&nbsp;%).</div>`;
+    }
   } else if (strategy === 'bill_coverage_pct' && targetPct) {
     const ok = rec.coverageRate + 0.05 >= targetPct;
     goalNote = ok
-      ? `<div class="ose-goal-met">Objectif atteint : ≥ ${targetPct}&nbsp;% de couverture de facture.</div>`
+      ? `<div class="ose-goal-met">Objectif atteint : ≥ ${targetPct}&nbsp;% de couverture de facture
+          (part de votre <em>conso</em> couverte sur place).</div>`
       : `<div class="ose-goal-miss">Objectif ${targetPct}&nbsp;% de couverture non atteint
-          (max. avec les <strong>${usedSurface}&nbsp;m²</strong> saisis en étape 2 :
-          ${rec.coverageRate.toLocaleString('fr')}&nbsp;%).
-          Augmentez la surface ou baissez la cible.</div>`;
+          (obtenu : ${rec.coverageRate.toLocaleString('fr')}&nbsp;%).
+          ${limitMode === 'surface' && usedSurface
+            ? `Plafond toiture : <strong>${usedSurface}&nbsp;m²</strong> — augmentez L×l ou baissez la cible.`
+            : 'Augmentez la cible toiture / nb. panneaux, ou baissez la cible %.'}</div>`;
   }
 
-  const paramsUsed = `<p class="ose-rec-params">Calcul basé sur :
-    <strong>${usedSurface}&nbsp;m²</strong> de toiture
-    · objectif « ${strategyLabel} »
-    ${targetPct && (strategy === 'autoconso_pct' || strategy === 'bill_coverage_pct')
-      ? `à <strong>${targetPct}&nbsp;%</strong>` : ''}
-  </p>`;
+  const limitBits = [];
+  if (limitMode === 'surface' && usedSurface > 0)
+    limitBits.push(`toiture <strong>${usedSurface}&nbsp;m²</strong> (L×l)`);
+  else if (limitMode === 'fixe')
+    limitBits.push('nombre de panneaux fixe');
+  else
+    limitBits.push('pas de plafond toiture (selon objectif)');
+  limitBits.push(`objectif « ${strategyLabel} »`);
+  if (targetPct && (strategy === 'autoconso_pct' || strategy === 'bill_coverage_pct'))
+    limitBits.push(`cible <strong>${targetPct}&nbsp;%</strong>`);
+  const paramsUsed = `<p class="ose-rec-params">Calcul : ${limitBits.join(' · ')}</p>`;
 
   const slotBadge = (() => {
     const load = rec.loadSource || (rec.slotLevel ? 'enedis_30min' : 'legacy');
@@ -315,3 +347,54 @@ function applySizingToGrid() {
 
   showToast(`✓ Appliqué au système réseau : ${rec.nPanels} panneaux (${rec.Ppeak} kWc)`);
 }
+
+/** Mode de limite étape 2 : objectif | surface (L×l) | fixe */
+function setSizingLimitMode(mode) {
+  const m = ['objectif', 'surface', 'fixe'].includes(mode) ? mode : 'objectif';
+  const hidden = document.getElementById('sz-limit-mode');
+  if (hidden) hidden.value = m;
+  ['objectif', 'surface', 'fixe'].forEach((k) => {
+    document.getElementById(`sz-lmode-${k}`)?.classList.toggle('active', k === m);
+  });
+  const roof = document.getElementById('sz-roof-dims-wrap');
+  const surfWrap = document.getElementById('sz-surface-wrap');
+  const fixe = document.getElementById('sz-npanels-fixe-wrap');
+  const surf = document.getElementById('sz-surface');
+  const label = document.getElementById('sz-surface-label');
+  const help = document.getElementById('sz-surface-help');
+  const limitHelp = document.getElementById('sz-limit-help');
+  if (roof) roof.style.display = m === 'surface' ? '' : 'none';
+  if (fixe) fixe.style.display = m === 'fixe' ? '' : 'none';
+  // m² seul n’a pas de sens : affiché seulement en mode toiture (L×l → m² calculés)
+  if (surfWrap) surfWrap.style.display = m === 'surface' ? '' : 'none';
+  if (surf) {
+    surf.setAttribute('readonly', 'readonly');
+    surf.placeholder = 'L × l';
+  }
+  if (label) label.textContent = 'Surface utile (= L × l)';
+  if (help) {
+    help.textContent = 'Calculée depuis longueur × largeur — pas un m² inventé à la main.';
+  }
+  if (limitHelp) {
+    limitHelp.textContent = m === 'objectif'
+      ? 'Dimensionnement selon l’objectif (étape 3 : autoconso / couverture / ROI). Aucune surface requise.'
+      : m === 'surface'
+        ? 'Plafond = longueur × largeur de la toiture utile (les m² se calculent).'
+        : 'Puissance imposée par le nombre de panneaux (l’objectif sert surtout d’indicateur).';
+  }
+  if (m === 'surface') syncSizingRoofSurface();
+}
+window.setSizingLimitMode = setSizingLimitMode;
+
+function syncSizingRoofSurface() {
+  const L = parseFloat(document.getElementById('sz-roof-length')?.value) || 0;
+  const W = parseFloat(document.getElementById('sz-roof-width')?.value) || 0;
+  const surf = document.getElementById('sz-surface');
+  if (!surf) return;
+  if (L > 0 && W > 0) {
+    const m2 = Math.round(L * W * 10) / 10;
+    surf.value = String(m2);
+  }
+}
+window.syncSizingRoofSurface = syncSizingRoofSurface;
+
