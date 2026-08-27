@@ -33,10 +33,10 @@
     },
     {
       "severity": "info",
-      "label": "Limitation : PackageInstaller / permission « apps inconnues » non testable ici",
+      "label": "Limitation : PackageInstaller UI — valider avec scripts/test-android-update-adb.sh + téléphone",
       "detail": ""
     }
   ],
-  "version": "2.0.59",
-  "at": "2026-08-27T13:37:12.407Z"
+  "version": "2.0.60",
+  "at": "2026-08-27T14:27:44.389Z"
 }

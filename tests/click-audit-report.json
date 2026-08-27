@@ -1,0 +1,741 @@
+{
+  "at": "2026-08-27T14:27:27.615Z",
+  "version": "2.0.60",
+  "viewports": {
+    "desktop": {
+      "ok": [
+        {
+          "label": "APP_VERSION",
+          "detail": "2.0.60"
+        },
+        {
+          "label": "hub ouvert au démarrage",
+          "detail": ""
+        },
+        {
+          "label": "hub: clic MAJ (toast/pont)",
+          "detail": ""
+        },
+        {
+          "label": "hub: Matériel open/close",
+          "detail": ""
+        },
+        {
+          "label": "étape type visible",
+          "detail": ""
+        },
+        {
+          "label": "type Réseau sans stockage cliquable",
+          "detail": ""
+        },
+        {
+          "label": "type Hybride cliquable",
+          "detail": ""
+        },
+        {
+          "label": "type Autonome cliquable",
+          "detail": ""
+        },
+        {
+          "label": "type Réseau cliquable",
+          "detail": ""
+        },
+        {
+          "label": "ouverture projet démo",
+          "detail": ""
+        },
+        {
+          "label": "barre: #btn-save-project",
+          "detail": ""
+        },
+        {
+          "label": "barre: #install-type-badge",
+          "detail": ""
+        },
+        {
+          "label": "barre: #btn-edit-project",
+          "detail": ""
+        },
+        {
+          "label": "barre: #project-bar-location",
+          "detail": ""
+        },
+        {
+          "label": "pas d’overflow location",
+          "detail": ""
+        },
+        {
+          "label": "pas d’overflow sizing",
+          "detail": ""
+        },
+        {
+          "label": "pas d’overflow grid",
+          "detail": ""
+        },
+        {
+          "label": "pas d’overflow quote",
+          "detail": ""
+        },
+        {
+          "label": "outils avancés ouverts",
+          "detail": ""
+        },
+        {
+          "label": "onglet avancé cables",
+          "detail": ""
+        },
+        {
+          "label": "onglet avancé irradiation",
+          "detail": ""
+        },
+        {
+          "label": "onglet avancé daily",
+          "detail": ""
+        },
+        {
+          "label": "onglet avancé tracker",
+          "detail": ""
+        },
+        {
+          "label": "onglet avancé optimizer",
+          "detail": ""
+        },
+        {
+          "label": "onglet avancé layout",
+          "detail": ""
+        },
+        {
+          "label": "onglet avancé site",
+          "detail": ""
+        },
+        {
+          "label": "dimensionnement → résultats",
+          "detail": ""
+        },
+        {
+          "label": "hybride: étape batterie visible",
+          "detail": ""
+        },
+        {
+          "label": "offgrid → résultats",
+          "detail": ""
+        },
+        {
+          "label": "devis: import dimensionnement",
+          "detail": ""
+        },
+        {
+          "label": "devis: aperçu cliqué",
+          "detail": ""
+        },
+        {
+          "label": "aucune pageerror",
+          "detail": ""
+        }
+      ],
+      "fail": [],
+      "notes": [
+        {
+          "label": "pane-location: boutons",
+          "detail": "11 cliqués, 0 skip, 11 visibles"
+        },
+        {
+          "label": "pane-sizing: boutons",
+          "detail": "8 cliqués, 2 skip, 10 visibles"
+        },
+        {
+          "label": "pane-grid: boutons",
+          "detail": "7 cliqués, 2 skip, 9 visibles"
+        },
+        {
+          "label": "pane-quote: boutons",
+          "detail": "12 cliqués, 3 skip, 15 visibles"
+        },
+        {
+          "label": "onglet offgrid",
+          "detail": "masqué (type install)"
+        },
+        {
+          "label": "adv-cables: boutons",
+          "detail": "5 cliqués, 0 skip, 5 visibles"
+        },
+        {
+          "label": "adv-irradiation: boutons",
+          "detail": "2 cliqués, 0 skip, 2 visibles"
+        },
+        {
+          "label": "adv-daily: boutons",
+          "detail": "13 cliqués, 0 skip, 13 visibles"
+        },
+        {
+          "label": "adv-tracker: boutons",
+          "detail": "0 cliqués, 0 skip, 0 visibles"
+        },
+        {
+          "label": "adv-optimizer: boutons",
+          "detail": "1 cliqués, 0 skip, 1 visibles"
+        },
+        {
+          "label": "adv-layout: boutons",
+          "detail": "5 cliqués, 0 skip, 5 visibles"
+        },
+        {
+          "label": "adv-site: boutons",
+          "detail": "0 cliqués, 0 skip, 0 visibles"
+        }
+      ]
+    },
+    "tablet": {
+      "ok": [
+        {
+          "label": "APP_VERSION",
+          "detail": "2.0.60"
+        },
+        {
+          "label": "hub ouvert au démarrage",
+          "detail": ""
+        },
+        {
+          "label": "hub: clic MAJ (toast/pont)",
+          "detail": ""
+        },
+        {
+          "label": "hub: Matériel open/close",
+          "detail": ""
+        },
+        {
+          "label": "étape type visible",
+          "detail": ""
+        },
+        {
+          "label": "type Réseau sans stockage cliquable",
+          "detail": ""
+        },
+        {
+          "label": "type Hybride cliquable",
+          "detail": ""
+        },
+        {
+          "label": "type Autonome cliquable",
+          "detail": ""
+        },
+        {
+          "label": "type Réseau cliquable",
+          "detail": ""
+        },
+        {
+          "label": "ouverture projet démo",
+          "detail": ""
+        },
+        {
+          "label": "barre: #btn-save-project",
+          "detail": ""
+        },
+        {
+          "label": "barre: #install-type-badge",
+          "detail": ""
+        },
+        {
+          "label": "barre: #btn-edit-project",
+          "detail": ""
+        },
+        {
+          "label": "barre: #project-bar-location",
+          "detail": ""
+        },
+        {
+          "label": "pas d’overflow location",
+          "detail": ""
+        },
+        {
+          "label": "pas d’overflow sizing",
+          "detail": ""
+        },
+        {
+          "label": "pas d’overflow grid",
+          "detail": ""
+        },
+        {
+          "label": "pas d’overflow quote",
+          "detail": ""
+        },
+        {
+          "label": "outils avancés ouverts",
+          "detail": ""
+        },
+        {
+          "label": "onglet avancé cables",
+          "detail": ""
+        },
+        {
+          "label": "onglet avancé irradiation",
+          "detail": ""
+        },
+        {
+          "label": "dimensionnement → résultats",
+          "detail": ""
+        },
+        {
+          "label": "hybride: étape batterie visible",
+          "detail": ""
+        },
+        {
+          "label": "offgrid → résultats",
+          "detail": ""
+        },
+        {
+          "label": "devis: import dimensionnement",
+          "detail": ""
+        },
+        {
+          "label": "devis: aperçu cliqué",
+          "detail": ""
+        },
+        {
+          "label": "aucune pageerror",
+          "detail": ""
+        }
+      ],
+      "fail": [],
+      "notes": [
+        {
+          "label": "pane-location: boutons",
+          "detail": "11 cliqués, 0 skip, 11 visibles"
+        },
+        {
+          "label": "pane-sizing: boutons",
+          "detail": "8 cliqués, 2 skip, 10 visibles"
+        },
+        {
+          "label": "pane-grid: boutons",
+          "detail": "7 cliqués, 2 skip, 9 visibles"
+        },
+        {
+          "label": "pane-quote: boutons",
+          "detail": "12 cliqués, 3 skip, 15 visibles"
+        },
+        {
+          "label": "onglet offgrid",
+          "detail": "masqué (type install)"
+        },
+        {
+          "label": "adv-cables: boutons",
+          "detail": "5 cliqués, 0 skip, 5 visibles"
+        },
+        {
+          "label": "adv-irradiation: boutons",
+          "detail": "0 cliqués, 0 skip, 0 visibles"
+        }
+      ]
+    },
+    "tablet-ls": {
+      "ok": [
+        {
+          "label": "APP_VERSION",
+          "detail": "2.0.60"
+        },
+        {
+          "label": "hub ouvert au démarrage",
+          "detail": ""
+        },
+        {
+          "label": "hub: clic MAJ (toast/pont)",
+          "detail": ""
+        },
+        {
+          "label": "hub: Matériel open/close",
+          "detail": ""
+        },
+        {
+          "label": "étape type visible",
+          "detail": ""
+        },
+        {
+          "label": "type Réseau sans stockage cliquable",
+          "detail": ""
+        },
+        {
+          "label": "type Hybride cliquable",
+          "detail": ""
+        },
+        {
+          "label": "type Autonome cliquable",
+          "detail": ""
+        },
+        {
+          "label": "type Réseau cliquable",
+          "detail": ""
+        },
+        {
+          "label": "ouverture projet démo",
+          "detail": ""
+        },
+        {
+          "label": "barre: #btn-save-project",
+          "detail": ""
+        },
+        {
+          "label": "barre: #install-type-badge",
+          "detail": ""
+        },
+        {
+          "label": "barre: #btn-edit-project",
+          "detail": ""
+        },
+        {
+          "label": "barre: #project-bar-location",
+          "detail": ""
+        },
+        {
+          "label": "pas d’overflow location",
+          "detail": ""
+        },
+        {
+          "label": "pas d’overflow sizing",
+          "detail": ""
+        },
+        {
+          "label": "pas d’overflow grid",
+          "detail": ""
+        },
+        {
+          "label": "pas d’overflow quote",
+          "detail": ""
+        },
+        {
+          "label": "outils avancés ouverts",
+          "detail": ""
+        },
+        {
+          "label": "onglet avancé cables",
+          "detail": ""
+        },
+        {
+          "label": "onglet avancé irradiation",
+          "detail": ""
+        },
+        {
+          "label": "onglet avancé daily",
+          "detail": ""
+        },
+        {
+          "label": "onglet avancé tracker",
+          "detail": ""
+        },
+        {
+          "label": "dimensionnement → résultats",
+          "detail": ""
+        },
+        {
+          "label": "hybride: étape batterie visible",
+          "detail": ""
+        },
+        {
+          "label": "offgrid → résultats",
+          "detail": ""
+        },
+        {
+          "label": "devis: import dimensionnement",
+          "detail": ""
+        },
+        {
+          "label": "devis: aperçu cliqué",
+          "detail": ""
+        },
+        {
+          "label": "aucune pageerror",
+          "detail": ""
+        }
+      ],
+      "fail": [],
+      "notes": [
+        {
+          "label": "pane-location: boutons",
+          "detail": "11 cliqués, 0 skip, 11 visibles"
+        },
+        {
+          "label": "pane-sizing: boutons",
+          "detail": "8 cliqués, 2 skip, 10 visibles"
+        },
+        {
+          "label": "pane-grid: boutons",
+          "detail": "7 cliqués, 2 skip, 9 visibles"
+        },
+        {
+          "label": "pane-quote: boutons",
+          "detail": "12 cliqués, 3 skip, 15 visibles"
+        },
+        {
+          "label": "onglet offgrid",
+          "detail": "masqué (type install)"
+        },
+        {
+          "label": "adv-cables: boutons",
+          "detail": "5 cliqués, 0 skip, 5 visibles"
+        },
+        {
+          "label": "adv-irradiation: boutons",
+          "detail": "2 cliqués, 0 skip, 2 visibles"
+        },
+        {
+          "label": "adv-daily: boutons",
+          "detail": "13 cliqués, 0 skip, 13 visibles"
+        },
+        {
+          "label": "adv-tracker: boutons",
+          "detail": "0 cliqués, 0 skip, 0 visibles"
+        }
+      ]
+    },
+    "phone": {
+      "ok": [
+        {
+          "label": "APP_VERSION",
+          "detail": "2.0.60"
+        },
+        {
+          "label": "hub ouvert au démarrage",
+          "detail": ""
+        },
+        {
+          "label": "hub: clic MAJ (toast/pont)",
+          "detail": ""
+        },
+        {
+          "label": "hub: Matériel open/close",
+          "detail": ""
+        },
+        {
+          "label": "étape type visible",
+          "detail": ""
+        },
+        {
+          "label": "type Réseau sans stockage cliquable",
+          "detail": ""
+        },
+        {
+          "label": "type Hybride cliquable",
+          "detail": ""
+        },
+        {
+          "label": "type Autonome cliquable",
+          "detail": ""
+        },
+        {
+          "label": "type Réseau cliquable",
+          "detail": ""
+        },
+        {
+          "label": "ouverture projet démo",
+          "detail": ""
+        },
+        {
+          "label": "barre: #btn-save-project",
+          "detail": ""
+        },
+        {
+          "label": "barre: #install-type-badge",
+          "detail": ""
+        },
+        {
+          "label": "barre: #btn-edit-project",
+          "detail": ""
+        },
+        {
+          "label": "barre: #project-bar-location",
+          "detail": ""
+        },
+        {
+          "label": "barre: menu ⋯",
+          "detail": ""
+        },
+        {
+          "label": "pas d’overflow location",
+          "detail": ""
+        },
+        {
+          "label": "pas d’overflow sizing",
+          "detail": ""
+        },
+        {
+          "label": "pas d’overflow grid",
+          "detail": ""
+        },
+        {
+          "label": "pas d’overflow quote",
+          "detail": ""
+        },
+        {
+          "label": "outils avancés ouverts",
+          "detail": ""
+        },
+        {
+          "label": "dimensionnement → résultats",
+          "detail": ""
+        },
+        {
+          "label": "hybride: étape batterie visible",
+          "detail": ""
+        },
+        {
+          "label": "offgrid → résultats",
+          "detail": ""
+        },
+        {
+          "label": "devis: import dimensionnement",
+          "detail": ""
+        },
+        {
+          "label": "devis: aperçu cliqué",
+          "detail": ""
+        },
+        {
+          "label": "aucune pageerror",
+          "detail": ""
+        }
+      ],
+      "fail": [],
+      "notes": [
+        {
+          "label": "pane-location: boutons",
+          "detail": "11 cliqués, 0 skip, 11 visibles"
+        },
+        {
+          "label": "pane-sizing: boutons",
+          "detail": "8 cliqués, 2 skip, 10 visibles"
+        },
+        {
+          "label": "pane-grid: boutons",
+          "detail": "7 cliqués, 2 skip, 9 visibles"
+        },
+        {
+          "label": "pane-quote: boutons",
+          "detail": "12 cliqués, 3 skip, 15 visibles"
+        },
+        {
+          "label": "onglet offgrid",
+          "detail": "masqué (type install)"
+        }
+      ]
+    }
+  },
+  "skips": [
+    {
+      "label": "pane-sizing: event.stopPropagation();openEnedisModal()",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-sizing: PanelDB.openLibraryModal('sz')",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-grid: PanelDB.openLibraryModal('inp')",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-grid: InverterDB.openLibraryModal('inp')",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-quote: PanelDB.openLibraryModal('dv')",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-quote: InverterDB.openLibraryModal('dv')",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-quote: printQuote()",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-sizing: event.stopPropagation();openEnedisModal()",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-sizing: PanelDB.openLibraryModal('sz')",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-grid: PanelDB.openLibraryModal('inp')",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-grid: InverterDB.openLibraryModal('inp')",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-quote: PanelDB.openLibraryModal('dv')",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-quote: InverterDB.openLibraryModal('dv')",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-quote: printQuote()",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-sizing: event.stopPropagation();openEnedisModal()",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-sizing: PanelDB.openLibraryModal('sz')",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-grid: PanelDB.openLibraryModal('inp')",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-grid: InverterDB.openLibraryModal('inp')",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-quote: PanelDB.openLibraryModal('dv')",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-quote: InverterDB.openLibraryModal('dv')",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-quote: printQuote()",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-sizing: event.stopPropagation();openEnedisModal()",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-sizing: PanelDB.openLibraryModal('sz')",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-grid: PanelDB.openLibraryModal('inp')",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-grid: InverterDB.openLibraryModal('inp')",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-quote: PanelDB.openLibraryModal('dv')",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-quote: InverterDB.openLibraryModal('dv')",
+      "detail": "hors scope auto"
+    },
+    {
+      "label": "pane-quote: printQuote()",
+      "detail": "hors scope auto"
+    }
+  ],
+  "appimage": {
+    "ok": true,
+    "detail": "processus 2.0.60 déjà actif"
+  },
+  "fails": 0
+}

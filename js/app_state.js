@@ -3,8 +3,11 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.60';
+const APP_VERSION = '2.0.61';
 // Historique :
+//   2.0.61 - Audit clic-par-clic (desktop + tablette + téléphone) + passe
+//            responsive Android/tablette ; aucun bug UI bloquant trouvé ;
+//            script tests/run_click_audit.mjs livré
 //   2.0.60 - Batterie : simu minute/année (nuit + ombrage créneau) ;
 //            MAJ Android : confirmation PackageInstaller via Activity
 //            (plus de BroadcastReceiver bloqué en arrière-plan) + fallback
