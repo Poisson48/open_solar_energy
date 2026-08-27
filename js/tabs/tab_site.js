@@ -111,6 +111,10 @@ function initTabSite() {
           <div class="card-title">Ombrage saisonnier</div>
           <div id="site-shade-results"></div>
         </div>
+        <div class="ose-journey-nav">
+          <button type="button" class="btn btn-outline" onclick="goNextPrimaryTab()">Passer →</button>
+          <button type="button" class="btn btn-primary" onclick="goNextPrimaryTab()">Continuer → Système PV</button>
+        </div>
       </div>
     </div>
   `;

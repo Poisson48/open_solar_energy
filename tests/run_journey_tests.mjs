@@ -229,7 +229,7 @@ console.log('\n═══ C. Sync Dimensionnement ↔ Système PV réseau ══�
     const expectedSurf = Math.round(10 * back.panelM2 * 10) / 10;
     return { before, afterGrid, back, expectedSurf, err: null };
   });
-  check('applySizingToGrid bascule onglet grid', r.afterGrid?.tab === 'grid', String(r.afterGrid?.tab));
+  check('applySizingToGrid bascule onglet site (parcours B)', r.afterGrid?.tab === 'site', String(r.afterGrid?.tab));
   check('mode Fixe + nb panneaux reco', r.afterGrid?.mode === 'fixe' && parseInt(r.afterGrid?.nFixe, 10) === r.before?.n, `${r.afterGrid?.nFixe} vs ${r.before?.n}`);
   check('modèle panneau synchronisé', !!r.afterGrid?.model && r.afterGrid.model === r.before?.model, r.afterGrid?.model);
   check('calcul réseau lancé (résultats)', r.afterGrid?.hasResults === true);

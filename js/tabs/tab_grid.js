@@ -172,6 +172,9 @@ function initTabGrid() {
           <button type="button" class="btn btn-outline" style="width:100%" onclick="applyGridToSizing()">
             → Appliquer au Dimensionnement
           </button>
+          <div class="ose-journey-nav" style="margin-top:10px">
+            <button type="button" class="btn btn-primary" style="width:100%" onclick="goNextPrimaryTab()">Continuer → Implantation</button>
+          </div>
         </div>
       </div>
 

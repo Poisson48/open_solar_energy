@@ -10,7 +10,7 @@
   <script>document.addEventListener('DOMContentLoaded',function(){var b=document.getElementById('version-badge');if(b&&typeof APP_VERSION!=='undefined')b.textContent='v'+APP_VERSION+' - Open Source';});</script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <!-- ?v= : force le WebView Android à recharger le CSS après MAJ (sinon labels double) -->
-  <link rel="stylesheet" href="css/main.css?v=2.0.67">
+  <link rel="stylesheet" href="css/main.css?v=2.0.68">
 </head>
 <body class="ose-hub-active">
 
@@ -285,46 +285,46 @@
   <!-- ─── PANNEAU PRINCIPAL ─────────────────────────────────── -->
   <main class="main-panel">
 
-    <!-- Barre d'onglets -->
+    <!-- Barre d'onglets — parcours B : Devis en dernier -->
     <nav class="tabs-bar" role="tablist" aria-label="Parcours de calcul">
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-location" data-tab="location" data-tier="primary">
-        <span class="tab-label-full">📍 Lieu</span><span class="tab-label-short">Lieu</span>
+        <span class="tab-label-full"><span class="tab-number" aria-hidden="true">1</span>Lieu</span><span class="tab-label-short">Lieu</span>
       </button>
       <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-sizing" data-tab="sizing" data-tier="primary">
-        <span class="tab-label-full"><span class="tab-number" aria-hidden="true">1</span>Dimensionnement</span><span class="tab-label-short">Dim.</span>
+        <span class="tab-label-full"><span class="tab-number" aria-hidden="true">2</span>Dimensionnement</span><span class="tab-label-short">Dim.</span>
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-site" data-tab="site" data-tier="primary">
+        <span class="tab-label-full"><span class="tab-number" aria-hidden="true">3</span>Site / Ombrage</span><span class="tab-label-short">Site</span>
       </button>
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-grid" data-tab="grid" data-tier="primary">
-        <span class="tab-label-full"><span class="tab-number" aria-hidden="true">2</span>Système PV</span><span class="tab-label-short">PV</span>
+        <span class="tab-label-full"><span class="tab-number" aria-hidden="true">4</span>Système PV</span><span class="tab-label-short">PV</span>
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-layout" data-tab="layout" data-tier="primary">
+        <span class="tab-label-full"><span class="tab-number" aria-hidden="true">5</span>Implantation</span><span class="tab-label-short">Implan.</span>
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-cables" data-tab="cables" data-tier="primary">
+        <span class="tab-label-full"><span class="tab-number" aria-hidden="true">6</span>Câbles</span><span class="tab-label-short">Câbles</span>
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-daily" data-tab="daily" data-tier="primary">
+        <span class="tab-label-full"><span class="tab-number" aria-hidden="true">7</span>Analyse</span><span class="tab-label-short">Anal.</span>
       </button>
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-quote" data-tab="quote" data-tier="primary">
-        <span class="tab-label-full"><span class="tab-number" aria-hidden="true">3</span>Devis</span><span class="tab-label-short">Devis</span>
+        <span class="tab-label-full"><span class="tab-number" aria-hidden="true">8</span>Devis</span><span class="tab-label-short">Devis</span>
       </button>
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-offgrid" data-tab="offgrid" data-tier="primary">
-        <span class="tab-label-full"><span class="tab-number" aria-hidden="true">🔋</span>Hors réseau</span><span class="tab-label-short">Auto</span>
-      </button>
-      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-cables" data-tab="cables" data-tier="advanced" style="display:none">
-        🔌 Câbles
+        <span class="tab-label-full">Hors réseau</span><span class="tab-label-short">Auto</span>
       </button>
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-irradiation" data-tab="irradiation" data-tier="advanced" style="display:none">
-        Météo mensuelle
-      </button>
-      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-daily" data-tab="daily" data-tier="advanced" style="display:none">
-        Analyse horaire
+        <span class="tab-label-full">Météo mensuelle</span><span class="tab-label-short">Météo</span>
       </button>
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-tracker" data-tab="tracker" data-tier="advanced" style="display:none">
-        Suiveur PV
+        <span class="tab-label-full">Suiveur PV</span><span class="tab-label-short">Suiveur</span>
       </button>
       <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-optimizer" data-tab="optimizer" data-tier="advanced" style="display:none">
-        Optimisation
+        <span class="tab-label-full">Optimisation</span><span class="tab-label-short">Opti</span>
       </button>
-      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-layout" data-tab="layout" data-tier="advanced" style="display:none">
-        Implantation
-      </button>
-      <button class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-site" data-tab="site" data-tier="advanced" style="display:none">
-        Site / Ombrage
-      </button>
-      <button type="button" id="btn-toggle-advanced-tabs" class="tab-btn tab-btn-more" aria-expanded="false" title="Site, câbles, météo, implantation, outils. Suiveur PV = aperçu indicatif, non calculé.">
-        <span class="tab-label-full">Outils avancés</span><span class="tab-label-short">Plus</span>
+      <button type="button" id="btn-toggle-advanced-tabs" class="tab-btn tab-btn-more" aria-expanded="false" title="Météo mensuelle, suiveur PV (indicatif), optimisation.">
+        <span class="tab-label-full">Plus</span><span class="tab-label-short">Plus</span>
       </button>
     </nav>
 
@@ -426,6 +426,9 @@
         <button class="preset-btn" data-loc="toulouse">Toulouse</button>
         <button class="preset-btn" data-loc="nice">Nice</button>
         <button class="preset-btn" data-loc="bordeaux">Bordeaux</button>
+      </div>
+      <div class="ose-journey-nav" style="margin-top:12px">
+        <button type="button" class="btn btn-primary" style="width:100%" onclick="goNextPrimaryTab()">Continuer → Dimensionnement</button>
       </div>
     </div>
 

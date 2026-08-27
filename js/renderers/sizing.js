@@ -250,7 +250,7 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
       </details>
 
       <button type="button" class="btn btn-primary" style="width:100%;margin-top:12px" onclick="applySizingToGrid()">
-        ✓ Appliquer au système (${rec.nPanels} panneaux · ${rec.Ppeak.toLocaleString('fr')} kWc) → onglet Système PV
+        ✓ Appliquer au système (${rec.nPanels} panneaux · ${rec.Ppeak.toLocaleString('fr')} kWc) → Site / Ombrage
       </button>
       <p class="ose-field-help" style="text-align:center">Puis <strong>Système PV</strong> calcule le détail technique, et l'onglet <strong>Devis</strong> génère le document client.</p>
     </div>
@@ -339,13 +339,15 @@ function applySizingToGrid() {
   if (nEl) nEl.value = rec.nPanels;
   if (typeof calcGridPanels === 'function') calcGridPanels();
 
-  if (typeof activateTab === 'function') activateTab('grid');
+  // Parcours B : après Dim. → Site / Ombrage (pas Devis)
+  if (typeof goNextPrimaryTab === 'function') goNextPrimaryTab();
+  else if (typeof activateTab === 'function') activateTab('site');
 
   if (AppState.weatherData && typeof calcGridSystem === 'function') {
     calcGridSystem();
   }
 
-  showToast(`✓ Appliqué au système réseau : ${rec.nPanels} panneaux (${rec.Ppeak} kWc)`);
+  showToast(`✓ Appliqué au système réseau : ${rec.nPanels} panneaux (${rec.Ppeak} kWc) — suite : Site / Ombrage`);
 }
 
 /** Mode de limite étape 2 : objectif | surface (L×l) | fixe */

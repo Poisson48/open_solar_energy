@@ -9,13 +9,39 @@
 // 'grid'    = raccordé réseau, sans batterie
 // 'hybrid'  = raccordé réseau + batterie (autoconso maximisée, surplus injecté)
 // 'offgrid' = autonome, hors réseau
-// Hybride utilise les mêmes onglets que grid (sizing/grid/tracker/optimizer) :
-// la batterie hybride se configure directement dans l'onglet Dimensionnement.
+// Parcours B (réseau/hybride) : Lieu → Dim → Site → PV → Implantation → Câbles → Analyse → Devis
 const TABS_GRID_ONLY    = ['sizing', 'grid', 'tracker', 'optimizer'];
 const TABS_OFFGRID_ONLY = ['offgrid'];
 const GRID_LIKE_TYPES   = ['grid', 'hybrid'];
+/** Ordre du parcours principal (Devis toujours en dernier). */
+const PRIMARY_FLOW_GRID    = ['location', 'sizing', 'site', 'grid', 'layout', 'cables', 'daily', 'quote'];
+const PRIMARY_FLOW_OFFGRID = ['location', 'offgrid', 'site', 'layout', 'cables', 'daily', 'quote'];
 // Libellés lisibles installateur (badge + menu déroulant barre projet)
 const INSTALL_TYPE_LABELS = { grid: 'Réseau', hybrid: 'Hybride', offgrid: 'Autonome' };
+
+function getPrimaryTabFlow() {
+  return (AppState.installationType === 'offgrid') ? PRIMARY_FLOW_OFFGRID : PRIMARY_FLOW_GRID;
+}
+
+/** Passe à l’onglet primary suivant visible (skip libre). */
+function goNextPrimaryTab() {
+  const flow = getPrimaryTabFlow();
+  const cur = AppState.activeTab
+    || document.querySelector('.tab-btn.active')?.dataset?.tab
+    || flow[0];
+  let i = flow.indexOf(cur);
+  if (i < 0) i = -1;
+  for (let k = i + 1; k < flow.length; k++) {
+    const id = flow[k];
+    const btn = document.querySelector(`.tab-btn[data-tab="${id}"]`);
+    if (!btn || btn.style.display === 'none') continue;
+    if (typeof activateTab === 'function') activateTab(id);
+    if (typeof writeInstallToTab === 'function') writeInstallToTab(id);
+    return id;
+  }
+  return null;
+}
+window.goNextPrimaryTab = goNextPrimaryTab;
 
 function applyInstallationType(type) {
   AppState.installationType = type;

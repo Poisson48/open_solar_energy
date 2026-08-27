@@ -2166,7 +2166,19 @@ details.card > summary:focus-visible {
   box-shadow: -12px 0 10px -8px rgba(0, 0, 0, 0.12);
   padding-inline: 14px;
 }
-.tab-btn-more:hover { opacity: 1; color: var(--color-primary); }
+.ose-journey-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+.ose-journey-nav .btn {
+  flex: 1 1 auto;
+  min-width: 120px;
+  justify-content: center;
+}
 .ose-req { color: var(--color-danger); font-weight: 700; }
 .ose-rec-params {
   font-size: 12px;
