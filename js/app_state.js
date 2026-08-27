@@ -3,19 +3,20 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.68';
+const APP_VERSION = '2.0.69';
 /** Notes embarquées (hub) — utilisées si GitHub API/Atom indisponibles (403, offline). */
 const OSE_RELEASE_FEED = [
-  { ver: '2.0.68', notes: 'Parcours onglets B : Lieu→Dim→Site→PV→Implantation→Câbles→Analyse→Devis (dernier) ; skip sur étapes avancées.' },
+  { ver: '2.0.69', notes: 'Lieu : météo + terrain conservés une fois importés (réaffichage à la réouverture).' },
+  { ver: '2.0.68', notes: 'Parcours onglets B : Lieu→Dim→Site→PV→Implantation→Câbles→Analyse→Devis (dernier) ; skip.' },
   { ver: '2.0.67', notes: 'Hotfix : bandeau « Projet démo » invisible hors démos (CSS + ids démo uniquement).' },
   { ver: '2.0.66', notes: 'Dimensionnement : Objectif / Toiture L×l / Nb. fixe ; jour/nuit toujours visible ; clarif. autoconso ≠ couverture.' },
   { ver: '2.0.65', notes: 'Hub : news fiables via flux Atom GitHub et notes embarquées (plus d’écran d’échec réseau).' },
   { ver: '2.0.64', notes: 'Android : correction onglets doublés (« 3 Devis ») ; CSS cache-bust ; labels Dim./PV/Devis.' },
   { ver: '2.0.63', notes: 'MAJ : plus de fallback « ouvrir APK navigateur » ; install via AppImage / Android uniquement.' },
   { ver: '2.0.62', notes: 'Audit clic des mises à jour PC + tablette.' },
-  { ver: '2.0.61', notes: 'Audit clic-par-clic desktop / tablette / téléphone.' },
 ];
 // Historique :
+//   2.0.69 - Persistance Lieu : weatherMeta + terrain auto-sauvé ; statuts restaurés
 //   2.0.68 - Parcours B : 8 onglets primary, Devis en dernier, Passer/Continuer
 //   2.0.67 - Hotfix bandeau démo : display:none par défaut + is-visible
 //            seulement pour demo_ose_v2 / demo_ose_hybrid_v1
@@ -168,6 +169,8 @@ const OSE_RELEASE_FEED = [
 const AppState = {
   location:   { lat: 48.8566, lon: 2.3522, alt: 35, name: 'Paris, France' },
   weatherData: null,
+  /** Métadonnées import météo (conservées avec le projet) : { source, ghiAnnual, hourlyYear } */
+  weatherMeta: null,
   demoData:   null,
   map:        null,
   marker:     null,

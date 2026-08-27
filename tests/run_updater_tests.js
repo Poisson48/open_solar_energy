@@ -45,15 +45,15 @@ function versionCodeFromName(name) {
 
 console.log('\n═══ Updater / versions Android ═══');
 
-assert(isNewer('2.0.68', '2.0.67'), '2.0.68 > 2.0.67');
-assert(!isNewer('2.0.67', '2.0.68'), '2.0.67 ≯ 2.0.68');
-assert(isNewer('v2.0.68', '2.0.67'), 'strip v');
-assert(!isNewer('2.0.68', '2.0.68'), 'égal → pas newer');
+assert(isNewer('2.0.69', '2.0.68'), '2.0.69 > 2.0.68');
+assert(!isNewer('2.0.68', '2.0.69'), '2.0.68 ≯ 2.0.69');
+assert(isNewer('v2.0.69', '2.0.68'), 'strip v');
+assert(!isNewer('2.0.69', '2.0.69'), 'égal → pas newer');
 assert(isNewer('2.1.0', '2.0.99'), 'mineur gagne');
+assert(versionCodeFromName('2.0.69') === 20069, 'versionCode 2.0.69 → 20069');
 assert(versionCodeFromName('2.0.68') === 20068, 'versionCode 2.0.68 → 20068');
-assert(versionCodeFromName('2.0.67') === 20067, 'versionCode 2.0.67 → 20067');
-assert(versionCodeFromName('2.0.68') > versionCodeFromName('2.0.67'), 'codes monotones');
-assert(versionCodeFromName('2.0.68') > 185, 'code marketing > ancien git-count (~185)');
+assert(versionCodeFromName('2.0.69') > versionCodeFromName('2.0.68'), 'codes monotones');
+assert(versionCodeFromName('2.0.69') > 185, 'code marketing > ancien git-count (~185)');
 
 const releaseYml = fs.readFileSync(path.join(ROOT, '.github/workflows/release.yml'), 'utf8');
 assert(!/git rev-list --count HEAD/.test(releaseYml),
@@ -62,8 +62,8 @@ assert(/10000/.test(releaseYml) && /versionCode/.test(releaseYml),
   'release.yml : formule XXYYZZ présente');
 
 const man = fs.readFileSync(path.join(ROOT, 'android/AndroidManifest.xml'), 'utf8');
-assert(/android:versionCode="20068"/.test(man), 'manifest versionCode=20068');
-assert(/android:versionName="2\.0\.68"/.test(man), 'manifest versionName=2.0.68');
+assert(/android:versionCode="20069"/.test(man), 'manifest versionCode=20069');
+assert(/android:versionName="2\.0\.69"/.test(man), 'manifest versionName=2.0.69');
 assert(/InstallCallbackActivity/.test(man), 'InstallCallbackActivity déclarée');
 assert(/ApkFileProvider/.test(man), 'ApkFileProvider déclaré');
 assert(/android:exported="false"[\s\S]*InstallReceiver|InstallReceiver[\s\S]*android:exported="false"/.test(man)
@@ -89,9 +89,12 @@ assert(!/Ouvrir l’APK \(navigateur\)/.test(pui), 'pas de bouton Ouvrir APK nav
 assert(!/Ouverture du téléchargement APK/.test(pui), 'pas de toast ouverture APK');
 assert(!/window\.open\(target/.test(pui), 'checkForUpdates n’ouvre plus d’URL externe');
 assert(/is-visible/.test(pui) && /demo_ose_v2/.test(pui), 'bandeau démo : is-visible + ids démo');
+assert(/function restoreLocationSiteStatusUI/.test(pui), 'restauration statuts Lieu');
+assert(/weatherMeta/.test(pui) && /weatherMeta/.test(fs.readFileSync(path.join(ROOT, 'js/project_forms.js'), 'utf8')),
+  'weatherMeta persisté dans le projet');
 
 const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-assert(/main\.css\?v=2\.0\.68/.test(idx), 'CSS cache-bust ?v=2.0.68');
+assert(/main\.css\?v=2\.0\.69/.test(idx), 'CSS cache-bust ?v=2.0.69');
 assert(/setSizingLimitMode/.test(pui) || /setSizingLimitMode/.test(fs.readFileSync(path.join(ROOT, 'js/renderers/sizing.js'), 'utf8')),
   'modes limite dimensionnement');
 const tabSz = fs.readFileSync(path.join(ROOT, 'js/tabs/tab_sizing.js'), 'utf8');
@@ -119,6 +122,8 @@ assert(/function goNextPrimaryTab/.test(mainJs) && /PRIMARY_FLOW_GRID/.test(main
   'goNextPrimaryTab + PRIMARY_FLOW_GRID');
 assert(/ose-journey-nav/.test(fs.readFileSync(path.join(ROOT, 'js/tabs/tab_site.js'), 'utf8')),
   'Passer/Continuer sur Site');
+assert(/Import terrain \(relief\)/.test(fs.readFileSync(path.join(ROOT, 'js/site_survey.js'), 'utf8')),
+  'terrain auto-sauvegardé');
 
 const css = fs.readFileSync(path.join(ROOT, 'css/main.css'), 'utf8');
 assert(/clearEnedisLoad/.test(fs.readFileSync(path.join(ROOT, 'js/hourly_module.js'), 'utf8')),

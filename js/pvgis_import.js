@@ -203,6 +203,10 @@ const PVGISImport = (() => {
 
     try {
       const { year, nHours, annualGhiKwh } = await importHourlyWeather(lat, lon);
+      AppState.weatherMeta = {
+        ...(AppState.weatherMeta || {}),
+        hourlyYear: year,
+      };
       setStatus(`✓ Météo horaire ${year} - ${nHours} mesures - GHI ≈ ${Math.round(annualGhiKwh)} kWh/m²`, 'success');
       showToast(`✓ Météo horaire ${year} importée (${nHours} points)`);
       const statusEl = document.getElementById('hourly-weather-status');
@@ -374,11 +378,16 @@ const PVGISImport = (() => {
       const tag = ` (${source})`;
       AppState.location.name = AppState.location.name
         .replace(/ \(PVGIS[^)]*\)/, '').replace(/ \(Open-Meteo\)/, '') + tag;
+      const totalGHI = weather.reduce((s, m) => s + m.GHI, 0);
+      AppState.weatherMeta = {
+        ...(AppState.weatherMeta || {}),
+        source,
+        ghiAnnual: Math.round(totalGHI),
+      };
       document.getElementById('loc-name').textContent = AppState.location.name;
       if (typeof updateWizardIntroStatus === 'function') updateWizardIntroStatus();
       else if (typeof updateLocationUI === 'function') updateLocationUI();
 
-      const totalGHI = weather.reduce((s, m) => s + m.GHI, 0);
       setStatus(`✓ ${source} - GHI annuel : ${Math.round(totalGHI)} kWh/m²/an`, 'success');
       showWeatherPreview(weather, source);
       if (typeof showToast === 'function') showToast(`☀️ Météo ${source} - ${Math.round(totalGHI)} kWh/m²/an`);

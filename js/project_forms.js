@@ -400,6 +400,7 @@ function buildProjectData() {
     updatedAt:        null,
     location:         { ...AppState.location },
     weatherData:      AppState.weatherData,
+    weatherMeta:      AppState.weatherMeta ? { ...AppState.weatherMeta } : null,
     hourlyWeatherData: hourlyWx,
     hourlyEnedisData: enedisSerial,
     monthlyKwhHp:     AppState.monthlyKwhHp ? AppState.monthlyKwhHp.slice() : null,
@@ -448,6 +449,7 @@ function resetForNewProject() {
   clearOffgridSizingResults();
   AppState.hourlyEnedisData        = null;
   AppState.hourlyWeatherData       = null;
+  AppState.weatherMeta             = null;
   AppState.monthlyKwhHp            = null;
   AppState.enedisYear              = null;
   if (typeof HourlyModule !== 'undefined' && typeof HourlyModule.setData === 'function')
@@ -540,12 +542,15 @@ function syncLocationLabelFromClient(opts) {
   if (!addr) return;
   const force = !!(opts && opts.force);
   const cur = (AppState.location?.name || '').trim();
-  const isDemoLabel = /\(démo\b|\(demo\b/i.test(cur)
-    || /approx\.\)\s*$/i.test(cur)
-    || !cur;
-  if (!force && !isDemoLabel && cur && cur !== addr) return;
+  // Préserver les tags techniques météo collés au nom
+  const weatherTag = (cur.match(/\s*\((?:PVGIS[^)]*|Open-Meteo)\)\s*$/) || [])[0] || '';
+  const curBase = cur.replace(/\s*\((?:PVGIS[^)]*|Open-Meteo)\)\s*$/, '').trim();
+  const isDemoLabel = /\(démo\b|\(demo\b/i.test(curBase)
+    || /approx\.\)\s*$/i.test(curBase)
+    || !curBase;
+  if (!force && !isDemoLabel && curBase && curBase !== addr) return;
   if (!AppState.location) AppState.location = { lat: 46.6, lon: 2.4, alt: 0, name: '' };
-  AppState.location.name = addr;
+  AppState.location.name = addr + weatherTag;
   if (typeof updateLocationUI === 'function') updateLocationUI();
   // Champ adresse carte : afficher l’adresse chantier (pas seulement le cleanName géocodé)
   const inp = document.getElementById('inp-address');
