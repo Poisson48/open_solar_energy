@@ -54,8 +54,8 @@ const report = {
   version: null,
   viewports: {},
   notes: [
-    'Pont Qt / PackageInstaller non testables en Chromium — états updater simulés via __oseOnUpdaterState',
-    'Téléchargement AppImage / APK réel : valider sur shell Qt + scripts/test-android-update-adb.sh',
+    'Pont Qt / PackageInstaller : MAJ réelle uniquement dans AppImage / APK shell',
+    'Aucun fallback navigateur / ouverture APK — installAvailableUpdate exige le pont natif',
   ],
 };
 
@@ -179,7 +179,7 @@ async function runViewport(browser, url, vp) {
   // ── 3. Simuler version plus ancienne → carte « Nouvelle version » ──
   await page.evaluate(() => {
     window.__oseNativeVersion = '2.0.50';
-    window.__oseUpdaterLatest = '2.0.62';
+    window.__oseUpdaterLatest = '2.0.63';
     window.__oseUpdaterNotes = 'Correctifs MAJ — test audit clic.';
     window.__oseUpdaterState = 2;
   });
@@ -189,19 +189,19 @@ async function runViewport(browser, url, vp) {
       _hubNewsCache = {
         at: Date.now(),
         releases: [{
-          ver: '2.0.62',
-          name: 'Open Solar Energy v2.0.62',
-          notes: 'Audit clic MAJ PC/tablette.',
+          ver: '2.0.63',
+          name: 'Open Solar Energy v2.0.63',
+          notes: 'Suppression fallback APK navigateur.',
           date: new Date().toISOString(),
-          url: 'https://github.com/Poisson48/open_solar_energy/releases/tag/v2.0.62',
-          apk: 'https://github.com/Poisson48/open_solar_energy/releases/download/v2.0.62/opensolarenergy-v2.0.62-arm64.apk',
+          url: 'https://github.com/Poisson48/open_solar_energy/releases/tag/v2.0.63',
+          apk: 'https://github.com/Poisson48/open_solar_energy/releases/download/v2.0.63/opensolarenergy-v2.0.63-arm64.apk',
         }],
       };
     }
     if (typeof refreshHubNews === 'function') await refreshHubNews(false);
     else if (typeof _renderHubNews === 'function') {
       _renderHubNews(document.getElementById('ose-hub-news'), '2.0.50', _hubNewsCache.releases, {
-        nativeLatest: '2.0.62',
+        nativeLatest: '2.0.63',
         nativeNotes: window.__oseUpdaterNotes,
         nativeState: 2,
       });
@@ -236,18 +236,42 @@ async function runViewport(browser, url, vp) {
     }
   }
 
-  // Mettre à jour (sans pont → fallback APK / toast)
+  // Mettre à jour sans pont → message clair (jamais ouverture APK / navigateur)
   {
+    const opened = [];
+    await page.exposeFunction?.('__oseTrackOpen').catch(() => {});
+    await page.evaluate(() => {
+      window.__oseOpenedUrls = [];
+      const orig = window.open;
+      window.open = function (url) {
+        window.__oseOpenedUrls.push(String(url || ''));
+        return null;
+      };
+      window.__oseOrigOpen = orig;
+    });
     const upd = page.locator('button', { hasText: 'Mettre à jour' }).first();
     if (await upd.count()) {
       await upd.click({ force: true });
-      await page.waitForTimeout(2800); // waitNativeBridge 2.5s max
+      await page.waitForTimeout(2800);
       await shot(page, vp.name, '05-after-mettre-a-jour');
-      const progress = await page.locator('#ose-hub-update-progress').isVisible().catch(() => false);
-      const toast = await toastText(page);
-      if (progress || /mise|apk|télécharg|vérif|ouverture/i.test(toast))
-        logOk(vp.name, 'clic Mettre à jour → progression ou toast', toast.slice(0, 70));
-      else logFail(vp.name, 'clic Mettre à jour sans feedback', toast);
+      const info = await page.evaluate(() => ({
+        progress: (document.getElementById('ose-hub-update-progress')?.innerText || '').trim(),
+        toast: (document.getElementById('ose-toast')?.textContent
+          || document.querySelector('.toast, .ose-toast')?.textContent || '').trim(),
+        opened: window.__oseOpenedUrls || [],
+        hasApkBtn: !!document.querySelector('#ose-hub-update-progress button[onclick*="openUpdateApkFallback"], button[onclick*="openUpdateApkFallback"]'),
+        hasFallbackFn: typeof openUpdateApkFallback === 'function',
+      }));
+      if (info.hasFallbackFn || info.hasApkBtn)
+        logFail(vp.name, 'fallback APK encore présent', JSON.stringify(info));
+      else if (info.opened.length)
+        logFail(vp.name, 'window.open déclenché (interdit)', info.opened.join(','));
+      else if (/ouverture du téléchargement apk|ouvrir l’apk/i.test(info.toast + info.progress))
+        logFail(vp.name, 'toast fallback APK', info.toast || info.progress);
+      else if (/appimage|android|in-app|native|indisponible|mise à jour/i.test(info.toast + info.progress))
+        logOk(vp.name, 'clic Mettre à jour → message in-app (pas d’APK)', (info.toast || info.progress).slice(0, 80));
+      else
+        logFail(vp.name, 'clic Mettre à jour sans feedback correct', JSON.stringify(info).slice(0, 160));
     } else {
       logFail(vp.name, 'bouton Mettre à jour absent');
     }

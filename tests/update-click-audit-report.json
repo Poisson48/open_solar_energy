@@ -1,12 +1,12 @@
 {
-  "at": "2026-08-27T14:37:18.778Z",
-  "version": "2.0.62",
+  "at": "2026-08-27T14:51:59.141Z",
+  "version": "2.0.63",
   "viewports": {
     "pc": {
       "ok": [
         {
           "label": "APP_VERSION",
-          "detail": "2.0.62"
+          "detail": "2.0.63"
         },
         {
           "label": "hub ouvert au démarrage",
@@ -37,8 +37,8 @@
           "detail": ""
         },
         {
-          "label": "clic Mettre à jour → progression ou toast",
-          "detail": "Ouverture du téléchargement APK…"
+          "label": "clic Mettre à jour → message in-app (pas d’APK)",
+          "detail": "MAJ uniquement dans l’app native (AppImage / Android)"
         },
         {
           "label": "état updater 1",
@@ -76,7 +76,7 @@
       "ok": [
         {
           "label": "APP_VERSION",
-          "detail": "2.0.62"
+          "detail": "2.0.63"
         },
         {
           "label": "hub ouvert au démarrage",
@@ -107,8 +107,8 @@
           "detail": ""
         },
         {
-          "label": "clic Mettre à jour → progression ou toast",
-          "detail": "Ouverture du téléchargement APK…"
+          "label": "clic Mettre à jour → message in-app (pas d’APK)",
+          "detail": "MAJ uniquement dans l’app native (AppImage / Android)"
         },
         {
           "label": "état updater 1",
@@ -146,7 +146,7 @@
       "ok": [
         {
           "label": "APP_VERSION",
-          "detail": "2.0.62"
+          "detail": "2.0.63"
         },
         {
           "label": "hub ouvert au démarrage",
@@ -177,8 +177,8 @@
           "detail": ""
         },
         {
-          "label": "clic Mettre à jour → progression ou toast",
-          "detail": "Ouverture du téléchargement APK…"
+          "label": "clic Mettre à jour → message in-app (pas d’APK)",
+          "detail": "MAJ uniquement dans l’app native (AppImage / Android)"
         },
         {
           "label": "état updater 1",
@@ -214,8 +214,8 @@
     }
   },
   "notes": [
-    "Pont Qt / PackageInstaller non testables en Chromium — états updater simulés via __oseOnUpdaterState",
-    "Téléchargement AppImage / APK réel : valider sur shell Qt + scripts/test-android-update-adb.sh"
+    "Pont Qt / PackageInstaller : MAJ réelle uniquement dans AppImage / APK shell",
+    "Aucun fallback navigateur / ouverture APK — installAvailableUpdate exige le pont natif"
   ],
   "fails": 0
 }

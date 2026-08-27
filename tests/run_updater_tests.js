@@ -45,15 +45,15 @@ function versionCodeFromName(name) {
 
 console.log('\n═══ Updater / versions Android ═══');
 
-assert(isNewer('2.0.62', '2.0.61'), '2.0.62 > 2.0.61');
-assert(!isNewer('2.0.61', '2.0.62'), '2.0.61 ≯ 2.0.62');
-assert(isNewer('v2.0.62', '2.0.61'), 'strip v');
-assert(!isNewer('2.0.62', '2.0.62'), 'égal → pas newer');
+assert(isNewer('2.0.63', '2.0.62'), '2.0.63 > 2.0.62');
+assert(!isNewer('2.0.62', '2.0.63'), '2.0.62 ≯ 2.0.63');
+assert(isNewer('v2.0.63', '2.0.62'), 'strip v');
+assert(!isNewer('2.0.63', '2.0.63'), 'égal → pas newer');
 assert(isNewer('2.1.0', '2.0.99'), 'mineur gagne');
+assert(versionCodeFromName('2.0.63') === 20063, 'versionCode 2.0.63 → 20063');
 assert(versionCodeFromName('2.0.62') === 20062, 'versionCode 2.0.62 → 20062');
-assert(versionCodeFromName('2.0.61') === 20061, 'versionCode 2.0.61 → 20061');
-assert(versionCodeFromName('2.0.62') > versionCodeFromName('2.0.61'), 'codes monotones');
-assert(versionCodeFromName('2.0.62') > 185, 'code marketing > ancien git-count (~185)');
+assert(versionCodeFromName('2.0.63') > versionCodeFromName('2.0.62'), 'codes monotones');
+assert(versionCodeFromName('2.0.63') > 185, 'code marketing > ancien git-count (~185)');
 
 const releaseYml = fs.readFileSync(path.join(ROOT, '.github/workflows/release.yml'), 'utf8');
 assert(!/git rev-list --count HEAD/.test(releaseYml),
@@ -62,8 +62,8 @@ assert(/10000/.test(releaseYml) && /versionCode/.test(releaseYml),
   'release.yml : formule XXYYZZ présente');
 
 const man = fs.readFileSync(path.join(ROOT, 'android/AndroidManifest.xml'), 'utf8');
-assert(/android:versionCode="20062"/.test(man), 'manifest versionCode=20062');
-assert(/android:versionName="2\.0\.62"/.test(man), 'manifest versionName=2.0.62');
+assert(/android:versionCode="20063"/.test(man), 'manifest versionCode=20063');
+assert(/android:versionName="2\.0\.63"/.test(man), 'manifest versionName=2.0.63');
 assert(/InstallCallbackActivity/.test(man), 'InstallCallbackActivity déclarée');
 assert(/ApkFileProvider/.test(man), 'ApkFileProvider déclaré');
 assert(/android:exported="false"[\s\S]*InstallReceiver|InstallReceiver[\s\S]*android:exported="false"/.test(man)
@@ -82,6 +82,12 @@ assert(/retryPendingInstallIfReady/.test(act), 'OseActivity.onResume retry insta
 
 const cb = path.join(ROOT, 'android/src/org/opensolarenergy/app/InstallCallbackActivity.java');
 assert(fs.existsSync(cb), 'InstallCallbackActivity.java existe');
+
+const pui = fs.readFileSync(path.join(ROOT, 'js/project_ui.js'), 'utf8');
+assert(!/function openUpdateApkFallback/.test(pui), 'pas de openUpdateApkFallback');
+assert(!/Ouvrir l’APK \(navigateur\)/.test(pui), 'pas de bouton Ouvrir APK navigateur');
+assert(!/Ouverture du téléchargement APK/.test(pui), 'pas de toast ouverture APK');
+assert(!/window\.open\(target/.test(pui), 'checkForUpdates n’ouvre plus d’URL externe');
 
 console.log(fails === 0 ? '\nOK\n' : `\n${fails} échec(s)\n`);
 process.exit(fails === 0 ? 0 : 1);
