@@ -24,11 +24,20 @@ Item {
 
     WebChannel {
         id: channel
-        Component.onCompleted: {
-            if (bridge)
-                registerObject("webBridge", bridge)
-        }
     }
+
+    // Main.qml pose `bridge` dans onLoaded — après Component.onCompleted.
+    // Sans re-register, channel.objects.webBridge reste vide → pas de
+    // saveProjectsBackup / openExternal / MAJ depuis le JS (météo perdue).
+    property bool bridgeRegistered: false
+    function ensureBridgeRegistered() {
+        if (!bridge || bridgeRegistered)
+            return
+        channel.registerObject("webBridge", bridge)
+        bridgeRegistered = true
+    }
+    onBridgeChanged: ensureBridgeRegistered()
+    Component.onCompleted: ensureBridgeRegistered()
 
     // Profil DISQUE obligatoire : le profil par défaut QML était OffTheRecord
     // (--disable-databases) → localStorage/IndexedDB perdus à chaque redémarrage / MAJ.

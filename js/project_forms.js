@@ -3,6 +3,95 @@
  * Dépend de : app_state.js, project_manager.js
  */
 
+/** Float32Array ↔ base64 (compact, évite JSON de 8k–17k nombres qui gonfle localStorage / miroir). */
+function encodeFloat32Array(arr) {
+  if (!arr || !arr.length) return null;
+  const f32 = arr instanceof Float32Array ? arr : new Float32Array(arr);
+  const u8 = new Uint8Array(f32.buffer, f32.byteOffset, f32.byteLength);
+  let bin = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < u8.length; i += chunk)
+    bin += String.fromCharCode.apply(null, u8.subarray(i, i + chunk));
+  return btoa(bin);
+}
+
+function decodeFloat32Array(data) {
+  if (!data) return null;
+  if (data instanceof Float32Array) return data;
+  if (Array.isArray(data)) return new Float32Array(data);
+  if (typeof data === 'string') {
+    try {
+      const bin = atob(data);
+      const u8 = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      return new Float32Array(u8.buffer);
+    } catch (_) {
+      return null;
+    }
+  }
+  return null;
+}
+
+function serializeHourlyWeather(hw) {
+  if (!hw?.ghi?.length) return null;
+  return {
+    year: hw.year,
+    nHours: hw.nHours || hw.ghi.length,
+    encoding: 'f32b64',
+    ghi: encodeFloat32Array(hw.ghi),
+    dhi: hw.dhi?.length ? encodeFloat32Array(hw.dhi) : null,
+    temp: hw.temp?.length ? encodeFloat32Array(hw.temp) : null,
+  };
+}
+
+function deserializeHourlyWeather(hw) {
+  if (!hw) return null;
+  const ghi = decodeFloat32Array(hw.ghi);
+  if (!ghi?.length) return null;
+  return {
+    year: hw.year,
+    nHours: hw.nHours || ghi.length,
+    ghi,
+    dhi: decodeFloat32Array(hw.dhi) || new Float32Array(ghi.length),
+    temp: decodeFloat32Array(hw.temp) || new Float32Array(ghi.length),
+  };
+}
+
+function serializeEnedisHourly(en) {
+  if (!en?.halfHourly?.length) return null;
+  return {
+    ...en,
+    encoding: 'f32b64',
+    halfHourly: encodeFloat32Array(en.halfHourly),
+  };
+}
+
+function deserializeEnedisHourly(en) {
+  if (!en?.halfHourly) return null;
+  const halfHourly = decodeFloat32Array(en.halfHourly);
+  if (!halfHourly?.length) return null;
+  return { ...en, halfHourly };
+}
+
+/** Sauvegarde silencieuse (import météo / Enedis) — conserve weather + horaire. */
+function persistCurrentProjectQuiet(reason) {
+  if (!AppState.currentProjectId) return false;
+  try {
+    const project = buildProjectData();
+    const ok = ProjectManager.save(project);
+    if (ok && typeof ProjectShare !== 'undefined') {
+      try { ProjectShare.onProjectSaved(project); } catch (_) {}
+    }
+    if (ok && reason && typeof gitAutoSave === 'function') {
+      try { gitAutoSave(reason); } catch (_) {}
+    }
+    return ok;
+  } catch (e) {
+    console.warn('persistCurrentProjectQuiet:', e);
+    return false;
+  }
+}
+
 // ══════════════════════════════════════════════════════════════
 //  CAPTURE / RESTAURATION FORMULAIRES
 // ══════════════════════════════════════════════════════════════
@@ -292,19 +381,9 @@ function buildProjectData() {
     locationName:     AppState.location.name,
   };
 
-  const enedisSerial = AppState.hourlyEnedisData?.halfHourly
-    ? { ...AppState.hourlyEnedisData, halfHourly: Array.from(AppState.hourlyEnedisData.halfHourly) }
-    : null;
+  const enedisSerial = serializeEnedisHourly(AppState.hourlyEnedisData);
 
-  const hourlyWx = AppState.hourlyWeatherData?.ghi
-    ? {
-        year: AppState.hourlyWeatherData.year,
-        nHours: AppState.hourlyWeatherData.nHours,
-        ghi: Array.from(AppState.hourlyWeatherData.ghi),
-        dhi: Array.from(AppState.hourlyWeatherData.dhi || []),
-        temp: Array.from(AppState.hourlyWeatherData.temp || []),
-      }
-    : null;
+  const hourlyWx = serializeHourlyWeather(AppState.hourlyWeatherData);
 
   const existing = AppState.currentProjectId
     ? ProjectManager.get(AppState.currentProjectId)

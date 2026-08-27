@@ -99,18 +99,8 @@ function loadProject(id) {
     });
     if (best) AppState.weatherData = best.monthly;
   }
-  AppState.hourlyEnedisData = project.hourlyEnedisData?.halfHourly
-    ? { ...project.hourlyEnedisData, halfHourly: new Float32Array(project.hourlyEnedisData.halfHourly) }
-    : null;
-  AppState.hourlyWeatherData = project.hourlyWeatherData?.ghi
-    ? {
-        year: project.hourlyWeatherData.year,
-        nHours: project.hourlyWeatherData.nHours,
-        ghi: new Float32Array(project.hourlyWeatherData.ghi),
-        dhi: new Float32Array(project.hourlyWeatherData.dhi || []),
-        temp: new Float32Array(project.hourlyWeatherData.temp || []),
-      }
-    : null;
+  AppState.hourlyEnedisData = deserializeEnedisHourly(project.hourlyEnedisData);
+  AppState.hourlyWeatherData = deserializeHourlyWeather(project.hourlyWeatherData);
   AppState.monthlyKwhHp = project.monthlyKwhHp ? project.monthlyKwhHp.slice() : null;
   AppState.enedisYear   = project.enedisYear || null;
   if (AppState.hourlyEnedisData && typeof HourlyModule?.setData === 'function') {

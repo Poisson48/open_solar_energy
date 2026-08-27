@@ -386,53 +386,44 @@ const HourlyModule = (() => {
         ${monthPanels}
       </div>`;
 
-    // Navigation entre mois
+    // Navigation entre mois + rendu graphique à la demande (évite 24 Chart.js d’un coup → plantage WebEngine)
+    const renderMonthCharts = (month) => {
+      const i = month - 1;
+      const d = allData[i];
+      const panel = document.getElementById(`hourly-panel-${month}`);
+      if (!panel || !d) return;
+      const mainCanvas = panel.querySelector(`[id^="hourly-chart-main-"]`);
+      const socCanvas  = panel.querySelector(`[id^="hourly-chart-soc-"]`);
+      if (mainCanvas) Charts.renderHourlyProfile(mainCanvas.id, d.sim, MONTHS_FR[i], chartGridLabel);
+      if (socCanvas && battKwh > 0) Charts.renderHourlySoc(socCanvas.id, d.sim, battKwh * dod / 100);
+    };
+
     el.querySelectorAll('.hourly-month-tab').forEach(btn => {
       btn.addEventListener('click', () => {
         const m = parseInt(btn.dataset.month);
         _currentMonth = m;
-        // Mettre à jour les styles des boutons
         el.querySelectorAll('.hourly-month-tab').forEach(b => {
           const active = parseInt(b.dataset.month) === m;
           b.style.background   = active ? 'var(--color-accent)' : 'var(--color-bg)';
           b.style.color        = active ? '#fff' : 'inherit';
         });
-        // Afficher le bon panneau
         el.querySelectorAll('[id^="hourly-panel-"]').forEach(panel => {
           panel.style.display = panel.id === `hourly-panel-${m}` ? 'block' : 'none';
         });
+        // Laisser le layout calculer la taille du canvas visible
+        requestAnimationFrame(() => renderMonthCharts(m));
       });
     });
 
-    // Rendre les graphiques avec un léger délai pour que le DOM soit prêt
+    // Rendre overlay + mois actif seulement
     setTimeout(() => {
-      // Graphe superposition annuelle
       const overlayInput = allData.map((d, i) => ({
         monthName: MONTHS_FR[i],
         sim: d.sim
       }));
       Charts.renderMonthlyOverlay(overlayId, overlayInput);
-
-      // Graphes de chaque mois (seulement le mois actif au premier rendu,
-      // les autres seront rendus à la demande au survol des tabs)
-      allData.forEach((d, i) => {
-        const month = i + 1;
-        const ts    = `${month}-`;
-        // Chercher le canvas du mois (par préfixe d'ID dans le panel correspondant)
-        const panel = document.getElementById(`hourly-panel-${month}`);
-        if (!panel) return;
-
-        const mainCanvas = panel.querySelector(`[id^="hourly-chart-main-"]`);
-        const socCanvas  = panel.querySelector(`[id^="hourly-chart-soc-"]`);
-
-        if (mainCanvas) {
-          Charts.renderHourlyProfile(mainCanvas.id, d.sim, MONTHS_FR[i], chartGridLabel);
-        }
-        if (socCanvas && battKwh > 0) {
-          Charts.renderHourlySoc(socCanvas.id, d.sim, battKwh * dod / 100);
-        }
-      });
-    }, 50);
+      renderMonthCharts(_currentMonth);
+    }, 80);
   }
 
   /**

@@ -13,4 +13,23 @@ const Charts = {};
     const existing = Chart.getChart(id);
     if (existing) existing.destroy();
   };
+
+  /** Canvas visible et dimensionné — sinon Chart.js plante (surtout Qt WebEngine). */
+  Charts.canvasReady = function (id) {
+    const el = typeof id === 'string' ? document.getElementById(id) : id;
+    if (!el || typeof el.getContext !== 'function') return false;
+    const r = el.getBoundingClientRect();
+    return r.width >= 2 && r.height >= 2;
+  };
+
+  Charts.safeCreate = function (canvasId, config) {
+    Charts.destroy(canvasId);
+    if (!Charts.canvasReady(canvasId)) return null;
+    try {
+      return new Chart(document.getElementById(canvasId), config);
+    } catch (e) {
+      console.warn('[Charts] create failed', canvasId, e);
+      return null;
+    }
+  };
 })();

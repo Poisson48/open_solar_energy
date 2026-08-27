@@ -18,10 +18,22 @@
   function connectQt() {
     if (typeof qt === 'undefined' || !qt.webChannelTransport) return;
 
+    let attempts = 0;
+    const maxAttempts = 40; // ~8 s — le registerObject QML peut arriver après le 1er paint
+
     function attach() {
       // eslint-disable-next-line no-undef
       new QWebChannel(qt.webChannelTransport, function (channel) {
-        bind(channel.objects.webBridge);
+        const obj = channel.objects && channel.objects.webBridge;
+        if (obj) {
+          bind(obj);
+          return;
+        }
+        attempts += 1;
+        if (attempts < maxAttempts)
+          setTimeout(attach, 200);
+        else
+          console.warn('[native_bridge] webBridge Qt absent (registerObject trop tard ?)');
       });
     }
 

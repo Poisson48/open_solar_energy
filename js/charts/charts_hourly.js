@@ -10,8 +10,9 @@
   /** Profil journalier : PV / Conso / Soutirage réseau */
   Charts.renderHourlyProfile = function (canvasId, sim, monthName, gridLabel = 'Soutirage réseau (Wh)') {
     Charts.destroy(canvasId);
+    if (!Charts.canvasReady(canvasId)) return;
     const labels = sim.map(r => `${String(r.hour).padStart(2, '0')}h`);
-    new Chart(document.getElementById(canvasId), {
+    Charts.safeCreate(canvasId, {
       type: 'bar',
       data: {
         labels,
@@ -58,8 +59,9 @@
   /** État de charge de la batterie (SoC) sur 24h */
   Charts.renderHourlySoc = function (canvasId, sim, usableKwh) {
     Charts.destroy(canvasId);
+    if (!Charts.canvasReady(canvasId)) return;
     const labels = sim.map(r => `${String(r.hour).padStart(2, '0')}h`);
-    new Chart(document.getElementById(canvasId), {
+    Charts.safeCreate(canvasId, {
       type: 'line',
       data: {
         labels,
@@ -99,6 +101,7 @@
    */
   Charts.renderMonthlyOverlay = function (canvasId, allMonths) {
     Charts.destroy(canvasId);
+    if (!Charts.canvasReady(canvasId)) return;
     const labels = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')}h`);
 
     // Palette de couleurs pour les 12 mois (PV : teintes chaudes, Conso : teintes froides)
@@ -161,7 +164,7 @@
       });
     });
 
-    new Chart(document.getElementById(canvasId), {
+    Charts.safeCreate(canvasId, {
       type: 'line',
       data: { labels, datasets },
       options: {
