@@ -73,43 +73,49 @@ const OffgridSizing = (() => {
     return { soc_end: soc, deficit_days, deficit_kwh, surplus_kwh };
   }
 
-  // ── Simulation année complète, slot par slot ──────────────────────
-  // pvSlotsFlat : Float32Array(nHours×2) de production par kWc - index absolu slot.
-  // Conso réelle Enedis slot par slot.
-  function simulateYearSlots(enedisData, pvSlotsFlat, Ppeak, C_usable, eta) {
-    const data     = enedisData.halfHourly;
-    if (!data || data.length < 48 * 365) return null;
-    const daysOfYear = enedisData.year ? getMonthlyDays(enedisData.year) : DAYS;
+  // ── Simulation année complète, créneau 30 min (puis pas d’1 min) ──
+  // loadSlots / pvSlotsFlat : Float32Array année (kWh / créneau 30 min, PV par kWc)
+  function simulateYearSlots(loadSlots, pvSlotsFlat, Ppeak, C_usable, eta, year) {
+    if (!loadSlots || loadSlots.length < 48 * 365 || !pvSlotsFlat) return null;
+    const daysOfYear = year ? getMonthlyDays(year) : DAYS;
 
     let soc = C_usable * 0.5;
     const monthly = Array.from({length: 12}, () => ({
       prod_kwh: 0, conso_kwh: 0, deficit_kwh: 0, deficit_days: 0,
-      surplus_kwh: 0, soc_end: 0
+      surplus_kwh: 0, soc_end: 0, night_batt_kwh: 0
     }));
 
     let dayIdx = 0;
+    const nSlots = Math.min(loadSlots.length, pvSlotsFlat.length);
     for (let m = 0; m < 12; m++) {
       const nDays = daysOfYear[m];
       for (let d = 0; d < nDays; d++) {
         let dayDeficit = 0;
         for (let s = 0; s < 48; s++) {
-          const idx   = dayIdx * 48 + s;
-          if (idx >= data.length) break;
-          const conso = data[idx] || 0;
-          const prod  = (pvSlotsFlat[idx] || 0) * Ppeak;
-          monthly[m].prod_kwh  += prod;
-          monthly[m].conso_kwh += conso;
-          const balance = prod - conso;
-          if (balance >= 0) {
-            const room   = Math.max(0, C_usable - soc);
-            const stored = Math.min(balance * eta, room);
-            soc = Math.min(C_usable, soc + stored);
-            monthly[m].surplus_kwh += balance - stored / eta;
-          } else {
-            const needed   = -balance;
-            const fromBatt = Math.min(needed, soc);
-            soc -= fromBatt;
-            dayDeficit += needed - fromBatt;
+          const idx = dayIdx * 48 + s;
+          if (idx >= nSlots) break;
+          const hour = Math.floor(s / 2);
+          const isNight = hour < 6 || hour >= 21;
+          const pMin = ((pvSlotsFlat[idx] || 0) * Ppeak) / 30;
+          const cMin = (loadSlots[idx] || 0) / 30;
+          for (let min = 0; min < 30; min++) {
+            const prod = pMin;
+            const conso = cMin;
+            monthly[m].prod_kwh  += prod;
+            monthly[m].conso_kwh += conso;
+            const balance = prod - conso;
+            if (balance >= 0) {
+              const room   = Math.max(0, C_usable - soc);
+              const stored = Math.min(balance * eta, room);
+              soc = Math.min(C_usable, soc + stored);
+              monthly[m].surplus_kwh += balance - stored / eta;
+            } else {
+              const needed   = -balance;
+              const fromBatt = Math.min(needed, soc);
+              soc -= fromBatt;
+              dayDeficit += needed - fromBatt;
+              if (isNight) monthly[m].night_batt_kwh += fromBatt;
+            }
           }
         }
         if (dayDeficit > 0.05) {
@@ -177,15 +183,16 @@ const OffgridSizing = (() => {
 
   // ── Simulation annuelle ───────────────────────────────────────
   // pvSlotsFlat : Float32Array pré-calculé (1 kWc) - null = pas de données slot
-  function simulateYear(monthlyHtilt, dailyConso, Ppeak, losses, weatherData, C_usable, eta, tilt, azimuth, lat, pvSlotsFlat, pvTech) {
+  function simulateYear(monthlyHtilt, dailyConso, Ppeak, losses, weatherData, C_usable, eta, tilt, azimuth, lat, pvSlotsFlat, pvTech, loadSlots, loadYear) {
     const tech = pvTech || 'crystSi';
-    const enedisData = AppState.hourlyEnedisData;
-    const hasEnedis = !!(enedisData?.halfHourly?.length >= 48 * 365 && pvSlotsFlat && tilt !== undefined && lat !== undefined);
-    const slotMonthly = hasEnedis
-      ? simulateYearSlots(enedisData, pvSlotsFlat, Ppeak, C_usable, eta)
+    const hasSlots = !!(loadSlots?.length >= 48 * 365 && pvSlotsFlat && tilt !== undefined && lat !== undefined);
+    const slotMonthly = hasSlots
+      ? simulateYearSlots(loadSlots, pvSlotsFlat, Ppeak, C_usable, eta, loadYear)
       : null;
 
-    const knownYear = enedisData?.year || AppState.enedisYear || null;
+    const knownYear = loadYear
+      || ((typeof AppState !== 'undefined') && (AppState.hourlyEnedisData?.year || AppState.enedisYear))
+      || null;
     const daysArr = knownYear ? getMonthlyDays(knownYear) : DAYS;
 
     let soc = C_usable * 0.5;
@@ -320,31 +327,41 @@ const OffgridSizing = (() => {
 
     const allCandidates = [];
 
-    // Pré-calcul profil PV 30min par kWc - shared entre tous les candidats
-    // Priorité : données météo horaires réelles > profil mensuel moyen
-    const hasEnedisSlots = !!(AppState.hourlyEnedisData?.halfHourly?.length >= 48 * 365);
+    // Pré-calcul profil PV 30min + charge année (Enedis ou synthétique) — toujours
+    // pour simuler la nuit créneau/minute, pas un bilan journalier optimiste.
+    const enedis = (typeof AppState !== 'undefined') ? AppState.hourlyEnedisData : null;
+    const hasEnedisSlots = !!(enedis?.halfHourly?.length >= 48 * 365);
+    const yearForDays = enedis?.year
+      || ((typeof AppState !== 'undefined' && AppState.enedisYear) || null);
+    const daysArr = yearForDays ? getMonthlyDays(yearForDays) : DAYS.slice();
     let pvSlotsFlat = null;
-    if (hasEnedisSlots) {
-      const daysArr = AppState.hourlyEnedisData.year ? getMonthlyDays(AppState.hourlyEnedisData.year) : DAYS;
-      if (AppState.hourlyWeatherData) {
-        // Profil jour-à-jour réel (nuageux/ensoleillé capturé)
-        pvSlotsFlat = SolarMath.buildYearPvSlots(
-          AppState.hourlyWeatherData, site.tilt, site.azimuth, losses, pvTech, lat,
-          AppState.location?.lon || 0
-        );
-      } else {
-        // Fallback : profil mensuel moyen aplati
-        const monthlyProfs = PvProfiles.buildMonthlyProfiles(weatherData, monthlyHtilt, losses, site.tilt, site.azimuth, lat, pvTech);
-        pvSlotsFlat = PvProfiles.flattenToYear(monthlyProfs, daysArr);
-      }
-      const shade = AppState.siteSurvey?.monthlyLoss;
-      if (shade && pvSlotsFlat) PvProfiles.applyMonthlyShade(pvSlotsFlat, daysArr, shade);
+    const hourlyWx = (typeof AppState !== 'undefined') ? AppState.hourlyWeatherData : null;
+    if (hourlyWx?.ghi?.length >= 24 * 365) {
+      pvSlotsFlat = SolarMath.buildYearPvSlots(
+        hourlyWx, site.tilt, site.azimuth, losses, pvTech, lat,
+        (typeof AppState !== 'undefined' && AppState.location?.lon) || 0
+      );
+    } else {
+      const monthlyProfs = PvProfiles.buildMonthlyProfiles(weatherData, monthlyHtilt, losses, site.tilt, site.azimuth, lat, pvTech);
+      pvSlotsFlat = PvProfiles.flattenToYear(monthlyProfs, daysArr);
     }
+    PvProfiles.applySiteShade(
+      pvSlotsFlat, daysArr,
+      (typeof AppState !== 'undefined') ? AppState.siteSurvey : null
+    );
+
+    const monthlyKwhFromDaily = dailyConso.map((whDay, i) => (whDay / 1000) * (daysArr[i] || 30));
+    const loadSlots = hasEnedisSlots
+      ? enedis.halfHourly
+      : PvProfiles.buildSyntheticLoadYear(monthlyKwhFromDaily, yearForDays);
 
     ppeaks.forEach(Ppeak => {
       batts.forEach(C_batt_gross => {
         const C_usable = C_batt_gross * tech.dod;
-        const yearSim  = simulateYear(monthlyHtilt, dailyConso, Ppeak, losses, weatherData, C_usable, tech.eta, site.tilt, site.azimuth, lat, pvSlotsFlat, pvTech);
+        const yearSim  = simulateYear(
+          monthlyHtilt, dailyConso, Ppeak, losses, weatherData, C_usable, tech.eta,
+          site.tilt, site.azimuth, lat, pvSlotsFlat, pvTech, loadSlots, yearForDays
+        );
 
         const nPanels  = Math.ceil((Ppeak * 1000) / (site.panelWattPeak || 400));
         const systemCostPV   = Ppeak * (sizing.pvCostPerKwp || PV_COST_PER_KWP);

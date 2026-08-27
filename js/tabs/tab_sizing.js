@@ -53,16 +53,32 @@ function initTabSizing() {
               </div>
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;flex-wrap:wrap">
-              <div style="font-size:12px;font-weight:700;color:var(--color-primary)">Consommation mensuelle (kWh)</div>
+              <div style="font-size:12px;font-weight:700;color:var(--color-primary)">Données de consommation</div>
               <button type="button" class="btn btn-outline btn-sm" onclick="event.stopPropagation();openEnedisModal()">
                 📂 Importer depuis Enedis
               </button>
             </div>
             <div id="sz-hybrid-enedis-note" class="alert alert-info" style="font-size:11px;margin-bottom:6px;display:none">
-              🔋 Batterie hybride : importez si possible le fichier Enedis <strong>30 min</strong> (courbe de charge) plutôt qu'une facture mensuelle — la simulation charge/décharge de la batterie est bien plus précise qu'avec une moyenne mensuelle.
+              🔋 Batterie hybride : Enedis <strong>30 min</strong> = le plus précis. Sinon saisissez la conso <strong>jour / nuit</strong> ci-dessous (2 chiffres) pour simuler correctement la décharge nocturne.
+            </div>
+            <div id="sz-daynight-block" class="ose-daynight-block" style="margin-bottom:10px;padding:10px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-surface-2,rgba(0,0,0,0.03))">
+              <div style="font-size:12px;font-weight:700;color:var(--color-primary);margin-bottom:4px">Répartition jour / nuit (sans Enedis 30 min)</div>
+              <p class="ose-field-help" style="margin:0 0 8px">Deux chiffres suffisent : conso typique <strong>par jour</strong>. Jour = 6h–21h, nuit = 21h–6h (comme la simu batterie). Les mois ci-dessous restent optionnels (saisonnalité) — s’ils sont vides, on projette sur l’année.</p>
+              <div class="form-row" style="gap:8px;margin-bottom:0">
+                <div class="form-group" style="flex:1">
+                  <label for="sz-load-day">Conso jour</label>
+                  <div class="input-unit"><input type="number" id="sz-load-day" value="" min="0" step="0.1" placeholder="ex. 8"><span class="unit-tag">kWh/j</span></div>
+                </div>
+                <div class="form-group" style="flex:1">
+                  <label for="sz-load-night">Conso nuit</label>
+                  <div class="input-unit"><input type="number" id="sz-load-night" value="" min="0" step="0.1" placeholder="ex. 4"><span class="unit-tag">kWh/j</span></div>
+                </div>
+              </div>
+              <p id="sz-daynight-hint" style="font-size:11px;color:var(--color-text-muted);margin:6px 0 0"></p>
             </div>
             <div id="sz-csv-status" style="font-size:11px;margin-bottom:6px;display:none"></div>
             <div id="hourly-data-status" style="font-size:11px;color:var(--color-success);margin-bottom:4px"></div>
+            <div style="font-size:12px;font-weight:700;color:var(--color-primary);margin-bottom:6px">Consommation mensuelle (kWh) — optionnel si jour/nuit renseigné</div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
               <div class="form-group"><label for="sz-kwh-1">Jan</label><input type="number" id="sz-kwh-1"  value="" min="0" placeholder="kWh"></div>
               <div class="form-group"><label for="sz-kwh-2">Fév</label><input type="number" id="sz-kwh-2"  value="" min="0" placeholder="kWh"></div>
@@ -152,7 +168,7 @@ function initTabSizing() {
             <span class="ose-step-num">🔋</span>
             <div>
               <h3 class="ose-step-title">Batterie (hybride)</h3>
-              <p class="ose-step-hint">Stocke le surplus produit dans la journée pour le restituer le soir, avant injection du reste au réseau.</p>
+              <p class="ose-step-hint">Simulation <strong>minute par minute</strong> sur l’année : la batterie se charge au surplus PV (jour) et se décharge pour la conso (soir/nuit) avant tout import réseau. Ombrage site appliqué <strong>créneau par créneau</strong> (pas un simple % forfaitaire).</p>
             </div>
           </div>
           <div class="ose-step-body">

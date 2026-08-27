@@ -35,16 +35,28 @@ const HourlyModule = (() => {
 
   function _updateSourceStatus() {
     const el = document.getElementById('hourly-source-status');
-    if (!el) return;
-    if (_rawData) {
-      el.style.background = '#e8f5e9';
-      el.style.color = 'var(--color-success)';
-      el.textContent = `✓ Données Enedis réelles - ${_rawYear || ''} (${_rawData.length} mesures 30min)`;
-    } else {
-      el.style.background = 'var(--color-bg)';
-      el.style.color = 'var(--color-text-muted)';
-      el.textContent = '⚠ Profil synthétique (pas de données Enedis 30min)';
+    if (el) {
+      if (_rawData) {
+        el.style.background = '#e8f5e9';
+        el.style.color = 'var(--color-success)';
+        el.textContent = `✓ Données Enedis réelles - ${_rawYear || ''} (${_rawData.length} mesures 30min)`;
+      } else {
+        el.style.background = 'var(--color-bg)';
+        el.style.color = 'var(--color-text-muted)';
+        el.textContent = '⚠ Profil synthétique (pas de données Enedis 30min)';
+      }
     }
+    const status = document.getElementById('hourly-data-status');
+    if (status) {
+      if (_rawData) {
+        status.textContent = `✓ Enedis 30 min chargé (${_rawYear || ''}) — utilisé pour le dimensionnement / batterie`;
+        status.style.display = '';
+      } else {
+        status.textContent = '';
+      }
+    }
+    const dn = document.getElementById('sz-daynight-block');
+    if (dn) dn.style.display = _rawData ? 'none' : '';
   }
 
   /**
@@ -67,6 +79,32 @@ const HourlyModule = (() => {
    */
   function _buildSyntheticProfile(month) {
     const days = DAYS_IN_MONTH[month - 1];
+    const nightSet = new Set(
+      (typeof PvProfiles !== 'undefined' && PvProfiles.NIGHT_HOURS)
+        ? PvProfiles.NIGHT_HOURS
+        : [21, 22, 23, 0, 1, 2, 3, 4, 5]
+    );
+    const dayK = parseFloat(document.getElementById('sz-load-day')?.value) || 0;
+    const nightK = parseFloat(document.getElementById('sz-load-night')?.value) || 0;
+
+    function profileFromDayNight(dailyTotal, dayPart, nightPart) {
+      const typ = dayPart + nightPart;
+      const dayShare = typ > 0 ? dayPart / typ : 15 / 24;
+      const dayEnergy = dailyTotal * dayShare;
+      const nightEnergy = dailyTotal * (1 - dayShare);
+      const nNight = [...nightSet].length;
+      const nDay = 24 - nNight;
+      const dH = nDay > 0 ? dayEnergy / nDay : 0;
+      const nH = nNight > 0 ? nightEnergy / nNight : 0;
+      return Array.from({ length: 24 }, (_, h) => nightSet.has(h) ? nH : dH);
+    }
+
+    // 0. Split jour/nuit saisi (prioritaire pour la forme)
+    if (dayK > 0 || nightK > 0) {
+      const szKwh = parseFloat(document.getElementById(`sz-kwh-${month}`)?.value) || 0;
+      const daily = szKwh > 0 ? szKwh / days : (dayK + nightK);
+      return profileFromDayNight(daily, dayK, nightK);
+    }
 
     // 1. Onglet dimensionnement (kWh/mois)
     const szKwh = parseFloat(document.getElementById(`sz-kwh-${month}`)?.value) || 0;
@@ -157,10 +195,23 @@ const HourlyModule = (() => {
     const Tcell  = (monthData.T_avg || 15) + 25 * G_eff / 800;
     const PR_temp = 1 + gamma * Math.max(0, Tcell - 25);
     const lossF  = Math.max(0.5, (1 - (losses || 14) / 100) * Math.min(1, PR_temp));
+    const keep = (typeof AppState !== 'undefined' && AppState.siteSurvey?.halfHourlyKeep?.[month - 1])
+      || null;
+    const monthlyLoss = (typeof AppState !== 'undefined' && AppState.siteSurvey?.monthlyLoss?.[month - 1]);
 
     return Array.from({length: 24}, (_, h) => {
       const irr = SolarMath.hourlyIrradiance(lat, month, h, monthData, tilt, azimuth);
-      return irr * Ppeak * lossF / 1000;  // kWh
+      let shadeF = 1;
+      if (keep) {
+        const aRaw = Number(keep[h * 2]);
+        const bRaw = Number(keep[h * 2 + 1]);
+        const a = Number.isFinite(aRaw) ? aRaw : 1;
+        const b = Number.isFinite(bRaw) ? bRaw : 1;
+        shadeF = Math.max(0, Math.min(1, (a + b) / 2));
+      } else if (monthlyLoss != null) {
+        shadeF = Math.max(0, Math.min(1, 1 - (Number(monthlyLoss) || 0)));
+      }
+      return irr * Ppeak * lossF * shadeF / 1000;  // kWh
     });
   }
 

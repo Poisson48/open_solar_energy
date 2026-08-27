@@ -1563,6 +1563,8 @@ details.card > summary:focus-visible {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   max-width: 100%;
+  min-width: 0;
+  width: 100%;
 }
 .dv-lines-table { min-width: 480px; }
 .dv-cost-row { border-bottom: 1px solid var(--color-border); }
@@ -1573,6 +1575,11 @@ details.card > summary:focus-visible {
 @media (max-width: 640px) {
   .dv-lines-table { font-size: 11px; min-width: 420px; }
   #dv-lines-actions .btn { font-size: 11px; }
+  #dv-preview-frame {
+    width: 100% !important;
+    max-width: 100%;
+    height: min(60vh, 480px) !important;
+  }
 }
 
 /* ── BOUTON LOADING ── */
@@ -1600,21 +1607,30 @@ details.card > summary:focus-visible {
 /* ── LAYOUT DES ONGLETS (remplace les grid inline) ── */
 .tab-form-col {
   display: grid;
-  grid-template-columns: 310px 1fr;
+  grid-template-columns: 310px minmax(0, 1fr);
   gap: 16px;
   /* Évite une colonne résultats vide étirée à la hauteur du formulaire */
   align-items: start;
+  width: 100%;
+  max-width: 100%;
 }
 .tab-form-col-half {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 16px;
+  width: 100%;
+  max-width: 100%;
+}
+.tab-form-col > *,
+.tab-form-col-half > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* ── RESPONSIVE ── */
 @media (max-width: 1100px) {
   .tab-form-col-half {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -1627,7 +1643,7 @@ details.card > summary:focus-visible {
     min-height: 140px;
   }
   .tab-form-col {
-    grid-template-columns: minmax(240px, 34%) 1fr;
+    grid-template-columns: minmax(240px, 34%) minmax(0, 1fr);
     gap: 14px;
   }
   .ose-charts-grid {
@@ -1648,7 +1664,7 @@ details.card > summary:focus-visible {
     min-height: calc(100dvh - var(--header-h) - 34px - var(--safe-top));
   }
   .tab-form-col {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   #map {
     min-height: 180px;
@@ -1693,7 +1709,7 @@ details.card > summary:focus-visible {
     min-height: calc(100vh - var(--header-h) - 34px - var(--safe-top));
   }
   .tab-form-col {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .ose-location-layout .map-panel:not(.map-panel-fs) {
     max-height: 300px;
@@ -2826,6 +2842,51 @@ img, canvas, svg, video, iframe {
   .data-table { font-size: 12px; }
   .chart-container { height: 220px; max-width: 100%; }
   .ose-charts-grid { grid-template-columns: 1fr !important; }
+
+  /* Contenir les min-width internes (table devis 420px, canvas…) */
+  .tabs-content,
+  .tab-pane,
+  .main-panel {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+  .tab-form-col,
+  .tab-form-col-half {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .ose-daynight-block,
+  .form-row,
+  .params-grid,
+  .card,
+  details.card {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  .form-group,
+  .input-unit,
+  input, select, textarea {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  .tab-pane canvas {
+    max-width: 100% !important;
+  }
+  /* Tables larges : scroll interne, jamais élargir le viewport */
+  .dv-lines-scroll,
+  #daylight-table,
+  .tab-pane .table-scroll,
+  .tab-pane .data-table-wrap {
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tab-pane table.data-table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 @media (max-width: 480px) {

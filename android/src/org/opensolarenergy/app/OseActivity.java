@@ -40,6 +40,12 @@ public class OseActivity extends QtActivity {
         super.onResume();
         if (!mWebViewHooked)
             scheduleWebViewHook();
+        // Après « apps inconnues » : relancer l’install une seule fois.
+        try {
+            Platform.retryPendingInstallIfReady(this);
+        } catch (Exception e) {
+            Log.e(TAG, "retryPendingInstall", e);
+        }
     }
 
     @Override

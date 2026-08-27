@@ -11,11 +11,12 @@ function calcSizing() {
   const input      = SizingEngine.readFormInput();
   const annualConso = input.bill.monthlyKwh.reduce((s, k) => s + k, 0);
   if (annualConso === 0) {
-    showToast('Étape 1 : renseignez votre consommation mensuelle.', 'warning');
+    showToast('Étape 1 : renseignez jour/nuit (kWh/j) ou la conso mensuelle.', 'warning');
     document.getElementById('sizing-results').innerHTML = `<div class="result-placeholder">
-      <p>Renseignez votre consommation mensuelle (étape 1)<br>puis cliquez sur <strong>Dimensionner</strong></p>
+      <p>Renseignez la conso <strong>jour / nuit</strong> ou les mois (étape 1)<br>puis cliquez sur <strong>Dimensionner</strong></p>
     </div>`;
-    document.getElementById('sz-kwh-1')?.focus();
+    document.getElementById('sz-load-day')?.focus()
+      || document.getElementById('sz-kwh-1')?.focus();
     return;
   }
   if (!input.site.maxSurfaceM2) {
@@ -138,6 +139,7 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
     const pv = rec.pvSource || 'monthly_shape';
     const parts = [];
     if (load === 'enedis_30min') parts.push('Enedis 30 min');
+    else if (load === 'day_night') parts.push('Conso jour/nuit');
     else if (load === 'synthetic_diurnal') parts.push('Profil conso 30 min');
     if (pv === 'hourly_weather') parts.push('Météo horaire');
     else parts.push('Forme PV mensuelle');

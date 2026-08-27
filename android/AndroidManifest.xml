@@ -2,8 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="org.opensolarenergy.app"
     android:installLocation="auto"
-    android:versionCode="259"
-    android:versionName="2.0.59">
+    android:versionCode="20060"
+    android:versionName="2.0.60">
 
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
@@ -53,9 +53,23 @@
             <meta-data android:name="android.app.extract_android_style" android:value="minimal"/>
         </activity>
 
+        <!-- Callback PackageInstaller (PendingIntent.getActivity — pas BroadcastReceiver) -->
+        <activity
+            android:name="org.opensolarenergy.app.InstallCallbackActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""/>
+
+        <provider
+            android:name="org.opensolarenergy.app.ApkFileProvider"
+            android:authorities="org.opensolarenergy.app.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true"/>
+
         <receiver
             android:name="org.opensolarenergy.app.Platform$InstallReceiver"
-            android:exported="true"
+            android:exported="false"
             android:enabled="true">
             <intent-filter>
                 <action android:name="org.opensolarenergy.app.INSTALL_STATUS"/>

@@ -413,8 +413,12 @@ console.log('\n═══ H. Revue code — points de vigilance connus ═══'
   check('Updater : retours natifs → web (mobile)', /notifyWebToast/.test(mobile) && /onStateChanged/.test(mobile));
   check('Updater : statusMessage pour retours UI', /statusMessage/.test(upd));
   check('Android InstallReceiver déclaré', /InstallReceiver/.test(man) && /REQUEST_INSTALL_PACKAGES/.test(man));
+  check('Android InstallCallbackActivity (MAJ)', /InstallCallbackActivity/.test(man));
+  check('Android ApkFileProvider (fallback install)', /ApkFileProvider/.test(man));
+  check('Updater install : PendingIntent.getActivity', /PendingIntent\.getActivity/.test(
+    fs.readFileSync(join(ROOT, 'android/src/org/opensolarenergy/app/Platform.java'), 'utf8')));
   note('Limitation : MAJ in-app non testable en Chromium (pas de shell Qt)');
-  note('Limitation : PackageInstaller / permission « apps inconnues » non testable ici');
+  note('Limitation : PackageInstaller UI — valider avec scripts/test-android-update-adb.sh + téléphone');
 }
 
 await browser.close();
