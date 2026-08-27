@@ -9,8 +9,18 @@
 #include "platform.h"
 #include "theme.h"
 
+#ifdef OSE_HAS_WEBENGINE
+#  include <QtWebEngineQuick/qtwebenginequickglobal.h>
+#endif
+
 int main(int argc, char* argv[])
 {
+#ifdef OSE_HAS_WEBENGINE
+    // Obligatoire avant QApplication ; ancre aussi le lien WebEngine (--as-needed).
+    QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
+    QtWebEngineQuick::initialize();
+#endif
+
     QApplication app(argc, argv);
     app.setOrganizationName(QStringLiteral("OpenSolarEnergy"));
     app.setApplicationName(QStringLiteral("OpenSolarEnergy"));
