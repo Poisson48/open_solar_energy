@@ -3,8 +3,9 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.45';
+const APP_VERSION = '2.0.46';
 // Historique :
+//   2.0.46 - UI PC : hub plein écran 2 colonnes, plus de bandes latérales
 //   2.0.45 - AppImage : ne plus embarquer NSS (crash FATAL sur distros récentes)
 //   2.0.44 - Fix AppImage PC écran blanc : OSE_HAS_WEBENGINE sur applib +
 //            QtWebEngineQuick::initialize() + QtWebEngineProcess embarqué

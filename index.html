@@ -97,13 +97,15 @@
       <div id="ose-hub-news" class="ose-hub-news" aria-live="polite">
         <div class="ose-hub-news-loading">Chargement des nouveautés…</div>
       </div>
-      <div class="form-group" style="margin-bottom:12px">
+      <div class="ose-hub-projects-col">
+      <div class="form-group ose-hub-search" style="margin-bottom:12px">
         <label for="projects-search" style="font-size:12px">Rechercher</label>
         <input type="search" id="projects-search" placeholder="Nom, client, lieu, date…"
                oninput="renderProjectsList(this.value)"
                style="width:100%;font-size:16px" autocomplete="off" enterkeyhint="search">
       </div>
       <div id="projects-list" class="ose-hub-list"></div>
+      </div>
     </div>
 
     <!-- Étape 1.5 : type d'installation -->

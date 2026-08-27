@@ -330,11 +330,12 @@ function handleAndroidBack() {
   if (hubOpen) {
     const stepNew = document.getElementById('startup-step-new');
     const stepType = document.getElementById('startup-step-type');
-    if (stepNew?.style.display === 'block') {
+    const stepVisible = (el) => el && el.style.display !== 'none' && getComputedStyle(el).display !== 'none';
+    if (stepVisible(stepNew)) {
       showInstallationTypeStep();
       return true;
     }
-    if (stepType?.style.display === 'block') {
+    if (stepVisible(stepType)) {
       showStartupStep1();
       return true;
     }

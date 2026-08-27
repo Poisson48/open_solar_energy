@@ -37,6 +37,7 @@
 html {
   max-width: 100%;
   overflow-x: clip;
+  height: 100%;
 }
 body {
   font-family: var(--font-main);
@@ -46,6 +47,8 @@ body {
   line-height: 1.5;
   max-width: 100%;
   overflow-x: clip;
+  min-height: 100%;
+  height: 100%;
 }
 
 /* Emojis Android (Noto) figés — même rendu PC / mobile */
@@ -124,7 +127,7 @@ header .logo .logo-img {
   display: flex;
   flex-direction: column;
   height: 100%;
-  max-height: 100dvh;
+  max-height: 100%;
   width: 100%;
   max-width: 720px;
   margin: 0 auto;
@@ -589,11 +592,16 @@ header .badge {
 #ose-toast.show { opacity: 1; transform: translateY(0); }
 
 /* ── LAYOUT PRINCIPAL ── */
+body:not(.ose-hub-active) {
+  display: flex;
+  flex-direction: column;
+}
 .app-layout {
   display: grid;
   grid-template-columns: 320px 1fr;
-  height: calc(100vh - var(--header-h) - 34px - var(--safe-top)); /* header + project-bar */
-  min-width: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
   max-width: 100%;
 }
 
@@ -2281,10 +2289,97 @@ details.card > summary:focus-visible {
   }
 }
 
-/* Écrans très larges : hub un peu plus large, contenu centré */
+/* Desktop / AppImage PC : hub plein écran, 2 colonnes (projets | nouveautés) */
+@media (min-width: 1000px) {
+  .ose-hub.ose-hub-open {
+    background: var(--color-surface, #fff);
+  }
+  .ose-hub-panel {
+    max-width: none;
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+  }
+  .ose-hub-header {
+    padding: 14px 28px;
+  }
+  .ose-hub-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      "toolbar toolbar"
+      "projects news";
+    column-gap: 28px;
+    row-gap: 14px;
+    align-content: stretch;
+    align-items: stretch;
+    padding: 20px 28px 28px;
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    box-sizing: border-box;
+  }
+  .ose-hub-toolbar {
+    grid-area: toolbar;
+    margin-bottom: 0;
+  }
+  .ose-hub-projects-col {
+    grid-area: projects;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: auto;
+  }
+  .ose-hub-search {
+    margin-bottom: 0 !important;
+    flex: 0 0 auto;
+  }
+  #projects-list {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .ose-hub-news {
+    grid-area: news;
+    margin: 0;
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    padding-right: 4px;
+  }
+  #ose-hub-update-progress {
+    grid-column: 1 / -1;
+  }
+  .ose-hub-news-section-title:first-child {
+    margin-top: 0;
+  }
+  #startup-step-type,
+  #startup-step-new {
+    flex: 1;
+    overflow: auto;
+    max-width: 1100px;
+    width: 100%;
+    margin: 0 auto;
+    box-sizing: border-box;
+  }
+}
+
+/* Écrans très larges : un peu plus d’air, toujours sans bandes latérales */
 @media (min-width: 1100px) {
   .ose-hub-panel {
-    max-width: 780px;
+    max-width: none;
+  }
+  .ose-hub-body {
+    max-width: none;
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+  .ose-hub-header {
+    padding-left: 32px;
+    padding-right: 32px;
   }
 }
 
