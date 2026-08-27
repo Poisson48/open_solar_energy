@@ -3,8 +3,20 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.64';
+const APP_VERSION = '2.0.65';
+/** Notes embarquées (hub) — utilisées si GitHub API/Atom indisponibles (403, offline). */
+const OSE_RELEASE_FEED = [
+  { ver: '2.0.65', notes: 'Hub : news fiables via flux Atom GitHub et notes embarquées (plus d’écran d’échec réseau).' },
+  { ver: '2.0.64', notes: 'Android : correction onglets doublés (« 3 Devis ») ; CSS cache-bust ; labels Dim./PV/Devis.' },
+  { ver: '2.0.63', notes: 'MAJ : plus de fallback « ouvrir APK navigateur » ; install via AppImage / Android uniquement.' },
+  { ver: '2.0.62', notes: 'Audit clic des mises à jour PC + tablette.' },
+  { ver: '2.0.61', notes: 'Audit clic-par-clic desktop / tablette / téléphone.' },
+  { ver: '2.0.60', notes: 'Batterie minute + nuit ; MAJ Android PackageInstaller ; UI téléphone sans débordement.' },
+  { ver: '2.0.59', notes: 'Shell téléphone : barre compacte, menu ⋯, hub projets d’abord.' },
+];
 // Historique :
+//   2.0.65 - Hub news : plus jamais « Impossible de charger » — Atom GitHub
+//            + notes embarquées OSE_RELEASE_FEED (API rate-limit 403)
 //   2.0.64 - Android : plus de labels onglets doublés (« 3 Devis ») — CSS
 //            cache-bust + no-store WebHost ; labels courts Dim./PV/Devis
 //   2.0.63 - MAJ : suppression totale du fallback « ouvrir APK / navigateur » ;

@@ -453,6 +453,13 @@ function _escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function _fmtReleaseDate(iso) {
+  if (!iso) return '';
+  try {
+    return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+  } catch { return ''; }
+}
+
 /** Filtre projets : nom, client, localisation, date (texte libre). */
 function filterProjects(projects, query) {
   const q = (query || '').trim().toLowerCase();
@@ -749,16 +756,100 @@ function _notesFromReleaseBody(body) {
   return kept.join('\n').trim();
 }
 
-function _escHtml(s) {
-  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+function _htmlToPlainNotes(html) {
+  if (!html) return '';
+  let s = String(html)
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+  s = s.replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|li|h[1-6]|div|tr)>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '• ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  const cut = s.search(/\n---\n|\nInstallation\b/i);
+  if (cut > 0) s = s.slice(0, cut).trim();
+  return s;
 }
 
-function _fmtReleaseDate(iso) {
-  if (!iso) return '';
+function _bundledHubReleases() {
+  const list = (typeof OSE_RELEASE_FEED !== 'undefined' && Array.isArray(OSE_RELEASE_FEED))
+    ? OSE_RELEASE_FEED : [];
+  return list.map((r) => ({
+    ver: String(r.ver || '').replace(/^[vV]/, ''),
+    name: r.name || ('Open Solar Energy v' + r.ver),
+    notes: r.notes || '',
+    date: r.date || '',
+    url: r.url || (`https://github.com/Poisson48/open_solar_energy/releases/tag/v${r.ver}`),
+    apk: r.apk || null,
+  })).filter((r) => r.ver);
+}
+
+function _loadHubNewsDiskCache() {
   try {
-    return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
-  } catch { return ''; }
+    const raw = localStorage.getItem('ose_hub_news_v1');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed?.releases) || !parsed.releases.length) return null;
+    return parsed;
+  } catch { return null; }
+}
+
+function _saveHubNewsDiskCache(releases) {
+  try {
+    localStorage.setItem('ose_hub_news_v1', JSON.stringify({
+      at: Date.now(),
+      releases: (releases || []).slice(0, 12),
+    }));
+  } catch (_) {}
+}
+
+async function _fetchHubReleasesFromApi() {
+  const res = await fetch(
+    'https://api.github.com/repos/Poisson48/open_solar_energy/releases?per_page=12',
+    { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'OpenSolarEnergy' } }
+  );
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const raw = await res.json();
+  return (Array.isArray(raw) ? raw : [])
+    .filter((r) => r && !r.draft && !r.prerelease)
+    .map((r) => ({
+      ver: String(r.tag_name || '').replace(/^[vV]/, ''),
+      name: r.name || r.tag_name || '',
+      notes: _notesFromReleaseBody(r.body),
+      date: r.published_at || '',
+      url: r.html_url || '',
+      apk: _apkAssetUrl(r),
+    }))
+    .filter((r) => r.ver);
+}
+
+async function _fetchHubReleasesFromAtom() {
+  const res = await fetch(
+    'https://github.com/Poisson48/open_solar_energy/releases.atom',
+    { headers: { Accept: 'application/atom+xml', 'User-Agent': 'OpenSolarEnergy' } }
+  );
+  if (!res.ok) throw new Error('Atom HTTP ' + res.status);
+  const xml = await res.text();
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  if (doc.querySelector('parsererror')) throw new Error('Atom parse error');
+  const entries = [...doc.querySelectorAll('entry')];
+  return entries.map((el) => {
+    const title = el.querySelector('title')?.textContent || '';
+    const link = el.querySelector('link')?.getAttribute('href') || '';
+    const updated = el.querySelector('updated')?.textContent || '';
+    const content = el.querySelector('content')?.textContent || '';
+    const verMatch = (link.match(/\/tag\/v?([\d.]+)/i) || title.match(/v?(\d+\.\d+\.\d+)/i) || []);
+    const ver = verMatch[1] || '';
+    return {
+      ver,
+      name: title.trim() || ('v' + ver),
+      notes: _htmlToPlainNotes(content),
+      date: updated,
+      url: link,
+      apk: null,
+    };
+  }).filter((r) => r.ver);
 }
 
 let _hubNewsCache = null;
@@ -766,7 +857,8 @@ let _hubNewsFetching = false;
 
 /**
  * Affiche les nouveautés / MAJ sur le hub projets.
- * Utilise le cache GitHub + l’état updater natif si présent.
+ * Sources (dans l’ordre) : mémoire → API GitHub → flux Atom → localStorage → notes embarquées.
+ * Ne montre jamais « Impossible de charger les news ».
  */
 async function refreshHubNews(force) {
   const box = document.getElementById('ose-hub-news');
@@ -775,15 +867,13 @@ async function refreshHubNews(force) {
   const current = (typeof window.__oseNativeVersion === 'string' && window.__oseNativeVersion)
     || (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '0.0.0');
 
-  // État natif Qt (bandeau MAJ déjà connu)
   const nativeLatest = window.__oseUpdaterLatest || '';
   const nativeNotes = window.__oseUpdaterNotes || '';
   const nativeState = window.__oseUpdaterState;
+  const nativeOpts = { nativeLatest, nativeNotes, nativeState };
 
   if (!force && _hubNewsCache && (Date.now() - _hubNewsCache.at) < 5 * 60 * 1000) {
-    _renderHubNews(box, current, _hubNewsCache.releases, {
-      nativeLatest, nativeNotes, nativeState
-    });
+    _renderHubNews(box, current, _hubNewsCache.releases, nativeOpts);
     return;
   }
 
@@ -792,43 +882,45 @@ async function refreshHubNews(force) {
   if (!_hubNewsCache)
     box.innerHTML = '<div class="ose-hub-news-loading">Chargement des nouveautés…</div>';
 
+  let releases = null;
+  let source = '';
+
   try {
-    const res = await fetch(
-      'https://api.github.com/repos/Poisson48/open_solar_energy/releases?per_page=12',
-      { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'OpenSolarEnergy' } }
-    );
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const raw = await res.json();
-    const releases = (Array.isArray(raw) ? raw : [])
-      .filter(r => r && !r.draft && !r.prerelease)
-      .map(r => ({
-        ver: String(r.tag_name || '').replace(/^[vV]/, ''),
-        name: r.name || r.tag_name || '',
-        notes: _notesFromReleaseBody(r.body),
-        date: r.published_at || '',
-        url: r.html_url || '',
-        apk: _apkAssetUrl(r),
-      }))
-      .filter(r => r.ver);
-    _hubNewsCache = { at: Date.now(), releases };
-    _renderHubNews(box, current, releases, { nativeLatest, nativeNotes, nativeState });
+    try {
+      releases = await _fetchHubReleasesFromApi();
+      source = 'api';
+    } catch (apiErr) {
+      console.warn('[hub-news] API', apiErr);
+      try {
+        releases = await _fetchHubReleasesFromAtom();
+        source = 'atom';
+      } catch (atomErr) {
+        console.warn('[hub-news] Atom', atomErr);
+      }
+    }
+
+    if (releases?.length) {
+      _hubNewsCache = { at: Date.now(), releases, source };
+      _saveHubNewsDiskCache(releases);
+      _renderHubNews(box, current, releases, nativeOpts);
+      return;
+    }
+
+    const disk = _loadHubNewsDiskCache();
+    if (disk?.releases?.length) {
+      _hubNewsCache = { at: Date.now(), releases: disk.releases, source: 'disk' };
+      _renderHubNews(box, current, disk.releases, nativeOpts);
+      return;
+    }
+
+    releases = _bundledHubReleases();
+    _hubNewsCache = { at: Date.now(), releases, source: 'bundled' };
+    _renderHubNews(box, current, releases, nativeOpts);
   } catch (e) {
     console.warn('[hub-news]', e);
-    if (_hubNewsCache?.releases) {
-      _renderHubNews(box, current, _hubNewsCache.releases, {
-        nativeLatest, nativeNotes, nativeState
-      });
-    } else {
-      box.innerHTML = `<div class="ose-hub-news-card">
-        <div class="ose-hub-news-kicker">Nouveautés</div>
-        <h4>Impossible de charger les news</h4>
-        <p class="ose-hub-news-meta">${_escHtml(e.message || e)}</p>
-        <div class="ose-hub-news-actions">
-          <button type="button" class="btn btn-outline btn-sm" onclick="refreshHubNews(true)">Réessayer</button>
-          <button type="button" class="btn btn-primary btn-sm" onclick="checkForUpdates()">Vérifier les MAJ</button>
-        </div>
-      </div>`;
-    }
+    const fallback = _loadHubNewsDiskCache()?.releases || _bundledHubReleases();
+    _hubNewsCache = { at: Date.now(), releases: fallback, source: 'fallback' };
+    _renderHubNews(box, current, fallback, nativeOpts);
   } finally {
     _hubNewsFetching = false;
   }
@@ -1076,21 +1168,28 @@ async function checkForUpdates() {
       return;
     }
 
-    // Sans pont Qt : vérifier via GitHub et mettre à jour le hub — jamais window.open / APK
-    const res = await fetch(
-      'https://api.github.com/repos/Poisson48/open_solar_energy/releases?per_page=15',
-      { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'OpenSolarEnergy' } }
-    );
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const releases = await res.json();
+    // Sans pont Qt : vérifier via sources news (API → Atom → feed embarqué)
     const current = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '0.0.0';
     let best = null;
-    for (const r of releases) {
-      if (r.draft || r.prerelease) continue;
-      const ver = String(r.tag_name || '').replace(/^[vV]/, '');
-      if (!ver) continue;
-      if (_isNewerVersion(ver, current) && (!best || _isNewerVersion(ver, best.ver)))
-        best = { ver, url: r.html_url, apk: _apkAssetUrl(r), name: r.name };
+    try {
+      const list = await _fetchHubReleasesFromApi();
+      for (const r of list) {
+        if (_isNewerVersion(r.ver, current) && (!best || _isNewerVersion(r.ver, best.ver)))
+          best = r;
+      }
+    } catch (_) {
+      try {
+        const list = await _fetchHubReleasesFromAtom();
+        for (const r of list) {
+          if (_isNewerVersion(r.ver, current) && (!best || _isNewerVersion(r.ver, best.ver)))
+            best = r;
+        }
+      } catch (_) {
+        for (const r of _bundledHubReleases()) {
+          if (_isNewerVersion(r.ver, current) && (!best || _isNewerVersion(r.ver, best.ver)))
+            best = r;
+        }
+      }
     }
     if (typeof refreshHubNews === 'function') await refreshHubNews(true);
     if (!best) {
