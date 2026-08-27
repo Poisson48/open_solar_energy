@@ -159,8 +159,9 @@
   /** Irradiation mensuelle (données brutes météo) */
   Charts.renderIrradiationMonthly = function (canvasId, weatherData) {
     Charts.destroy(canvasId);
+    if (!Charts.canvasReady(canvasId)) return;
     const labels = weatherData.map(m => m.name);
-    new Chart(document.getElementById(canvasId), {
+    Charts.safeCreate(canvasId, {
       type: 'bar',
       data: {
         labels,

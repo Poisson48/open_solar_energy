@@ -1,10 +1,10 @@
 {
   "name": "open-solar-energy",
-  "version": "2.0.57",
+  "version": "2.0.58",
   "private": true,
   "description": "Alternative open-source à PVGIS — shell Qt (Linux AppImage + Android APK)",
   "scripts": {
-    "test": "node tests/run_coincidence_tests.js && node tests/run_math_tests.js && node tests/run_cable_tests.js && node tests/run_inverter_sizing_tests.js && node tests/run_orientation_tests.js && node tests/run_persist_tests.js && node tests/run_share_lww_tests.js",
+    "test": "node tests/run_coincidence_tests.js && node tests/run_math_tests.js && node tests/run_cable_tests.js && node tests/run_inverter_sizing_tests.js && node tests/run_orientation_tests.js && node tests/run_persist_tests.js && node tests/run_share_lww_tests.js && node tests/run_weather_persist_tests.js",
     "test:cables": "node tests/run_cable_tests.js",
     "test:inverter-sizing": "node tests/run_inverter_sizing_tests.js",
     "test:orientation": "node tests/run_orientation_tests.js",

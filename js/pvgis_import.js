@@ -18,6 +18,13 @@ const PVGISImport = (() => {
   const CORS_PROXY      = 'https://corsproxy.io/?url=';
   // MONTH_NAMES et DAYS_IN_MONTH définis dans constants.js
 
+  function abortAfter(ms) {
+    if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function')
+      return AbortSignal.timeout(ms);
+    const c = new AbortController();
+    setTimeout(() => c.abort(), ms);
+    return c.signal;
+  }
   // ─────────────────────────────────────────────────────────────
   // 1. OPEN-METEO : irradiation mensuelle (GHI) + température
   //    shortwave_radiation_sum est en MJ/m²/jour → × 0.2778 = kWh/m²/jour
@@ -181,7 +188,10 @@ const PVGISImport = (() => {
     }
 
     AppState.hourlyWeatherData = { ghi, dhi, temp, year, nHours: n };
-    return { year, nHours: n, annualGhiKwh: Array.from(ghi).reduce((s, v) => s + v, 0) / 1000 };
+    let annualGhiKwh = 0;
+    for (let i = 0; i < n; i++) annualGhiKwh += ghi[i];
+    annualGhiKwh /= 1000;
+    return { year, nHours: n, annualGhiKwh };
   }
 
   async function doImportHourlyWeather() {
@@ -201,6 +211,8 @@ const PVGISImport = (() => {
         statusEl.style.display = 'block';
       }
       if (typeof refreshSizingValidity === 'function') refreshSizingValidity();
+      if (typeof persistCurrentProjectQuiet === 'function')
+        persistCurrentProjectQuiet(`Import météo horaire ${year}`);
     } catch (err) {
       console.error(err);
       setStatus(`✗ Import horaire échoué : ${err.message}`, 'error');
@@ -371,6 +383,8 @@ const PVGISImport = (() => {
       showWeatherPreview(weather, source);
       if (typeof showToast === 'function') showToast(`☀️ Météo ${source} - ${Math.round(totalGHI)} kWh/m²/an`);
       if (typeof refreshSizingValidity === 'function') refreshSizingValidity();
+      if (typeof persistCurrentProjectQuiet === 'function')
+        persistCurrentProjectQuiet(`Import météo ${source}`);
     } catch (err) {
       console.error(err);
       setStatus(`✗ Import météo échoué : ${err.message}`, 'error');
@@ -379,7 +393,9 @@ const PVGISImport = (() => {
       if (btn) { btn.disabled = false; btn.classList.remove('btn-loading'); }
     }
 
-    if (weather) renderIrradiationData();
+    // Ne pas dessiner Chart.js dans un onglet caché (canvas 0×0 → erreur / plantage WebEngine)
+    if (weather && AppState.activeTab === 'irradiation' && typeof renderIrradiationData === 'function')
+      renderIrradiationData();
   }
 
   async function doImportPVCalc() {

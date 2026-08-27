@@ -223,8 +223,13 @@ const OseGit = (() => {
 
   /** Attache les méthodes git sur le bridge natif Android (stub) pour parité API. */
   function polyfillNativeBridge() {
-    if (!window.webBridge && !window.nativeBridge)
+    // Ne pas créer un `{}` vide tant que Qt peut encore enregistrer webBridge :
+    // sinon ProjectManager ne voit jamais saveProjectsBackup.
+    if (!window.webBridge && !window.nativeBridge) {
+      if (typeof qt !== 'undefined' && qt.webChannelTransport)
+        return;
       window.webBridge = {};
+    }
     if (!window.nativeBridge)
       window.nativeBridge = window.webBridge;
     if (!window.webBridge)

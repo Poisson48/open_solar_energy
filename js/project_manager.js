@@ -193,12 +193,19 @@ const ProjectManager = (() => {
     // Séparer les données Enedis volumineuses du JSON principal
     let enedisCsv = null;
     const projectClean = { ...project };
-    if (projectClean.hourlyEnedisData?.halfHourly?.length) {
-      const arr = projectClean.hourlyEnedisData.halfHourly;
-      const lines = ['slot_30min,wh'];
-      arr.forEach((v, i) => lines.push(`${i},${(+v).toFixed(1)}`));
-      enedisCsv = lines.join('\n');
-      projectClean.hourlyEnedisData = { ...projectClean.hourlyEnedisData, halfHourly: '__enedis_30min.csv__' };
+    if (projectClean.hourlyEnedisData?.halfHourly) {
+      const arr = (typeof decodeFloat32Array === 'function'
+        ? decodeFloat32Array(projectClean.hourlyEnedisData.halfHourly)
+        : null) || (Array.isArray(projectClean.hourlyEnedisData.halfHourly)
+          ? projectClean.hourlyEnedisData.halfHourly
+          : null);
+      if (arr?.length) {
+        const lines = ['slot_30min,wh'];
+        arr.forEach((v, i) => lines.push(`${i},${(+v).toFixed(1)}`));
+        enedisCsv = lines.join('\n');
+        projectClean.hourlyEnedisData = { ...projectClean.hourlyEnedisData, halfHourly: '__enedis_30min.csv__' };
+        delete projectClean.hourlyEnedisData.encoding;
+      }
     }
 
     zip.file('project.json', JSON.stringify(projectClean, null, 2));

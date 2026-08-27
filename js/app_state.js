@@ -3,8 +3,11 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.57';
+const APP_VERSION = '2.0.58';
 // Historique :
+//   2.0.58 - Météo conservée (autosave + encoding compact) ; PC : pont Qt
+//            webBridge réellement enregistré (miroir projets) ; Chart.js
+//            ne crée plus de graphe sur canvas 0×0 (plantage Analyse horaire)
 //   2.0.57 - Mobile : plus de scroll horizontal (barre projet) ; relays Nostr
 //            réordonnés ; tests responsive alignés (Lieu = onglet)
 //   2.0.56 - Partage : copie locale sur chaque appareil + LWW (save la plus

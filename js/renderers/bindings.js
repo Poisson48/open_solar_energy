@@ -182,8 +182,8 @@ function handleEnedisCSV(input) {
     // Météo horaire alignée sur l’année Enedis → production jour/jour (pas seulement forme mensuelle)
     const lat = AppState.location?.lat;
     const lon = AppState.location?.lon;
-    if (lat && lon && typeof PvgisImport !== 'undefined' && typeof PvgisImport.doImportHourlyWeather === 'function') {
-      PvgisImport.doImportHourlyWeather().catch?.(() => {});
+    if (lat && lon && typeof PVGISImport !== 'undefined' && typeof PVGISImport.doImportHourlyWeather === 'function') {
+      PVGISImport.doImportHourlyWeather().catch?.(() => {});
     } else if (lat && lon && document.getElementById('btn-hourly-weather')) {
       // Fallback : déclencher le même flux UI sans bloquer l’import Enedis
       try { document.getElementById('btn-hourly-weather').click(); } catch (_) {}
