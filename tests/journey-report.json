@@ -4,17 +4,17 @@
     {
       "severity": "info",
       "label": "cartes projets dans hub",
-      "detail": "0"
+      "detail": "2"
     },
     {
       "severity": "info",
       "label": "onglets visibles (réseau)",
-      "detail": "location, sizing, site, grid, layout, cables, daily, quote"
+      "detail": "location, site, sizing, grid, daily, layout, cables, quote"
     },
     {
       "severity": "info",
       "label": "onglets visibles (hors-réseau)",
-      "detail": "location, site, layout, cables, daily, quote, offgrid"
+      "detail": "location, site, offgrid, daily, layout, cables, quote"
     },
     {
       "severity": "info",
@@ -24,7 +24,7 @@
     {
       "severity": "info",
       "label": "boutons barre",
-      "detail": "7 chemin des Coteaux, 31(117x30) | (34x37) | Sauver(44x40) | Export(0x0) | 🔗 Partager(0x0) | Historique(0x0) | 📚 Matériel(0x0) | Projets(44x40) | ⚡ Réseau⚡(49x40) | RéseauSans batterie, sur(0x0) | HybrideRéseau + batterie(0x0) | AutonomeHors réseau(0x0) | ⋯(44x40) | Exporter(0x0) | 🔗 Partager(0x0) | Historique(0x0) | 📚 Matériel(0x0)"
+      "detail": "7 chemin des Coteaux, 31(117x30) | (34x37) | Sauver(44x40) | Export(0x0) | 🔗 Partager(0x0) | Historique(0x0) | 📚 Matériel(0x0) | Projets(44x40) | ⚡ Réseau⚡(49x40) | RéseauSans batterie, sur(0x0) | HybrideRéseau + batterie(0x0) | AutonomeHors réseau(0x0) | ⋯(44x40) | Exporter(0x0) | Rapport PDF(0x0) | 🧾 Devis PDF(0x0) | 🔗 Partager(0x0) | Historique(0x0) | 📚 Matériel(0x0)"
     },
     {
       "severity": "info",
@@ -37,6 +37,6 @@
       "detail": ""
     }
   ],
-  "version": "2.0.69",
-  "at": "2026-08-27T15:49:16.904Z"
+  "version": "2.0.73",
+  "at": "2026-08-28T11:48:32.546Z"
 }

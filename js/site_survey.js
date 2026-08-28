@@ -32,6 +32,10 @@ const SiteSurvey = (() => {
     stream: null,
     monthlyLoss: null,    // [12] fraction beam perdue 0–1 (moyenne mensuelle)
     halfHourlyKeep: null, // [12][48] facteur multiplicatif PV restant (0–1) par demi-heure typique
+    halfHourlyKeepByDay: null, // [12][{day, keep[48]}] variation jour-à-jour
+    panelShadeDetail: null,
+    shadeMode: null,
+    obstacles: [],        // { type, x, y, w, d, h, label } sur plan toiture (m)
     annualLossPct: 0,
     terrain: null,        // { tilt, azimuth, slopePct, source }
   };
@@ -108,11 +112,25 @@ const SiteSurvey = (() => {
   }
 
   /**
-   * Ombrage : moyenne mensuelle + profil demi-heure (pour simu batterie créneau/nuit).
-   * Le soleil est échantillonné à la minute (jour médian du mois) puis agrégé en 48 slots.
-   * À l’ombre : la composante directe est perdue, le diffus reste (facteur ≈ 1 − beamShare).
+   * Ombrage 3D : panneaux, obstacles, inter-rangées, profil/jour, diffuse SVF.
+   * Délègue à ShadingEngine si disponible ; sinon repli horizon seul.
    */
   function computeShading(lat) {
+    if (typeof ShadingEngine !== 'undefined' && ShadingEngine.computeFull) {
+      const r = ShadingEngine.computeFull({
+        lat,
+        weather: AppState?.weatherData,
+        horizonPoints: state.points,
+      });
+      state.monthlyLoss = r.monthlyLoss;
+      state.halfHourlyKeep = r.halfHourlyKeep;
+      state.halfHourlyKeepByDay = r.halfHourlyKeepByDay;
+      state.panelShadeDetail = r.panelDetail;
+      state.annualLossPct = r.annualLossPct;
+      state.shadeMode = r.mode;
+      return r;
+    }
+
     const weather = (typeof AppState !== 'undefined') ? AppState.weatherData : null;
     const monthly = [];
     const halfHourlyKeep = Array.from({ length: 12 }, () => new Float32Array(48).fill(1));
@@ -191,6 +209,8 @@ const SiteSurvey = (() => {
     state.points = [];
     state.monthlyLoss = null;
     state.halfHourlyKeep = null;
+    state.halfHourlyKeepByDay = null;
+    state.panelShadeDetail = null;
     state.annualLossPct = 0;
     persist();
     redraw();
@@ -807,18 +827,74 @@ const SiteSurvey = (() => {
    * créneau par créneau (évite le double comptage).
    */
   function applyShadingToLosses() {
-    if (!state.points.length) {
-      _toast('Ajoutez des points d’horizon avant d’appliquer l’ombrage.', 'warning');
-      return;
-    }
     recompute();
     const shade = state.annualLossPct || 0;
     const slots = state.halfHourlyKeep?.length === 12;
-    _toast(slots
-      ? `Ombrage ${shade} % enregistré (profil 30 min) — relancez Dimensionner / Hors réseau.`
-      : `Ombrage ${shade} % enregistré — relancez Dimensionner / Hors réseau.`);
+    const mode = state.shadeMode || 'horizon';
+    const nObs = state.obstacles?.length || 0;
+    const nPan = state.panelShadeDetail?.length || 0;
+    const parts = [`Ombrage ${shade} % enregistré`];
+    if (mode === '3d_panels') parts.push(`${nPan} panneaux · profil/jour`);
+    else if (nObs) parts.push(`${nObs} obstacle(s) 3D`);
+    if (slots) parts.push('profil 30 min');
+    parts.push('— relancez Dimensionner / Hors réseau.');
+    _toast(parts.join(' · '));
     if (typeof persistCurrentProjectQuiet === 'function')
       persistCurrentProjectQuiet('Ombrage site → dimensionnement');
+  }
+
+  function addObstacle(o) {
+    const obs = {
+      type: o.type || 'box',
+      roofId: o.roofId || null,
+      x: +o.x || 0, y: +o.y || 0,
+      w: Math.max(0.1, +o.w || 0.6),
+      d: Math.max(0.1, +o.d || 0.6),
+      h: Math.max(0.1, +o.h || 1.5),
+      label: (o.label || '').trim() || `Obstacle ${state.obstacles.length + 1}`,
+    };
+    state.obstacles.push(obs);
+    persist();
+    recompute();
+    renderObstaclesList();
+    if (typeof Scene3D !== 'undefined') Scene3D.refresh?.();
+    _toast(`Obstacle « ${obs.label} » ajouté`);
+  }
+
+  function removeObstacle(idx) {
+    if (idx < 0 || idx >= state.obstacles.length) return;
+    state.obstacles.splice(idx, 1);
+    persist();
+    recompute();
+    renderObstaclesList();
+  }
+
+  function addObstacleFromForm() {
+    const roof = typeof LayoutRoofs !== 'undefined' ? LayoutRoofs.getActiveRoof() : null;
+    addObstacle({
+      roofId: roof?.id || null,
+      x: parseFloat(document.getElementById('site-obs-x')?.value) || 0,
+      y: parseFloat(document.getElementById('site-obs-y')?.value) || 0,
+      w: parseFloat(document.getElementById('site-obs-w')?.value) || 0.6,
+      d: parseFloat(document.getElementById('site-obs-d')?.value) || 0.6,
+      h: parseFloat(document.getElementById('site-obs-h')?.value) || 1.5,
+      label: document.getElementById('site-obs-label')?.value || '',
+    });
+  }
+
+  function renderObstaclesList() {
+    const ul = document.getElementById('site-obstacles-list');
+    if (!ul) return;
+    if (!state.obstacles.length) {
+      ul.innerHTML = '<li style="color:var(--color-text-muted);font-size:12px">Aucun obstacle volumétrique (cheminée, arbre…)</li>';
+      return;
+    }
+    ul.innerHTML = state.obstacles.map((o, i) =>
+      `<li style="display:flex;justify-content:space-between;gap:6px;font-size:12px;padding:4px 0;border-bottom:1px solid var(--color-border)">
+        <span><strong>${o.label || 'Obstacle'}</strong> · ${o.w}×${o.d} m · h ${o.h} m @ (${o.x}, ${o.y})${o.roofId ? ` · ${o.roofId}` : ''}</span>
+        <button type="button" class="btn btn-outline btn-sm" onclick="SiteSurvey.removeObstacle(${i})" style="padding:2px 8px">✕</button>
+      </li>`
+    ).join('');
   }
 
   function recompute() {
@@ -1128,10 +1204,19 @@ const SiteSurvey = (() => {
   function updateResultsUI() {
     const box = document.getElementById('site-shade-results');
     if (!box) return;
-    if (!state.points.length) {
-      box.innerHTML = '<p style="color:var(--color-text-muted);font-size:12px">Ajoutez des points d’horizon pour estimer l’ombrage saisonnier.</p>';
+    const has3d = state.halfHourlyKeep?.length === 12
+      || state.obstacles?.length
+      || state.panelShadeDetail?.length;
+    if (!state.points.length && !has3d) {
+      box.innerHTML = `<p style="color:var(--color-text-muted);font-size:12px;line-height:1.45">
+        Ajoutez des points d’horizon <em>ou</em> des obstacles 3D + implantation panneaux (onglet Implantation),
+        puis <strong>Recalculer ombrage</strong>. Profil demi-heure généré même sans horizon.</p>`;
       renderPointsList();
+      renderObstaclesList();
       return;
+    }
+    if (!state.monthlyLoss?.length) {
+      recompute();
     }
     const months = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Aoû','Sep','Oct','Nov','Déc'];
     const bars = (state.monthlyLoss || []).map((f, i) => {
@@ -1144,16 +1229,27 @@ const SiteSurvey = (() => {
         <span style="width:36px;text-align:right">${pct}%</span>
       </div>`;
     }).join('');
+    const modeLabel = {
+      '3d_panels': '3D panneau par panneau + inter-rangées',
+      '3d_obstacles': '3D obstacles volumétriques',
+      horizon: 'Horizon + 3D',
+    }[state.shadeMode] || 'Ombrage combiné';
+    const panelInfo = state.panelShadeDetail?.length
+      ? `<p style="font-size:11px;margin-top:6px">${state.panelShadeDetail.length} panneaux modélisés (pertes individuelles).</p>`
+      : '';
     box.innerHTML = `
       <div style="font-size:14px;font-weight:700;margin-bottom:8px">
-        Ombrage annuel estimé (direct) : <span style="color:var(--color-accent)">${state.annualLossPct} %</span>
+        Ombrage annuel : <span style="color:var(--color-accent)">${state.annualLossPct} %</span>
+        <span style="font-size:11px;font-weight:400;color:var(--color-text-muted)"> · ${modeLabel}</span>
       </div>
       <div style="display:flex;flex-direction:column;gap:4px">${bars}</div>
+      ${panelInfo}
       <p style="font-size:11px;color:var(--color-text-muted);margin-top:8px;line-height:1.4">
-        Part du rayonnement <em>direct</em> masquée par le profil d’horizon (diffuse conservée).
-        Profil <strong>30 min</strong> envoyé au dimensionnement (PV / batterie) — relancez Dimensionner après modification.
+        Direct masqué + diffuse réduit (SVF ciel). Profil <strong>30 min × 5 jours/mois</strong> (variation jour-à-jour).
+        Relancez <strong>Dimensionner</strong> après modification.
       </p>`;
     renderPointsList();
+    renderObstaclesList();
   }
 
   function renderPointsList() {
@@ -1207,6 +1303,18 @@ const SiteSurvey = (() => {
       halfHourlyKeep: state.halfHourlyKeep
         ? state.halfHourlyKeep.map(row => Array.from(row))
         : null,
+      halfHourlyKeepByDay: state.halfHourlyKeepByDay
+        ? state.halfHourlyKeepByDay.map(month =>
+            month.map(s => ({ day: s.day, keep: Array.from(s.keep) }))
+          )
+        : null,
+      panelShadeDetail: state.panelShadeDetail || null,
+      shadeMode: state.shadeMode || null,
+      obstacles: Array.isArray(state.obstacles) ? state.obstacles.map(o => ({ ...o })) : [],
+      roof: (typeof ShadingEngine !== 'undefined' && ShadingEngine.readRoofAndPanels)
+        ? ShadingEngine.readRoofAndPanels().roof
+        : null,
+      roofs: typeof LayoutRoofs !== 'undefined' ? LayoutRoofs.getRoofs() : null,
       terrain: state.terrain ? { ...state.terrain } : null,
       compassOffset: state.compassOffset,
     };
@@ -1221,12 +1329,30 @@ const SiteSurvey = (() => {
     state.halfHourlyKeep = Array.isArray(s.halfHourlyKeep) && s.halfHourlyKeep.length === 12
       ? s.halfHourlyKeep.map(row => new Float32Array(row))
       : null;
+    state.halfHourlyKeepByDay = Array.isArray(s.halfHourlyKeepByDay) && s.halfHourlyKeepByDay.length === 12
+      ? s.halfHourlyKeepByDay.map(month =>
+          month.map(entry => ({
+            day: entry.day,
+            keep: Array.isArray(entry.keep) ? entry.keep.slice() : entry.keep,
+          }))
+        )
+      : null;
+    state.panelShadeDetail = s.panelShadeDetail || null;
+    state.shadeMode = s.shadeMode || null;
+    state.obstacles = Array.isArray(s.obstacles) ? s.obstacles.map(o => ({ ...o })) : [];
     state.terrain = s.terrain ? { ...s.terrain } : null;
     if (typeof s.compassOffset === 'number') state.compassOffset = s.compassOffset;
     redraw();
     updateResultsUI();
     updateTerrainUI();
     updateCompassUI();
+  }
+
+  function initScene3D() {
+    const canvas = document.getElementById('site-scene-3d-canvas');
+    if (!canvas || typeof Scene3D === 'undefined') return;
+    if (typeof LayoutRoofs !== 'undefined') LayoutRoofs.loadFromAppState?.();
+    Scene3D.attach(canvas);
   }
 
   function init() {
@@ -1261,6 +1387,8 @@ const SiteSurvey = (() => {
     updateResultsUI();
     updateTerrainUI();
     updateCompassUI();
+    renderObstaclesList();
+    initScene3D();
   }
 
   return {
@@ -1269,7 +1397,9 @@ const SiteSurvey = (() => {
     startPhotoMode, stopPhotoMode, startOrientation, stopOrientation,
     setCompassOffset, calibrateCompassTo,
     importTerrainElevations, applyTerrainToInstall, applyShadingToLosses,
+    addObstacle, addObstacleFromForm, removeObstacle, renderObstaclesList,
     loadFromAppState, persist,
+    initScene3D,
     getState: () => state,
     sunPos, horizonElevAt, computeShading,
     // helpers orientation (tests + debug)

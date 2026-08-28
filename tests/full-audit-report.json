@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-27T13:37:47.823Z",
+  "timestamp": "2026-08-28T11:12:10.472Z",
   "fails": 0,
   "checks": 34,
   "passed": 34,
@@ -87,7 +87,7 @@
     {
       "ok": true,
       "label": "Sauvegarde projet audit",
-      "detail": "proj_1787837859019_la95"
+      "detail": "proj_1787915522444_ylty"
     },
     {
       "ok": true,
@@ -112,7 +112,7 @@
     {
       "ok": true,
       "label": "Deux ports distincts possibles",
-      "detail": "39195 vs 38575"
+      "detail": "35877 vs 34997"
     },
     {
       "ok": true,

@@ -160,6 +160,7 @@ function bindOffgridLiveTotal() {
         hintEl.textContent = `≈ ${day.toFixed(1)} kWh le jour + ${night.toFixed(1)} kWh la nuit (${pctN} % nuit) — la batterie couvre surtout la nuit.`;
       }
     }
+    if (typeof updateOffgridConsoUI === 'function') updateOffgridConsoUI();
   }
   defInput?.addEventListener('input', update);
   monthInputs.forEach(el => el?.addEventListener('input', update));
@@ -241,6 +242,7 @@ function handleEnedisCSV(input) {
     const defEl = document.getElementById('og2-daily-default');
     if (defEl) defEl.value = avgWhPerDay;
     document.getElementById('og2-day-1')?.dispatchEvent(new Event('input'));
+    if (typeof updateOffgridConsoUI === 'function') updateOffgridConsoUI();
 
     // Données 30min → module horaire
     if (result.halfHourlyData) {
@@ -265,8 +267,49 @@ function handleEnedisCSV(input) {
     const msg   = `✓ ${result.format} ${result.year} importé - ${result.totalAnnual.toLocaleString('fr')} kWh/an${warns}`;
     setStatus('var(--color-success)', msg);
     showToast(`✓ Enedis ${result.year} importé — ${result.totalAnnual.toLocaleString('fr')} kWh/an${warns}`);
+    if (typeof closeEnedisModal === 'function') closeEnedisModal();
 
     if (typeof refreshSizingValidity === 'function') refreshSizingValidity();
+    if (typeof updateOffgridConsoUI === 'function') updateOffgridConsoUI();
+
+    // Hybride : suggérer capacité batterie depuis conso nocturne typique
+    if (AppState.installationType === 'hybrid' && typeof HourlyModule !== 'undefined') {
+      let nightKwh = 0;
+      if (result.halfHourlyData?.values?.length) {
+        const vals = result.halfHourlyData.values;
+        const year = result.halfHourlyData.year || result.year;
+        const daysArr = year ? getMonthlyDays(year) : DAYS_IN_MONTH;
+        let nightWh = 0;
+        let dayIdx = 0;
+        for (let m = 0; m < 12; m++) {
+          for (let d = 0; d < daysArr[m]; d++) {
+            for (let s = 0; s < 48; s++) {
+              const idx = dayIdx * 48 + s;
+              if (idx >= vals.length) break;
+              const hour = Math.floor(s / 2);
+              if (hour < 6 || hour >= 21) nightWh += vals[idx] || 0;
+            }
+            dayIdx++;
+          }
+        }
+        nightKwh = Math.round(nightWh / dayIdx / 1000 * 10) / 10;
+      } else {
+        const daysArr = result.year ? getMonthlyDays(result.year) : DAYS_IN_MONTH;
+        const jan = result.monthlyKwh[0] || 0;
+        nightKwh = Math.round(jan / daysArr[0] * 0.35 * 10) / 10;
+      }
+      if (nightKwh > 0) {
+        const suggested = Math.max(5, Math.ceil(nightKwh * 1.2 / 5) * 5);
+        const battEl = document.getElementById('sz-batt-kwh');
+        if (battEl && (!battEl.value || parseFloat(battEl.value) <= 0)) {
+          battEl.value = suggested;
+          battEl.dispatchEvent(new Event('input'));
+        }
+        const step = document.getElementById('sz-battery-step');
+        if (step) step.style.display = '';
+        showToast(`🔋 Hybride : batterie ~${suggested} kWh suggérée (nuit ~${nightKwh} kWh/j)`, 'info');
+      }
+    }
 
     // Météo horaire alignée sur l’année Enedis → production jour/jour (pas seulement forme mensuelle)
     const lat = AppState.location?.lat;

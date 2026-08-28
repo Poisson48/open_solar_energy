@@ -2,27 +2,31 @@
 
 ## Bugs connus
 
-- [ ] **Simulation horaire - variation jour à jour absente** : `simulateMonthHourly` répète le même profil moyen pour chaque jour du mois. Une séquence de jours nuageux en hiver vide la batterie sans possibilité de rattrapage, ce que le modèle actuel ne capture pas. Solution : ajouter un facteur aléatoire (ou une distribution nuageuse mensuelle basée sur l'irradiation réelle).
-- [ ] **Données météo démo limitées** : seulement 4 villes. Pour les sites isolés (ex. Cévennes), la ville la plus proche peut avoir un GHI très différent. Améliorer l'import Open-Meteo automatique à la sélection du lieu.
-- [ ] **`sz-kwh-*` non rechargés depuis Enedis au chargement de projet** : les champs du dimensionnement réseau sont restaurés via `formState`, mais si l'utilisateur n'a pas sauvegardé après l'import Enedis initial, ils sont vides. Même fix que `og2-day-*` (déjà fait) à appliquer.
+- [x] **Simulation horaire - variation jour à jour** : `simulateMonthHourly` applique maintenant un facteur nuageux déterministe par jour (v2.0.74+).
+- [ ] **Données météo démo limitées** : seulement 4 villes. Améliorer l'import Open-Meteo automatique à la sélection du lieu.
+- [x] **`sz-kwh-*` non rechargés depuis Enedis au chargement** : `restoreEnedisToSizingFields()` au loadProject.
 
 ## Améliorations algorithme
 
-- [ ] **Afficher deux recommandations hors-réseau** : "Économique" (couverture ≥ cible, coût min) + "Autonome" (≤ 37 j/an de déficit + couverture ≥ cible, coût min). Actuellement seule la version "Autonome" est affichée.
-- [ ] **Heatmap Ppeak × batterie** : afficher dans les résultats hors-réseau une heatmap du taux de couverture pour visualiser le plateau (au-delà d'un certain Ppeak, agrandir la batterie ne sert plus à grand chose).
-- [ ] **Coût cycle batterie** : afficher le coût total sur durée de vie (renouvellement batterie AGM/NMC) pour comparaison équitable avec LFP.
+- [x] **Deux recommandations hors-réseau** : Autonome + Économique avec bouton « Appliquer config économique ».
+- [x] **Heatmap Ppeak × batterie** : déjà présente ; badge Enedis 30 min ajouté.
+- [ ] **Coût cycle batterie** : afficher le coût total sur durée de vie (renouvellement AGM/NMC).
 
 ## Nouvelles fonctionnalités
 
-- [ ] **Rapport PDF complet** (jsPDF) : résumé dimensionnement + devis en un seul PDF
-- [ ] **Mode sombre**
-- [ ] **TMY Open-Meteo** : utiliser une année météo typique au lieu de la moyenne 2020-2023
-- [ ] **Tracker solaire 1 axe / 2 axes** : gain irradiation ~15-25 %
-- [ ] **Internationalisation EN** : libellés + unités impériales optionnelles
-- [ ] **Tests unitaires** : vérifier `tiltedIrradiation`, `pvProduction`, `simulateYear` avec valeurs de référence PVGIS
+- [x] **Rapport PDF enrichi** : dual reco hors-réseau, hybrid, export menu mobile.
+- [x] **Mode sombre** : toggle header + `prefers-color-scheme` + persistance localStorage.
+- [ ] **TMY Open-Meteo** : année météo typique.
+- [x] **Tracker solaire 1 axe** : calculateur réel basé météo projet (onglet avancé).
+- [ ] **Internationalisation EN**.
+- [ ] **Tests unitaires PVGIS reference** : valeurs de référence tiltedIrradiation.
 
 ## UX / UI
 
-- [ ] **Afficher le profil de consommation mensuel** dans l'onglet hors-réseau après import Enedis (graphique barre des kWh/j par mois)
-- [ ] **Indicateur visuel** quand les données Enedis 30min sont utilisées dans le dimensionnement hors-réseau (actuellement seul l'onglet Horaire affiche le statut)
-- [ ] **Raccourci vers la recommandation** dans la heatmap (surligner la cellule recommandée)
+- [x] **Profil consommation mensuel hors-réseau** : graphique barres après import Enedis.
+- [x] **Badge Enedis 30 min** dans onglet hors-réseau.
+- [x] **Hub projets** : cartes `.ose-project-card` cliquables + `data-project-id`.
+- [x] **Onboarding nouveau projet** : redirection Lieu + toast guide.
+- [x] **Modal Enedis** : ne se ferme qu'après succès import.
+- [x] **switchToTab** : sync install sur tous les changements d'onglet.
+- [x] **applySizingToGrid** : parcours Site/Ombrage (pas grid).

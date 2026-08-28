@@ -278,12 +278,31 @@ const PdfExport = (() => {
     }
     if (off?.recommended || off?.Ppeak) {
       const r = off.recommended || off;
+      const eco = (typeof AppState !== 'undefined') ? AppState.lastOffgridSizingEconomic : null;
+      const recRef = (typeof AppState !== 'undefined') ? (AppState.lastOffgridSizingRecommended || r) : r;
       body += `
-        <h2 style="margin-top:18px">Hors réseau</h2>
-        <div class="box">
-          <p><strong>${_fmt(r.Ppeak, 1)} kWc</strong> · Batterie ${r.C_batt_gross || r.battKwh || '—'} kWh<br>
-          Couverture ${r.coverage != null ? _fmt(r.coverage, 1) + ' %' : (r.coverage_pct != null ? _fmt(r.coverage_pct, 1) + ' %' : '—')}</p>
+        <h2 style="margin-top:18px">Hors réseau — Autonome</h2>
+        <div class="grid2">
+          <div class="box"><h4>Système</h4>
+            <p><strong>${_fmt(r.Ppeak, 1)} kWc</strong> · ${r.nPanels || '—'} panneaux<br>
+            Batterie ${r.C_batt_gross || r.battKwh || '—'} kWh (${_fmt(r.C_usable, 1)} kWh utiles)<br>
+            Coût ${_fmt(r.systemCost, 0)} € HT</p>
+          </div>
+          <div class="box"><h4>Performance</h4>
+            <p>Couverture ${_fmt(r.coverageRate ?? r.coverage, 1)} %<br>
+            Jours déficit/an : ${r.deficit_days ?? '—'}<br>
+            Manquant ${_fmt(r.total_deficit, 0)} kWh/an</p>
+          </div>
         </div>`;
+      if (eco && (eco.Ppeak !== recRef.Ppeak || eco.C_batt_gross !== recRef.C_batt_gross)) {
+        body += `
+        <h3>Config économique (coût min. couverture cible)</h3>
+        <div class="box">
+          <p><strong>${_fmt(eco.Ppeak, 1)} kWc</strong> · Batterie ${eco.C_batt_gross} kWh<br>
+          Couverture ${_fmt(eco.coverageRate, 1)} % · ${eco.deficit_days} j déficit/an<br>
+          Coût ${_fmt(eco.systemCost, 0)} € (${eco.systemCost <= recRef.systemCost ? '−' : '+'}${_fmt(Math.abs(eco.systemCost - recRef.systemCost), 0)} € vs Autonome)</p>
+        </div>`;
+      }
     }
 
     return `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">

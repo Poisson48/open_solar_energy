@@ -3,9 +3,10 @@
  * Doit être chargé EN PREMIER avant tous les autres modules JS
  */
 
-const APP_VERSION = '2.0.73';
+const APP_VERSION = '2.0.74';
 /** Notes embarquées (hub) — utilisées si GitHub API/Atom indisponibles (403, offline). */
 const OSE_RELEASE_FEED = [
+  { ver: '2.0.74', notes: 'Multi-toitures (implantation + dimensionnement pondéré par orientation) ; ombrage 3D panneau par panneau ; éditeur 3D toitures/obstacles ; profils ombrage jour par jour.' },
   { ver: '2.0.73', notes: 'CI : Actions Node 24 (plus de warnings checkout/java/cache) ; apt retry.' },
   { ver: '2.0.72', notes: 'Autonome : jour/nuit + profil 2 h ; Dim avant Analyse ; batt. calée sur la nuit.' },
   { ver: '2.0.71', notes: 'Ombrage site → dimensionnement (profil 30 min) ; Site avant Dim/Hors réseau.' },

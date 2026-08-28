@@ -175,12 +175,22 @@ const SizingEngine = (() => {
   function run(input, weatherData, lat) {
     const { bill, site, sizing } = input;
 
-    // 1. Pré-calcul irradiation sur plan incliné
-    const monthlyHtilt = weatherData.map((m, i) =>
+    if (typeof LayoutRoofs !== 'undefined') LayoutRoofs.saveActiveFromForm?.();
+    const productionRoofs = typeof LayoutRoofs !== 'undefined'
+      ? LayoutRoofs.getProductionRoofs()
+      : [];
+    const useMultiRoofProduction = productionRoofs.length > 0;
+
+    // 1. Pré-calcul irradiation — mix multi-toiture si implantation définie (ex. 10 Sud + 5 Est)
+    let monthlyHtilt = weatherData.map((m, i) =>
       SolarMath.tiltedIrradiation(m.GHI, m.DHI, lat, site.tilt, site.azimuth, i + 1)
     );
+    if (useMultiRoofProduction) {
+      const weighted = LayoutRoofs.weightedMonthlyHtilt(lat, weatherData, site.panelWattPeak || 400);
+      if (weighted) monthlyHtilt = weighted;
+    }
 
-    // 2. Limite de puissance : objectif (libre / plafond optionnel) | toiture | nb fixe
+    // 2. Limite de puissance : objectif (libre) | toiture m² | nb fixe — sans plafond implantation
     const panelM2 = site.panelSurfaceM2 || 1.96;
     const panelWp = site.panelWattPeak || 400;
     const limitMode = site.limitMode || 'objectif';
@@ -193,16 +203,20 @@ const SizingEngine = (() => {
       nPanelsMax = forcedNPanels;
       PpeakMax = Math.min(20, (forcedNPanels * panelWp) / 1000);
     } else if (limitMode === 'surface') {
-      if (!site.maxSurfaceM2 || site.maxSurfaceM2 <= 0) {
+      let maxSurfaceM2 = site.maxSurfaceM2;
+      if ((!maxSurfaceM2 || maxSurfaceM2 <= 0) && useMultiRoofProduction) {
+        const roofSurface = LayoutRoofs.totalRoofSurfaceM2();
+        if (roofSurface > 0) maxSurfaceM2 = roofSurface;
+      }
+      if (!maxSurfaceM2 || maxSurfaceM2 <= 0) {
         return {
           recommended: null, allCandidates: [], monthlyHtilt,
           currentBill: 0, annualConso: 0, error: 'missing_surface',
         };
       }
-      nPanelsMax = Math.floor(site.maxSurfaceM2 / panelM2);
+      nPanelsMax = Math.floor(maxSurfaceM2 / panelM2);
       PpeakMax = Math.min(20, (nPanelsMax * panelWp) / 1000);
     } else {
-      // Objectif : balayage libre jusqu’à 20 kWc (pas de plafond m² — un m² seul n’a pas de sens)
       PpeakMax = 20;
       nPanelsMax = Math.floor((PpeakMax * 1000) / panelWp);
     }
@@ -244,20 +258,44 @@ const SizingEngine = (() => {
     const hasHourlyWx = !!(hourlyWx?.ghi?.length >= 24 * 365);
     let pvSource = 'monthly_shape';
     let pvProfilesPerKwc;
-    if (hasHourlyWx) {
-      pvProfilesPerKwc = SolarMath.buildYearPvSlots(
-        hourlyWx, site.tilt, site.azimuth, site.losses, site.tech, lat,
-        (typeof AppState !== 'undefined' && AppState.location?.lon) || 0
-      );
-      PvProfiles.applySiteShade(pvProfilesPerKwc, daysArrYear, siteShade);
-      pvSource = 'hourly_weather';
-    } else {
-      const monthlyProfs = PvProfiles.buildMonthlyProfiles(
-        weatherData, monthlyHtilt, site.losses, site.tilt, site.azimuth, lat, site.tech
-      );
-      PvProfiles.applySiteShade(monthlyProfs, null, siteShade);
-      pvProfilesPerKwc = PvProfiles.flattenToYear(monthlyProfs, daysArrYear);
-      pvSource = 'monthly_shape';
+    const multiRoofMix = useMultiRoofProduction
+      ? productionRoofs.map(r => ({
+          name: r.name, nPanels: r.nPanels, tilt: r.tilt, azimuth: r.azimuth,
+        }))
+      : null;
+
+    if (useMultiRoofProduction && typeof PvProfiles.buildMultiRoofProfilePerKwc === 'function') {
+      pvProfilesPerKwc = PvProfiles.buildMultiRoofProfilePerKwc({
+        roofs: productionRoofs,
+        weatherData,
+        lat,
+        lon: (typeof AppState !== 'undefined' && AppState.location?.lon) || 0,
+        losses: site.losses,
+        tech: site.tech,
+        panelWp,
+        daysArr: daysArrYear,
+        siteShade,
+        hourlyWx: hasHourlyWx ? hourlyWx : null,
+      });
+      pvSource = hasHourlyWx ? 'hourly_weather_multi_roof' : 'monthly_shape_multi_roof';
+    }
+
+    if (!pvProfilesPerKwc) {
+      if (hasHourlyWx) {
+        pvProfilesPerKwc = SolarMath.buildYearPvSlots(
+          hourlyWx, site.tilt, site.azimuth, site.losses, site.tech, lat,
+          (typeof AppState !== 'undefined' && AppState.location?.lon) || 0
+        );
+        PvProfiles.applySiteShade(pvProfilesPerKwc, daysArrYear, siteShade);
+        pvSource = 'hourly_weather';
+      } else {
+        const monthlyProfs = PvProfiles.buildMonthlyProfiles(
+          weatherData, monthlyHtilt, site.losses, site.tilt, site.azimuth, lat, site.tech
+        );
+        PvProfiles.applySiteShade(monthlyProfs, null, siteShade);
+        pvProfilesPerKwc = PvProfiles.flattenToYear(monthlyProfs, daysArrYear);
+        pvSource = 'monthly_shape';
+      }
     }
 
     let loadSlots;
@@ -373,6 +411,7 @@ const SizingEngine = (() => {
         siteShadeApplied: !!(hasTemporalShade || hasMonthlyShade),
         siteShadeTemporal: hasTemporalShade,
         batteryMinuteSim: !!useBattery,
+        multiRoofMix,
         monthlyMetrics
       });
     }

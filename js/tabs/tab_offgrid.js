@@ -54,6 +54,11 @@ function initTabOffgrid() {
               📂 Importer depuis Enedis
             </button>
             <div id="og2-edf-import-status" style="font-size:11px;color:var(--color-text-muted);margin-bottom:6px"></div>
+            <div id="og2-enedis-badge" style="display:none;font-size:11px;background:#e3f2fd;color:var(--color-info);padding:4px 10px;border-radius:8px;margin-bottom:8px"></div>
+            <div id="og2-conso-chart-wrap" style="display:none;margin-bottom:12px" class="card">
+              <div class="card-title">Profil consommation mensuel (Wh/j)</div>
+              <div class="chart-container" style="height:220px"><canvas id="og2-conso-chart"></canvas></div>
+            </div>
 
             <details style="margin:8px 0 10px">
               <summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--color-primary);user-select:none">

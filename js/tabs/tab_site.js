@@ -12,7 +12,7 @@ function initTabSite() {
           <p style="font-size:12px;color:var(--color-text-muted);line-height:1.5;margin:0 0 10px">
             Même import que dans l’onglet <strong>📍 Lieu</strong> : grille d’altitudes Open-Meteo
             pour estimer l’inclinaison et l’orientation (0° = Sud).
-            Calcule inclinaison/azimut depuis une grille d'altitude (pas de maillage 3D).
+            Calcule inclinaison/azimut depuis une grille d'altitude. L’ombrage 3D combine toiture, panneaux et obstacles volumétriques.
           </p>
           <div style="display:flex;flex-direction:column;gap:6px">
             <button type="button" class="btn btn-primary" style="width:100%" onclick="SiteSurvey.importTerrainElevations()">
@@ -52,6 +52,26 @@ function initTabSite() {
         </div>
 
         <div class="card" style="margin-top:12px">
+          <div class="card-title">Obstacles 3D (toiture)</div>
+          <p style="font-size:12px;color:var(--color-text-muted);line-height:1.45;margin:0 0 8px">
+            Liste et saisie précise — ou utilisez le <strong>modèle 3D</strong> ci-dessus pour placer visuellement.
+          </p>
+          <ul id="site-obstacles-list" style="list-style:none;padding:0;margin:0 0 8px"></ul>
+          <div class="form-row" style="gap:6px;flex-wrap:wrap;margin-bottom:6px">
+            <div class="form-group" style="flex:1;min-width:70px"><label for="site-obs-x">X</label><input type="number" id="site-obs-x" step="0.1" value="0"></div>
+            <div class="form-group" style="flex:1;min-width:70px"><label for="site-obs-y">Y</label><input type="number" id="site-obs-y" step="0.1" value="0"></div>
+            <div class="form-group" style="flex:1;min-width:70px"><label for="site-obs-w">L</label><input type="number" id="site-obs-w" step="0.1" value="0.6"></div>
+            <div class="form-group" style="flex:1;min-width:70px"><label for="site-obs-d">l</label><input type="number" id="site-obs-d" step="0.1" value="0.6"></div>
+            <div class="form-group" style="flex:1;min-width:70px"><label for="site-obs-h">H</label><input type="number" id="site-obs-h" step="0.1" value="1.5"></div>
+          </div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label for="site-obs-label">Libellé</label>
+            <input type="text" id="site-obs-label" placeholder="Cheminée, arbre…">
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" style="width:100%" onclick="SiteSurvey.addObstacleFromForm()">+ Obstacle 3D</button>
+        </div>
+
+        <div class="card" style="margin-top:12px">
           <div class="card-title">Points d’horizon</div>
           <ul id="site-points-list" style="list-style:none;padding:0;margin:0 0 8px"></ul>
           <button type="button" class="btn btn-outline btn-sm" style="width:100%" onclick="SiteSurvey.clearPoints()">Effacer tous les points</button>
@@ -60,6 +80,29 @@ function initTabSite() {
 
       <div>
         <div class="card">
+          <div class="card-title">Modèle 3D du site</div>
+          <p style="font-size:12px;color:var(--color-text-muted);line-height:1.45;margin:0 0 8px">
+            Visualisez toutes vos toitures (onglet <strong>Implantation</strong>), panneaux et obstacles en 3D isométrique.
+            <strong>Clic</strong> sur une toiture pour la sélectionner · <strong>Glisser</strong> un obstacle pour le déplacer.
+          </p>
+          <div class="ose-scene-toolbar" role="toolbar" aria-label="Outils modèle 3D">
+            <button type="button" class="ose-scene-tool active" data-scene-mode="select" onclick="Scene3D.setMode('select')">↖ Sélection</button>
+            <button type="button" class="ose-scene-tool" data-scene-mode="move" onclick="Scene3D.setMode('move')">↔ Déplacer</button>
+            <button type="button" class="ose-scene-tool" data-scene-mode="place-chimney" onclick="Scene3D.setMode('place-chimney')">🧱 Cheminée</button>
+            <button type="button" class="ose-scene-tool" data-scene-mode="place-tree" onclick="Scene3D.setMode('place-tree')">🌳 Arbre</button>
+            <button type="button" class="ose-scene-tool" data-scene-mode="place-wall" onclick="Scene3D.setMode('place-wall')">🧱 Mur</button>
+            <button type="button" class="ose-scene-tool" data-scene-mode="place-velux" onclick="Scene3D.setMode('place-velux')">▭ Velux</button>
+            <button type="button" class="ose-scene-tool ose-scene-tool-danger" onclick="Scene3D.deleteSelected()">🗑</button>
+          </div>
+          <div id="site-scene-3d-wrap" style="position:relative;width:100%;height:360px;border-radius:10px;overflow:hidden;border:1px solid var(--color-border);margin-top:8px">
+            <canvas id="site-scene-3d-canvas" style="display:block;width:100%;height:100%"></canvas>
+          </div>
+          <p style="margin-top:8px;font-size:11px;color:var(--color-text-muted)">
+            Toitures et panneaux : éditez l’<strong>Implantation</strong> (+ Ajouter toiture). Ici : placez les obstacles qui font de l’ombre.
+          </p>
+        </div>
+
+        <div class="card" style="margin-top:12px">
           <div class="card-title">Diagramme solaire</div>
           <p style="font-size:12px;color:var(--color-text-muted);line-height:1.45;margin:0 0 10px">
             Cliquez dans le cercle pour placer un obstacle (manuel PC / téléphone),

@@ -234,13 +234,21 @@ function calcGridSystem() {
   const nPanels = Math.round(Ppeak * 1000 / panelWp);
   const surface = parseFloat(document.getElementById('inp-surface')?.value) || nPanels * panelM2;
 
+  let tilt    = parseFloat(document.getElementById('inp-tilt').value) || 30;
+  let azimuth = parseFloat(document.getElementById('inp-azimuth').value) || 0;
+  // Plusieurs toitures configurées → orientation pondérée par la puissance de chacune
+  // (une toiture par défaut seule ne doit pas remplacer silencieusement le formulaire).
+  if (typeof LayoutRoofs !== 'undefined' && LayoutRoofs.getProductionRoofs().length > 0) {
+    const ori = LayoutRoofs.weightedOrientation(panelWp);
+    if (ori) { tilt = ori.tilt; azimuth = ori.azimuth; }
+  }
+
   const params = {
     lat:        AppState.location.lat,
     weatherData: AppState.weatherData,
     Ppeak, nPanels, panelWp, surface, panelM2,
     losses:     parseFloat(document.getElementById('inp-losses').value) || 14,
-    tilt:       parseFloat(document.getElementById('inp-tilt').value) || 30,
-    azimuth:    parseFloat(document.getElementById('inp-azimuth').value) || 0,
+    tilt, azimuth,
     tech:       document.getElementById('sel-tech').value,
     systemCost: parseFloat(document.getElementById('inp-cost').value) || 0,
     kwhPrice:   parseFloat(document.getElementById('inp-kwh-price').value) || 0.2516,

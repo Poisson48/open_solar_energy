@@ -1,6 +1,6 @@
 /**
  * tab_layout.js - Onglet "Implantation" : visualiseur 2.5D des panneaux sur toiture
- * Dépend de : panel_3d.js (rendu Canvas pur), app_state.js (AppState)
+ * Dépend de : panel_3d.js, layout_roofs.js, app_state.js (AppState)
  */
 
 function initTabLayout() {
@@ -11,6 +11,22 @@ function initTabLayout() {
       <div>
         <div class="card">
           <div class="card-title">Paramètres de l'implantation</div>
+
+          <div class="lay-roof-bar" style="margin-bottom:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+              <span id="lay-roof-count" style="font-size:12px;font-weight:600;color:var(--color-text-muted)">1 toiture</span>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <button type="button" class="btn btn-outline btn-sm" onclick="LayoutRoofs.addRoof()">+ Ajouter toiture</button>
+                <button type="button" class="btn btn-outline btn-sm" id="lay-roof-remove" onclick="LayoutRoofs.removeRoof(LayoutRoofs.getActiveRoof()?.id)" disabled>Supprimer</button>
+              </div>
+            </div>
+            <div id="lay-roof-tabs" class="lay-roof-tabs"></div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:10px">
+            <label for="lay-roof-name">Nom de la toiture</label>
+            <input type="text" id="lay-roof-name" value="Toiture 1" maxlength="40" oninput="renderPanelLayoutTab()">
+          </div>
 
           <div class="form-row" style="gap:8px;margin-bottom:10px">
             <div class="form-group">
@@ -107,11 +123,13 @@ function initTabLayout() {
           </div>
           <p style="margin-top:8px;font-size:11px;color:var(--color-text-muted)">
             La flèche orange indique l'orientation des panneaux.
+            <a href="#" onclick="switchToTab('site');return false" style="color:var(--color-primary)">Modèle 3D</a> (Site) pour placer cheminées et arbres.
           </p>
         </div>
 
         <div class="card" style="margin-top:12px">
           <div class="card-title">Légende de l'implantation</div>
+          <p id="lay-kpi-subtitle" style="margin:-4px 0 10px;font-size:12px;color:var(--color-text-muted)"></p>
           <div class="kpi-grid">
             <div class="kpi-card">
               <div class="kpi-value" id="lay-kpi-panels">-</div>
@@ -131,7 +149,7 @@ function initTabLayout() {
             </div>
             <div class="kpi-card">
               <div class="kpi-value" id="lay-kpi-azimuth">-</div>
-              <div class="kpi-label">Orientation<br><span class="kpi-unit" id="lay-kpi-azimuth-deg">-</span></div>
+              <div class="kpi-label">Orientation (active)<br><span class="kpi-unit" id="lay-kpi-azimuth-deg">-</span></div>
             </div>
           </div>
           <div id="lay-warning" class="alert alert-warning" style="display:none;margin-top:10px">
@@ -146,10 +164,14 @@ function initTabLayout() {
 
     </div>`;
 
-  // Rendu adaptatif : le canvas n'a une taille réelle que si l'onglet est visible.
   window.addEventListener('resize', () => {
     if (AppState.activeTab === 'layout') renderPanelLayoutTab();
   });
+
+  if (typeof LayoutRoofs !== 'undefined') {
+    LayoutRoofs.loadFromAppState();
+    LayoutRoofs.renderRoofTabs();
+  }
 }
 
 /** Lit la configuration courante du formulaire "Implantation". */
@@ -171,6 +193,22 @@ function readPanelLayoutConfig() {
   };
 }
 
+/** Configs toiture pour le rendu multi (inclut le nom). */
+function readMultiRoofConfigs() {
+  if (typeof LayoutRoofs === 'undefined') {
+    return [{ ...readPanelLayoutConfig(), name: 'Toiture 1' }];
+  }
+  return LayoutRoofs.getRoofs().map(r => ({
+    id: r.id,
+    roofW: r.roofW, roofD: r.roofD,
+    panelW: r.panelW, panelH: r.panelH,
+    nPanels: r.nPanels, rows: r.rows,
+    tilt: r.tilt, azimuth: r.azimuth,
+    gap: r.gap,
+    name: r.name || 'Toiture',
+  }));
+}
+
 /** Libellé compas (8 directions) pour un azimut donné (0°=Sud, -90°=Est, +90°=Ouest, ±180°=Nord). */
 function azimuthCompassLabel(az) {
   const dirs = ['Sud', 'Sud-Ouest', 'Ouest', 'Nord-Ouest', 'Nord', 'Nord-Est', 'Est', 'Sud-Est'];
@@ -183,30 +221,80 @@ function azimuthCompassLabel(az) {
 function renderPanelLayoutTab() {
   const canvas = document.getElementById('layout-canvas');
   if (!canvas || typeof PanelLayout3D === 'undefined') return null;
-  const layout = PanelLayout3D.render(canvas, readPanelLayoutConfig());
+
+  if (typeof LayoutRoofs !== 'undefined') LayoutRoofs.saveActiveFromForm();
+
+  const roofs = readMultiRoofConfigs();
+  const layout = PanelLayout3D.renderMulti
+    ? PanelLayout3D.renderMulti(canvas, roofs)
+    : PanelLayout3D.render(canvas, roofs[0]);
   if (!layout) return null;
 
+  const active = typeof LayoutRoofs !== 'undefined' ? LayoutRoofs.getActiveRoof() : null;
+  const activeLayout = active && layout.perRoof
+    ? layout.perRoof.find(r => r.id === active.id) || layout.perRoof[0]
+    : layout;
+
   const nf = (n) => Number(n).toLocaleString('fr-FR', { maximumFractionDigits: 1 });
+  const roofCount = roofs.length;
+
   const panelsEl = document.getElementById('lay-kpi-panels');
   if (panelsEl) panelsEl.textContent = layout.nPanels > 0
     ? `${layout.panelsPlaced}${layout.panelsPlaced < layout.nPanels ? ` / ${layout.nPanels}` : ''}`
     : '0';
+
   const dimsEl = document.getElementById('lay-kpi-grid-dims');
-  if (dimsEl) dimsEl.textContent = layout.nPanels > 0
-    ? `${layout.rows} rangée${layout.rows > 1 ? 's' : ''} × ${layout.cols} colonne${layout.cols > 1 ? 's' : ''}`
-    : '-';
+  if (dimsEl) {
+    if (roofCount > 1) {
+      dimsEl.textContent = `${roofCount} toiture${roofCount > 1 ? 's' : ''} — Σ ${layout.rows} rangée${layout.rows > 1 ? 's' : ''}`;
+    } else if (layout.nPanels > 0) {
+      const r0 = layout.perRoof?.[0] || layout;
+      dimsEl.textContent = `${r0.rows} rangée${r0.rows > 1 ? 's' : ''} × ${r0.cols} colonne${r0.cols > 1 ? 's' : ''}`;
+    } else {
+      dimsEl.textContent = '-';
+    }
+  }
+
+  const subEl = document.getElementById('lay-kpi-subtitle');
+  if (subEl) {
+    subEl.textContent = active
+      ? (roofCount > 1
+        ? `Totaux toutes toitures — édition : ${active.name || 'Toiture'}`
+        : `Toiture : ${active.name || 'Toiture 1'}`)
+      : '';
+  }
+
   const surfEl = document.getElementById('lay-kpi-surface');
   if (surfEl) surfEl.textContent = nf(layout.surfaceUsed);
   const roofEl = document.getElementById('lay-kpi-roof');
   if (roofEl) roofEl.textContent = nf(layout.surfaceRoof);
   const covEl = document.getElementById('lay-kpi-coverage');
   if (covEl) covEl.textContent = `${nf(layout.coveragePct)}%`;
+
+  const az = activeLayout?.azimuth ?? layout.azimuth ?? 0;
   const azEl = document.getElementById('lay-kpi-azimuth');
-  if (azEl) azEl.textContent = azimuthCompassLabel(layout.azimuth);
+  if (azEl) azEl.textContent = azimuthCompassLabel(az);
   const azDegEl = document.getElementById('lay-kpi-azimuth-deg');
-  if (azDegEl) azDegEl.textContent = `${layout.azimuth > 0 ? '+' : ''}${nf(layout.azimuth)}° (0°=Sud)`;
+  if (azDegEl) azDegEl.textContent = `${az > 0 ? '+' : ''}${nf(az)}° (0°=Sud)`;
+
   const warnEl = document.getElementById('lay-warning');
-  if (warnEl) warnEl.style.display = (layout.nPanels > 0 && !layout.fits) ? '' : 'none';
+  if (warnEl) {
+    const overflows = layout.overflowWarnings || [];
+    if (overflows.length) {
+      warnEl.style.display = '';
+      const names = overflows.map(w => w.name).join(', ');
+      warnEl.textContent = overflows.length === 1
+        ? `⚠️ ${names} : le tableau dépasse la toiture — réduisez les panneaux ou agrandissez la toiture.`
+        : `⚠️ Débordement sur ${names} — réduisez les panneaux ou agrandissez les toitures concernées.`;
+    } else {
+      warnEl.style.display = (layout.nPanels > 0 && !layout.fits) ? '' : 'none';
+      if (layout.nPanels > 0 && !layout.fits) {
+        warnEl.textContent = '⚠️ Le tableau de panneaux dépasse la surface de toiture disponible — réduisez le nombre de panneaux, augmentez les rangées ou agrandissez la toiture.';
+      }
+    }
+  }
+
+  if (typeof LayoutRoofs !== 'undefined') LayoutRoofs.renderRoofTabs();
 
   return layout;
 }
@@ -228,20 +316,17 @@ function syncPanelLayoutFrom(source) {
     return v ? v.trim() : '';
   };
 
-  // Format standard portrait ~1 : 1.56 (proche des panneaux résidentiels courants)
   const panelDimsFromM2 = (m2) => {
     const w = Math.sqrt(m2 / 1.56);
     return { w: Math.round(w * 100) / 100, h: Math.round(w * 1.56 * 100) / 100 };
   };
 
-  // Dimension panneau réelle (bibliothèque) : certaines fiches stockent en mm plutôt qu'en m.
   const toMeters = (v) => {
     const n = parseFloat(v);
     if (!isFinite(n) || n <= 0) return null;
     return n > 10 ? n / 1000 : n;
   };
 
-  /** Cherche les dimensions réelles (m) d'un panneau par son nom de modèle dans PanelDB. */
   const findPanelDims = (model) => {
     if (!model || typeof PanelDB === 'undefined' || typeof PanelDB.list !== 'function') return null;
     const hit = PanelDB.list().find(p => (p.model || '').trim().toLowerCase() === model.toLowerCase());
@@ -279,10 +364,16 @@ function syncPanelLayoutFrom(source) {
   setVal('lay-tilt', tilt);
   setVal('lay-azimuth', azimuth);
 
-  if (nPanels) setVal('lay-npanels', nPanels);
+  if (nPanels && typeof LayoutRoofs !== 'undefined') {
+    LayoutRoofs.distributePanels(nPanels);
+    if (typeof showToast === 'function') {
+      const mix = LayoutRoofs.productionMixLabel();
+      showToast(`Répartition : ${mix || nPanels + ' panneaux'}`, 'success');
+    }
+  } else if (nPanels) {
+    setVal('lay-npanels', nPanels);
+  }
 
-  // Dimensions réelles issues de la bibliothèque de panneaux si le modèle y figure,
-  // sinon on retombe sur le format standard 1:1.56 déduit de la surface unitaire.
   const dims = findPanelDims(panelModel) || (panelM2 ? panelDimsFromM2(panelM2) : null);
   if (dims) {
     setVal('lay-panel-w', dims.w);
@@ -290,7 +381,6 @@ function syncPanelLayoutFrom(source) {
   }
 
   if (surfaceNeeded && surfaceNeeded > 0) {
-    // Toiture un peu plus grande que le strict besoin (marge de pose)
     const side = Math.ceil(Math.sqrt(surfaceNeeded * 1.3) * 10) / 10;
     setVal('lay-roof-w', side);
     setVal('lay-roof-d', side);
@@ -305,34 +395,39 @@ function syncPanelLayoutFrom(source) {
 /**
  * Envoie le nombre de panneaux / rangées de l'implantation vers le calculateur de
  * câblage DC (onglet Câbles) et estime directement la longueur de string.
- * Écrit cbl-dc-l en dur : CablesUI.prefill() ne la recalcule que si elle est vide,
- * donc cette estimation "depuis l'implantation" survit au changement d'onglet.
  */
 function syncLayoutToCableLength() {
-  const layout = readPanelLayoutConfig();
-  if (!layout.nPanels || layout.nPanels <= 0) {
+  if (typeof LayoutRoofs !== 'undefined') LayoutRoofs.saveActiveFromForm();
+
+  const roofs = typeof LayoutRoofs !== 'undefined' ? LayoutRoofs.getRoofs() : [readPanelLayoutConfig()];
+  const nPanels = typeof LayoutRoofs !== 'undefined'
+    ? LayoutRoofs.totalPanels()
+    : (readPanelLayoutConfig().nPanels || 0);
+
+  if (!nPanels || nPanels <= 0) {
     if (typeof showToast === 'function') showToast('Renseignez d\'abord le nombre de panneaux de l\'implantation.', 'error');
     return;
   }
   if (typeof CableCalc === 'undefined') return;
 
   const setVal = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
-  const rows = Math.max(1, layout.rows || 1);
+  const rows = Math.max(1, ...roofs.map(r => Math.max(1, Math.round(r.rows || 1))));
+  const active = typeof LayoutRoofs !== 'undefined' ? LayoutRoofs.getActiveRoof() : null;
+  const pitch = (active?.panelW > 0 ? active.panelW : readPanelLayoutConfig().panelW)
+    || (parseFloat(document.getElementById('cbl-dc-pitch')?.value) || 1.8);
 
-  setVal('cbl-dc-npanels', layout.nPanels);
+  setVal('cbl-dc-npanels', nPanels);
   setVal('cbl-dc-rows', rows);
-  // Espacement le long de la rangée : largeur panneau de l'implantation si connue,
-  // sinon on garde la valeur déjà présente dans le formulaire câblage (ou 1.8m défaut).
-  const pitch = layout.panelW > 0 ? layout.panelW : (parseFloat(document.getElementById('cbl-dc-pitch')?.value) || 1.8);
   setVal('cbl-dc-pitch', pitch);
   const distanceToInverter = parseFloat(document.getElementById('cbl-dc-dist-inv')?.value) || 10;
   setVal('cbl-dc-dist-inv', distanceToInverter);
 
-  const len = CableCalc.estimateDcLength({ nPanels: layout.nPanels, rows, pitch, distanceToInverter });
+  const len = CableCalc.estimateDcLength({ nPanels, rows, pitch, distanceToInverter });
   setVal('cbl-dc-l', len);
 
+  const roofNote = roofs.length > 1 ? ` (${roofs.length} toitures, ${nPanels} panneaux)` : '';
   if (typeof showToast === 'function')
-    showToast(`📏 Longueur DC estimée depuis l'implantation : ${len} m (aller) — onglet Câbles`);
+    showToast(`📏 Longueur DC estimée depuis l'implantation${roofNote} : ${len} m (aller) — onglet Câbles`);
   if (typeof activateTab === 'function') activateTab('cables');
 }
 

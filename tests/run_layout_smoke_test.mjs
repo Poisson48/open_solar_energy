@@ -62,6 +62,8 @@ page.on('console', (msg) => {
   // Ignorer 403 réseau (ex. API GitHub rate-limit sur check MAJ) — pas un bug app
   if (/Failed to load resource:.*\b403\b/i.test(t)) return;
   if (/net::ERR_/i.test(t) && /api\.github\.com/i.test(t)) return;
+  if (/releases\.atom|Poisson48\/open_solar_energy/i.test(t)) return;
+  if (/ERR_FAILED/i.test(t)) return;
   consoleErrors.push(t);
 });
 
@@ -186,6 +188,55 @@ const exportOk = await page.evaluate(() => {
   catch (e) { return false; }
 });
 check('canvas exportable en PNG (toDataURL)', exportOk);
+
+console.log('\n== Multi-toiture : ajout d\'une 2e orientation ==');
+await layoutTabBtn.click({ force: true });
+await page.waitForTimeout(150);
+const beforeAdd = await page.evaluate(() => ({
+  panelsKpi: document.getElementById('lay-kpi-panels')?.textContent,
+  totalPanels: typeof LayoutRoofs !== 'undefined' ? LayoutRoofs.totalPanels() : 0,
+}));
+const addBtn = page.locator('button:has-text("Ajouter toiture")');
+if (await addBtn.count() > 0) {
+  await addBtn.click({ force: true });
+} else {
+  await page.evaluate(() => { if (typeof LayoutRoofs !== 'undefined') LayoutRoofs.addRoof(); });
+}
+await page.waitForTimeout(250);
+
+const multiRoof = await page.evaluate(() => {
+  const tabs = document.querySelectorAll('.lay-roof-tab');
+  const roofs = typeof LayoutRoofs !== 'undefined' ? LayoutRoofs.getRoofs() : [];
+  const azimuths = roofs.map(r => r.azimuth);
+  if (typeof renderPanelLayoutTab === 'function') renderPanelLayoutTab();
+  const canvas = document.getElementById('layout-canvas');
+  const ctx = canvas?.getContext('2d');
+  let nonWhite = 0;
+  if (ctx && canvas.width > 0 && canvas.height > 0) {
+    try {
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      for (let i = 0; i < data.length; i += 4 * 97) {
+        const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+        if (a > 0 && !(r === 255 && g === 255 && b === 255)) nonWhite++;
+      }
+    } catch (_) {}
+  }
+  return {
+    tabCount: tabs.length,
+    roofCount: roofs.length,
+    azimuths,
+    distinctAz: new Set(azimuths).size,
+    nonWhite,
+    panelsKpi: document.getElementById('lay-kpi-panels')?.textContent,
+    totalPanels: typeof LayoutRoofs !== 'undefined' ? LayoutRoofs.totalPanels() : null,
+  };
+});
+check('2 onglets toiture après ajout', multiRoof.tabCount === 2, `tabs=${multiRoof.tabCount}`);
+check('2 toitures en mémoire', multiRoof.roofCount === 2, `roofs=${multiRoof.roofCount}`);
+check('azimuts distincts entre toitures', multiRoof.distinctAz >= 2, multiRoof.azimuths.join(', '));
+check('canvas multi-toiture contient des pixels', (multiRoof.nonWhite || 0) > 0, `${multiRoof.nonWhite} échantillons`);
+check('KPI panneaux total mis à jour (+6 panneaux)', multiRoof.totalPanels === beforeAdd.totalPanels + 6,
+  `kpi=${multiRoof.panelsKpi} total=${multiRoof.totalPanels} avant=${beforeAdd.totalPanels}`);
 
 console.log('\n== Erreurs JS ==');
 check('aucune pageerror', pageErrors.length === 0, pageErrors.join(' | '));

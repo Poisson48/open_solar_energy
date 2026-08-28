@@ -1605,6 +1605,61 @@ details.card > summary:focus-visible {
 }
 
 /* ── LAYOUT DES ONGLETS (remplace les grid inline) ── */
+.lay-roof-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.lay-roof-tab {
+  padding: 5px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface2);
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.lay-roof-tab:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.lay-roof-tab.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.ose-scene-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ose-scene-tool {
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface2);
+  color: var(--color-text);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.ose-scene-tool:hover {
+  border-color: var(--color-primary);
+}
+.ose-scene-tool.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+.ose-scene-tool-danger:hover {
+  border-color: var(--color-danger, #c44);
+  color: var(--color-danger, #c44);
+}
+
 .tab-form-col {
   display: grid;
   grid-template-columns: 310px minmax(0, 1fr);
@@ -2950,3 +3005,51 @@ img, canvas, svg, video, iframe {
   select,
   textarea { font-size: 16px !important; }
 }
+
+/* ── Mode sombre ── */
+[data-theme="dark"] {
+  --color-primary: #3db86a;
+  --color-primary-light: #52d080;
+  --color-accent: #f5a623;
+  --color-accent-dark: #e8940f;
+  --color-bg: #0f1612;
+  --color-surface: #1a2420;
+  --color-surface2: #243029;
+  --color-border: #3a4f44;
+  --color-text: #e8f0ec;
+  --color-text-muted: #9ab0a4;
+  --color-success: #66bb6a;
+  --color-warning: #ff9800;
+  --color-danger: #ef5350;
+  --color-info: #64b5f6;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.35);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.4);
+  --shadow-lg: 0 4px 20px rgba(0,0,0,0.5);
+  --color-bg-card: var(--color-surface);
+}
+[data-theme="dark"] header { background: #145a32; }
+[data-theme="dark"] .card { background: var(--color-surface); border-color: var(--color-border); }
+[data-theme="dark"] .leaflet-container { filter: brightness(0.88) contrast(1.05); }
+[data-theme="dark"] .ose-hub-panel { background: var(--color-surface); }
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background: var(--color-surface2);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+[data-theme="dark"] .btn-outline {
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+#btn-theme-toggle {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: #fff;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+}
+#btn-theme-toggle:hover { background: rgba(255,255,255,0.22); }
