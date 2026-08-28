@@ -115,15 +115,22 @@ function initTabLayout() {
       <!-- Rendu + légende -->
       <div>
         <div class="card" style="padding:10px">
-          <div class="alert alert-warning" style="font-size:12px;font-weight:600;margin-bottom:8px">
-            ⚠️ Vue 2.5D schématique — pas un modèle 3D contractuel. Elle sert à visualiser l'agencement des panneaux, pas à produire un plan d'exécution.
+          <div class="alert alert-info" style="font-size:12px;font-weight:600;margin-bottom:8px">
+            Vue <strong>3D</strong> — inclinaison réelle, orbite souris (clic gauche) · zoom molette · pan clic droit.
+            Éditez les champs : la scène se met à jour. Obstacles : onglet <strong>Site</strong>.
+          </div>
+          <div class="ose-scene-toolbar" style="margin-bottom:6px">
+            <button type="button" class="ose-scene-tool" onclick="Layout3DView.setView('perspective')">🎥 Perspective</button>
+            <button type="button" class="ose-scene-tool" onclick="Layout3DView.setView('top')">⬇ Dessus</button>
+            <button type="button" class="ose-scene-tool" onclick="Layout3DView.setView('south')">🧭 Sud</button>
           </div>
           <div id="layout-canvas-wrap" style="position:relative;width:100%;height:420px;border-radius:10px;overflow:hidden;border:1px solid var(--color-border)">
-            <canvas id="layout-canvas" style="display:block;width:100%;height:100%"></canvas>
+            <div id="layout-3d-host" class="ose-roof-3d-host" style="width:100%;height:100%"></div>
+            <canvas id="layout-canvas" style="display:none;width:100%;height:100%"></canvas>
           </div>
           <p style="margin-top:8px;font-size:11px;color:var(--color-text-muted)">
-            La flèche orange indique l'orientation des panneaux.
-            <a href="#" onclick="switchToTab('site');return false" style="color:var(--color-primary)">Modèle 3D</a> (Site) pour placer cheminées et arbres.
+            Clic sur une toiture pour la sélectionner (onglets ci-dessus).
+            <a href="#" onclick="switchToTab('site');return false" style="color:var(--color-primary)">Site → Modèle 3D</a> pour cheminées et arbres.
           </p>
         </div>
 
@@ -296,8 +303,28 @@ function renderPanelLayoutTab() {
 
   if (typeof LayoutRoofs !== 'undefined') LayoutRoofs.renderRoofTabs();
 
+  const host3d = document.getElementById('layout-3d-host');
+  if (host3d && typeof RoofModel3D !== 'undefined' && RoofModel3D.isReady()) {
+    if (!host3d.dataset.ose3d) {
+      RoofModel3D.attach(host3d, { showObstacles: false });
+      host3d.dataset.ose3d = '1';
+    } else {
+      RoofModel3D.refresh();
+    }
+  } else if (canvas) {
+    canvas.style.display = 'block';
+    if (host3d) host3d.style.display = 'none';
+  }
+
   return layout;
 }
+
+/** Vues caméra implantation 3D */
+const Layout3DView = {
+  setView(preset) {
+    if (typeof RoofModel3D !== 'undefined') RoofModel3D.setView(preset);
+  },
+};
 
 /** Synchronise nombre de panneaux / dimensions depuis un autre onglet déjà calculé. */
 function syncPanelLayoutFrom(source) {
@@ -433,7 +460,9 @@ function syncLayoutToCableLength() {
 
 /** Exporte le rendu courant en image PNG (utile pour joindre au devis / présentation client). */
 function exportPanelLayoutImage() {
-  const canvas = document.getElementById('layout-canvas');
+  const host = document.getElementById('layout-3d-host');
+  const webglCanvas = host?.querySelector('canvas');
+  const canvas = webglCanvas || document.getElementById('layout-canvas');
   if (!canvas) return;
   try {
     const url = canvas.toDataURL('image/png');

@@ -62,8 +62,8 @@ assert(/10000/.test(releaseYml) && /versionCode/.test(releaseYml),
   'release.yml : formule XXYYZZ présente');
 
 const man = fs.readFileSync(path.join(ROOT, 'android/AndroidManifest.xml'), 'utf8');
-assert(/android:versionCode="20073"/.test(man), 'manifest versionCode=20073');
-assert(/android:versionName="2\.0\.74"/.test(man), 'manifest versionName=2.0.74');
+assert(/android:versionCode="20075"/.test(man), 'manifest versionCode=20075');
+assert(/android:versionName="2\.0\.75"/.test(man), 'manifest versionName=2.0.75');
 assert(/InstallCallbackActivity/.test(man), 'InstallCallbackActivity déclarée');
 assert(/ApkFileProvider/.test(man), 'ApkFileProvider déclaré');
 assert(/android:exported="false"[\s\S]*InstallReceiver|InstallReceiver[\s\S]*android:exported="false"/.test(man)
@@ -94,7 +94,7 @@ assert(/weatherMeta/.test(pui) && /weatherMeta/.test(fs.readFileSync(path.join(R
   'weatherMeta persisté dans le projet');
 
 const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-assert(/main\.css\?v=2\.0\.74/.test(idx), 'CSS cache-bust ?v=2.0.74');
+assert(/main\.css\?v=2\.0\.75/.test(idx), 'CSS cache-bust ?v=2.0.75');
 assert(/setSizingLimitMode/.test(pui) || /setSizingLimitMode/.test(fs.readFileSync(path.join(ROOT, 'js/renderers/sizing.js'), 'utf8')),
   'modes limite dimensionnement');
 const tabSz = fs.readFileSync(path.join(ROOT, 'js/tabs/tab_sizing.js'), 'utf8');

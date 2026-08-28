@@ -5,7 +5,7 @@
  * Vérifie :
  *   - aucune pageerror JS au chargement
  *   - l'onglet "Implantation" s'ouvre (bouton avancé → onglet)
- *   - le canvas #layout-canvas a un contexte 2D valide et contient des pixels non blancs
+ *   - la vue 3D (#layout-3d-host WebGL ou #layout-canvas 2D) a un rendu visible
  *   - la légende (panneaux placés, surface, couverture) est renseignée
  *   - les contrôles (nPanels, tilt, azimuth, roof) redessinent sans erreur
  */
@@ -40,6 +40,48 @@ let fails = 0;
 function check(label, ok, detail = '') {
   if (ok) console.log(`  \u2713 ${label}${detail ? ' \u2014 ' + detail : ''}`);
   else { console.error(`  \u2717 ${label}${detail ? ' \u2014 ' + detail : ''}`); fails++; }
+}
+
+/** Inspecte le canvas implantation (WebGL Three.js ou fallback 2D). */
+function canvasInspectScript() {
+  const host = document.getElementById('layout-3d-host');
+  const c = host?.querySelector('canvas') || document.getElementById('layout-canvas');
+  if (!c) return { exists: false };
+  const w = c.width, h = c.height;
+  const gl = c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl');
+  if (gl) {
+    let nonWhite = 0;
+    try {
+      const buf = new Uint8Array(w * h * 4);
+      gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+      for (let i = 0; i < buf.length; i += 4 * 97) {
+        const r = buf[i], g = buf[i + 1], b = buf[i + 2], a = buf[i + 3];
+        if (a > 0 && !(r === 255 && g === 255 && b === 255)) nonWhite++;
+      }
+    } catch (e) {
+      return { exists: true, webgl: true, ctxOk: true, w, h, error: String(e) };
+    }
+    if (nonWhite === 0) {
+      try {
+        const url = c.toDataURL('image/png');
+        nonWhite = url.length > 5000 ? 1 : 0;
+      } catch (_) {}
+    }
+    return { exists: true, webgl: true, ctxOk: true, w, h, nonWhite };
+  }
+  const ctx = c.getContext('2d');
+  if (!ctx) return { exists: true, ctxOk: false, w, h };
+  let nonWhite = 0;
+  try {
+    const data = ctx.getImageData(0, 0, w, h).data;
+    for (let i = 0; i < data.length; i += 4 * 97) {
+      const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+      if (a > 0 && !(r === 255 && g === 255 && b === 255)) nonWhite++;
+    }
+  } catch (e) {
+    return { exists: true, ctxOk: true, webgl: false, w, h, error: String(e) };
+  }
+  return { exists: true, ctxOk: true, webgl: false, w, h, nonWhite };
 }
 
 const server = await startServer();
@@ -91,27 +133,13 @@ await page.waitForTimeout(300);
 const pane = page.locator('#tab-layout');
 check('panneau #tab-layout actif', await pane.evaluate(el => el.classList.contains('active')).catch(() => false));
 
-console.log('\n== Vérification du canvas ==');
-const canvasInfo = await page.evaluate(() => {
-  const c = document.getElementById('layout-canvas');
-  if (!c) return { exists: false };
-  const ctx = c.getContext('2d');
-  if (!ctx) return { exists: true, ctxOk: false };
-  const w = c.width, h = c.height;
-  let nonWhite = 0;
-  try {
-    const data = ctx.getImageData(0, 0, w, h).data;
-    for (let i = 0; i < data.length; i += 4 * 97) { // échantillonnage
-      const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
-      if (a > 0 && !(r === 255 && g === 255 && b === 255)) nonWhite++;
-    }
-  } catch (e) { return { exists: true, ctxOk: true, w, h, error: String(e) }; }
-  return { exists: true, ctxOk: true, w, h, nonWhite };
-});
-check('canvas #layout-canvas existe', canvasInfo.exists);
-check('getContext("2d") fonctionne', canvasInfo.ctxOk === true, canvasInfo.error || '');
+console.log('\n== Vérification du canvas / vue 3D ==');
+await page.waitForTimeout(400);
+const canvasInfo = await page.evaluate(canvasInspectScript);
+check('canvas implantation existe', canvasInfo.exists);
+check('contexte rendu valide (WebGL ou 2D)', canvasInfo.ctxOk === true, canvasInfo.error || (canvasInfo.webgl ? 'WebGL' : '2D'));
 check('canvas a une taille non nulle', (canvasInfo.w || 0) > 0 && (canvasInfo.h || 0) > 0, `${canvasInfo.w}x${canvasInfo.h}`);
-check('canvas contient des pixels non blancs (rendu visible)', (canvasInfo.nonWhite || 0) > 0, `${canvasInfo.nonWhite} échantillons`);
+check('rendu visible (pixels non blancs)', (canvasInfo.nonWhite || 0) > 0, `${canvasInfo.nonWhite} échantillons`);
 
 console.log('\n== Légende ==');
 const legend = await page.evaluate(() => ({
@@ -183,7 +211,8 @@ check('longueur DC cohérente avec l\'implantation (~18.7 m)', Math.abs(cablesLi
 
 console.log('\n== Export image ==');
 const exportOk = await page.evaluate(() => {
-  const c = document.getElementById('layout-canvas');
+  const host = document.getElementById('layout-3d-host');
+  const c = host?.querySelector('canvas') || document.getElementById('layout-canvas');
   try { const url = c.toDataURL('image/png'); return url.startsWith('data:image/png'); }
   catch (e) { return false; }
 });
@@ -209,17 +238,36 @@ const multiRoof = await page.evaluate(() => {
   const roofs = typeof LayoutRoofs !== 'undefined' ? LayoutRoofs.getRoofs() : [];
   const azimuths = roofs.map(r => r.azimuth);
   if (typeof renderPanelLayoutTab === 'function') renderPanelLayoutTab();
-  const canvas = document.getElementById('layout-canvas');
-  const ctx = canvas?.getContext('2d');
+  const host = document.getElementById('layout-3d-host');
+  const c = host?.querySelector('canvas') || document.getElementById('layout-canvas');
   let nonWhite = 0;
-  if (ctx && canvas.width > 0 && canvas.height > 0) {
-    try {
-      const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-      for (let i = 0; i < data.length; i += 4 * 97) {
-        const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
-        if (a > 0 && !(r === 255 && g === 255 && b === 255)) nonWhite++;
+  if (c) {
+    const w = c.width, h = c.height;
+    const gl = c.getContext('webgl2') || c.getContext('webgl');
+    if (gl) {
+      try {
+        const buf = new Uint8Array(w * h * 4);
+        gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+        for (let i = 0; i < buf.length; i += 4 * 97) {
+          const r = buf[i], g = buf[i + 1], b = buf[i + 2], a = buf[i + 3];
+          if (a > 0 && !(r === 255 && g === 255 && b === 255)) nonWhite++;
+        }
+      } catch (_) {}
+      if (!nonWhite) {
+        try { nonWhite = c.toDataURL('image/png').length > 5000 ? 1 : 0; } catch (_) {}
       }
-    } catch (_) {}
+    } else {
+      const ctx = c.getContext('2d');
+      if (ctx && w > 0 && h > 0) {
+        try {
+          const data = ctx.getImageData(0, 0, w, h).data;
+          for (let i = 0; i < data.length; i += 4 * 97) {
+            const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+            if (a > 0 && !(r === 255 && g === 255 && b === 255)) nonWhite++;
+          }
+        } catch (_) {}
+      }
+    }
   }
   return {
     tabCount: tabs.length,

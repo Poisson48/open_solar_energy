@@ -1,21 +1,86 @@
 /**
- * scene_3d.js — Éditeur 3D simple : toitures + panneaux + obstacles (Canvas isométrique).
- * Dépend de : panel_3d.js, layout_roofs.js, site_survey.js (optionnel)
+ * scene_3d.js — Façade éditeur 3D : WebGL (Three.js) si dispo, sinon canvas isométrique 2D.
  */
 const Scene3D = (() => {
-  const PRESETS = {
+  const PRESETS = typeof RoofModel3D !== 'undefined' ? RoofModel3D.PRESETS : {
     chimney: { type: 'box', w: 0.6, d: 0.6, h: 1.5, label: 'Cheminée' },
     tree:    { type: 'tree', w: 1.2, d: 1.2, h: 4, label: 'Arbre' },
     wall:    { type: 'box', w: 2, d: 0.35, h: 2.5, label: 'Mur' },
     velux:   { type: 'box', w: 1.2, d: 0.8, h: 0.4, label: 'Velux' },
   };
 
-  let _canvas = null;
+  let _useWebGL = false;
+  let _legacyCanvas = null;
   let _mode = 'select';
   let _selectedObstacle = -1;
   let _drag = null;
   let _lastView = null;
 
+  function useWebGL() {
+    return typeof RoofModel3D !== 'undefined' && RoofModel3D.isReady();
+  }
+
+  function attach(el) {
+    if (!el) return;
+    if (useWebGL()) {
+      _useWebGL = true;
+      _legacyCanvas = null;
+      const host = el.id === 'site-scene-3d-canvas' ? el.parentElement : el;
+      if (el.tagName === 'CANVAS') {
+        el.style.display = 'none';
+      }
+      RoofModel3D.attach(host, { showObstacles: true });
+      setMode('select');
+      return;
+    }
+    _useWebGL = false;
+    _legacyCanvas = el.tagName === 'CANVAS' ? el : el.querySelector('canvas');
+    if (!_legacyCanvas) return;
+    _legacyCanvas.style.display = 'block';
+    _legacyAttachLegacy(_legacyCanvas);
+  }
+
+  function refresh() {
+    if (_useWebGL && typeof RoofModel3D !== 'undefined') {
+      RoofModel3D.refresh();
+      return;
+    }
+    if (_legacyCanvas) _legacyRender(_legacyCanvas);
+  }
+
+  function setMode(mode) {
+    _mode = mode || 'select';
+    document.querySelectorAll('[data-scene-mode]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.sceneMode === _mode);
+    });
+    if (_useWebGL && typeof RoofModel3D !== 'undefined') {
+      RoofModel3D.setMode(_mode);
+      return;
+    }
+    if (_legacyCanvas) _legacyCanvas.style.cursor = _mode === 'move' ? 'grab' : 'crosshair';
+  }
+
+  function setView(preset) {
+    if (_useWebGL && typeof RoofModel3D !== 'undefined') {
+      RoofModel3D.setView(preset);
+    }
+  }
+
+  function deleteSelected() {
+    if (_useWebGL && typeof RoofModel3D !== 'undefined') {
+      RoofModel3D.deleteSelected();
+      return;
+    }
+    _legacyDeleteSelected();
+  }
+
+  function detach(el) {
+    if (_useWebGL && typeof RoofModel3D !== 'undefined') RoofModel3D.detach();
+    _useWebGL = false;
+    if (_legacyCanvas) _legacyDetach(_legacyCanvas);
+  }
+
+  /* ── Legacy 2D (repli sans WebGL) ── */
   function roofsFromLayout() {
     if (typeof LayoutRoofs !== 'undefined') {
       LayoutRoofs.saveActiveFromForm?.();
@@ -25,9 +90,7 @@ const Scene3D = (() => {
   }
 
   function obstaclesFromSite() {
-    if (typeof SiteSurvey !== 'undefined' && SiteSurvey.getState) {
-      return SiteSurvey.getState().obstacles || [];
-    }
+    if (typeof SiteSurvey !== 'undefined' && SiteSurvey.getState) return SiteSurvey.getState().obstacles || [];
     return AppState?.siteSurvey?.obstacles || [];
   }
 
@@ -36,12 +99,147 @@ const Scene3D = (() => {
     return roofsFromLayout()[0]?.id || null;
   }
 
-  function pickRoofAt(world) {
-    const items = _lastView?.items || [];
-    for (let i = items.length - 1; i >= 0; i--) {
-      const it = items[i];
+  function _legacyRender(canvas) {
+    if (!canvas || typeof PanelLayout3D === 'undefined') return null;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    const roofs = roofsFromLayout();
+    const obstacles = obstaclesFromSite();
+    const selectedRoofId = activeRoofId();
+    const items = PanelLayout3D.buildSceneItems(roofs, PanelLayout3D.SCENE_GAP);
+    const rawPts = [];
+    items.forEach(({ layout, sceneX: sx }) => {
+      const { roofW, roofD, nPanels, arrayW, arrayD, riseZ } = layout;
+      const offX = sx + (roofW - arrayW) / 2;
+      const offY = (roofD - arrayD) / 2;
+      rawPts.push(PanelLayout3D.projectRaw(sx, 0, 0), PanelLayout3D.projectRaw(sx + roofW, 0, 0));
+      if (nPanels > 0) rawPts.push(PanelLayout3D.projectRaw(offX, offY, riseZ));
+    });
+    const cssW = Math.max(1, canvas.clientWidth || 600);
+    const cssH = Math.max(1, canvas.clientHeight || 360);
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#e8efe9';
+    ctx.fillRect(0, 0, cssW, cssH);
+    const xs = rawPts.map(p => p[0]);
+    const ys = rawPts.map(p => p[1]);
+    const margin = 52;
+    const scale = Math.min((cssW - margin * 2) / Math.max(0.5, Math.max(...xs) - Math.min(...xs)),
+      (cssH - margin * 2) / Math.max(0.5, Math.max(...ys) - Math.min(...ys)));
+    const origin = { x: margin, y: margin };
+    const project = PanelLayout3D.makeProjector(origin, scale);
+    const obstacleHits = [];
+    items.forEach(item => {
+      PanelLayout3D.drawRoofScene(ctx, project, item.layout, item.sceneX, item.sceneY, item.id === selectedRoofId);
+    });
+    obstacles.forEach((o, idx) => {
+      const it = items.find(i => !o.roofId || i.id === o.roofId) || items[0];
+      if (!it) return;
+      const bb = PanelLayout3D.drawObstacleBox(ctx, project, it.sceneX, it.sceneY, o, idx === _selectedObstacle);
+      obstacleHits.push({ idx, ...bb });
+    });
+    _lastView = { items, origin, scale, obstacleHits, cssW, cssH };
+    return _lastView;
+  }
+
+  function _legacyAttachLegacy(canvas) {
+    canvas.style.touchAction = 'none';
+    canvas.addEventListener('pointerdown', _legacyOnDown);
+    canvas.addEventListener('pointermove', _legacyOnMove);
+    canvas.addEventListener('pointerup', _legacyOnUp);
+    setMode('select');
+    _legacyRender(canvas);
+  }
+
+  function _legacyDetach(canvas) {
+    canvas.removeEventListener('pointerdown', _legacyOnDown);
+    canvas.removeEventListener('pointermove', _legacyOnMove);
+    canvas.removeEventListener('pointerup', _legacyOnUp);
+  }
+
+  function _legacyOnDown(e) {
+    if (!_lastView || !PanelLayout3D) return;
+    e.preventDefault();
+    const pt = _legacyCanvasCoords(_legacyCanvas, e.clientX, e.clientY);
+    const obsIdx = _legacyPickObs(pt.x, pt.y);
+    if (_mode === 'move' || (_mode === 'select' && obsIdx >= 0)) {
+      if (obsIdx >= 0) {
+        _selectedObstacle = obsIdx;
+        _drag = { idx: obsIdx };
+        _legacyRender(_legacyCanvas);
+        return;
+      }
+    }
+    const world = PanelLayout3D.unprojectGround(pt.x, pt.y, _lastView.origin, _lastView.scale);
+    const hit = _legacyPickRoof(world);
+    if (!hit) return;
+    if (typeof LayoutRoofs !== 'undefined') LayoutRoofs.setActive(hit.item.id);
+    if (_mode.startsWith('place-')) {
+      _legacyAddObs(hit.item.id, hit.localX, hit.localY, _mode.replace('place-', ''));
+    } else {
+      _selectedObstacle = -1;
+      _legacyRender(_legacyCanvas);
+    }
+  }
+
+  function _legacyOnMove(e) {
+    if (!_drag || !_lastView) return;
+    e.preventDefault();
+    const pt = _legacyCanvasCoords(_legacyCanvas, e.clientX, e.clientY);
+    const world = PanelLayout3D.unprojectGround(pt.x, pt.y, _lastView.origin, _lastView.scale);
+    const obs = obstaclesFromSite()[_drag.idx];
+    const it = _lastView.items.find(i => !obs.roofId || i.id === obs.roofId) || _lastView.items[0];
+    if (!obs || !it) return;
+    const lx = world.x - it.sceneX;
+    const ly = world.y;
+    let nx = lx - (obs.w || 0.5) / 2;
+    let ny = ly - (obs.d || 0.5) / 2;
+    nx = Math.max(0, Math.min(it.layout.roofW - (obs.w || 0.5), nx));
+    ny = Math.max(0, Math.min(it.layout.roofD - (obs.d || 0.5), ny));
+    if (typeof SiteSurvey !== 'undefined' && SiteSurvey.getState) {
+      Object.assign(SiteSurvey.getState().obstacles[_drag.idx], { x: Math.round(nx * 100) / 100, y: Math.round(ny * 100) / 100 });
+      SiteSurvey.persist?.();
+    }
+    _legacyRender(_legacyCanvas);
+  }
+
+  function _legacyOnUp() {
+    if (_drag && typeof SiteSurvey !== 'undefined') {
+      SiteSurvey.renderObstaclesList?.();
+      SiteSurvey.recompute?.();
+    }
+    _drag = null;
+  }
+
+  function _legacyDeleteSelected() {
+    if (_selectedObstacle < 0) return;
+    if (typeof SiteSurvey !== 'undefined') SiteSurvey.removeObstacle(_selectedObstacle);
+    _selectedObstacle = -1;
+    _legacyRender(_legacyCanvas);
+  }
+
+  function _legacyCanvasCoords(canvas, cx, cy) {
+    const r = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    return { x: (cx - r.left) * (canvas.width / dpr / r.width), y: (cy - r.top) * (canvas.height / dpr / r.height) };
+  }
+
+  function _legacyPickObs(x, y) {
+    const hits = _lastView?.obstacleHits || [];
+    for (let i = hits.length - 1; i >= 0; i--) {
+      const h = hits[i];
+      if (x >= h.minX && x <= h.maxX && y >= h.minY && y <= h.maxY) return h.idx;
+    }
+    return -1;
+  }
+
+  function _legacyPickRoof(world) {
+    for (let i = (_lastView?.items?.length || 0) - 1; i >= 0; i--) {
+      const it = _lastView.items[i];
       const lx = world.x - it.sceneX;
-      const ly = world.y - it.sceneY;
+      const ly = world.y;
       if (lx >= 0 && lx <= it.layout.roofW && ly >= 0 && ly <= it.layout.roofD) {
         return { item: it, localX: lx, localY: ly };
       }
@@ -49,303 +247,27 @@ const Scene3D = (() => {
     return null;
   }
 
-  function pickObstacleAt(clientX, clientY) {
-    const hits = _lastView?.obstacleHits || [];
-    for (let i = hits.length - 1; i >= 0; i--) {
-      const h = hits[i];
-      if (clientX >= h.minX && clientX <= h.maxX && clientY >= h.minY && clientY <= h.maxY) {
-        return h.idx;
-      }
-    }
-    return -1;
-  }
-
-  function canvasCoords(canvas, clientX, clientY) {
-    const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    const scaleX = (canvas.width / dpr) / rect.width;
-    const scaleY = (canvas.height / dpr) / rect.height;
-    return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY,
-    };
-  }
-
-  function render(canvas, options = {}) {
-    if (!canvas || typeof PanelLayout3D === 'undefined') return null;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-
-    const roofs = options.roofs || roofsFromLayout();
-    const obstacles = options.obstacles || obstaclesFromSite();
-    const selectedRoofId = options.selectedRoofId ?? activeRoofId();
-    const selectedObstacle = options.selectedObstacle ?? _selectedObstacle;
-    const items = PanelLayout3D.buildSceneItems(roofs, PanelLayout3D.SCENE_GAP);
-
-    const rawPts = [];
-    items.forEach(({ layout, sceneX: sx }) => {
-      const { roofW, roofD, nPanels, arrayW, arrayD, riseZ } = layout;
-      const offX = sx + (roofW - arrayW) / 2;
-      const offY = (roofD - arrayD) / 2;
-      rawPts.push(
-        PanelLayout3D.projectRaw(sx, 0, 0), PanelLayout3D.projectRaw(sx + roofW, 0, 0),
-        PanelLayout3D.projectRaw(sx + roofW, roofD, 0), PanelLayout3D.projectRaw(sx, roofD, 0),
-      );
-      if (nPanels > 0) {
-        rawPts.push(
-          PanelLayout3D.projectRaw(offX, offY + arrayD, 0),
-          PanelLayout3D.projectRaw(offX + arrayW, offY + arrayD, 0),
-          PanelLayout3D.projectRaw(offX, offY, riseZ),
-          PanelLayout3D.projectRaw(offX + arrayW, offY, riseZ),
-        );
-      }
-    });
-    obstacles.forEach(o => {
-      const it = items.find(i => !o.roofId || i.id === o.roofId) || items[0];
-      if (!it) return;
-      const bx = it.sceneX + (o.x || 0);
-      const by = (o.y || 0);
-      const h = o.h || 1;
-      rawPts.push(
-        PanelLayout3D.projectRaw(bx, by, h),
-        PanelLayout3D.projectRaw(bx + (o.w || 0.5), by + (o.d || 0.5), h),
-      );
-    });
-
-    const cssW = Math.max(1, canvas.clientWidth || canvas.width || 600);
-    const cssH = Math.max(1, canvas.clientHeight || canvas.height || 400);
-    const dpr = window.devicePixelRatio || 1;
-    const pxW = Math.round(cssW * dpr);
-    const pxH = Math.round(cssH * dpr);
-    if (canvas.width !== pxW || canvas.height !== pxH) {
-      canvas.width = pxW;
-      canvas.height = pxH;
-    }
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, cssW, cssH);
-    ctx.fillStyle = '#e8efe9';
-    ctx.fillRect(0, 0, cssW, cssH);
-
-    const xs = rawPts.map(p => p[0]);
-    const ys = rawPts.map(p => p[1]);
-    const minX = Math.min(...xs), maxX = Math.max(...xs);
-    const minY = Math.min(...ys), maxY = Math.max(...ys);
-    const margin = 52;
-    const labelMargin = items.length > 1 ? 20 : 8;
-    const availW = Math.max(20, cssW - margin * 2);
-    const availH = Math.max(20, cssH - margin * 2 - labelMargin);
-    const spanX = Math.max(0.5, maxX - minX);
-    const spanY = Math.max(0.5, maxY - minY);
-    const scale = Math.min(availW / spanX, availH / spanY);
-    const origin = {
-      x: margin + (availW - spanX * scale) / 2 - minX * scale,
-      y: margin + labelMargin + (availH - spanY * scale) / 2 - minY * scale,
-    };
-    const project = PanelLayout3D.makeProjector(origin, scale);
-
-    const obstacleHits = [];
-    items.forEach(item => {
-      const hi = item.id === selectedRoofId;
-      PanelLayout3D.drawRoofScene(ctx, project, item.layout, item.sceneX, item.sceneY, hi);
-    });
-
-    obstacles.forEach((o, idx) => {
-      const it = items.find(i => !o.roofId || i.id === o.roofId) || items[0];
-      if (!it) return;
-      const sel = idx === selectedObstacle;
-      const bb = PanelLayout3D.drawObstacleBox(ctx, project, it.sceneX, it.sceneY, o, sel);
-      obstacleHits.push({ idx, roofId: it.id, ...bb });
-    });
-
-    if (items.length) {
-      ctx.save();
-      ctx.font = '600 11px sans-serif';
-      ctx.fillStyle = '#1a2e23';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      items.forEach(item => {
-        const [lx, ly] = project(item.sceneX + item.layout.roofW / 2, 0, 0);
-        const tag = item.id === selectedRoofId ? `▸ ${item.name}` : item.name;
-        ctx.fillText(tag, lx, ly - 8);
-        ctx.font = '400 9px sans-serif';
-        ctx.fillStyle = '#5a6a60';
-        ctx.fillText(`${item.layout.tilt}° · az ${item.layout.azimuth > 0 ? '+' : ''}${item.layout.azimuth}°`, lx, ly + 4);
-        ctx.font = '600 11px sans-serif';
-        ctx.fillStyle = '#1a2e23';
-      });
-      ctx.restore();
-    }
-
-    const compassAz = items.find(i => i.id === selectedRoofId)?.layout.azimuth
-      ?? items[0]?.layout.azimuth ?? 0;
-    PanelLayout3D.drawCompass(ctx, cssW - 44, 44, 30, compassAz);
-
-    ctx.save();
-    ctx.font = '400 10px sans-serif';
-    ctx.fillStyle = '#5a6a60';
-    ctx.textAlign = 'left';
-    ctx.fillText('Clic = sélection · Glisser = déplacer obstacle · Outils = placer', margin, cssH - 10);
-    ctx.restore();
-
-    _lastView = { items, origin, scale, obstacleHits, cssW, cssH };
-    return _lastView;
-  }
-
-  function setMode(mode) {
-    _mode = mode || 'select';
-    document.querySelectorAll('[data-scene-mode]').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.sceneMode === _mode);
-    });
-    if (_canvas) _canvas.style.cursor = _mode === 'move' ? 'grab' : 'crosshair';
-  }
-
-  function syncObstacle(idx, patch, opts = {}) {
-    if (typeof SiteSurvey === 'undefined' || !SiteSurvey.getState) return;
-    const obs = SiteSurvey.getState().obstacles;
-    if (idx < 0 || idx >= obs.length) return;
-    Object.assign(obs[idx], patch);
-    SiteSurvey.persist?.();
-    if (opts.recompute) {
-      SiteSurvey.renderObstaclesList?.();
-      SiteSurvey.recompute?.();
-    }
-  }
-
-  function addObstacleAt(roofId, localX, localY, presetKey) {
-    const preset = PRESETS[presetKey] || PRESETS.chimney;
-    const it = _lastView?.items?.find(i => i.id === roofId);
-    if (!it) return;
-    const w = preset.w;
-    const d = preset.d;
-    let x = localX - w / 2;
-    let y = localY - d / 2;
-    x = Math.max(0, Math.min(it.layout.roofW - w, x));
-    y = Math.max(0, Math.min(it.layout.roofD - d, y));
-    const label = `${preset.label} ${(obstaclesFromSite().filter(o => o.roofId === roofId).length + 1)}`;
+  function _legacyAddObs(roofId, lx, ly, key) {
+    const preset = PRESETS[key] || PRESETS.chimney;
     if (typeof SiteSurvey !== 'undefined' && SiteSurvey.addObstacle) {
       SiteSurvey.addObstacle({
-        type: preset.type,
-        roofId,
-        x: Math.round(x * 100) / 100,
-        y: Math.round(y * 100) / 100,
-        w, d, h: preset.h,
-        label,
+        type: preset.type, roofId, x: lx - preset.w / 2, y: ly - preset.d / 2,
+        w: preset.w, d: preset.d, h: preset.h, label: preset.label,
       });
     }
-    refresh();
-  }
-
-  function refresh() {
-    if (!_canvas) return;
-    render(_canvas, { selectedObstacle: _selectedObstacle, selectedRoofId: activeRoofId() });
-  }
-
-  function onPointerDown(e) {
-    if (!_canvas || !_lastView) return;
-    e.preventDefault();
-    const pt = canvasCoords(_canvas, e.clientX, e.clientY);
-    const world = PanelLayout3D.unprojectGround(pt.x, pt.y, _lastView.origin, _lastView.scale);
-
-    const obsIdx = pickObstacleAt(pt.x, pt.y);
-    if (_mode === 'move' || (_mode === 'select' && obsIdx >= 0)) {
-      if (obsIdx >= 0) {
-        _selectedObstacle = obsIdx;
-        _drag = { idx: obsIdx, startWorld: world, startObs: { ...obstaclesFromSite()[obsIdx] } };
-        _canvas.style.cursor = 'grabbing';
-        refresh();
-        return;
-      }
-    }
-
-    if (_mode === 'select' && obsIdx < 0) {
-      _selectedObstacle = -1;
-    }
-
-    const hit = pickRoofAt(world);
-    if (!hit) return;
-
-    if (typeof LayoutRoofs !== 'undefined') LayoutRoofs.setActive(hit.item.id);
-
-    if (_mode.startsWith('place-')) {
-      const key = _mode.replace('place-', '');
-      addObstacleAt(hit.item.id, hit.localX, hit.localY, key);
-      return;
-    }
-
-    refresh();
-  }
-
-  function onPointerMove(e) {
-    if (!_drag || !_canvas || !_lastView) return;
-    e.preventDefault();
-    const pt = canvasCoords(_canvas, e.clientX, e.clientY);
-    const world = PanelLayout3D.unprojectGround(pt.x, pt.y, _lastView.origin, _lastView.scale);
-    const obs = _drag.startObs;
-    const it = _lastView.items.find(i => !obs.roofId || i.id === obs.roofId) || _lastView.items[0];
-    if (!it) return;
-    const dx = world.x - _drag.startWorld.x;
-    const dy = world.y - _drag.startWorld.y;
-    let nx = _drag.startObs.x + dx;
-    let ny = _drag.startObs.y + dy;
-    nx = Math.max(0, Math.min(it.layout.roofW - (obs.w || 0.5), nx));
-    ny = Math.max(0, Math.min(it.layout.roofD - (obs.d || 0.5), ny));
-    syncObstacle(_drag.idx, {
-      x: Math.round(nx * 100) / 100,
-      y: Math.round(ny * 100) / 100,
-    });
-    refresh();
-  }
-
-  function onPointerUp() {
-    if (_drag && typeof SiteSurvey !== 'undefined') {
-      SiteSurvey.renderObstaclesList?.();
-      SiteSurvey.recompute?.();
-    }
-    _drag = null;
-    if (_canvas) _canvas.style.cursor = _mode === 'move' ? 'grab' : 'crosshair';
-  }
-
-  function deleteSelected() {
-    if (_selectedObstacle < 0) return;
-    if (typeof SiteSurvey !== 'undefined' && SiteSurvey.removeObstacle) {
-      SiteSurvey.removeObstacle(_selectedObstacle);
-      _selectedObstacle = -1;
-      refresh();
-    }
-  }
-
-  function attach(canvas) {
-    if (!canvas) return;
-    if (_canvas && _canvas !== canvas) detach(_canvas);
-    else if (_canvas === canvas) detach(canvas);
-    _canvas = canvas;
-    canvas.style.touchAction = 'none';
-    canvas.addEventListener('pointerdown', onPointerDown);
-    canvas.addEventListener('pointermove', onPointerMove);
-    canvas.addEventListener('pointerup', onPointerUp);
-    canvas.addEventListener('pointercancel', onPointerUp);
-    setMode('select');
-    refresh();
-  }
-
-  function detach(canvas) {
-    if (!canvas) return;
-    canvas.removeEventListener('pointerdown', onPointerDown);
-    canvas.removeEventListener('pointermove', onPointerMove);
-    canvas.removeEventListener('pointerup', onPointerUp);
-    canvas.removeEventListener('pointercancel', onPointerUp);
-    if (_canvas === canvas) _canvas = null;
+    _legacyRender(_legacyCanvas);
   }
 
   return {
     PRESETS,
-    render,
-    refresh,
     attach,
     detach,
+    refresh,
     setMode,
+    setView,
     deleteSelected,
     getMode: () => _mode,
+    isWebGL: () => _useWebGL,
   };
 })();
 

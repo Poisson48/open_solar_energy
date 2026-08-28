@@ -1349,10 +1349,10 @@ const SiteSurvey = (() => {
   }
 
   function initScene3D() {
-    const canvas = document.getElementById('site-scene-3d-canvas');
-    if (!canvas || typeof Scene3D === 'undefined') return;
+    const host = document.getElementById('site-scene-3d-host');
+    if (!host || typeof Scene3D === 'undefined') return;
     if (typeof LayoutRoofs !== 'undefined') LayoutRoofs.loadFromAppState?.();
-    Scene3D.attach(canvas);
+    Scene3D.attach(host);
   }
 
   function init() {

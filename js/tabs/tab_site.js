@@ -82,8 +82,8 @@ function initTabSite() {
         <div class="card">
           <div class="card-title">Modèle 3D du site</div>
           <p style="font-size:12px;color:var(--color-text-muted);line-height:1.45;margin:0 0 8px">
-            Visualisez toutes vos toitures (onglet <strong>Implantation</strong>), panneaux et obstacles en 3D isométrique.
-            <strong>Clic</strong> sur une toiture pour la sélectionner · <strong>Glisser</strong> un obstacle pour le déplacer.
+            Vue <strong>3D WebGL</strong> : toitures inclinées, panneaux et obstacles. <strong>Clic gauche</strong> orbite · <strong>molette</strong> zoom · <strong>clic droit</strong> pan.
+            Clic sur une toiture = sélection · modes outils = placer / déplacer les obstacles.
           </p>
           <div class="ose-scene-toolbar" role="toolbar" aria-label="Outils modèle 3D">
             <button type="button" class="ose-scene-tool active" data-scene-mode="select" onclick="Scene3D.setMode('select')">↖ Sélection</button>
@@ -94,8 +94,13 @@ function initTabSite() {
             <button type="button" class="ose-scene-tool" data-scene-mode="place-velux" onclick="Scene3D.setMode('place-velux')">▭ Velux</button>
             <button type="button" class="ose-scene-tool ose-scene-tool-danger" onclick="Scene3D.deleteSelected()">🗑</button>
           </div>
-          <div id="site-scene-3d-wrap" style="position:relative;width:100%;height:360px;border-radius:10px;overflow:hidden;border:1px solid var(--color-border);margin-top:8px">
-            <canvas id="site-scene-3d-canvas" style="display:block;width:100%;height:100%"></canvas>
+          <div class="ose-scene-toolbar" style="margin-top:4px">
+            <button type="button" class="ose-scene-tool" onclick="Scene3D.setView('perspective')">🎥 Perspective</button>
+            <button type="button" class="ose-scene-tool" onclick="Scene3D.setView('top')">⬇ Dessus</button>
+            <button type="button" class="ose-scene-tool" onclick="Scene3D.setView('south')">🧭 Sud</button>
+          </div>
+          <div id="site-scene-3d-wrap" style="position:relative;width:100%;height:400px;border-radius:10px;overflow:hidden;border:1px solid var(--color-border);margin-top:8px">
+            <div id="site-scene-3d-host" class="ose-roof-3d-host" style="width:100%;height:100%"></div>
           </div>
           <p style="margin-top:8px;font-size:11px;color:var(--color-text-muted)">
             Toitures et panneaux : éditez l’<strong>Implantation</strong> (+ Ajouter toiture). Ici : placez les obstacles qui font de l’ombre.
