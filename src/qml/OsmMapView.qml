@@ -292,7 +292,11 @@ Item {
                     const ll = root.screenToLatLon(mouse.x, mouse.y)
                     root.lineLat2 = ll.lat
                     root.lineLon2 = ll.lon
+                    root.hasLine = true
                     lineOverlay.requestPaint()
+                    // recalcul live (azimut / distance) pendant le glisser
+                    root.roofLineChanged(root.lineLat1, root.lineLon1,
+                                         root.lineLat2, root.lineLon2)
                 } else if (mode === "pan") {
                     root.panView(dx, dy)
                 } else {
