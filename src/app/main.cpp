@@ -6,40 +6,18 @@
 #include <QQuickStyle>
 
 #include "appcontroller.h"
+#include "net/osm_tile_provider.h"
 #include "platform.h"
 #include "theme.h"
 
-#ifdef OSE_HAS_WEBENGINE
-#  include <QtWebEngineQuick/qtwebenginequickglobal.h>
-#  include <QWebEngineProfile>
-#  include <QWebEngineSettings>
-#endif
-
 int main(int argc, char* argv[])
 {
-#ifdef OSE_HAS_WEBENGINE
-    // Obligatoire avant QApplication ; ancre aussi le lien WebEngine (--as-needed).
-    QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
-    QtWebEngineQuick::initialize();
-#endif
-
     QApplication app(argc, argv);
     app.setOrganizationName(QStringLiteral("OpenSolarEnergy"));
     app.setApplicationName(QStringLiteral("OpenSolarEnergy"));
     app.setApplicationVersion(QStringLiteral(OSE_APP_VERSION));
-    app.setWindowIcon(QIcon(QStringLiteral(":/web/packaging/open-solar-energy.png")));
+    app.setWindowIcon(QIcon(QStringLiteral(":/packaging/open-solar-energy.png")));
     QQuickStyle::setStyle(QStringLiteral("Material"));
-
-#ifdef OSE_HAS_WEBENGINE
-    // Renforcer la persistance du profil par défaut (localStorage / IndexedDB).
-    // Le WebEngineView utilise aussi un WebEngineProfile nommé dans QML.
-    {
-        QWebEngineProfile* profile = QWebEngineProfile::defaultProfile();
-        profile->setPersistentCookiesPolicy(QWebEngineProfile::ForcePersistentCookies);
-        profile->settings()->setAttribute(QWebEngineSettings::LocalStorageEnabled, true);
-        profile->settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls, true);
-    }
-#endif
 
     app::initNotifications();
 
@@ -56,11 +34,31 @@ int main(int argc, char* argv[])
         });
 
     QQmlApplicationEngine engine;
+    engine.addImageProvider(QStringLiteral("osm"), new ose::OsmTileProvider());
+
     engine.rootContext()->setContextProperty(QStringLiteral("AppController"), &controller);
     engine.rootContext()->setContextProperty(QStringLiteral("Theme"), &theme);
     engine.rootContext()->setContextProperty(QStringLiteral("Updater"), controller.updater());
+    engine.rootContext()->setContextProperty(QStringLiteral("Projects"), controller.projects());
+    engine.rootContext()->setContextProperty(QStringLiteral("SolarMath"), controller.solarMath());
+    engine.rootContext()->setContextProperty(QStringLiteral("Finance"), controller.finance());
+    engine.rootContext()->setContextProperty(QStringLiteral("CableCalc"), controller.cableCalc());
+    engine.rootContext()->setContextProperty(QStringLiteral("Sizing"), controller.sizing());
+    engine.rootContext()->setContextProperty(QStringLiteral("Offgrid"), controller.offgrid());
+    engine.rootContext()->setContextProperty(QStringLiteral("Enedis"), controller.enedis());
+    engine.rootContext()->setContextProperty(QStringLiteral("Inverter"), controller.inverter());
+    engine.rootContext()->setContextProperty(QStringLiteral("Weather"), controller.weather());
+    engine.rootContext()->setContextProperty(QStringLiteral("News"), controller.news());
+    engine.rootContext()->setContextProperty(QStringLiteral("History"), controller.history());
+    engine.rootContext()->setContextProperty(QStringLiteral("PdfExport"), controller.pdf());
+    engine.rootContext()->setContextProperty(QStringLiteral("Share"), controller.share());
+    engine.rootContext()->setContextProperty(QStringLiteral("SiteShade"), controller.siteShade());
+    engine.rootContext()->setContextProperty(QStringLiteral("Hourly"), controller.hourly());
+    engine.rootContext()->setContextProperty(QStringLiteral("Catalog"), controller.catalog());
+    engine.rootContext()->setContextProperty(QStringLiteral("Geocode"), controller.geocode());
+    engine.rootContext()->setContextProperty(QStringLiteral("Pvgis"), controller.pvgis());
 
-    const QUrl url(QStringLiteral("qrc:/OpenSolarEnergy/qml/Main.qml"));
+    const QUrl url(QStringLiteral("qrc:/qt/qml/OpenSolarEnergy/qml/Main.qml"));
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreated, &app,
         [url](QObject* obj, const QUrl& objUrl) {

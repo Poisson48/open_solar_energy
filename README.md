@@ -23,19 +23,20 @@ Téléchargez la dernière version — **[⬇️ Releases](https://github.com/Po
 | **PC / Linux** (x86-64) | `OpenSolarEnergy-*-x86_64.AppImage` | `chmod +x OpenSolarEnergy-*.AppImage && ./OpenSolarEnergy-*.AppImage` |
 | **Android** (arm64) | `opensolarenergy-*-arm64.apk` | Ouvrir l’APK sur le téléphone (autoriser l’installation), ou `adb install -r opensolarenergy-*-arm64.apk` |
 
-L’AppImage embarque Qt et l’interface web : un fichier, aucune dépendance système à installer.
+L’AppImage embarque Qt Quick (interface native QML) : un fichier, aucune dépendance système à installer.
 L’APK est signé avec la clé de publication du projet — les versions suivantes s’installent **par-dessus**, et l’app vous les propose d’elle-même (téléchargement + installation).
 
 | Autre | Notes |
 |---|---|
-| Navigateur (sans install) | `./serve.sh` ou [GitHub Pages](https://poisson48.github.io/open_solar_energy/) |
+| Site / landing | [GitHub Pages](https://poisson48.github.io/open_solar_energy/) — liens de téléchargement |
+| Dev local | `cmake -S . -B build && cmake --build build && ./build/src/opensolarenergy` |
 
 **Mises à jour**
 - Bouton **↻ Mises à jour** sur le hub projets (écran d’accueil) pour vérifier à la demande.
 - **Android** : détection → téléchargement APK → installation in-app.
-- **PC / Linux** : détection d’une version plus récente → ouverture de la page GitHub Release.
+- **PC / Linux** : détection d’une version plus récente → téléchargement / installation AppImage.
 
-> **Sans installation** : cloner le dépôt et lancer `./serve.sh` (Linux/macOS) ou `serve.bat` (Windows), ou ouvrir le [site web](https://poisson48.github.io/open_solar_energy/).
+> L’ancienne UI web est archivée dans `docs/legacy-web/` (hors produit).
 
 ---
 
@@ -198,8 +199,9 @@ Clé de signature Android (une fois) : `bash scripts/make-release-key.sh` puis s
 ### Tests
 
 ```bash
-node tests/run_math_tests.js
-node tests/run_project_tests.mjs
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build build -j"$(nproc)"
+ctest --test-dir build --output-on-failure
 bash scripts/validate-app.sh
 ```
 
@@ -207,26 +209,23 @@ bash scripts/validate-app.sh
 
 ## Architecture
 
-À partir de **v2.0**, l’app native (Linux / Android) est exclusivement un **shell Qt** qui embarque l’UI web (WebEngine / WebView) via `WebBridge` (QWebChannel). Le mode navigateur (`./serve.sh`) reste disponible pour le développement.
+À partir de **v2.1 (beta)**, l’app native (Linux / Android) est **100 % Qt Quick (QML) + C++** — plus de WebEngine / WebView. L’ancienne UI HTML/JS est archivée dans `docs/legacy-web/`. Le site GitHub Pages (`docs/`) reste une landing de téléchargement.
 
 ```
 open_solar_energy/
-├── index.html                 Squelette HTML
-├── css/main.css               Styles
-├── js/                        Logique métier (math, dimensionnement, UI)
-│   ├── app_state.js           État global + APP_VERSION
-│   ├── solar_math.js          Algorithmes solaires (HDKR, NOCT, optimisation)
-│   ├── sizing.js / offgrid_sizing.js
-│   ├── enedis_import.js       Parser CSV/ZIP Enedis
-│   ├── …                      charts, devis, onduleurs, projets, onglets
-├── data/demo_weather.json     Météo démo (4 villes)
-├── src/                       Shell Qt (C++ / QML)
-│   ├── app/                   WebHost, WebBridge, Updater, Platform
-│   └── qml/                   Main, WebContainer, ChangelogDialog
-├── android/                   Manifest + Platform.java (install APK)
-├── scripts/                   build-android, build-appimage, validate-app
-├── tests/run_math_tests.js    Tests unitaires math
-└── .github/workflows/         CI + Release (APK + AppImage)
+├── src/
+│   ├── app/           main, AppController, Updater, Platform, Theme
+│   ├── core/          solar_math, sizing, offgrid, finance, cable, enedis, inverter
+│   ├── persist/       ProjectStore, SnapshotHistory, PdfExport
+│   ├── net/           WeatherClient (Open-Meteo), NewsClient
+│   └── qml/           Hub, barre projet, onglets, dialogs
+├── packaging/         Icônes
+├── data/              Données embarquées
+├── docs/              Landing Pages + legacy-web/
+├── android/           Manifest + Platform.java
+├── scripts/           build-android, build-appimage, validate-app
+├── tests/core/        Qt Test (math / câbles / finance)
+└── .github/workflows/ CI + Release (APK + AppImage)
 ```
 
 ### Modèles de calcul

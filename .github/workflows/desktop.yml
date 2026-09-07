@@ -28,24 +28,24 @@ jobs:
             echo "apt tentatif $i échoué — nouvel essai…"
             sleep $((i * 15))
           done
-          # libxkbcommon-x11 : dépendance du plugin xcb que linuxdeploy embarque.
       - name: Cache Qt
         id: cache-qt
         uses: actions/cache@v5
         with:
           path: ~/Qt
-          key: qt-desktop-${{ env.QT_VER }}-ose-webengine-serialport-v2
+          key: qt-desktop-${{ env.QT_VER }}-ose-native-qml-v1
       - name: Install Qt
         if: steps.cache-qt.outputs.cache-hit != 'true'
         run: |
           python3 -m pip install --user aqtinstall
           python3 -m aqt install-qt linux desktop "$QT_VER" linux_gcc_64 \
-            -m qtwebengine qtwebview qtwebchannel qtpositioning qtserialport -O "$HOME/Qt"
+            -m qtcharts qtsvg -O "$HOME/Qt"
+          sudo apt-get install -y libssl-dev libsecp256k1-dev
       - name: Cache AppImage tools
         uses: actions/cache@v5
         with:
           path: build/appimage-tools
-          key: appimage-tools-ose
+          key: appimage-tools-ose-native
       - name: Build
         env:
           VERSION_NAME: ${{ inputs.version_name }}
@@ -54,6 +54,7 @@ jobs:
           export PATH="$QT_ROOT/bin:$PATH"
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$QT_ROOT"
           cmake --build build --target opensolarenergy -j"$(nproc)"
+          ctest --test-dir build --output-on-failure
           QT_ROOT="$QT_ROOT" VERSION_NAME="$VERSION_NAME" bash scripts/build-appimage.sh
       - uses: actions/upload-artifact@v5
         with:

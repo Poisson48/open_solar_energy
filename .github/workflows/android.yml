@@ -52,13 +52,13 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/Qt
-          key: qt-${{ env.QT_VER }}-ose-android-webview
+          key: qt-${{ env.QT_VER }}-ose-android-native-qml-v1
       - name: Install Qt
         if: steps.cache-qt.outputs.cache-hit != 'true'
         run: |
           python3 -m pip install --user aqtinstall
           python3 -m aqt install-qt linux desktop "$QT_VER" linux_gcc_64 -O "$HOME/Qt"
-          python3 -m aqt install-qt linux android "$QT_VER" android_arm64_v8a -m qtwebview -O "$HOME/Qt"
+          python3 -m aqt install-qt linux android "$QT_VER" android_arm64_v8a -m qtcharts qtsvg -O "$HOME/Qt"
       - name: Vérifier clé release
         if: inputs.require_release_key
         env:

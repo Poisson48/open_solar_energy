@@ -3,70 +3,106 @@ set(OSE_WARN_FLAGS -Wall -Wextra -Wpedantic -Wno-unused-parameter)
 set(OSE_VERSION_NAME "2.0.73" CACHE STRING "Version affichée")
 set(OSE_VERSION_CODE "20066" CACHE STRING "versionCode Android")
 
+find_package(OpenSSL REQUIRED)
+find_library(SECP256K1_LIBRARY NAMES secp256k1)
+find_path(SECP256K1_INCLUDE_DIR NAMES secp256k1.h)
+
 add_library(applib STATIC
     app/theme.cpp
-    app/webbridge.cpp
-    app/webhost.cpp
     app/appcontroller.cpp
     app/updater.cpp
     app/platform.cpp
+    core/solar_math.cpp
+    core/finance.cpp
+    core/cable.cpp
+    core/sizing.cpp
+    core/offgrid.cpp
+    core/enedis_import.cpp
+    core/inverter.cpp
+    core/site_shade.cpp
+    core/hourly.cpp
+    persist/project_store.cpp
+    persist/snapshot_history.cpp
+    persist/pdf_export.cpp
+    persist/project_share.cpp
+    persist/catalog_store.cpp
+    net/weather_client.cpp
+    net/news_client.cpp
+    net/geocode_client.cpp
+    net/pvgis_client.cpp
+    net/osm_tile_provider.cpp
 )
 target_include_directories(applib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(applib PUBLIC Qt6::Core Qt6::Network Qt6::Quick)
+if(SECP256K1_INCLUDE_DIR)
+    target_include_directories(applib PUBLIC ${SECP256K1_INCLUDE_DIR})
+endif()
+target_link_libraries(applib PUBLIC
+    Qt6::Core Qt6::Network Qt6::Quick Qt6::Sql Qt6::Concurrent
+    OpenSSL::SSL OpenSSL::Crypto
+)
+if(SECP256K1_LIBRARY)
+    target_link_libraries(applib PUBLIC ${SECP256K1_LIBRARY})
+else()
+    message(FATAL_ERROR "libsecp256k1 introuvable — apt install libsecp256k1-dev")
+endif()
 if(TARGET Qt6::Widgets)
     target_link_libraries(applib PUBLIC Qt6::Widgets)
     target_compile_definitions(applib PUBLIC OSE_HAS_WIDGETS)
 endif()
+if(TARGET Qt6::Pdf)
+    target_link_libraries(applib PUBLIC Qt6::Pdf)
+endif()
+if(TARGET Qt6::Charts)
+    target_link_libraries(applib PUBLIC Qt6::Charts)
+endif()
 target_compile_options(applib PRIVATE ${OSE_WARN_FLAGS})
 target_compile_definitions(applib PUBLIC OSE_APP_VERSION="${OSE_VERSION_NAME}")
 
-# Web embarqué (APK + fallback hors AppImage)
-file(GLOB_RECURSE OSE_WEB_FILES CONFIGURE_DEPENDS
-    "${CMAKE_SOURCE_DIR}/index.html"
-    "${CMAKE_SOURCE_DIR}/css/*.css"
-    "${CMAKE_SOURCE_DIR}/js/*.js"
-    "${CMAKE_SOURCE_DIR}/js/*/*.js"
-    "${CMAKE_SOURCE_DIR}/js/*/*/*.js"
-    "${CMAKE_SOURCE_DIR}/vendor/*.js"
-    "${CMAKE_SOURCE_DIR}/data/*"
-    "${CMAKE_SOURCE_DIR}/data/*/*"
-    "${CMAKE_SOURCE_DIR}/packaging/*.png"
-    "${CMAKE_SOURCE_DIR}/assets/emoji/*.png"
+set(OSE_ASSET_FILES
+    "${CMAKE_SOURCE_DIR}/packaging/open-solar-energy.png"
+    "${CMAKE_SOURCE_DIR}/packaging/icon-192.png"
+    "${CMAKE_SOURCE_DIR}/packaging/favicon-32.png"
+    "${CMAKE_SOURCE_DIR}/data/demo_weather.json"
 )
-list(FILTER OSE_WEB_FILES EXCLUDE REGEX "/build-")
-list(FILTER OSE_WEB_FILES EXCLUDE REGEX "/build/")
-list(FILTER OSE_WEB_FILES EXCLUDE REGEX "/node_modules/")
-list(FILTER OSE_WEB_FILES EXCLUDE REGEX "/rexel_catalog/pdfs/")
-qt_add_resources(applib "web_assets"
-    PREFIX "/web"
+qt_add_resources(applib "native_assets"
+    PREFIX "/"
     BASE "${CMAKE_SOURCE_DIR}"
-    FILES ${OSE_WEB_FILES}
+    FILES ${OSE_ASSET_FILES}
 )
-
-set(OSE_CAN_BUILD_APP OFF)
-if(ANDROID AND TARGET Qt6::WebView)
-    set(OSE_CAN_BUILD_APP ON)
-elseif(TARGET Qt6::WebEngineQuick OR TARGET Qt6::WebView)
-    set(OSE_CAN_BUILD_APP ON)
-endif()
-
-if(NOT OSE_CAN_BUILD_APP)
-    message(STATUS "Qt WebEngine/WebView absent — installez le module Qt puis reconfigurez")
-    return()
-endif()
 
 qt_add_executable(opensolarenergy app/main.cpp)
 
 set(OSE_QML_FILES
     qml/Main.qml
-    qml/WebContainerMobile.qml
     qml/OseDialog.qml
-    qml/ChangelogDialog.qml
     qml/OseTextField.qml
+    qml/ChangelogDialog.qml
+    qml/HubView.qml
+    qml/ProjectBar.qml
+    qml/TabBarNav.qml
+    qml/WorkspaceView.qml
+    qml/TabLocation.qml
+    qml/TabSizing.qml
+    qml/TabOffgrid.qml
+    qml/TabGrid.qml
+    qml/TabDaily.qml
+    qml/TabSite.qml
+    qml/TabLayout.qml
+    qml/TabCables.qml
+    qml/TabQuote.qml
+    qml/TabIrradiation.qml
+    qml/TabOptimizer.qml
+    qml/TabTracker.qml
+    qml/KpiCard.qml
+    qml/SimpleBarChart.qml
+    qml/NewProjectDialog.qml
+    qml/HistoryDialog.qml
+    qml/MaterielDialog.qml
+    qml/ShareDialog.qml
+    qml/JoinDialog.qml
 )
-if(TARGET Qt6::WebEngineQuick)
-    list(APPEND OSE_QML_FILES qml/WebContainerDesktop.qml)
-endif()
+
+qt_policy(SET QTP0001 NEW)
 
 qt_add_qml_module(opensolarenergy
     URI OpenSolarEnergy
@@ -79,21 +115,13 @@ target_link_libraries(opensolarenergy PRIVATE
     Qt6::Quick Qt6::QuickControls2
 )
 
+if(TARGET Qt6::ChartsQml)
+    target_link_libraries(opensolarenergy PRIVATE Qt6::ChartsQml)
+endif()
+
 if(ANDROID)
-    target_link_libraries(opensolarenergy PRIVATE Qt6::WebView)
     set_property(TARGET opensolarenergy PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_SOURCE_DIR}/android")
     set_property(TARGET opensolarenergy PROPERTY QT_ANDROID_TARGET_SDK_VERSION 34)
     set_property(TARGET opensolarenergy PROPERTY QT_ANDROID_VERSION_NAME "${OSE_VERSION_NAME}")
     set_property(TARGET opensolarenergy PROPERTY QT_ANDROID_VERSION_CODE "${OSE_VERSION_CODE}")
-else()
-    if(TARGET Qt6::WebEngineQuick)
-        # OSE_HAS_WEBENGINE doit être sur applib : AppController (useWebEngine)
-        # y est compilé. PRIVATE sur opensolarenergy ne touchait que main.cpp →
-        # useWebEngine restait false, chargement de QtWebView sans plugin → écran blanc.
-        target_link_libraries(applib PUBLIC Qt6::WebEngineQuick Qt6::WebChannel)
-        target_compile_definitions(applib PUBLIC OSE_HAS_WEBENGINE)
-        target_link_libraries(opensolarenergy PRIVATE Qt6::WebEngineQuick Qt6::WebChannel)
-    else()
-        target_link_libraries(opensolarenergy PRIVATE Qt6::WebView)
-    endif()
 endif()

@@ -1,18 +1,73 @@
 #include "appcontroller.h"
 
 #include "platform.h"
-#include "webbridge.h"
-#include "updater.h"
 
-#include <QByteArray>
-#include <QCoreApplication>
-#include <QDir>
+#include <QDesktopServices>
 #include <QFile>
-#include <QGuiApplication>
+#include <QStandardPaths>
+#include <QUrl>
+#include <cmath>
+#ifdef OSE_HAS_WIDGETS
+#  include <QtWidgets/QFileDialog>
+#endif
 
 namespace app {
 
-AppController::AppController(QObject* parent) : QObject(parent) {}
+AppController::AppController(QObject* parent) : QObject(parent)
+{
+    m_projects = new ose::ProjectStore(this);
+    m_solar = new ose::SolarMath(this);
+    m_finance = new ose::Finance(this);
+    m_cable = new ose::CableCalc(this);
+    m_sizing = new ose::SizingEngine(this);
+    m_offgrid = new ose::OffgridSizing(this);
+    m_enedis = new ose::EnedisImport(this);
+    m_inverter = new ose::InverterSizing(this);
+    m_weather = new ose::WeatherClient(this);
+    m_news = new ose::NewsClient(this);
+    m_history = new ose::SnapshotHistory(this);
+    m_pdf = new ose::PdfExport(this);
+    m_share = new ose::ProjectShare(this);
+    m_siteShade = new ose::SiteShade(this);
+    m_hourly = new ose::HourlyAnalysis(this);
+    m_catalog = new ose::CatalogStore(this);
+    m_geocode = new ose::GeocodeClient(this);
+    m_pvgis = new ose::PvgisClient(this);
+}
+
+bool AppController::init()
+{
+    m_projects->load();
+    m_catalog->load();
+    m_news->refresh();
+    m_updater.check();
+    return true;
+}
+
+void AppController::setCurrentTab(const QString& tab)
+{
+    if (m_currentTab == tab)
+        return;
+    m_currentTab = tab;
+    emit currentTabChanged();
+}
+
+void AppController::openWorkspace()
+{
+    if (m_inWorkspace)
+        return;
+    m_inWorkspace = true;
+    emit inWorkspaceChanged();
+}
+
+void AppController::closeWorkspace()
+{
+    m_projects->closeCurrent();
+    if (!m_inWorkspace)
+        return;
+    m_inWorkspace = false;
+    emit inWorkspaceChanged();
+}
 
 bool AppController::shareFile(const QString& filename, const QString& mime,
                               const QString& base64Data)
@@ -34,6 +89,13 @@ bool AppController::openPdf(const QString& filename, const QString& base64Data)
 bool AppController::openPdfFromUrl(const QString& url)
 {
     return platformOpenPdfFromUrl(url);
+}
+
+bool AppController::openLocalFile(const QString& path)
+{
+    if (path.isEmpty())
+        return false;
+    return QDesktopServices::openUrl(QUrl::fromLocalFile(path));
 }
 
 bool AppController::pickImportFile()
@@ -66,42 +128,67 @@ bool AppController::ensureInstallPermission()
     return platformEnsureInstallPermission();
 }
 
-QString AppController::resolveWebRoot() const
+QString AppController::openFileDialog(const QString& filter)
 {
-    const QByteArray env = qgetenv("OSE_WEB_ROOT");
-    if (!env.isEmpty()) {
-        const QString p = QFileInfo(QString::fromUtf8(env)).canonicalFilePath();
-        if (QFile::exists(p + QStringLiteral("/index.html")))
-            return p;
-    }
-    const QString appDir = QCoreApplication::applicationDirPath();
-    const QStringList candidates = {
-        QDir(appDir).filePath(QStringLiteral("../share/opensolarenergy/web")),
-        QDir(appDir).filePath(QStringLiteral("../../..")),
-        QDir(appDir).filePath(QStringLiteral("../..")),
-        QDir(appDir).filePath(QStringLiteral("..")),
-    };
-    for (const QString& c : candidates) {
-        const QString canon = QFileInfo(c).canonicalFilePath();
-        if (QFile::exists(canon + QStringLiteral("/index.html")))
-            return canon;
-    }
+#ifdef OSE_HAS_WIDGETS
+    return QFileDialog::getOpenFileName(
+        nullptr, QStringLiteral("Ouvrir"),
+        QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation),
+        filter.isEmpty() ? QStringLiteral("Tous (*.*)") : filter);
+#else
+    Q_UNUSED(filter);
     return {};
+#endif
 }
 
-bool AppController::init()
+bool AppController::saveTextFile(const QString& suggestedName, const QString& content)
 {
-    const QString root = resolveWebRoot();
-    if (!m_host.start(root))
+#ifdef OSE_HAS_WIDGETS
+    const QString path = QFileDialog::getSaveFileName(
+        nullptr, QStringLiteral("Enregistrer"),
+        QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + QLatin1Char('/')
+            + suggestedName,
+        QStringLiteral("Tous (*.*)"));
+    if (path.isEmpty())
         return false;
-    m_webUrl = m_host.baseUrl();
-    emit webUrlChanged();
-    QObject::connect(&m_bridge, &WebBridge::checkUpdatesRequested,
-                     &m_updater, &Updater::check);
-    QObject::connect(&m_bridge, &WebBridge::startUpdateRequested,
-                     &m_updater, &Updater::startUpdate);
-    m_updater.check();
+    QFile f(path);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        return false;
+    f.write(content.toUtf8());
     return true;
+#else
+    Q_UNUSED(suggestedName);
+    Q_UNUSED(content);
+    return false;
+#endif
+}
+
+bool AppController::handleBack()
+{
+    if (m_inWorkspace) {
+        closeWorkspace();
+        return true;
+    }
+    return false;
+}
+
+QVariantMap AppController::latLonToTile(double lat, double lon, int zoom) const
+{
+    const double latRad = lat * M_PI / 180.0;
+    const int n = 1 << zoom;
+    const int x = int(std::floor((lon + 180.0) / 360.0 * n));
+    const int y = int(std::floor((1.0 - std::log(std::tan(latRad) + 1.0 / std::cos(latRad)) / M_PI)
+                                 / 2.0 * n));
+    return {{QStringLiteral("x"), x}, {QStringLiteral("y"), y}, {QStringLiteral("z"), zoom}};
+}
+
+QVariantMap AppController::tileToLatLon(int x, int y, int zoom) const
+{
+    const int n = 1 << zoom;
+    const double lon = x / double(n) * 360.0 - 180.0;
+    const double latRad = std::atan(std::sinh(M_PI * (1 - 2.0 * y / n)));
+    const double lat = latRad * 180.0 / M_PI;
+    return {{QStringLiteral("lat"), lat}, {QStringLiteral("lon"), lon}};
 }
 
 } // namespace app

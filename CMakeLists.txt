@@ -6,11 +6,13 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(ANDROID)
-    find_package(Qt6 REQUIRED COMPONENTS Core Network Quick QuickControls2 WebView)
-    find_package(Qt6 OPTIONAL_COMPONENTS Widgets)
+    find_package(Qt6 REQUIRED COMPONENTS
+        Core Network Quick QuickControls2 Sql Concurrent)
+    find_package(Qt6 OPTIONAL_COMPONENTS Widgets Charts ChartsQml Pdf)
 else()
-    find_package(Qt6 REQUIRED COMPONENTS Core Network Quick QuickControls2 Widgets Test)
-    find_package(Qt6 OPTIONAL_COMPONENTS WebEngineQuick WebChannel WebView)
+    find_package(Qt6 REQUIRED COMPONENTS
+        Core Network Quick QuickControls2 Widgets Test Sql Concurrent)
+    find_package(Qt6 OPTIONAL_COMPONENTS Charts ChartsQml Pdf PdfWidgets)
 endif()
 
 qt_standard_project_setup()
