@@ -166,21 +166,26 @@ ApplicationWindow {
             }
         }
 
-        StackLayout {
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            currentIndex: AppController.inWorkspace ? 1 : 0
 
             HubView {
+                anchors.fill: parent
+                visible: !AppController.inWorkspace
                 onRequestNewProject: newProjectDialog.open()
                 onRequestJoin: joinDialog.open()
             }
 
-            WorkspaceView {
-                onRequestHistory: historyDialog.open()
-                onRequestClose: AppController.closeWorkspace()
-                onRequestMateriel: materielDialog.open()
-                onRequestShare: shareDialog.open()
+            Loader {
+                anchors.fill: parent
+                active: AppController.inWorkspace
+                sourceComponent: WorkspaceView {
+                    onRequestHistory: historyDialog.open()
+                    onRequestClose: AppController.closeWorkspace()
+                    onRequestMateriel: materielDialog.open()
+                    onRequestShare: shareDialog.open()
+                }
             }
         }
     }

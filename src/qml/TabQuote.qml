@@ -24,7 +24,10 @@ Flickable {
             id: clientField
             Layout.fillWidth: true
             placeholderText: "Client"
-            text: Projects.currentProject.client || ""
+            text: {
+                const c = Projects.currentProject.client
+                return (typeof c === "string") ? c : ""
+            }
         }
 
         Repeater {
