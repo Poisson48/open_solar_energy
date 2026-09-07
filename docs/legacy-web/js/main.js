@@ -60,11 +60,21 @@ function refreshJourneyNavLabels() {
 function goNextPrimaryTab() {
   const id = peekNextPrimaryTab();
   if (!id) return null;
-  if (typeof activateTab === 'function') activateTab(id);
-  if (typeof writeInstallToTab === 'function') writeInstallToTab(id);
+  switchToTab(id);
   return id;
 }
 window.goNextPrimaryTab = goNextPrimaryTab;
+
+/** Changement d’onglet avec sync install (read prev → activate → write new). */
+function switchToTab(tab) {
+  if (!tab) return;
+  const prev = AppState.activeTab
+    || document.querySelector('.tab-btn.active')?.dataset?.tab;
+  if (prev && typeof readInstallFromTab === 'function') readInstallFromTab(prev);
+  activateTab(tab);
+  if (typeof writeInstallToTab === 'function') writeInstallToTab(tab);
+}
+window.switchToTab = switchToTab;
 window.refreshJourneyNavLabels = refreshJourneyNavLabels;
 
 function applyInstallationType(type) {
@@ -375,9 +385,19 @@ function activateTab(tab) {
   AppState.activeTab = tab;
   if (tab === 'irradiation') renderIrradiationData();
   if (tab === 'daily') HourlyModule.autoComputeIfReady();
-  if (tab === 'layout' && typeof renderPanelLayoutTab === 'function') renderPanelLayoutTab();
+  if (tab === 'layout') {
+    if (typeof LayoutRoofs !== 'undefined') {
+      LayoutRoofs.loadFromAppState();
+      LayoutRoofs.renderRoofTabs();
+    }
+    if (typeof renderPanelLayoutTab === 'function') renderPanelLayoutTab();
+    if (typeof SiteSurvey !== 'undefined' && SiteSurvey.recompute) SiteSurvey.recompute();
+  }
   if (tab === 'site' && typeof SiteSurvey !== 'undefined') {
     SiteSurvey.loadFromAppState();
+    if (typeof LayoutRoofs !== 'undefined') LayoutRoofs.loadFromAppState();
+    if (typeof SiteSurvey.initScene3D === 'function') SiteSurvey.initScene3D();
+    else if (typeof Scene3D !== 'undefined') Scene3D.refresh?.();
     // Ancien projet : points sans profil 30 min → recalcul + persist
     const st = SiteSurvey.getState?.();
     if (st?.points?.length && !st.halfHourlyKeep) SiteSurvey.recompute();
@@ -389,6 +409,7 @@ function activateTab(tab) {
     else if (typeof updateDemoPrefillNote === 'function') updateDemoPrefillNote();
   }
   if (tab === 'cables' && typeof CablesUI !== 'undefined') CablesUI.prefill();
+  if (tab === 'tracker' && typeof prefillTrackerFromProject === 'function') prefillTrackerFromProject();
   if (tab === 'location') {
     // Leaflet doit recalculer la taille hors sidebar
     setTimeout(() => {
@@ -407,12 +428,7 @@ function initTabs() {
   const btns = [...document.querySelectorAll('.tab-btn[data-tab]')];
   btns.forEach((btn) => {
     btn.setAttribute('tabindex', btn.classList.contains('active') ? '0' : '-1');
-    btn.addEventListener('click', () => {
-      const prev = AppState.activeTab;
-      readInstallFromTab(prev);
-      activateTab(btn.dataset.tab);
-      writeInstallToTab(btn.dataset.tab);
-    });
+    btn.addEventListener('click', () => switchToTab(btn.dataset.tab));
     btn.addEventListener('keydown', (e) => {
       const visible = btns.filter(b => b.style.display !== 'none');
       const vi = visible.indexOf(btn);
@@ -424,17 +440,38 @@ function initTabs() {
       if (target) {
         e.preventDefault();
         target.focus();
-        const prev = AppState.activeTab;
-        readInstallFromTab(prev);
-        activateTab(target.dataset.tab);
-        writeInstallToTab(target.dataset.tab);
+        switchToTab(target.dataset.tab);
       }
     });
   });
 }
 
+// ── Thème clair / sombre ─────────────────────────────────────
+function getStoredTheme() {
+  try { return localStorage.getItem('ose-theme') || ''; } catch (_) { return ''; }
+}
+function applyTheme(theme) {
+  const t = theme === 'dark' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
+  const btn = document.getElementById('btn-theme-toggle');
+  if (btn) btn.textContent = t === 'dark' ? '☀️' : '🌙';
+  try { localStorage.setItem('ose-theme', t); } catch (_) {}
+}
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme');
+  applyTheme(cur === 'dark' ? 'light' : 'dark');
+}
+function initTheme() {
+  const stored = getStoredTheme();
+  if (stored) applyTheme(stored);
+  else if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) applyTheme('dark');
+}
+window.toggleTheme = toggleTheme;
+window.applyTheme = applyTheme;
+
 // ── Point d'entrée ───────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
+  initTheme();
   // Hub visible dès que possible (même si le reste échoue)
   try {
     if (typeof seedDemoProject === 'function') seedDemoProject();

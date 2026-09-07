@@ -161,9 +161,12 @@ const OffgridSizing = (() => {
     let deficit_days = 0, deficit_kwh = 0, surplus_kwh = 0;
 
     for (let d = 0; d < days; d++) {
+      // Variation jour-à-jour (nuages) : même profil horaire, échelle PV différente
+      const cloudRaw = Math.sin((month * 31 + d + 1) * 0.73) * Math.cos((d + 3) * 0.41);
+      const dayScale = Math.max(0.12, Math.min(1.0, 0.62 + 0.38 * (0.5 + 0.5 * cloudRaw)));
       let day_deficit = 0;
       for (let h = 0; h < 24; h++) {
-        const balance = pvH[h] - consoH[h];
+        const balance = pvH[h] * dayScale - consoH[h];
         if (balance >= 0) {
           const room   = Math.max(0, C_usable - soc);
           const stored = Math.min(balance * eta, room);
@@ -276,10 +279,19 @@ const OffgridSizing = (() => {
 
     const pvTech = site.tech || (typeof AppState !== 'undefined' && AppState.install?.tech) || 'crystSi';
 
-    // Pré-calcul irradiation inclinée
-    const monthlyHtilt = weatherData.map((m, i) =>
+    if (typeof LayoutRoofs !== 'undefined') LayoutRoofs.saveActiveFromForm?.();
+    const productionRoofs = typeof LayoutRoofs !== 'undefined'
+      ? LayoutRoofs.getProductionRoofs()
+      : [];
+    const useMultiRoofProduction = productionRoofs.length > 0;
+
+    let monthlyHtilt = weatherData.map((m, i) =>
       SolarMath.tiltedIrradiation(m.GHI, m.DHI, lat, site.tilt, site.azimuth, i+1)
     );
+    if (useMultiRoofProduction) {
+      const weighted = LayoutRoofs.weightedMonthlyHtilt(lat, weatherData, site.panelWattPeak || 400);
+      if (weighted) monthlyHtilt = weighted;
+    }
 
     // Consommation journalière par mois (Wh/j)
     let dailyConso = Array.from({length:12}, (_, i) => conso.dailyWh[i] || conso.dailyWh[0]);
@@ -360,19 +372,35 @@ const OffgridSizing = (() => {
     const daysArr = yearForDays ? getMonthlyDays(yearForDays) : DAYS.slice();
     let pvSlotsFlat = null;
     const hourlyWx = (typeof AppState !== 'undefined') ? AppState.hourlyWeatherData : null;
-    if (hourlyWx?.ghi?.length >= 24 * 365) {
-      pvSlotsFlat = SolarMath.buildYearPvSlots(
-        hourlyWx, site.tilt, site.azimuth, losses, pvTech, lat,
-        (typeof AppState !== 'undefined' && AppState.location?.lon) || 0
-      );
-    } else {
-      const monthlyProfs = PvProfiles.buildMonthlyProfiles(weatherData, monthlyHtilt, losses, site.tilt, site.azimuth, lat, pvTech);
-      pvSlotsFlat = PvProfiles.flattenToYear(monthlyProfs, daysArr);
+    const siteShade = (typeof AppState !== 'undefined') ? AppState.siteSurvey : null;
+    const hasHourlyWx = !!(hourlyWx?.ghi?.length >= 24 * 365);
+
+    if (useMultiRoofProduction && typeof PvProfiles.buildMultiRoofProfilePerKwc === 'function') {
+      pvSlotsFlat = PvProfiles.buildMultiRoofProfilePerKwc({
+        roofs: productionRoofs,
+        weatherData,
+        lat,
+        lon: (typeof AppState !== 'undefined' && AppState.location?.lon) || 0,
+        losses,
+        tech: pvTech,
+        panelWp: site.panelWattPeak || 400,
+        daysArr,
+        siteShade,
+        hourlyWx: hasHourlyWx ? hourlyWx : null,
+      });
     }
-    PvProfiles.applySiteShade(
-      pvSlotsFlat, daysArr,
-      (typeof AppState !== 'undefined') ? AppState.siteSurvey : null
-    );
+    if (!pvSlotsFlat) {
+      if (hasHourlyWx) {
+        pvSlotsFlat = SolarMath.buildYearPvSlots(
+          hourlyWx, site.tilt, site.azimuth, losses, pvTech, lat,
+          (typeof AppState !== 'undefined' && AppState.location?.lon) || 0
+        );
+      } else {
+        const monthlyProfs = PvProfiles.buildMonthlyProfiles(weatherData, monthlyHtilt, losses, site.tilt, site.azimuth, lat, pvTech);
+        pvSlotsFlat = PvProfiles.flattenToYear(monthlyProfs, daysArr);
+      }
+      PvProfiles.applySiteShade(pvSlotsFlat, daysArr, siteShade);
+    }
 
     const monthlyKwhFromDaily = dailyConso.map((whDay, i) => (whDay / 1000) * (daysArr[i] || 30));
     let loadSlots;

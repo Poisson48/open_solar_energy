@@ -124,4 +124,32 @@
         Vert ≥95%, Orange ≥80%, Rouge &lt;80%.
       </p>`;
   };
+
+  /** Barres : conso journalière moyenne par mois (Wh/j) — après import Enedis. */
+  Charts.renderOffgridConsoMonthly = function (canvasId) {
+    Charts.destroy(canvasId);
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const whPerDay = Array.from({ length: 12 }, (_, i) =>
+      parseFloat(document.getElementById(`og2-day-${i + 1}`)?.value) || 0
+    );
+    if (!whPerDay.some(v => v > 0)) return;
+    new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: MONTH_NAMES,
+        datasets: [{
+          label: 'Conso moy. (Wh/j)',
+          data: whPerDay,
+          backgroundColor: 'rgba(21,101,192,0.7)',
+          borderRadius: 3,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { title: { display: true, text: 'Wh/jour' } } },
+      },
+    });
+  };
 })();

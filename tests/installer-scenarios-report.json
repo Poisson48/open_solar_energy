@@ -1,6 +1,6 @@
 {
-  "fails": 0,
-  "passed": 45,
+  "fails": 1,
+  "passed": 44,
   "suiteResults": [
     {
       "scenario": "1. Grid sans batterie",
@@ -16,7 +16,7 @@
     },
     {
       "scenario": "4. Démo depuis hub",
-      "ok": true
+      "ok": false
     },
     {
       "scenario": "5. Persistance port fixe 18765",
@@ -41,7 +41,12 @@
       "severity": "info",
       "label": "calcul auto lancé au chargement (simple info, pas une exigence)",
       "detail": "false"
+    },
+    {
+      "severity": "fail",
+      "label": "aucune erreur JS pendant chargement démo + navigation onglets (\"spam\")",
+      "detail": "Access to fetch at 'https://github.com/Poisson48/open_solar_energy/releases.atom' from origin 'http://127.0.0.1:44815' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. | Failed to load resource: net::ERR_FAILED"
     }
   ],
-  "at": "2026-08-27T14:28:01.710Z"
+  "at": "2026-08-28T11:48:52.854Z"
 }

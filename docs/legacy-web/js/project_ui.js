@@ -148,6 +148,13 @@ function loadProject(id) {
   if (typeof SiteSurvey !== 'undefined') SiteSurvey.loadFromAppState();
 
   restoreFormState(project.formState);
+  if (typeof LayoutRoofs !== 'undefined') {
+    if (project.layoutRoofs) LayoutRoofs.restore(project.layoutRoofs);
+    else LayoutRoofs.loadFromAppState();
+    if (document.getElementById('tab-layout') && typeof renderPanelLayoutTab === 'function')
+      renderPanelLayoutTab();
+  }
+  if (typeof restoreEnedisToSizingFields === 'function') restoreEnedisToSizingFields();
 
   if (typeof restoreLocationSiteStatusUI === 'function')
     restoreLocationSiteStatusUI();
@@ -194,6 +201,7 @@ function loadProject(id) {
     updateDemoPrefillNote();
     if (typeof restoreCalcResultsFromProject === 'function')
       restoreCalcResultsFromProject(project);
+    if (typeof updateOffgridConsoUI === 'function') updateOffgridConsoUI();
     AppState._restoringProject = false;
   }, 100);
 }
@@ -593,7 +601,10 @@ function renderProjectsList(queryOrId = '', maybeQuery) {
       ? `<span style="font-size:11px;font-weight:400;color:var(--color-text-muted);margin-left:4px">(actif)</span>`
       : '';
     return `
-    <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 0;border-bottom:1px solid var(--color-border)${isCurrent ? ';background:var(--color-surface2);margin:0 -8px;padding:12px 8px;border-radius:8px' : ''}">
+    <div class="ose-project-card" role="listitem" data-project-id="${p.id}" tabindex="0"
+      style="display:flex;align-items:flex-start;gap:10px;padding:12px 0;border-bottom:1px solid var(--color-border)${isCurrent ? ';background:var(--color-surface2);margin:0 -8px;padding:12px 8px;border-radius:8px' : ''}"
+      onclick="if(event.target.closest('button'))return;loadProject('${p.id}')"
+      onkeydown="if(event.key==='Enter'&&!event.target.closest('button'))loadProject('${p.id}')">
       <div style="flex:1;min-width:0">
         <div style="font-weight:600;font-size:14px${isCurrent ? ';color:var(--color-accent)' : ''}">${_escHtml(p.name)}${demoTag}${clientName}${activeTag}</div>
         <div style="font-size:11px;color:var(--color-text-muted);margin-top:3px">${loc ? _escHtml(loc) + ' · ' : ''}${date}${kwh ? ' · ' + kwh : ''}${ppeak}${cost}</div>

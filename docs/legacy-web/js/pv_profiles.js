@@ -143,9 +143,28 @@ const PvProfiles = (() => {
     return profilesOrFlat;
   }
 
-  /** Applique ombrage site : temporel si dispo, sinon forfait mensuel. */
+  /** Applique ombrage site : profil/jour si dispo, sinon demi-heure, sinon mensuel. */
   function applySiteShade(profilesOrFlat, daysArr, siteSurvey) {
     if (!siteSurvey) return profilesOrFlat;
+    if (siteSurvey.halfHourlyKeepByDay?.length === 12 && daysArr
+        && profilesOrFlat && typeof profilesOrFlat.length === 'number'
+        && typeof ShadingEngine !== 'undefined' && ShadingEngine.keepForDay) {
+      let di = 0;
+      let dayOfYear = 0;
+      for (let m = 0; m < 12; m++) {
+        const n = daysArr[m] || 0;
+        for (let d = 0; d < n; d++, di++) {
+          dayOfYear++;
+          const keep = ShadingEngine.keepForDay(siteSurvey.halfHourlyKeepByDay, m + 1, d + 1);
+          if (!keep) continue;
+          const base = di * 48;
+          for (let s = 0; s < 48; s++) {
+            profilesOrFlat[base + s] *= Math.max(0, Math.min(1, keep[s]));
+          }
+        }
+      }
+      return profilesOrFlat;
+    }
     if (siteSurvey.halfHourlyKeep?.length === 12)
       return applyTemporalShade(profilesOrFlat, daysArr, siteSurvey.halfHourlyKeep);
     if (siteSurvey.monthlyLoss?.length === 12)
@@ -294,9 +313,56 @@ const PvProfiles = (() => {
     return flat;
   }
 
+  /**
+   * Profil PV annuel normalisé par kWc pour un parc multi-toitures.
+   * Chaque toiture contribue selon sa part de panneaux (ex. 10 pan Sud + 5 pan Est).
+   * @returns {Float32Array|null} kWh/kWc/slot pour l’ensemble du parc, ou null si pas de toitures actives
+   */
+  function buildMultiRoofProfilePerKwc(opts = {}) {
+    const {
+      roofs, weatherData, lat, lon = 0,
+      losses = 14, tech = 'crystSi', panelWp = 400,
+      daysArr, siteShade, hourlyWx,
+    } = opts;
+    if (!Array.isArray(roofs) || !roofs.length || !Array.isArray(weatherData) || !daysArr) return null;
+
+    const active = roofs.filter(r => (r.nPanels || 0) > 0);
+    if (!active.length) return null;
+
+    const panelWpN = panelWp || 400;
+    const totalWp = active.reduce((s, r) => s + r.nPanels * panelWpN, 0);
+    if (totalWp <= 0) return null;
+
+    const totalDays = daysArr.reduce((s, d) => s + d, 0);
+    const combined = new Float32Array(totalDays * 48);
+
+    for (const roof of active) {
+      const share = (roof.nPanels * panelWpN) / totalWp;
+      const tilt = roof.tilt ?? 30;
+      const azimuth = roof.azimuth ?? 0;
+      let flatPerKwc;
+
+      if (hourlyWx?.ghi?.length >= 24 * 365 && typeof SolarMath?.buildYearPvSlots === 'function') {
+        flatPerKwc = SolarMath.buildYearPvSlots(hourlyWx, tilt, azimuth, losses, tech, lat, lon);
+      } else {
+        const monthlyHtilt = weatherData.map((m, i) =>
+          SolarMath.tiltedIrradiation(m.GHI, m.DHI, lat, tilt, azimuth, i + 1));
+        const monthlyProfs = buildMonthlyProfiles(weatherData, monthlyHtilt, losses, tilt, azimuth, lat, tech);
+        flatPerKwc = flattenToYear(monthlyProfs, daysArr);
+      }
+      applySiteShade(flatPerKwc, daysArr, siteShade);
+
+      for (let i = 0; i < combined.length && i < flatPerKwc.length; i++) {
+        combined[i] += flatPerKwc[i] * share;
+      }
+    }
+    return combined;
+  }
+
   return {
     buildMonthlyProfiles,
     flattenToYear,
+    buildMultiRoofProfilePerKwc,
     applyMonthlyShade,
     applyTemporalShade,
     applySiteShade,

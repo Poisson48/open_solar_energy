@@ -115,6 +115,10 @@ function createNewProject(event) {
   prefillClientInQuote();
   if (typeof saveCurrentProject === 'function') saveCurrentProject();
   else showToast(`✓ Projet "${name}" créé`);
+  if (typeof switchToTab === 'function') switchToTab('location');
+  else if (typeof activateTab === 'function') activateTab('location');
+  const typeLabel = { grid: 'réseau', hybrid: 'hybride', offgrid: 'autonome' }[AppState.installationType] || 'réseau';
+  showToast(`Étape 1 : placez le site sur la carte et importez la météo. Projet ${typeLabel} — import Enedis recommandé.`, 'info');
 }
 
 // ══════════════════════════════════════════════════════════════

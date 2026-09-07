@@ -95,6 +95,63 @@ function persistCurrentProjectQuiet(reason) {
 // ══════════════════════════════════════════════════════════════
 //  CAPTURE / RESTAURATION FORMULAIRES
 // ══════════════════════════════════════════════════════════════
+
+/** Recharge sz-kwh-* depuis AppState.monthlyKwh ou profil Enedis horaire. */
+function restoreEnedisToSizingFields() {
+  const hasKwh = Array.from({ length: 12 }, (_, i) =>
+    parseFloat(document.getElementById(`sz-kwh-${i + 1}`)?.value) || 0
+  ).some(v => v > 0);
+  if (hasKwh) return;
+
+  let monthly = AppState.monthlyKwh?.slice?.();
+  if ((!monthly || !monthly.some(v => v > 0)) && AppState.hourlyEnedisData?.halfHourly?.length
+      && typeof HourlyModule !== 'undefined') {
+    monthly = Array.from({ length: 12 }, (_, i) => {
+      const profile = HourlyModule.getHourlyConsumptionProfile(i + 1);
+      const kwhPerDay = profile.reduce((s, v) => s + v, 0);
+      const days = (AppState.enedisYear && typeof getMonthlyDays === 'function')
+        ? getMonthlyDays(AppState.enedisYear)[i]
+        : DAYS_IN_MONTH[i];
+      return Math.round(kwhPerDay * days);
+    });
+    AppState.monthlyKwh = monthly.slice();
+  }
+  if (!monthly?.some(v => v > 0)) return;
+
+  monthly.forEach((kwh, i) => {
+    const el = document.getElementById(`sz-kwh-${i + 1}`);
+    if (el) el.value = kwh;
+  });
+  if (AppState.monthlyKwhHp) {
+    const tariffEl = document.getElementById('sz-tariff');
+    if (tariffEl) {
+      tariffEl.value = 'hphc';
+      tariffEl.dispatchEvent(new Event('change'));
+    }
+  }
+  document.getElementById('sz-kwh-1')?.dispatchEvent(new Event('input'));
+}
+
+function _layoutRoofsSignature() {
+  const roofs = (typeof LayoutRoofs !== 'undefined' && LayoutRoofs.getRoofs)
+    ? LayoutRoofs.getRoofs()
+    : (AppState.layoutRoofs?.roofs || []);
+  return roofs.map(r =>
+    `${r.id}:${Math.round(r.nPanels || 0)}:${r.tilt ?? 30}:${r.azimuth ?? 0}`
+  ).join('|');
+}
+
+function _contextCompatible(savedCtx, nowCtx) {
+  if (!savedCtx || savedCtx === nowCtx) return true;
+  try {
+    const a = JSON.parse(savedCtx);
+    const b = JSON.parse(nowCtx);
+    return a.lat === b.lat && a.lon === b.lon && a.install === b.install
+      && a.hourlySlots === b.hourlySlots && a.year === b.year
+      && (a.layoutRoofs || '') === (b.layoutRoofs || '');
+  } catch (_) { return false; }
+}
+
 function captureFormState() {
   if (typeof QuoteLines !== 'undefined') QuoteLines.sync();
   const fields = {};
@@ -164,6 +221,7 @@ function sizingContextFingerprint() {
     hp,
     hourlyWx: hwSig,
     siteShade: shade,
+    layoutRoofs: _layoutRoofsSignature(),
   });
 }
 
@@ -221,6 +279,7 @@ function captureCalcResults() {
       annual:      AppState.lastOffgridSizingAnnual,
       techKey,
       hourly:      !!AppState.lastOffgridSizingHourly,
+      loadSource:  AppState.lastOffgridSizingLoadSource || null,
     };
   }
   return Object.keys(out).length ? out : null;
@@ -271,7 +330,7 @@ function refreshSizingValidity() {
     try {
       const cur = SizingEngine.readFormInput();
       same = _stableJson(cur) === _stableJson(AppState.lastSizingInput)
-        && (AppState.lastSizingContext || '') === ctxNow;
+        && _contextCompatible(AppState.lastSizingContext || '', ctxNow);
     } catch (_) { same = false; }
     if (!same) clearGridSizingResults('stale');
   }
@@ -282,7 +341,7 @@ function refreshSizingValidity() {
     try {
       const cur = OffgridSizing.readFormInput();
       same = _stableJson(cur) === _stableJson(AppState.lastOffgridSizingInput)
-        && (AppState.lastOffgridSizingContext || '') === ctxNow;
+        && _contextCompatible(AppState.lastOffgridSizingContext || '', ctxNow);
     } catch (_) { same = false; }
     if (!same) clearOffgridSizingResults('stale');
   }
@@ -304,7 +363,7 @@ function restoreCalcResultsFromProject(project) {
       const cur = typeof SizingEngine !== 'undefined' ? SizingEngine.readFormInput() : null;
       ok = !!cur
         && _stableJson(cur) === _stableJson(cr.sizing.input)
-        && (cr.sizing.context || '') === ctxNow;
+        && _contextCompatible(cr.sizing.context || '', ctxNow);
     } catch (_) { ok = false; }
     if (ok) {
       const annual = (cr.sizing.input.bill?.monthlyKwh || []).reduce((s, k) => s + (k || 0), 0);
@@ -323,6 +382,7 @@ function restoreCalcResultsFromProject(project) {
     AppState.lastOffgridSizingContext     = cr.offgrid.context || null;
     AppState.lastOffgridSizingAnnual      = cr.offgrid.annual;
     AppState.lastOffgridSizingHourly      = !!cr.offgrid.hourly;
+    AppState.lastOffgridSizingLoadSource  = cr.offgrid.loadSource || null;
     const techKey = cr.offgrid.techKey || 'lfp';
     AppState.lastOffgridSizingTech = (typeof OffgridSizing !== 'undefined'
       && OffgridSizing.BATTERY_TECH?.[techKey])
@@ -333,7 +393,7 @@ function restoreCalcResultsFromProject(project) {
       const cur = typeof OffgridSizing !== 'undefined' ? OffgridSizing.readFormInput() : null;
       ok = !!cur
         && _stableJson(cur) === _stableJson(cr.offgrid.input)
-        && (cr.offgrid.context || '') === ctxNow;
+        && _contextCompatible(cr.offgrid.context || '', ctxNow);
     } catch (_) { ok = false; }
     if (ok) {
       renderOffgridSizingResults(
@@ -341,7 +401,8 @@ function restoreCalcResultsFromProject(project) {
         cr.offgrid.candidates || [],
         AppState.lastOffgridSizingTech,
         cr.offgrid.annual || 0,
-        !!cr.offgrid.hourly
+        !!cr.offgrid.hourly,
+        cr.offgrid.loadSource || AppState.lastOffgridSizingLoadSource
       );
     } else {
       clearOffgridSizingResults('stale');
@@ -414,6 +475,7 @@ function buildProjectData() {
     demoSeedVersion:  existing?.demoSeedVersion,
     // Préserver le partage multi-appareils (clé Nostr)
     share:            existing?.share || undefined,
+    layoutRoofs:      typeof LayoutRoofs !== 'undefined' ? LayoutRoofs.snapshot() : null,
   };
 }
 
@@ -462,6 +524,15 @@ function resetForNewProject() {
     SiteSurvey.persist();
   }
   if (typeof setMapEditEnabled === 'function') setMapEditEnabled(true);
+
+  if (typeof LayoutRoofs !== 'undefined') {
+    AppState.layoutRoofs = { activeId: null, roofs: [LayoutRoofs.defaultRoof()] };
+    LayoutRoofs.ensure();
+    LayoutRoofs.fillFormFromActive();
+    LayoutRoofs.renderRoofTabs();
+  } else {
+    AppState.layoutRoofs = null;
+  }
 
   // 4. Remettre à zéro les labels et statuts secondaires
   const szTotal = document.getElementById('sz-annual-total');

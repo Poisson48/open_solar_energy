@@ -1,7 +1,7 @@
 set(OSE_WARN_FLAGS -Wall -Wextra -Wpedantic -Wno-unused-parameter)
 
-set(OSE_VERSION_NAME "2.0.73" CACHE STRING "Version affichée")
-set(OSE_VERSION_CODE "20066" CACHE STRING "versionCode Android")
+set(OSE_VERSION_NAME "2.0.75" CACHE STRING "Version affichée")
+set(OSE_VERSION_CODE "20075" CACHE STRING "versionCode Android")
 
 find_package(OpenSSL REQUIRED)
 find_library(SECP256K1_LIBRARY NAMES secp256k1)

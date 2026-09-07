@@ -3,6 +3,30 @@
  * Dépend de : app_state.js, charts/, offgrid_sizing.js, solar_math.js
  */
 
+function updateOffgridConsoUI() {
+  const whPerDay = Array.from({ length: 12 }, (_, i) =>
+    parseFloat(document.getElementById(`og2-day-${i + 1}`)?.value) || 0
+  );
+  const hasData = whPerDay.some(v => v > 0);
+  const wrap = document.getElementById('og2-conso-chart-wrap');
+  if (wrap) wrap.style.display = hasData ? '' : 'none';
+  if (hasData && typeof Charts !== 'undefined' && Charts.renderOffgridConsoMonthly) {
+    Charts.renderOffgridConsoMonthly('og2-conso-chart');
+  }
+  const badge = document.getElementById('og2-enedis-badge');
+  if (badge) {
+    const enedis = !!(AppState.hourlyEnedisData?.halfHourly?.length);
+    if (enedis) {
+      const year = AppState.enedisYear || AppState.hourlyEnedisData?.year || '';
+      badge.style.display = '';
+      badge.textContent = `⚡ Profil Enedis 30 min actif${year ? ' (' + year + ')' : ''} — simulation horaire batterie`;
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+}
+window.updateOffgridConsoUI = updateOffgridConsoUI;
+
 function calcOffgridSizing() {
   if (!AppState.weatherData) {
     showToast('Onglet Lieu : importez d’abord la météo (nécessaire au dimensionnement).', 'error');
@@ -34,6 +58,7 @@ function calcOffgridSizing() {
     ? sizingContextFingerprint()
     : null;
   renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, useHourly, loadSource);
+  updateOffgridConsoUI();
 
   // Panneaux + batterie dictés par le calcul → implant / devis
   if (rec && typeof applyOffgridRecommendation === 'function') {
@@ -130,6 +155,11 @@ function renderOffgridSizingResults(rec, allCandidates, tech, annual_conso, hour
     <div class="card" style="border-left:4px solid var(--color-info);margin-bottom:16px">
       <div class="section-header ose-offgrid-rec-head">
         <div class="card-title">💶 Config économique — coût min. pour ${targetPct}&nbsp;% de couverture</div>
+        <button class="btn btn-outline btn-sm"
+          onclick="applyOffgridEconomicRecommendation()"
+          title="Appliquer la config économique au formulaire et au devis">
+          ✓ Appliquer config économique
+        </button>
         <button class="btn btn-outline btn-sm"
           onclick="selectOffgridCandidate(${eco.Ppeak}, ${eco.C_batt_gross})"
           title="Afficher cette config en détail (graphiques + tableau mensuel)">
@@ -388,6 +418,18 @@ function selectOffgridCandidate(ppeak, battKwh) {
  * Figé la recommandation hors-réseau dans le formulaire (nb panneaux + batterie)
  * pour que le devis / recalculs partent de ces valeurs.
  */
+function applyOffgridEconomicRecommendation(opts = {}) {
+  const quiet = !!opts.quiet;
+  const eco = AppState.lastOffgridSizingEconomic;
+  if (!eco?.nPanels) {
+    if (!quiet) showToast('Lancez d\'abord un dimensionnement autonome.', 'warning');
+    return false;
+  }
+  AppState.lastOffgridSizingResult = eco;
+  return applyOffgridRecommendation({ quiet });
+}
+window.applyOffgridEconomicRecommendation = applyOffgridEconomicRecommendation;
+
 function applyOffgridRecommendation(opts = {}) {
   const quiet = !!opts.quiet;
   const rec = AppState.lastOffgridSizingResult;

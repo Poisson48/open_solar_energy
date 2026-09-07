@@ -164,7 +164,16 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
   limitBits.push(`objectif « ${strategyLabel} »`);
   if (targetPct && (strategy === 'autoconso_pct' || strategy === 'bill_coverage_pct'))
     limitBits.push(`cible <strong>${targetPct}&nbsp;%</strong>`);
-  const paramsUsed = `<p class="ose-rec-params">Calcul : ${limitBits.join(' · ')}</p>`;
+  let multiRoofNote = '';
+  if (Array.isArray(rec.multiRoofMix) && rec.multiRoofMix.length) {
+    multiRoofNote = rec.multiRoofMix.map(r =>
+      `${r.nPanels} pan · ${r.name || 'Toiture'} (${r.tilt}° / az ${r.azimuth > 0 ? '+' : ''}${r.azimuth}°)`
+    ).join(' · ');
+    limitBits.push(`production multi-toitures : ${multiRoofNote}`);
+  } else if (typeof LayoutRoofs !== 'undefined' && LayoutRoofs.getRoofs().length > 1) {
+    multiRoofNote = `<p class="ose-goal-hint">Plusieurs toitures configurées — renseignez la répartition de panneaux dans <strong>Implantation</strong> (ex. 10 Sud + 5 Est) avant de dimensionner pour un calcul d’exposition correct.</p>`;
+  }
+  const paramsUsed = `<p class="ose-rec-params">Calcul : ${limitBits.join(' · ')}</p>${multiRoofNote && multiRoofNote.startsWith('<') ? multiRoofNote : ''}`;
 
   const slotBadge = (() => {
     const load = rec.loadSource || (rec.slotLevel ? 'enedis_30min' : 'legacy');
@@ -173,8 +182,9 @@ function renderSizingResults(rec, allCandidates, currentBill, annualConso) {
     if (load === 'enedis_30min') parts.push('Enedis 30 min');
     else if (load === 'day_night') parts.push('Conso jour/nuit');
     else if (load === 'synthetic_diurnal') parts.push('Profil conso 30 min');
-    if (pv === 'hourly_weather') parts.push('Météo horaire');
+    if (pv === 'hourly_weather' || pv === 'hourly_weather_multi_roof') parts.push('Météo horaire');
     else parts.push('Forme PV mensuelle');
+    if (pv === 'monthly_shape_multi_roof' || pv === 'hourly_weather_multi_roof') parts.push('Multi-toitures');
     if (rec.siteShadeApplied) parts.push('Ombrage site');
     const ok = load === 'enedis_30min' && pv === 'hourly_weather';
     return `<span class="ose-rec-badge${ok ? ' ose-rec-badge-ok' : ''}" title="${rec.precisionMode || ''}">${parts.join(' · ')}</span>`;
@@ -339,8 +349,8 @@ function applySizingToGrid() {
   if (nEl) nEl.value = rec.nPanels;
   if (typeof calcGridPanels === 'function') calcGridPanels();
 
-  // Parcours B : après Dim. → Site / Ombrage (pas Devis)
-  if (typeof goNextPrimaryTab === 'function') goNextPrimaryTab();
+  // Parcours B : après Dim. → Site / Ombrage (pas Système PV — déjà appliqué ci-dessus)
+  if (typeof switchToTab === 'function') switchToTab('site');
   else if (typeof activateTab === 'function') activateTab('site');
 
   if (AppState.weatherData && typeof calcGridSystem === 'function') {
