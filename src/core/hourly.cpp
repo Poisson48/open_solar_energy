@@ -53,22 +53,17 @@ QVariantList HourlyAnalysis::simulateDailyBattery(const QVariantList& pvHours,
 
 QVariantList HourlyAnalysis::syntheticLoadProfile(double dailyKwh, double dayShare) const
 {
-    // Profil type résidentiel : pic matin/soir, bas la nuit
-    const double weights[24] = {
-        0.02, 0.015, 0.012, 0.012, 0.015, 0.025, 0.045, 0.06,
-        0.05, 0.04,  0.035, 0.035, 0.04,  0.04,  0.035, 0.035,
-        0.04, 0.055, 0.07,  0.075, 0.065, 0.05,  0.035, 0.025};
-    double sumW = 0;
-    for (double w : weights)
-        sumW += w;
+    // Aligné Hors réseau : nuit 21h–6h, répartition uniforme dans chaque tranche
+    const double dayKwh = dailyKwh * std::clamp(dayShare, 0.0, 1.0);
+    const double nightKwh = dailyKwh - dayKwh;
+    int nDay = 0, nNight = 0;
+    for (int h = 0; h < 24; ++h)
+        ((h >= 21 || h < 6) ? nNight : nDay)++;
+    const double perDay = nDay > 0 ? dayKwh / nDay : 0;
+    const double perNight = nNight > 0 ? nightKwh / nNight : 0;
     QVariantList out;
-    for (int h = 0; h < 24; ++h) {
-        const bool day = h >= 7 && h < 22;
-        const double base = dailyKwh * (weights[h] / sumW);
-        // Ajuste légèrement dayShare
-        const double adj = day ? (dayShare / 0.55) : ((1 - dayShare) / 0.45);
-        out.append(base * adj);
-    }
+    for (int h = 0; h < 24; ++h)
+        out.append((h >= 21 || h < 6) ? perNight : perDay);
     return out;
 }
 
@@ -111,13 +106,14 @@ QVariantMap HourlyAnalysis::analyzeMonth(const QVariantMap& params) const
     const double azimuth = params.value(QStringLiteral("azimuth"), 0).toDouble();
     const double losses = params.value(QStringLiteral("losses"), 14).toDouble();
     const double dailyKwh = params.value(QStringLiteral("dailyKwh"), 12).toDouble();
+    const double dayShare = params.value(QStringLiteral("dayShare"), 0.55).toDouble();
     const double battKwh = params.value(QStringLiteral("battKwh"), 0).toDouble();
     const double dod = params.value(QStringLiteral("dod"), 80).toDouble();
     const QVariantList keep = params.value(QStringLiteral("halfHourlyKeep")).toList();
 
     const QVariantList pv = pvHourlyProfile(lat, month, GHI, DHI, Ppeak, tilt, azimuth, losses,
                                             Tavg, keep);
-    const QVariantList load = syntheticLoadProfile(dailyKwh);
+    const QVariantList load = syntheticLoadProfile(dailyKwh, dayShare);
     const QVariantList sim = battKwh > 0 ? simulateDailyBattery(pv, load, battKwh, dod)
                                          : [&]() {
                                                QVariantList r;
@@ -155,6 +151,42 @@ QVariantMap HourlyAnalysis::analyzeMonth(const QVariantMap& params) const
             {QStringLiteral("grid"), std::round(grid * 100) / 100},
             {QStringLiteral("autoconsoRate"),
              pvTot > 0 ? std::round(ac / pvTot * 1000) / 10 : 0}};
+}
+
+QVariantMap HourlyAnalysis::analyzeYear(const QVariantMap& params) const
+{
+    const QVariantList weather = params.value(QStringLiteral("weatherData")).toList();
+    QVariantList months;
+    double pvY = 0, loadY = 0, acY = 0, surplusY = 0, gridY = 0;
+    for (int m = 1; m <= 12; ++m) {
+        QVariantMap p = params;
+        p.insert(QStringLiteral("month"), m);
+        if (m - 1 < weather.size()) {
+            const QVariantMap w = weather[m - 1].toMap();
+            p.insert(QStringLiteral("GHI"), w.value(QStringLiteral("GHI")));
+            p.insert(QStringLiteral("DHI"), w.value(QStringLiteral("DHI")));
+            p.insert(QStringLiteral("T_avg"), w.value(QStringLiteral("T_avg"), 15));
+        }
+        QVariantMap r = analyzeMonth(p);
+        r.insert(QStringLiteral("month"), m);
+        // Approx jours/mois
+        static const int dim[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+        const int days = dim[m - 1];
+        pvY += r.value(QStringLiteral("pvTotal")).toDouble() * days;
+        loadY += r.value(QStringLiteral("loadTotal")).toDouble() * days;
+        acY += r.value(QStringLiteral("autoconso")).toDouble() * days;
+        surplusY += r.value(QStringLiteral("surplus")).toDouble() * days;
+        gridY += r.value(QStringLiteral("grid")).toDouble() * days;
+        months.append(r);
+    }
+    return {{QStringLiteral("months"), months},
+            {QStringLiteral("pvYear"), std::round(pvY)},
+            {QStringLiteral("loadYear"), std::round(loadY)},
+            {QStringLiteral("autoconsoYear"), std::round(acY)},
+            {QStringLiteral("surplusYear"), std::round(surplusY)},
+            {QStringLiteral("gridYear"), std::round(gridY)},
+            {QStringLiteral("autoconsoRate"),
+             pvY > 0 ? std::round(acY / pvY * 1000) / 10 : 0}};
 }
 
 } // namespace ose

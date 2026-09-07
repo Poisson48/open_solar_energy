@@ -21,6 +21,9 @@ add_library(applib STATIC
     core/inverter.cpp
     core/site_shade.cpp
     core/hourly.cpp
+    core/horizon_engine.cpp
+    core/layout_3d.cpp
+    core/project_pipeline.cpp
     persist/project_store.cpp
     persist/snapshot_history.cpp
     persist/pdf_export.cpp
@@ -30,6 +33,7 @@ add_library(applib STATIC
     net/news_client.cpp
     net/geocode_client.cpp
     net/pvgis_client.cpp
+    net/terrain_client.cpp
     net/osm_tile_provider.cpp
 )
 target_include_directories(applib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -63,6 +67,7 @@ set(OSE_ASSET_FILES
     "${CMAKE_SOURCE_DIR}/packaging/icon-192.png"
     "${CMAKE_SOURCE_DIR}/packaging/favicon-32.png"
     "${CMAKE_SOURCE_DIR}/data/demo_weather.json"
+    "${CMAKE_SOURCE_DIR}/data/rexel_catalog/catalog.json"
 )
 qt_add_resources(applib "native_assets"
     PREFIX "/"
@@ -82,12 +87,14 @@ set(OSE_QML_FILES
     qml/TabBarNav.qml
     qml/WorkspaceView.qml
     qml/TabLocation.qml
+    qml/OsmMapView.qml
     qml/TabSizing.qml
     qml/TabOffgrid.qml
     qml/TabGrid.qml
     qml/TabDaily.qml
     qml/TabSite.qml
     qml/TabLayout.qml
+    qml/SceneRoof3D.qml
     qml/TabCables.qml
     qml/TabQuote.qml
     qml/TabIrradiation.qml
@@ -95,11 +102,23 @@ set(OSE_QML_FILES
     qml/TabTracker.qml
     qml/KpiCard.qml
     qml/SimpleBarChart.qml
+    qml/SeasonShadeChart.qml
+    qml/OffgridHeatmap.qml
     qml/NewProjectDialog.qml
     qml/HistoryDialog.qml
+    qml/PdfPreviewDialog.qml
     qml/MaterielDialog.qml
     qml/ShareDialog.qml
     qml/JoinDialog.qml
+    qml/EditClientDialog.qml
+    qml/controls/OseBtn.qml
+    qml/controls/OseCard.qml
+    qml/controls/OseStep.qml
+    qml/controls/OseInputUnit.qml
+    qml/controls/OseAlert.qml
+    qml/controls/OseToast.qml
+    qml/controls/OseTabPage.qml
+    qml/controls/OseFormResults.qml
 )
 
 qt_policy(SET QTP0001 NEW)
@@ -114,6 +133,14 @@ target_link_libraries(opensolarenergy PRIVATE
     applib
     Qt6::Quick Qt6::QuickControls2
 )
+
+if(TARGET Qt6::Quick3D)
+    target_link_libraries(opensolarenergy PRIVATE Qt6::Quick3D)
+    target_compile_definitions(opensolarenergy PRIVATE OSE_HAS_QUICK3D=1)
+endif()
+if(TARGET Qt6::Quick3DHelpers)
+    target_link_libraries(opensolarenergy PRIVATE Qt6::Quick3DHelpers)
+endif()
 
 if(TARGET Qt6::ChartsQml)
     target_link_libraries(opensolarenergy PRIVATE Qt6::ChartsQml)

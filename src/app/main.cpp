@@ -4,6 +4,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
+#include <QDebug>
 
 #include "appcontroller.h"
 #include "net/osm_tile_provider.h"
@@ -12,6 +13,14 @@
 
 int main(int argc, char* argv[])
 {
+    const bool selfTest = [&]() {
+        for (int i = 1; i < argc; ++i) {
+            if (QString::fromLocal8Bit(argv[i]) == QLatin1String("--self-test"))
+                return true;
+        }
+        return false;
+    }();
+
     QApplication app(argc, argv);
     app.setOrganizationName(QStringLiteral("OpenSolarEnergy"));
     app.setApplicationName(QStringLiteral("OpenSolarEnergy"));
@@ -26,11 +35,24 @@ int main(int argc, char* argv[])
     if (!controller.init())
         return 1;
 
+    if (selfTest) {
+        const QVariantMap r = controller.runSelfTest();
+        const bool ok = r.value(QStringLiteral("ok")).toBool();
+        qInfo().noquote() << "[self-test]" << (ok ? "PASS" : "FAIL") << r;
+        if (!ok) {
+            const QVariantList errs = r.value(QStringLiteral("errors")).toList();
+            for (const QVariant& e : errs)
+                qCritical().noquote() << "  -" << e.toString();
+        }
+        return ok ? 0 : 2;
+    }
+
     QObject::connect(
         &app, &QGuiApplication::applicationStateChanged, &controller,
         [&controller](Qt::ApplicationState state) {
-            if (state == Qt::ApplicationActive)
-                controller.updater()->check();
+            Q_UNUSED(state);
+            Q_UNUSED(controller);
+            // MAJ uniquement sur demande (bouton Hub), pas à chaque focus fenêtre.
         });
 
     QQmlApplicationEngine engine;
@@ -54,9 +76,13 @@ int main(int argc, char* argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("Share"), controller.share());
     engine.rootContext()->setContextProperty(QStringLiteral("SiteShade"), controller.siteShade());
     engine.rootContext()->setContextProperty(QStringLiteral("Hourly"), controller.hourly());
+    engine.rootContext()->setContextProperty(QStringLiteral("Horizon"), controller.horizon());
     engine.rootContext()->setContextProperty(QStringLiteral("Catalog"), controller.catalog());
     engine.rootContext()->setContextProperty(QStringLiteral("Geocode"), controller.geocode());
     engine.rootContext()->setContextProperty(QStringLiteral("Pvgis"), controller.pvgis());
+    engine.rootContext()->setContextProperty(QStringLiteral("Terrain"), controller.terrain());
+    engine.rootContext()->setContextProperty(QStringLiteral("Pipeline"), controller.pipeline());
+    engine.rootContext()->setContextProperty(QStringLiteral("Layout3D"), controller.layout3d());
 
     const QUrl url(QStringLiteral("qrc:/qt/qml/OpenSolarEnergy/qml/Main.qml"));
     QObject::connect(

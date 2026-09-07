@@ -12,7 +12,7 @@ if(ANDROID)
 else()
     find_package(Qt6 REQUIRED COMPONENTS
         Core Network Quick QuickControls2 Widgets Test Sql Concurrent)
-    find_package(Qt6 OPTIONAL_COMPONENTS Charts ChartsQml Pdf PdfWidgets)
+    find_package(Qt6 OPTIONAL_COMPONENTS Charts ChartsQml Pdf PdfWidgets Quick3D Quick3DHelpers)
 endif()
 
 qt_standard_project_setup()

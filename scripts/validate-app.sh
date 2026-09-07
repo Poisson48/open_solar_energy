@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Validation Open Solar Energy — build Qt + ctest
+# Validation Open Solar Energy — build Qt + ctest + self-test
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -17,24 +17,32 @@ echo ""
 echo -e " ${BOLD}Open Solar Energy — validation (QML natif)${RESET}"
 echo -e " ${CYAN}────────────────────────────────${RESET}"
 
+BUILD="$ROOT/build-qt"
 log "Configure + build…"
-if cmake -S "$ROOT" -B "$ROOT/build-qt" -G Ninja -DCMAKE_BUILD_TYPE=Debug \
-   && cmake --build "$ROOT/build-qt" -j"$(nproc)"; then
+if cmake -S "$ROOT" -B "$BUILD" -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+   && cmake --build "$BUILD" -j"$(nproc)"; then
   ok "Build OK"
 else
   err "Build FAILED"
 fi
 
 log "ctest…"
-if ctest --test-dir "$ROOT/build-qt" --output-on-failure; then
+if ctest --test-dir "$BUILD" --output-on-failure; then
   ok "Tests OK"
 else
   err "Tests FAILED"
 fi
 
+log "self-test…"
+if [ -x "$BUILD/src/opensolarenergy" ] && "$BUILD/src/opensolarenergy" --self-test; then
+  ok "Self-test OK"
+else
+  err "Self-test FAILED"
+fi
+
 TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 cat > validation/last-run.json <<EOF
-{"timestamp":"$TS","fail":$FAIL,"root":"$ROOT","mode":"qml-native"}
+{"timestamp":"$TS","fail":$FAIL,"root":"$ROOT","mode":"qml-native","selftest":true}
 EOF
 
 echo ""

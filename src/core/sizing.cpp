@@ -10,11 +10,59 @@ namespace ose {
 
 SizingEngine::SizingEngine(QObject* parent) : QObject(parent) {}
 
+static double monthLoad(const QVariantList& monthlyKwh, int i, double annualLoad)
+{
+    if (i < monthlyKwh.size())
+        return monthlyKwh[i].toDouble();
+    return annualLoad / 12.0;
+}
+
+static double shadeFactor(const QVariantList& monthlyLoss, int i)
+{
+    if (i >= monthlyLoss.size())
+        return 1.0;
+    double loss = monthlyLoss[i].toDouble();
+    if (loss > 1.0)
+        loss /= 100.0;
+    return 1.0 - std::clamp(loss, 0.0, 0.95);
+}
+
+/** Autoconso mensuelle avec batterie hybride (approx jour/nuit). */
+static void hybridMonth(double E_m, double load_m, double dayShare, double battUsableKwh,
+                        double* autoconso, double* injected)
+{
+    const double loadDay = load_m * dayShare;
+    const double loadNight = load_m - loadDay;
+    // PV principalement diurne
+    const double pvDay = E_m * 0.92;
+    const double pvNight = E_m - pvDay;
+
+    double acDay = std::min(pvDay, loadDay);
+    double surplusDay = std::max(0.0, pvDay - loadDay);
+    double deficitDay = std::max(0.0, loadDay - pvDay);
+
+    double charge = std::min(surplusDay, battUsableKwh);
+    double remainingSurplus = surplusDay - charge;
+
+    double acNight = std::min(pvNight, loadNight);
+    double nightNeed = std::max(0.0, loadNight - pvNight);
+    double fromBatt = std::min(nightNeed, charge);
+    acNight += fromBatt;
+
+    // déficit jour non couvert par PV (rare) — pas de discharge matin
+    Q_UNUSED(deficitDay);
+
+    *autoconso = acDay + acNight;
+    *injected = remainingSurplus + std::max(0.0, pvNight - loadNight);
+}
+
 QVariantMap SizingEngine::run(const QVariantMap& input) const
 {
     const double lat = input.value(QStringLiteral("lat"), 46.5).toDouble();
     const QVariantList weather = input.value(QStringLiteral("weatherData")).toList();
     const QVariantList monthlyKwh = input.value(QStringLiteral("monthlyKwh")).toList();
+    const QVariantList monthlyLoss = input.value(QStringLiteral("monthlyLoss")).toList();
+    const double annualLossPct = input.value(QStringLiteral("annualLossPct"), 0).toDouble();
     const double losses = input.value(QStringLiteral("losses"), 14).toDouble();
     const double tilt = input.value(QStringLiteral("tilt"), 30).toDouble();
     const double azimuth = input.value(QStringLiteral("azimuth"), 0).toDouble();
@@ -23,52 +71,105 @@ QVariantMap SizingEngine::run(const QVariantMap& input) const
     const double injectionPrice = input.value(QStringLiteral("injectionPrice"), 0.04).toDouble();
     const QString strategy = input.value(QStringLiteral("strategy"), QStringLiteral("roi")).toString();
     const double coverageTarget = input.value(QStringLiteral("coverageTarget"), 70).toDouble() / 100.0;
+    const double battKwh = input.value(QStringLiteral("battKwh"), 0).toDouble();
+    const double dod = input.value(QStringLiteral("dod"), 80).toDouble();
+    const double dayShare = input.value(QStringLiteral("dayShare"), 0.55).toDouble();
+    const double battCostPerKwh = input.value(QStringLiteral("battCostPerKwh"), 400).toDouble();
+    const bool hybrid = battKwh > 0.05
+                        || input.value(QStringLiteral("installType")).toString() == QLatin1String("hybrid");
 
     double annualLoad = 0;
     for (const QVariant& v : monthlyKwh)
         annualLoad += v.toDouble();
     if (annualLoad <= 0)
+        annualLoad = input.value(QStringLiteral("annualKwh"), 3500).toDouble();
+    if (annualLoad <= 0)
         annualLoad = 3500;
+
+    // Pertes système effectives : pertes techniques + ombrage annuel si pas de courbe mensuelle
+    double effLosses = losses;
+    if (monthlyLoss.isEmpty() && annualLossPct > 0)
+        effLosses = losses + annualLossPct * (1.0 - losses / 100.0);
+
+    const QString limitMode = input.value(QStringLiteral("limitMode"), QStringLiteral("none")).toString();
+    double maxPpeak = 15.0;
+    double minPpeak = 0.1;
+    if (limitMode == QLatin1String("fixed")) {
+        const double fp = input.value(QStringLiteral("fixedPpeak"), 3).toDouble();
+        minPpeak = maxPpeak = std::max(0.1, fp);
+    } else if (limitMode == QLatin1String("roof")) {
+        const double area = input.value(QStringLiteral("roofAreaM2"), 40).toDouble();
+        const double panelArea = input.value(QStringLiteral("panelAreaM2"), 2.0).toDouble();
+        const double panelWp = input.value(QStringLiteral("panelWp"), 400).toDouble();
+        const int n = static_cast<int>(std::floor(area / std::max(0.5, panelArea)));
+        maxPpeak = std::max(0.1, n * panelWp / 1000.0);
+    }
 
     SolarMath sm;
     Finance fin;
     QVariantList candidates;
     QVariantMap best;
+    const double battUsable = battKwh * (dod / 100.0);
 
-    for (int step = 1; step <= 150; ++step) {
+    const int stepMin = static_cast<int>(std::round(minPpeak * 10));
+    const int stepMax = static_cast<int>(std::round(maxPpeak * 10));
+    for (int step = stepMin; step <= stepMax; ++step) {
         const double Ppeak = step * 0.1;
-        const double systemCost = Ppeak * costPerKwc;
+        double systemCost = Ppeak * costPerKwc;
+        if (hybrid && battKwh > 0)
+            systemCost += battKwh * battCostPerKwh;
+
         const QVariantMap annual = sm.gridSystemAnnual({
             {QStringLiteral("lat"), lat},
             {QStringLiteral("weatherData"), weather},
             {QStringLiteral("Ppeak"), Ppeak},
-            {QStringLiteral("losses"), losses},
+            {QStringLiteral("losses"), effLosses},
             {QStringLiteral("tilt"), tilt},
             {QStringLiteral("azimuth"), azimuth},
             {QStringLiteral("systemCost"), systemCost},
             {QStringLiteral("kwhPrice"), priceBase},
         });
-        const double E = annual.value(QStringLiteral("E_annual")).toDouble();
-        // Approximation mensuelle : prorata charge
+        double E = annual.value(QStringLiteral("E_annual")).toDouble();
         double autoconso = 0;
         double injected = 0;
         const QVariantList months = annual.value(QStringLiteral("monthly")).toList();
         for (int i = 0; i < months.size(); ++i) {
-            const double E_m = months[i].toMap().value(QStringLiteral("E_month")).toDouble();
-            const double load_m = i < monthlyKwh.size() ? monthlyKwh[i].toDouble()
-                                                        : annualLoad / 12.0;
-            const double ac = std::min(E_m, load_m);
-            autoconso += ac;
-            injected += std::max(0.0, E_m - load_m);
+            double E_m = months[i].toMap().value(QStringLiteral("E_month")).toDouble();
+            E_m *= shadeFactor(monthlyLoss, i);
+            const double load_m = monthLoad(monthlyKwh, i, annualLoad);
+            if (hybrid && battUsable > 0) {
+                double ac = 0, inj = 0;
+                hybridMonth(E_m, load_m, dayShare, battUsable, &ac, &inj);
+                autoconso += ac;
+                injected += inj;
+            } else {
+                const double ac = std::min(E_m, load_m);
+                autoconso += ac;
+                injected += std::max(0.0, E_m - load_m);
+            }
         }
+        // Recalcule E après shade mensuel
+        if (!monthlyLoss.isEmpty()) {
+            E = 0;
+            for (int i = 0; i < months.size(); ++i) {
+                double E_m = months[i].toMap().value(QStringLiteral("E_month")).toDouble();
+                E += E_m * shadeFactor(monthlyLoss, i);
+            }
+        }
+
         const double savings = autoconso * priceBase + injected * injectionPrice;
         const QVariant payback = fin.calcPayback(systemCost, savings);
         const double coverage = annualLoad > 0 ? autoconso / annualLoad : 0;
         const double autoconsoRate = E > 0 ? autoconso / E : 0;
+        const double incentive = fin.calcFrenchIncentive(Ppeak);
+        const double npv = fin.calcNPV(systemCost, savings,
+                                       {{QStringLiteral("lifetime"), 25},
+                                        {QStringLiteral("discountRate"), 0.03},
+                                        {QStringLiteral("panelDegradation"), 0.005}});
 
         QVariantMap c{
             {QStringLiteral("Ppeak"), std::round(Ppeak * 10) / 10},
-            {QStringLiteral("E_annual"), E},
+            {QStringLiteral("E_annual"), int(std::lround(E))},
             {QStringLiteral("autoconso"), int(std::lround(autoconso))},
             {QStringLiteral("injected"), int(std::lround(injected))},
             {QStringLiteral("savings"), int(std::lround(savings))},
@@ -78,6 +179,11 @@ QVariantMap SizingEngine::run(const QVariantMap& input) const
             {QStringLiteral("payback"), payback},
             {QStringLiteral("PR"), annual.value(QStringLiteral("PR"))},
             {QStringLiteral("LCOE"), annual.value(QStringLiteral("LCOE"))},
+            {QStringLiteral("incentive"), int(std::lround(incentive))},
+            {QStringLiteral("npv"), int(std::lround(npv))},
+            {QStringLiteral("hybrid"), hybrid && battKwh > 0},
+            {QStringLiteral("battKwh"), battKwh},
+            {QStringLiteral("shadeApplied"), !monthlyLoss.isEmpty() || annualLossPct > 0},
         };
         candidates.append(c);
 
@@ -85,8 +191,14 @@ QVariantMap SizingEngine::run(const QVariantMap& input) const
         if (best.isEmpty()) {
             better = true;
         } else if (strategy == QLatin1String("autoconso")) {
-            better = c.value(QStringLiteral("autoconsoRate")).toDouble()
-                     > best.value(QStringLiteral("autoconsoRate")).toDouble();
+            // Maximiser l'autoconsommation absolue (kWh), pas le taux (sinon Ppeak→0)
+            const double ac = c.value(QStringLiteral("autoconso")).toDouble();
+            const double bestAc = best.value(QStringLiteral("autoconso")).toDouble();
+            if (ac > bestAc + 1)
+                better = true;
+            else if (std::abs(ac - bestAc) <= 1)
+                better = c.value(QStringLiteral("autoconsoRate")).toDouble()
+                         > best.value(QStringLiteral("autoconsoRate")).toDouble();
         } else if (strategy == QLatin1String("coverage")) {
             const double cov = c.value(QStringLiteral("coverage")).toDouble() / 100.0;
             const double bestCov = best.value(QStringLiteral("coverage")).toDouble() / 100.0;
@@ -98,7 +210,6 @@ QVariantMap SizingEngine::run(const QVariantMap& input) const
             else if (cov < coverageTarget && bestCov < coverageTarget)
                 better = cov > bestCov;
         } else {
-            // ROI : payback minimal
             const QVariant pb = c.value(QStringLiteral("payback"));
             const QVariant bestPb = best.value(QStringLiteral("payback"));
             if (pb.isValid() && !bestPb.isValid())
@@ -116,7 +227,9 @@ QVariantMap SizingEngine::run(const QVariantMap& input) const
     return {{QStringLiteral("best"), best},
             {QStringLiteral("candidates"), candidates},
             {QStringLiteral("annualLoad"), annualLoad},
-            {QStringLiteral("strategy"), strategy}};
+            {QStringLiteral("strategy"), strategy},
+            {QStringLiteral("hybrid"), hybrid && battKwh > 0},
+            {QStringLiteral("shadeApplied"), !monthlyLoss.isEmpty() || annualLossPct > 0}};
 }
 
 } // namespace ose

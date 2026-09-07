@@ -59,8 +59,12 @@ QVariant ProjectStore::data(const QModelIndex& index, int role) const
     }
     case UpdatedAtRole:
         return o.value(QStringLiteral("updatedAt")).toString();
-    case ClientRole:
-        return o.value(QStringLiteral("client")).toString();
+    case ClientRole: {
+        const QJsonValue c = o.value(QStringLiteral("client"));
+        if (c.isObject())
+            return c.toObject().value(QStringLiteral("name")).toString();
+        return c.toString();
+    }
     case IsDemoRole:
         return o.value(QStringLiteral("isDemo")).toBool();
     case SummaryRole:
@@ -292,6 +296,28 @@ QString ProjectStore::exportCurrentJson() const
         return {};
     return QString::fromUtf8(
         QJsonDocument(m_projects.at(i).toObject()).toJson(QJsonDocument::Indented));
+}
+
+QString ProjectStore::exportAllJson() const
+{
+    return QString::fromUtf8(QJsonDocument(m_projects).toJson(QJsonDocument::Indented));
+}
+
+QVariantMap ProjectStore::clientObject() const
+{
+    const QVariantMap p = currentProject();
+    const QVariant c = p.value(QStringLiteral("client"));
+    if (c.typeId() == QMetaType::QVariantMap)
+        return c.toMap();
+    QVariantMap o;
+    if (c.typeId() == QMetaType::QString)
+        o.insert(QStringLiteral("name"), c.toString());
+    return o;
+}
+
+bool ProjectStore::setClientObject(const QVariantMap& client)
+{
+    return setCurrentField(QStringLiteral("client"), client);
 }
 
 bool ProjectStore::importProjectJson(const QString& json)

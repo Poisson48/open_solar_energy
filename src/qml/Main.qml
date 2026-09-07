@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Controls.Material
 import QtQuick.Layouts
 import OpenSolarEnergy
+import "controls"
 
 ApplicationWindow {
     id: window
@@ -26,6 +27,20 @@ ApplicationWindow {
     MaterielDialog { id: materielDialog }
     ShareDialog { id: shareDialog }
     JoinDialog { id: joinDialog }
+    EditClientDialog { id: editClientDialog }
+
+    function showToast(msg, ms) { toast.show(msg, ms || 2800) }
+
+    Shortcut {
+        sequences: [StandardKey.Save]
+        enabled: AppController.inWorkspace
+        onActivated: {
+            AppController.autoSave("Ctrl+S")
+            AppController.toast("Sauvegardé (git)")
+            Projects.updateCurrent({})
+            window.showToast("Projet sauvegardé")
+        }
+    }
 
     onClosing: function (close) {
         if (Qt.platform.os !== "android") {
@@ -39,6 +54,7 @@ ApplicationWindow {
         if (materielDialog.opened) { materielDialog.close(); return }
         if (shareDialog.opened) { shareDialog.close(); return }
         if (joinDialog.opened) { joinDialog.close(); return }
+        if (editClientDialog.opened) { editClientDialog.close(); return }
         if (Updater.updateAvailable || Updater.downloading || Updater.readyToInstall
                 || Updater.checking || Updater.state === 5) {
             Updater.dismiss()
@@ -76,49 +92,12 @@ ApplicationWindow {
         spacing: 0
 
         Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: visible ? 36 : 0
-            visible: Qt.platform.os !== "android"
-            color: Theme.primary
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: 14
-                anchors.rightMargin: 8
-                Label {
-                    text: "Open Solar Energy  ·  v" + Updater.currentVersion + "  ·  QML"
-                    color: "#ffffff"
-                    font.pixelSize: 12
-                    opacity: 0.9
-                }
-                Item { Layout.fillWidth: true }
-                Button {
-                    flat: true
-                    text: Updater.downloading ? "Téléchargement…"
-                         : (Updater.state === 1 ? "Vérification…" : "Vérifier les mises à jour")
-                    enabled: !Updater.downloading && Updater.state !== 1
-                    onClicked: Updater.check()
-                    contentItem: Text {
-                        text: parent.text
-                        color: "#ffffff"
-                        font.pixelSize: 12
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    background: Rectangle {
-                        color: parent.hovered ? "#ffffff22" : "transparent"
-                        radius: 4
-                    }
-                }
-            }
-        }
-
-        Rectangle {
             id: updateBannerDesktop
             Layout.fillWidth: true
             Layout.preferredHeight: visible ? 56 : 0
             visible: Qt.platform.os !== "android"
                      && (Updater.updateAvailable || Updater.downloading || Updater.readyToInstall
-                         || Updater.checking || Updater.state === 5)
+                         || Updater.state === 5)
             color: Updater.state === 5 ? "#fdecea" : Theme.surfaceHigh
             RowLayout {
                 anchors.fill: parent
@@ -170,22 +149,49 @@ ApplicationWindow {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            HubView {
+            // Remonter Hub / Workspace à chaque bascule — évite le layout cassé
+            // après visible:false (ColumnLayout + Repeater).
+            Loader {
+                id: hubLoader
                 anchors.fill: parent
-                visible: !AppController.inWorkspace
-                onRequestNewProject: newProjectDialog.open()
-                onRequestJoin: joinDialog.open()
+                active: !AppController.inWorkspace
+                visible: active
+                sourceComponent: HubView {
+                    onRequestNewProject: newProjectDialog.open()
+                    onRequestJoin: joinDialog.open()
+                    onRequestMateriel: materielDialog.open()
+                }
             }
 
             Loader {
+                id: workspaceLoader
                 anchors.fill: parent
                 active: AppController.inWorkspace
+                visible: active
                 sourceComponent: WorkspaceView {
                     onRequestHistory: historyDialog.open()
                     onRequestClose: AppController.closeWorkspace()
                     onRequestMateriel: materielDialog.open()
                     onRequestShare: shareDialog.open()
+                    onRequestEditClient: {
+                        if (Projects.currentId.length > 0)
+                            editClientDialog.openForCurrent()
+                    }
                 }
+            }
+
+            OseToast {
+                id: toast
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                z: 100
+            }
+
+            Connections {
+                target: AppController
+                function onToastRequested(message, ms) { toast.show(message, ms) }
+                function onMaterielRequested() { materielDialog.open() }
             }
         }
     }

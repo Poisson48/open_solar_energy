@@ -25,6 +25,8 @@ public:
                                              const QVariantList& halfHourKeep = {}) const;
 
     Q_INVOKABLE QVariantMap analyzeMonth(const QVariantMap& params) const;
+    /** Analyse les 12 mois (weatherData mensuel) ; retourne months[] + totaux. */
+    Q_INVOKABLE QVariantMap analyzeYear(const QVariantMap& params) const;
 };
 
 } // namespace ose

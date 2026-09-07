@@ -46,8 +46,11 @@ public:
     Q_INVOKABLE bool setCurrentField(const QString& key, const QVariant& value);
     Q_INVOKABLE bool closeCurrent();
     Q_INVOKABLE QString exportCurrentJson() const;
+    Q_INVOKABLE QString exportAllJson() const;
     Q_INVOKABLE bool importProjectJson(const QString& json);
     Q_INVOKABLE void seedDemosIfEmpty();
+    Q_INVOKABLE QVariantMap clientObject() const;
+    Q_INVOKABLE bool setClientObject(const QVariantMap& client);
 
 signals:
     void countChanged();
