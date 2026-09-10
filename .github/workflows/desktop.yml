@@ -58,11 +58,12 @@ jobs:
       - name: Build
         env:
           VERSION_NAME: ${{ inputs.version_name }}
+          QT_QPA_PLATFORM: offscreen
         run: |
           QT_ROOT="$HOME/Qt/$QT_VER/gcc_64"
           export PATH="$QT_ROOT/bin:$PATH"
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$QT_ROOT"
-          cmake --build build --target opensolarenergy -j"$(nproc)"
+          cmake --build build -j"$(nproc)"
           ctest --test-dir build --output-on-failure
           QT_ROOT="$QT_ROOT" VERSION_NAME="$VERSION_NAME" bash scripts/build-appimage.sh
       - uses: actions/upload-artifact@v5

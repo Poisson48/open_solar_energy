@@ -24,6 +24,8 @@ jobs:
           sudo apt-get install -y qt6-quick3d-dev qml6-module-qtquick3d || true
           git clone --depth 1 --branch v0.5.1 https://github.com/bitcoin-core/secp256k1.git third_party/secp256k1
       - name: Build + tests Qt
+        env:
+          QT_QPA_PLATFORM: offscreen
         run: |
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
           cmake --build build -j"$(nproc)"
