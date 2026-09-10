@@ -16,12 +16,13 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y ninja-build cmake \
             qt6-base-dev qt6-declarative-dev qt6-tools-dev \
-            libqt6charts6-dev libqt6svg6-dev libssl-dev libsecp256k1-dev \
+            libqt6charts6-dev libqt6svg6-dev libssl-dev \
             qml6-module-qtquick qml6-module-qtquick-controls \
             qml6-module-qtquick-layouts qml6-module-qtquick-window \
             qml6-module-qtqml-workerscript
           # Quick3D optionnel (pas toujours dans les dépôts Ubuntu)
           sudo apt-get install -y qt6-quick3d-dev qml6-module-qtquick3d || true
+          git clone --depth 1 --branch v0.5.1 https://github.com/bitcoin-core/secp256k1.git third_party/secp256k1
       - name: Build + tests Qt
         run: |
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
