@@ -10,9 +10,9 @@ else()
     find_package(OpenSSL REQUIRED)
 endif()
 
-# secp256k1 : vendored sur Android (ou si absente du système)
+# secp256k1 : préférer le tree vendored (API schnorrsig_sign32), sinon système
 set(OSE_USE_VENDORED_SECP OFF)
-if(ANDROID)
+if(ANDROID OR EXISTS "${CMAKE_SOURCE_DIR}/third_party/secp256k1/CMakeLists.txt")
     set(OSE_USE_VENDORED_SECP ON)
 else()
     find_library(SECP256K1_LIBRARY NAMES secp256k1)
@@ -173,7 +173,9 @@ set(OSE_QML_FILES
 
 set_source_files_properties(qml/Ui.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 
-qt_policy(SET QTP0001 NEW)
+if(COMMAND qt_policy)
+    qt_policy(SET QTP0001 NEW)
+endif()
 
 qt_add_qml_module(opensolarenergy
     URI OpenSolarEnergy
