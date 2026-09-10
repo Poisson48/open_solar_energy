@@ -1,4 +1,5 @@
 #include "inverter.h"
+#include "year_pv.h"
 
 #include <algorithm>
 #include <cmath>
@@ -6,6 +7,11 @@
 namespace ose {
 
 InverterSizing::InverterSizing(QObject* parent) : QObject(parent) {}
+
+QVariantMap InverterSizing::acPower(double dcKw, double pacNomKw, double etaEuro) const
+{
+    return YearPv::acFromDc(dcKw, pacNomKw, etaEuro);
+}
 
 int InverterSizing::maxSeriesFromVoc(double voc, double maxInputV, double tempMin) const
 {

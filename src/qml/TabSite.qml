@@ -1,22 +1,27 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import OpenSolarEnergy
 import "controls"
 
 OseTabPage {
     id: root
     title: "Site et ombrage"
-    subtitle: "Profil d’horizon, pertes beam mensuelles et masque 30 min pour l’analyse horaire."
+    subtitle: Ui.isPhone
+              ? "Horizon et carte, puis vue 3D pour les obstacles. Implantation pour les panneaux."
+              : "Plus bas : vue 3D pour placer cheminée / arbre / mur. Gauche : horizon et carte. Puis onglet Implantation pour les panneaux."
     nextTabId: AppController.nextPrimaryTab()
     nextTabLabel: AppController.tabLabel(AppController.nextPrimaryTab())
 
     property var points: []
+    property var obstacles: []
     property var shadeResult: ({})
     property bool syncing: false
     property int nextPointId: 1
     property real roofAzimuth: 0
     property real roofLineLenM: 0
     property bool hasRoofLine: false
+    property var layoutRoofs: ({ activeId: "", roofs: [] })
 
     readonly property var monthlyLossPct: {
         const m = shadeResult.monthly
@@ -135,6 +140,8 @@ OseTabPage {
         const site = Projects.currentProject.siteSurvey || {}
         syncing = true
         points = ensurePointIds(site.points || [])
+        obstacles = site.obstacles || []
+        layoutRoofs = LayoutRoofs.migrate(Projects.currentProject.layout || {})
         slope.text = String(site.slope !== undefined ? site.slope
                            : ((Projects.currentProject.formState || {}).tilt !== undefined
                               ? (Projects.currentProject.formState || {}).tilt : 30))
@@ -167,8 +174,56 @@ OseTabPage {
                 annualLossPct: site.annualLossPct || 0
             }
         syncing = false
+        syncSiteScene()
         if (typeof sunHost !== "undefined" && sunHost.repaintAll)
             sunHost.repaintAll()
+    }
+
+    function syncSiteScene() {
+        if (typeof siteScene === "undefined")
+            return
+        // Garantir au moins une toiture pour poser arbre / cheminée
+        let st = layoutRoofs
+        if (!st || !(st.roofs || []).length) {
+            st = LayoutRoofs.migrate(Projects.currentProject.layout || {})
+            if (!(st.roofs || []).length)
+                st = LayoutRoofs.addRoof(st, "Toiture 1")
+            const form = Projects.currentProject.formState || {}
+            if (form.panelW > 0.2 && form.panelH > 0.2 && st.activeId) {
+                st = LayoutRoofs.updateRoof(st, st.activeId, {
+                    panelW: Number(form.panelW),
+                    panelH: Number(form.panelH),
+                    tilt: Number(form.tilt) || Number(slope.text) || 30,
+                    azimuth: Number(form.azimuth) || 0
+                })
+            }
+            layoutRoofs = st
+            if (!(Projects.currentProject.layout || {}).roofs
+                || !(Projects.currentProject.layout.roofs || []).length) {
+                Projects.updateCurrent({ layout: st })
+            }
+        }
+        siteScene.roofs = layoutRoofs.roofs || []
+        siteScene.activeRoofId = layoutRoofs.activeId || ""
+        siteScene.obstacles = obstacles
+        const lat = (Projects.currentProject.location || {}).lat || 43.6
+        const doy = 166
+        const sp = SiteShade.sunPos(lat, doy, 12)
+        siteScene.sunAz = sp.az
+        siteScene.sunElev = sp.elev
+    }
+
+    function persistObstacles() {
+        if (syncing) return
+        const site = Projects.currentProject.siteSurvey || {}
+        Projects.updateCurrent({
+            siteSurvey: Object.assign({}, site, {
+                points: root.points,
+                obstacles: root.obstacles,
+                compassOffset: Number(compass.text),
+                slope: Number(slope.text)
+            })
+        })
     }
 
     function persistSiteInputs() {
@@ -177,6 +232,7 @@ OseTabPage {
         Projects.updateCurrent({
             siteSurvey: Object.assign({}, site, {
                 points: root.points,
+                obstacles: root.obstacles,
                 compassOffset: Number(compass.text),
                 slope: Number(slope.text)
             })
@@ -192,16 +248,58 @@ OseTabPage {
         }
         const loc = Projects.currentProject.location || {}
         const site = Projects.currentProject.siteSurvey || {}
-        shadeResult = SiteShade.computeShading(loc.lat || 43.6, points, weather)
+        const layout = LayoutRoofs.migrate(Projects.currentProject.layout || {})
+        const hasPanels = LayoutRoofs.totalPanels(layout) > 0
+        const hasObstacles = (root.obstacles || []).length > 0
+
+        let monthly = []
+        let keep = []
+        let annual = 0
+        let source = "horizon"
+
+        // Panneaux / obstacles 3D → moteur riche ; sinon horizon seul (plus rapide)
+        if (hasPanels || hasObstacles) {
+            const full = ShadingEngine.computeFull({
+                lat: loc.lat || 43.6,
+                weatherData: weather,
+                horizonPoints: points,
+                obstacles: root.obstacles || [],
+                layout: layout,
+                shadeEngine: "precise"
+            })
+            monthly = full.monthlyLoss || []
+            keep = full.halfHourlyKeep || []
+            annual = Number(full.annualLossPct) || 0
+            source = "shading3d"
+            shadeResult = {
+                monthly: monthly,
+                halfHourlyKeep: keep,
+                halfHourlyKeepElectrical: full.halfHourlyKeepElectrical || [],
+                annualLossPct: annual,
+                mode: full.mode
+            }
+        } else {
+            shadeResult = SiteShade.computeShading(loc.lat || 43.6, points, weather)
+            monthly = shadeResult.monthly || []
+            keep = shadeResult.halfHourlyKeep || []
+            annual = Number(shadeResult.annualLossPct) || 0
+            source = "horizon"
+        }
+
         Projects.updateCurrent({
             siteSurvey: Object.assign({}, site, {
                 points: points,
+                obstacles: root.obstacles,
                 compassOffset: Number(compass.text),
                 slope: Number(slope.text),
-                monthlyLoss: shadeResult.monthly,
-                halfHourlyKeep: shadeResult.halfHourlyKeep,
-                annualLossPct: shadeResult.annualLossPct
-            })
+                monthlyLoss: monthly,
+                halfHourlyKeep: keep,
+                halfHourlyKeepElectrical: shadeResult.halfHourlyKeepElectrical
+                        || (site.halfHourlyKeepElectrical || []),
+                annualLossPct: annual,
+                source: source
+            }),
+            resultsFingerprint: ""
         })
         if (typeof sunHost !== "undefined" && sunHost.repaintAll)
             sunHost.repaintAll()
@@ -209,8 +307,7 @@ OseTabPage {
 
     Component.onCompleted: {
         loadFromProject()
-        if (root.points.length)
-            root.persistAndCompute()
+        // Ne pas recalculer l'ombrage horizon au boot (lent) — bouton « Calculer »
     }
 
     function addPoint(az, elev) {
@@ -240,23 +337,74 @@ OseTabPage {
 
     function applyRoofOrientation() {
         const tilt = Number(panelTiltField.text)
+        const az = Number(root.roofAzimuth) || 0
         const form = Projects.currentProject.formState || {}
         const site = Projects.currentProject.siteSurvey || {}
         const line = siteMap.hasLine ? {
             lat1: siteMap.lineLat1, lon1: siteMap.lineLon1,
             lat2: siteMap.lineLat2, lon2: siteMap.lineLon2,
-            pvAzimuth: root.roofAzimuth,
+            pvAzimuth: az,
             bearingNorth: root._lastBearingNorth,
             distanceM: root.roofLineLenM
         } : (site.roofLine || null)
 
+        // Propager aussi sur le layout 3D (toiture active) — Implantation lit roofs[].azimuth
+        let st = LayoutRoofs.migrate(Projects.currentProject.layout || {})
+        if (!(st.roofs || []).length)
+            st = LayoutRoofs.addRoof(st, "Toiture 1")
+        const activeId = st.activeId || ((st.roofs[0] || {}).id || "")
+        st = LayoutRoofs.updateRoof(st, activeId, {
+            tilt: tilt,
+            azimuth: az
+        })
+        const r = LayoutRoofs.getActiveRoof(st)
+        if (r && r.positions && r.positions.length) {
+            const pw = Number(r.panelW) || 1.13
+            const ph = Number(r.panelH) || 1.76
+            const rows = Math.max(1, Number(r.rows) || 1)
+            const gapZ = Number(r.gapZ !== undefined ? r.gapZ : r.gap) || 0.03
+            const mount = Number(r.mountHeight !== undefined ? r.mountHeight : 0.08)
+            const t = tilt * Math.PI / 180
+            const cosT = Math.cos(t)
+            const sinT = Math.sin(t)
+            const arrayAlong = rows * ph + (rows - 1) * gapZ
+            const clear = mount + (arrayAlong / 2) * sinT
+            const next = []
+            for (let i = 0; i < r.positions.length; ++i) {
+                const p = Object.assign({}, r.positions[i])
+                let along = Number(p.along)
+                if (isNaN(along)) {
+                    if (Math.abs(cosT) >= 1e-6)
+                        along = (Number(p.z) || 0) / cosT
+                    else if (Math.abs(sinT) >= 1e-6)
+                        along = ((Number(p.y) || clear) - clear) / sinT
+                    else
+                        along = Number(p.z) || 0
+                }
+                p.along = along
+                p.z = along * cosT
+                p.y = along * sinT + clear
+                p.tilt = tilt
+                p.yaw = 0
+                if (p.w === undefined)
+                    p.w = pw
+                if (p.h === undefined)
+                    p.h = ph
+                next.push(p)
+            }
+            st = LayoutRoofs.updateRoof(st, activeId, { positions: next })
+        }
+
+        layoutRoofs = st
         Projects.updateCurrent({
             formState: Object.assign({}, form, {
                 tilt: tilt,
-                azimuth: root.roofAzimuth
+                azimuth: az
             }),
+            layout: st,
             siteSurvey: Object.assign({}, site, {
                 points: root.points,
+                obstacles: root.obstacles,
                 slope: tilt,
                 compassOffset: Number(compass.text),
                 roofLine: line,
@@ -267,10 +415,11 @@ OseTabPage {
             })
         })
         slope.text = String(tilt)
+        syncSiteScene()
         AppController.toast("Orientation appliquée : tilt " + tilt + "° · azimut "
-                            + Math.round(root.roofAzimuth * 10) / 10 + "°")
+                            + Math.round(az * 10) / 10 + "° → Implantation")
         AppController.autoSave("Orientation toiture carte — tilt " + tilt
-                               + "° / az " + Math.round(root.roofAzimuth))
+                               + "° / az " + Math.round(az))
     }
 
     property real _lastBearingNorth: 0
@@ -296,7 +445,7 @@ OseTabPage {
             hint: "Azimut depuis le nord (0° = N, 180° = S). Élévation en degrés."
 
             GridLayout {
-                columns: 4
+                columns: Ui.isPhone ? 2 : 4
                 Layout.fillWidth: true
                 columnSpacing: 8
                 rowSpacing: 8
@@ -305,7 +454,7 @@ OseTabPage {
                 Label { text: "Élévation"; color: Theme.textDim }
                 OseInputUnit { id: elIn; text: "20"; unit: "°"; Layout.fillWidth: true }
             }
-            RowLayout {
+            Flow {
                 Layout.fillWidth: true
                 spacing: 8
                 OseBtn {
@@ -388,8 +537,9 @@ OseTabPage {
             title: "Carte 2D — orientation toiture"
             hint: "Vue satellite : tracez une flèche du faîtage vers l’égout (sens de la pente = face des panneaux). Puis précisez l’inclinaison."
 
-            RowLayout {
+            Flow {
                 Layout.fillWidth: true
+                spacing: 6
                 OseBtn {
                     text: siteMap.interactionMode === "line" ? "Mode tracé actif" : "Tracer la ligne"
                     kind: siteMap.interactionMode === "line" ? "primary" : "outline"
@@ -417,7 +567,6 @@ OseTabPage {
                         Projects.updateCurrent({ siteSurvey: next })
                     }
                 }
-                Item { Layout.fillWidth: true }
                 OseBtn {
                     text: "Satellite"
                     kind: siteMap.mapLayer === "sat" ? "primary" : "outline"
@@ -433,7 +582,7 @@ OseTabPage {
             OsmMapView {
                 id: siteMap
                 Layout.fillWidth: true
-                Layout.preferredHeight: 360
+                Layout.preferredHeight: Ui.mapHeight
                 mapLayer: "sat"
                 showPin: true
                 interactionMode: "pan"
@@ -574,7 +723,7 @@ OseTabPage {
             Item {
                 id: sunHost
                 Layout.fillWidth: true
-                Layout.preferredHeight: Qt.platform.os === "android" ? 320 : 280
+                Layout.preferredHeight: Ui.sunDiagramHeight
 
                 property int dragIndex: -1
                 property real dragLiveAz: 0
@@ -873,6 +1022,257 @@ OseTabPage {
 
         results: ColumnLayout {
             spacing: 12
+
+            Label {
+                text: "Vue 3D — obstacles"
+                font.pixelSize: 14
+                font.weight: Font.DemiBold
+                color: Theme.text
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                font.pixelSize: 12
+                color: Theme.textDim
+                text: "Choisissez Cheminée / Arbre / Mur puis cliquez sur le toit ou le sol. Sélection pour modifier L×l×H."
+            }
+            Flow {
+                Layout.fillWidth: true
+                spacing: 6
+                OseBtn {
+                    text: "Caméra"
+                    kind: siteScene.tool === "camera" ? "primary" : "outline"
+                    onClicked: siteScene.tool = "camera"
+                }
+                OseBtn {
+                    text: "Sélection"
+                    kind: siteScene.tool === "select" ? "primary" : "outline"
+                    onClicked: siteScene.tool = "select"
+                }
+                OseBtn {
+                    text: "Cheminée"
+                    kind: siteScene.tool === "place-chimney" ? "primary" : "outline"
+                    onClicked: siteScene.tool = "place-chimney"
+                }
+                OseBtn {
+                    text: "Arbre"
+                    kind: siteScene.tool === "place-tree" ? "primary" : "outline"
+                    onClicked: siteScene.tool = "place-tree"
+                }
+                OseBtn {
+                    text: "Mur"
+                    kind: siteScene.tool === "place-wall" ? "primary" : "outline"
+                    onClicked: siteScene.tool = "place-wall"
+                }
+                OseBtn {
+                    text: "Suppr."
+                    kind: "outline"
+                    enabled: siteScene.selectedObstacleIndex >= 0
+                    onClicked: siteScene.removeSelectedObstacle()
+                }
+            }
+            GridLayout {
+                visible: siteScene.selectedObstacleIndex >= 0
+                columns: 2
+                Layout.fillWidth: true
+                columnSpacing: 8
+                rowSpacing: 4
+                property bool _sync: false
+                function fillFromSelection() {
+                    const o = siteScene.selectedObstacle
+                    if (!o)
+                        return
+                    _sync = true
+                    siteObsLabel.text = o.label || ""
+                    siteObsW.text = String(o.w !== undefined ? o.w : 0.6)
+                    siteObsD.text = String(o.d !== undefined ? o.d : 0.6)
+                    siteObsH.text = String(o.h !== undefined ? o.h : 1.5)
+                    siteObsType.currentIndex = (o.type === "tree") ? 1 : 0
+                    refreshObstacleDists()
+                    _sync = false
+                }
+                function refreshObstacleDists() {
+                    if (siteScene.selectedObstacleIndex < 0)
+                        return
+                    const wasSync = _sync
+                    _sync = true
+                    const dist = siteScene.obstacleDistsFromRightmost()
+                    if (dist) {
+                        siteObsDistRight.text = String(dist.fromRight)
+                        siteObsDistBottom.text = String(dist.fromBottom)
+                    } else {
+                        siteObsDistRight.text = ""
+                        siteObsDistBottom.text = ""
+                    }
+                    _sync = wasSync
+                }
+                Connections {
+                    target: siteScene
+                    function onSelectionChanged() { parent.fillFromSelection() }
+                    function onSelectedObstacleIndexChanged() { parent.fillFromSelection() }
+                    function onObstaclePlanChanged() { parent.refreshObstacleDists() }
+                    function onObstaclesChanged() {
+                        if (siteScene.selectedObstacleIndex >= 0)
+                            parent.refreshObstacleDists()
+                    }
+                    function onRoofsChanged() {
+                        if (siteScene.selectedObstacleIndex >= 0)
+                            parent.refreshObstacleDists()
+                    }
+                }
+                Component.onCompleted: fillFromSelection()
+                Label { text: "Obstacle"; font.pixelSize: 12; color: Theme.textDim }
+                TextField {
+                    id: siteObsLabel
+                    Layout.fillWidth: true
+                    placeholderText: "Libellé"
+                    onEditingFinished: {
+                        if (parent._sync) return
+                        siteScene.updateObstacleProps({ label: text.trim() || "Obstacle" })
+                    }
+                }
+                Label { text: "Type" }
+                ComboBox {
+                    id: siteObsType
+                    Layout.fillWidth: true
+                    model: ["Boîte / mur", "Arbre"]
+                    onActivated: {
+                        if (parent._sync) return
+                        const tree = currentIndex === 1
+                        siteScene.updateObstacleProps({
+                            type: tree ? "tree" : "box",
+                            label: tree ? "Arbre" : (siteObsLabel.text.trim() || "Obstacle")
+                        })
+                    }
+                }
+                Label { text: "L / l / H" }
+                RowLayout {
+                    Layout.fillWidth: true
+                    OseInputUnit {
+                        id: siteObsW
+                        text: "0.6"
+                        unit: "m"
+                        Layout.fillWidth: true
+                        onEditingFinished: {
+                            if (parent.parent._sync) return
+                            siteScene.updateObstacleProps({ w: Number(text) })
+                        }
+                    }
+                    OseInputUnit {
+                        id: siteObsD
+                        text: "0.6"
+                        unit: "m"
+                        Layout.fillWidth: true
+                        onEditingFinished: {
+                            if (parent.parent._sync) return
+                            siteScene.updateObstacleProps({ d: Number(text) })
+                        }
+                    }
+                    OseInputUnit {
+                        id: siteObsH
+                        text: "1.5"
+                        unit: "m"
+                        Layout.fillWidth: true
+                        onEditingFinished: {
+                            if (parent.parent._sync) return
+                            siteScene.updateObstacleProps({ h: Number(text) })
+                        }
+                    }
+                }
+                Label {
+                    text: "Dist. panneau"
+                    font.pixelSize: 12
+                    color: Theme.textDim
+                }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    font.pixelSize: 11
+                    color: Theme.textDim
+                    text: "Depuis coin bas-droit du panneau le plus à droite (+droite / +au-delà du bas)"
+                }
+                Label { text: "Droite / bas" }
+                RowLayout {
+                    Layout.fillWidth: true
+                    OseInputUnit {
+                        id: siteObsDistRight
+                        text: "0"
+                        unit: "m"
+                        Layout.fillWidth: true
+                        placeholderText: "droite"
+                        onEditingFinished: {
+                            if (parent.parent._sync) return
+                            siteScene.setObstacleDistsFromRightmost(
+                                Number(text) || 0,
+                                Number(siteObsDistBottom.text) || 0)
+                        }
+                    }
+                    OseInputUnit {
+                        id: siteObsDistBottom
+                        text: "0"
+                        unit: "m"
+                        Layout.fillWidth: true
+                        placeholderText: "bas"
+                        onEditingFinished: {
+                            if (parent.parent._sync) return
+                            siteScene.setObstacleDistsFromRightmost(
+                                Number(siteObsDistRight.text) || 0,
+                                Number(text) || 0)
+                        }
+                    }
+                }
+            }
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Ui.sceneHeight
+                radius: Theme.radius
+                border.color: Theme.outline
+                clip: true
+                color: "#b9c9be"
+                SolarScene3D {
+                    id: siteScene
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    mode: "site"
+                    tool: "camera"
+                    showPanels: true
+                    showObstacles: true
+                    editPanels: false
+                    editObstacles: true
+                    onObstaclesEdited: function (list) {
+                        root.obstacles = list
+                        root.persistAndCompute()
+                    }
+                    onRoofActivated: function (id) {
+                        root.layoutRoofs = LayoutRoofs.setActive(root.layoutRoofs, id)
+                    }
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                font.pixelSize: 12
+                color: Theme.textDim
+                text: (root.obstacles.length || 0) + " obstacle(s) · "
+                      + ((layoutRoofs.roofs || []).length) + " toiture(s)"
+            }
+            OseBtn {
+                text: "Créer / réparer toiture 3D"
+                kind: "outline"
+                visible: !(layoutRoofs.roofs || []).length
+                onClicked: {
+                    layoutRoofs = LayoutRoofs.addRoof({}, "Toiture 1")
+                    const form = Projects.currentProject.formState || {}
+                    layoutRoofs = LayoutRoofs.updateRoof(layoutRoofs, layoutRoofs.activeId, {
+                        panelW: Number(form.panelW) || 1.13,
+                        panelH: Number(form.panelH) || 1.76,
+                        tilt: Number(form.tilt) || 30,
+                        azimuth: Number(form.azimuth) || 0
+                    })
+                    Projects.updateCurrent({ layout: layoutRoofs })
+                    syncSiteScene()
+                    AppController.toast("Toiture créée — placez un arbre / cheminée")
+                }
+            }
 
             Flow {
                 Layout.fillWidth: true

@@ -1,5 +1,7 @@
 #include "pdf_export.h"
 
+#include "core/year_pv.h"
+
 #include <QDate>
 #include <QDateTime>
 #include <QDesktopServices>
@@ -9,13 +11,16 @@
 #include <QLocale>
 #include <QPageSize>
 #include <QPainter>
-#include <QPdfDocument>
 #include <QPdfWriter>
 #include <QRegularExpression>
 #include <QStandardPaths>
 #include <QUrl>
 #include <algorithm>
 #include <cmath>
+
+#ifdef OSE_HAS_QPDFDOCUMENT
+#  include <QPdfDocument>
+#endif
 
 namespace ose {
 namespace {
@@ -561,14 +566,61 @@ QString PdfExport::exportSimulationReport(const QVariantMap& project)
     const QVariantMap offRoot = project.value(QStringLiteral("offgridResult")).toMap();
     const QVariantMap off = offRoot.value(QStringLiteral("best")).toMap();
     const QVariantMap cable = project.value(QStringLiteral("cableResult")).toMap();
+    const QVariantMap pvgis = project.value(QStringLiteral("pvgisPvcalc")).toMap();
     const QString name = project.value(QStringLiteral("name")).toString().isEmpty()
                              ? QStringLiteral("Projet PV")
                              : project.value(QStringLiteral("name")).toString();
     const QString install = project.value(QStringLiteral("installType")).toString();
 
+    const double ppeak = form.value(QStringLiteral("Ppeak"),
+                                    sizing.value(QStringLiteral("Ppeak"),
+                                                 off.value(QStringLiteral("Ppeak"), 3)))
+                             .toDouble();
+    const double panelWp = form.value(QStringLiteral("panelWp"), 400).toDouble();
+    const int nPanels = panelWp > 0 ? int(std::lround(ppeak * 1000.0 / panelWp)) : 0;
+    const double panelArea = form.value(QStringLiteral("panelArea"), 2.0).toDouble();
+
+    QVariantMap balances = project.value(QStringLiteral("pvsystBalances")).toMap();
+    if (!balances.value(QStringLiteral("ok")).toBool() && !weather.isEmpty()) {
+        QVariantMap bp{
+            {QStringLiteral("lat"), loc.value(QStringLiteral("lat"), 43.6)},
+            {QStringLiteral("tilt"), form.value(QStringLiteral("tilt"), 30)},
+            {QStringLiteral("azimuth"), form.value(QStringLiteral("azimuth"), 0)},
+            {QStringLiteral("Ppeak"), ppeak},
+            {QStringLiteral("weatherData"), weather},
+            {QStringLiteral("losses"), form.value(QStringLiteral("losses"), 14)},
+            {QStringLiteral("halfHourlyKeep"), site.value(QStringLiteral("halfHourlyKeep"))},
+            {QStringLiteral("monthlyLoss"), site.value(QStringLiteral("monthlyLoss"))},
+            {QStringLiteral("annualLossPct"), site.value(QStringLiteral("annualLossPct"), 0)},
+            {QStringLiteral("useElectricalShade"),
+             form.value(QStringLiteral("energyMode")).toString() == QLatin1String("study")},
+            {QStringLiteral("useInverterModel"), form.value(QStringLiteral("useInverterModel"), true)},
+            {QStringLiteral("pacNom"), form.value(QStringLiteral("pacNom"), ppeak * 0.9)},
+            {QStringLiteral("etaEuro"), form.value(QStringLiteral("etaEuro"), 0.97)},
+        };
+        if (form.contains(QStringLiteral("lossTree")))
+            bp.insert(QStringLiteral("lossTree"), form.value(QStringLiteral("lossTree")));
+        QVariantMap thermal = form.value(QStringLiteral("thermal")).toMap();
+        if (thermal.isEmpty()) {
+            thermal = {{QStringLiteral("model"),
+                        form.value(QStringLiteral("energyMode")).toString() == QLatin1String("study")
+                            ? QStringLiteral("uValue")
+                            : QStringLiteral("noct")},
+                       {QStringLiteral("U"), form.value(QStringLiteral("mountU"), 29)},
+                       {QStringLiteral("wind"), form.value(QStringLiteral("wind"), 1)}};
+        }
+        bp.insert(QStringLiteral("thermal"), thermal);
+        balances = YearPv::buildBalancesReport(bp);
+    }
+    const QVariantMap kpi = balances.value(QStringLiteral("kpi")).toMap();
+    const QVariantList balMonths = balances.value(QStringLiteral("balancesMonthly")).toList();
+    const QVariantList lossDiag = balances.value(QStringLiteral("lossDiagram")).toList();
+
     const QString path = docsDir() + QStringLiteral("/rapport_")
-                         + name.toLower().replace(QRegularExpression(QStringLiteral("[^a-z0-9]+")),
-                                                  QStringLiteral("_")).left(40)
+                         + name.toLower()
+                               .replace(QRegularExpression(QStringLiteral("[^a-z0-9]+")),
+                                        QStringLiteral("_"))
+                               .left(40)
                          + QStringLiteral("_")
                          + QDate::currentDate().toString(QStringLiteral("yyyyMMdd"))
                          + QStringLiteral(".pdf");
@@ -592,11 +644,36 @@ QString PdfExport::exportSimulationReport(const QVariantMap& project)
         c.newPage();
     };
 
-    // ── Couverture ──
-    c.y = c.pageH / 4;
+    auto drawMiniBars = [&](const QVariantList& months, const QString& key, const QString& title) {
+        c.h2(title);
+        c.ensure(90);
+        double vmax = 1;
+        for (const QVariant& v : months)
+            vmax = std::max(vmax, v.toMap().value(key).toDouble());
+        const int baseY = c.y + 70;
+        const int barW = std::max(8, c.contentW / 14);
+        for (int i = 0; i < months.size() && i < 12; ++i) {
+            const double val = months[i].toMap().value(key).toDouble();
+            const int h = int(std::round(val / vmax * 60));
+            const int x = c.margin + i * (barW + 4);
+            c.p->fillRect(QRect(x, baseY - h, barW, h), kPrimary);
+            c.setFont(6);
+            c.p->setPen(kMuted);
+            c.p->drawText(x, baseY + 10, QString::number(i + 1));
+        }
+        c.y = baseY + 18;
+    };
+
+    // Couverture
+    c.y = c.pageH / 5;
     c.setFont(11);
     c.p->setPen(kMuted);
     c.p->drawText(c.margin, c.y, QStringLiteral("RAPPORT DE SIMULATION PHOTOVOLTAÏQUE"));
+    c.y += 12;
+    c.setFont(9);
+    c.p->drawText(c.margin, c.y,
+                  QStringLiteral("Style étude PVsyst / IEC 61724 — Open Solar Energy %1")
+                      .arg(QStringLiteral(OSE_APP_VERSION)));
     c.y += 28;
     c.setFont(22, true);
     c.p->setPen(kPrimary);
@@ -611,267 +688,373 @@ QString PdfExport::exportSimulationReport(const QVariantMap& project)
                                                ? QStringLiteral("—")
                                                : loc.value(QStringLiteral("name")).toString()),
            11);
-    c.para(QStringLiteral("Type : %1").arg(installLabel(install)), 11);
+    c.para(QStringLiteral("Type : %1 — %2 kWc").arg(installLabel(install)).arg(num(ppeak, 2)), 11);
     c.para(QStringLiteral("Date : %1").arg(fr().toString(QDate::currentDate(), QLocale::LongFormat)), 11);
-    c.y += 20;
-    c.para(QStringLiteral(
-               "Document technique généré par Open Solar Energy. "
-               "Les résultats sont issus de modèles de transposition / production PV "
-               "(approche type étude de productible). Ils ne remplacent pas une étude "
-               "réglementaire ou un dossier Consuel / Enedis."),
+    if (kpi.value(QStringLiteral("E_Grid_y")).toDouble() > 0) {
+        c.y += 12;
+        c.h2(QStringLiteral("Results summary"));
+        c.kv(QStringLiteral("Produced Energy"),
+             QStringLiteral("%1 kWh/year").arg(num(kpi.value(QStringLiteral("E_Grid_y")).toDouble(), 0)));
+        c.kv(QStringLiteral("Specific production"),
+             QStringLiteral("%1 kWh/kWp/year")
+                 .arg(num(kpi.value(QStringLiteral("specificYield")).toDouble(), 0)));
+        c.kv(QStringLiteral("Performance Ratio PR"),
+             QStringLiteral("%1 %").arg(num(kpi.value(QStringLiteral("PR_pct")).toDouble(), 1)));
+    }
+    c.y += 16;
+    c.para(QStringLiteral("Document technique Open Solar Energy — balances type PVsyst / IEC 61724. "
+                          "Ne remplace pas une étude réglementaire Consuel / Enedis."),
            8, kMuted);
     endPage();
 
-    // ── 1. Site ──
-    c.h1(QStringLiteral("1. Identification du site"));
-    c.kv(QStringLiteral("Nom / adresse"), loc.value(QStringLiteral("name")).toString());
+    // 1 Summary
+    c.h1(QStringLiteral("1. Project & results summary"));
+    c.h2(QStringLiteral("Geographical site"));
+    c.kv(QStringLiteral("Name / address"), loc.value(QStringLiteral("name")).toString());
     c.kv(QStringLiteral("Latitude"),
          QStringLiteral("%1 °").arg(loc.value(QStringLiteral("lat")).toDouble(), 0, 'f', 5));
     c.kv(QStringLiteral("Longitude"),
          QStringLiteral("%1 °").arg(loc.value(QStringLiteral("lon")).toDouble(), 0, 'f', 5));
-    c.kv(QStringLiteral("Altitude (si connue)"),
-         loc.contains(QStringLiteral("alt"))
-             ? QStringLiteral("%1 m").arg(loc.value(QStringLiteral("alt")).toDouble(), 0, 'f', 0)
-             : QStringLiteral("—"));
-    c.kv(QStringLiteral("Fuseau / contexte"), QStringLiteral("France métropolitaine (indicatif)"));
-    c.y += 8;
-    c.h2(QStringLiteral("Orientation du champ PV"));
-    c.kv(QStringLiteral("Inclinaison (tilt)"),
-         QStringLiteral("%1 °").arg(form.value(QStringLiteral("tilt"), 30).toDouble(), 0, 'f', 1));
-    c.kv(QStringLiteral("Azimut (0 = Sud)"),
-         QStringLiteral("%1 °").arg(form.value(QStringLiteral("azimuth"), 0).toDouble(), 0, 'f', 1));
-    c.kv(QStringLiteral("Pertes système (hors ombrage)"),
-         QStringLiteral("%1 %").arg(form.value(QStringLiteral("losses"), 14).toDouble(), 0, 'f', 1));
+    const double alt = loc.value(QStringLiteral("alt"),
+                                 form.value(QStringLiteral("terrainElev"),
+                                            pvgis.value(QStringLiteral("elevation"), 0)))
+                           .toDouble();
+    c.kv(QStringLiteral("Altitude"), alt > 0 ? QStringLiteral("%1 m").arg(num(alt, 0)) : QStringLiteral("—"));
+    c.kv(QStringLiteral("Time zone"), QStringLiteral("France métropolitaine (indicatif)"));
 
-    // ── 2. Météo ──
-    c.h1(QStringLiteral("2. Données météorologiques"));
+    c.h2(QStringLiteral("Meteo data"));
     c.kv(QStringLiteral("Source"),
          weatherMeta.value(QStringLiteral("source")).toString().isEmpty()
              ? QStringLiteral("—")
              : weatherMeta.value(QStringLiteral("source")).toString());
-    c.kv(QStringLiteral("Nombre de mois"), QString::number(weather.size()));
-    if (!weather.isEmpty()) {
-        c.y += 6;
-        c.h2(QStringLiteral("Irradiation horizontale (GHI) mensuelle"));
-        c.ensure(20);
-        c.setFont(8, true);
-        c.p->setPen(kPrimary);
-        c.p->drawText(c.margin, c.y, QStringLiteral("Mois"));
-        c.p->drawText(c.margin + 80, c.y, QStringLiteral("GHI (kWh/m²)"));
-        c.p->drawText(c.margin + 200, c.y, QStringLiteral("DHI"));
-        c.p->drawText(c.margin + 280, c.y, QStringLiteral("Temp. (°C)"));
-        c.y += 14;
-        static const char* months[] = {"Jan", "Fév", "Mar", "Avr", "Mai", "Jun",
-                                       "Jul", "Aoû", "Sep", "Oct", "Nov", "Déc"};
-        double sumG = 0;
-        for (int i = 0; i < weather.size() && i < 12; ++i) {
-            const QVariantMap w = weather[i].toMap();
-            const double ghi = w.value(QStringLiteral("GHI")).toDouble();
-            sumG += ghi;
-            c.ensure(14);
-            c.setFont(8);
-            c.p->setPen(kText);
-            c.p->drawText(c.margin, c.y, QString::fromUtf8(months[i]));
-            c.p->drawText(c.margin + 80, c.y, num(ghi, 1));
-            c.p->drawText(c.margin + 200, c.y, num(w.value(QStringLiteral("DHI")).toDouble(), 1));
-            c.p->drawText(c.margin + 280, c.y, num(w.value(QStringLiteral("temp")).toDouble(), 1));
-            c.y += 13;
-        }
-        c.y += 4;
-        c.kv(QStringLiteral("GHI annuelle"), QStringLiteral("%1 kWh/m²").arg(num(sumG, 0)));
+    const QVariantMap hourlyWx = project.value(QStringLiteral("hourlyWeatherData")).toMap();
+    if (!hourlyWx.isEmpty()) {
+        c.kv(QStringLiteral("Hourly TMY"),
+             QStringLiteral("%1 — %2 h — year %3")
+                 .arg(hourlyWx.value(QStringLiteral("source")).toString())
+                 .arg(hourlyWx.value(QStringLiteral("nHours"),
+                                     hourlyWx.value(QStringLiteral("ghi")).toList().size())
+                          .toInt())
+                 .arg(hourlyWx.value(QStringLiteral("year")).toInt()));
     }
+    c.kv(QStringLiteral("Energy mode"),
+         form.value(QStringLiteral("energyMode"), QStringLiteral("fast")).toString()
+                 == QLatin1String("study")
+             ? QStringLiteral("Study (hourly)")
+             : QStringLiteral("Fast (monthly)"));
 
-    // ── 3. Ombrage ──
-    c.h1(QStringLiteral("3. Ombrages & horizon"));
-    const double shade = site.value(QStringLiteral("annualLossPct")).toDouble();
-    c.kv(QStringLiteral("Perte beam annuelle estimée"),
-         shade > 0 ? QStringLiteral("%1 %").arg(num(shade, 1)) : QStringLiteral("Non renseigné"));
-    c.kv(QStringLiteral("Points d’horizon"),
-         QString::number(site.value(QStringLiteral("points")).toList().size()));
-    c.para(QStringLiteral(
-               "L’ombrage proche / horizon est appliqué via facteurs mensuels (ou profil 30 min) "
-               "lors du dimensionnement et des simulations horaires. "
-               "Une étude PVsyst complète inclurait aussi l’albedo, les ombrages portés 3D détaillés "
-               "et le diagramme de pertes (IAM, mismatch, onduleur, câbles…)."),
-           8, kMuted);
-
-    // ── 4. Système ──
-    endPage();
-    c.h1(QStringLiteral("4. Définition du système"));
-    const double ppeak = form.value(QStringLiteral("Ppeak"),
-                                    sizing.value(QStringLiteral("Ppeak"),
-                                                 off.value(QStringLiteral("Ppeak"), 0))).toDouble();
-    const double panelWp = form.value(QStringLiteral("panelWp"), 400).toDouble();
-    const int nPanels = panelWp > 0 ? int(std::lround(ppeak * 1000.0 / panelWp)) : 0;
-    c.kv(QStringLiteral("Puissance crête"), QStringLiteral("%1 kWc").arg(num(ppeak, 2)));
-    c.kv(QStringLiteral("Modules"),
-         QStringLiteral("%1 × %2 Wc — %3")
-             .arg(nPanels)
-             .arg(num(panelWp, 0))
-             .arg(form.value(QStringLiteral("panelModel")).toString().isEmpty()
-                      ? QStringLiteral("module générique")
-                      : form.value(QStringLiteral("panelModel")).toString()));
-    c.kv(QStringLiteral("Onduleur"),
+    c.h2(QStringLiteral("System summary"));
+    c.kv(QStringLiteral("Orientation"),
+         QStringLiteral("Tilt %1 ° / Azimuth %2 ° (0 = South)")
+             .arg(num(form.value(QStringLiteral("tilt"), 30).toDouble(), 1))
+             .arg(num(form.value(QStringLiteral("azimuth"), 0).toDouble(), 1)));
+    c.kv(QStringLiteral("Near shadings"),
+         site.value(QStringLiteral("annualLossPct")).toDouble() > 0
+             ? QStringLiteral("Yes — annual beam loss ~%1 %")
+                   .arg(num(site.value(QStringLiteral("annualLossPct")).toDouble(), 1))
+             : QStringLiteral("None / not computed"));
+    c.kv(QStringLiteral("PV modules"),
+         QStringLiteral("%1 × %2 Wp (%3 kWp)").arg(nPanels).arg(num(panelWp, 0)).arg(num(ppeak, 2)));
+    const double pac = form.value(QStringLiteral("pacNom"), ppeak * 0.9).toDouble();
+    c.kv(QStringLiteral("Inverter"),
          form.value(QStringLiteral("inverterModel")).toString().isEmpty()
-             ? QStringLiteral("—")
+             ? QStringLiteral("Generic — Pnom ratio ~%1").arg(num(ppeak / std::max(0.1, pac), 2))
              : form.value(QStringLiteral("inverterModel")).toString());
-    c.kv(QStringLiteral("Stockage"),
-         form.value(QStringLiteral("battKwh")).toDouble() > 0
-             ? QStringLiteral("%1 kWh (DoD %2 %)")
-                   .arg(num(form.value(QStringLiteral("battKwh")).toDouble(), 1))
-                   .arg(num(form.value(QStringLiteral("battDod"),
-                                       form.value(QStringLiteral("dod"), 80)).toDouble(),
-                            0))
-             : QStringLiteral("Sans batterie"));
+
+    // 2 Parameters
+    endPage();
+    c.h1(QStringLiteral("2. General parameters & array"));
+    c.h2(QStringLiteral("PV field orientation"));
+    c.kv(QStringLiteral("Mounting"), QStringLiteral("Fixed plane"));
+    c.kv(QStringLiteral("Transposition model"), QStringLiteral("Hay / isotropic diffuse (OSE)"));
+    c.kv(QStringLiteral("Albedo"), QStringLiteral("0.20 (default)"));
+    c.kv(QStringLiteral("Horizon points"),
+         QString::number(site.value(QStringLiteral("points")).toList().size()));
+
+    c.h2(QStringLiteral("PV array characteristics"));
+    c.kv(QStringLiteral("Module"),
+         form.value(QStringLiteral("panelModel")).toString().isEmpty()
+             ? QStringLiteral("Generic %1 Wp").arg(num(panelWp, 0))
+             : form.value(QStringLiteral("panelModel")).toString());
+    c.kv(QStringLiteral("Number of modules"), QString::number(nPanels));
+    c.kv(QStringLiteral("Nominal (STC)"), QStringLiteral("%1 kWp").arg(num(ppeak, 2)));
+    c.kv(QStringLiteral("Module area (approx.)"),
+         QStringLiteral("%1 m²").arg(num(nPanels * panelArea, 1)));
+
+    c.h2(QStringLiteral("Inverter"));
+    c.kv(QStringLiteral("Model"),
+         form.value(QStringLiteral("inverterModel")).toString().isEmpty()
+             ? QStringLiteral("Generic")
+             : form.value(QStringLiteral("inverterModel")).toString());
+    c.kv(QStringLiteral("Pnom AC"), QStringLiteral("%1 kWac").arg(num(pac, 2)));
+    c.kv(QStringLiteral("Pnom ratio (DC:AC)"), QStringLiteral("%1").arg(num(ppeak / std::max(0.1, pac), 2)));
+    c.kv(QStringLiteral("η Euro (model)"),
+         QStringLiteral("%1 %").arg(num(form.value(QStringLiteral("etaEuro"), 0.97).toDouble() * 100, 1)));
+
+    c.h2(QStringLiteral("Array loss parameters"));
+    QVariantMap tree = form.value(QStringLiteral("lossTree")).toMap();
+    if (tree.isEmpty())
+        tree = YearPv::defaultLossTree(form.value(QStringLiteral("losses"), 14).toDouble());
+    c.kv(QStringLiteral("Thermal U"),
+         QStringLiteral("%1 W/m²K").arg(num(form.value(QStringLiteral("mountU"), 29).toDouble(), 0)));
+    c.kv(QStringLiteral("Soiling"), QStringLiteral("%1 %").arg(num(tree.value(QStringLiteral("soiling")).toDouble(), 1)));
+    c.kv(QStringLiteral("LID"), QStringLiteral("%1 %").arg(num(tree.value(QStringLiteral("lid")).toDouble(), 1)));
+    c.kv(QStringLiteral("Mismatch"),
+         QStringLiteral("%1 %").arg(num(tree.value(QStringLiteral("mismatch")).toDouble(), 1)));
+    c.kv(QStringLiteral("IAM"), QStringLiteral("%1 %").arg(num(tree.value(QStringLiteral("iam")).toDouble(), 1)));
+    c.kv(QStringLiteral("Ohmic DC / AC"),
+         QStringLiteral("%1 % / %2 %")
+             .arg(num(tree.value(QStringLiteral("ohmicDc")).toDouble(), 1))
+             .arg(num(tree.value(QStringLiteral("ohmicAc")).toDouble(), 1)));
+    c.kv(QStringLiteral("Availability"),
+         QStringLiteral("%1 %").arg(num(tree.value(QStringLiteral("availability")).toDouble(), 1)));
     if (!cable.isEmpty()) {
-        c.y += 6;
-        c.h2(QStringLiteral("Câblage (indicatif)"));
-        c.kv(QStringLiteral("Section proposée"),
+        c.kv(QStringLiteral("Cable section"),
              QStringLiteral("%1 mm²").arg(cable.value(QStringLiteral("sectionMm2")).toString()));
-        c.kv(QStringLiteral("Chute de tension"),
+        c.kv(QStringLiteral("Voltage drop"),
              QStringLiteral("%1 %").arg(num(cable.value(QStringLiteral("voltageDropPct")).toDouble(), 2)));
     }
 
-    // ── 5. Résultats énergétiques ──
-    c.h1(QStringLiteral("5. Résultats de simulation"));
-    const double eAnnual = grid.value(QStringLiteral("E_annual"),
-                                      sizing.value(QStringLiteral("E_annual"), 0)).toDouble();
-    c.kv(QStringLiteral("Production annuelle"),
-         eAnnual > 0 ? QStringLiteral("%1 kWh/an").arg(num(eAnnual, 0)) : QStringLiteral("—"));
-    if (ppeak > 0 && eAnnual > 0)
-        c.kv(QStringLiteral("Productible spécifique"),
-             QStringLiteral("%1 kWh/kWc/an").arg(num(eAnnual / ppeak, 0)));
-    if (sizing.contains(QStringLiteral("autoconsoRate")))
-        c.kv(QStringLiteral("Taux d’autoconsommation"),
-             QStringLiteral("%1 %").arg(num(sizing.value(QStringLiteral("autoconsoRate")).toDouble(), 1)));
-    if (sizing.contains(QStringLiteral("coverageRate")))
-        c.kv(QStringLiteral("Taux de couverture"),
-             QStringLiteral("%1 %").arg(num(sizing.value(QStringLiteral("coverageRate")).toDouble(), 1)));
-    if (sizing.contains(QStringLiteral("annualAutoconsoKwh")))
-        c.kv(QStringLiteral("Énergie autoconsommée"),
-             QStringLiteral("%1 kWh/an")
-                 .arg(num(sizing.value(QStringLiteral("annualAutoconsoKwh")).toDouble(), 0)));
+    // 3 Main results
+    endPage();
+    c.h1(QStringLiteral("3. Main results"));
+    c.h2(QStringLiteral("System production"));
+    const double eGrid = kpi.value(QStringLiteral("E_Grid_y"),
+                                   grid.value(QStringLiteral("E_annual"),
+                                              sizing.value(QStringLiteral("E_annual"), 0)))
+                             .toDouble();
+    c.kv(QStringLiteral("Produced Energy"),
+         eGrid > 0 ? QStringLiteral("%1 kWh/year").arg(num(eGrid, 0)) : QStringLiteral("—"));
+    c.kv(QStringLiteral("Specific production"),
+         ppeak > 0 && eGrid > 0 ? QStringLiteral("%1 kWh/kWp/year").arg(num(eGrid / ppeak, 0))
+                                : QStringLiteral("—"));
+    c.kv(QStringLiteral("Performance Ratio PR"),
+         kpi.contains(QStringLiteral("PR_pct"))
+             ? QStringLiteral("%1 %").arg(num(kpi.value(QStringLiteral("PR_pct")).toDouble(), 1))
+             : QStringLiteral("—"));
 
-    // Monthly from sizing or grid
-    QVariantList monthly = sizing.value(QStringLiteral("monthly")).toList();
-    if (monthly.isEmpty())
-        monthly = grid.value(QStringLiteral("monthly")).toList();
-    QVariantList monthlyMetrics = sizingRoot.value(QStringLiteral("monthlyMetrics")).toList();
-    if (monthlyMetrics.isEmpty())
-        monthlyMetrics = sizing.value(QStringLiteral("monthlyMetrics")).toList();
+    c.h2(QStringLiteral("Normalized productions (IEC 61724)"));
+    c.kv(QStringLiteral("Yr — Reference yield"),
+         QStringLiteral("%1 kWh/kWp/day").arg(num(kpi.value(QStringLiteral("Yr_d")).toDouble(), 2)));
+    c.kv(QStringLiteral("Ya — Array yield"),
+         QStringLiteral("%1 kWh/kWp/day").arg(num(kpi.value(QStringLiteral("Ya_d")).toDouble(), 2)));
+    c.kv(QStringLiteral("Yf — Final system yield"),
+         QStringLiteral("%1 kWh/kWp/day").arg(num(kpi.value(QStringLiteral("Yf_d")).toDouble(), 2)));
+    c.kv(QStringLiteral("Lc — Collection loss"),
+         QStringLiteral("%1 kWh/kWp/day").arg(num(kpi.value(QStringLiteral("Lc_d")).toDouble(), 2)));
+    c.kv(QStringLiteral("Ls — System loss"),
+         QStringLiteral("%1 kWh/kWp/day").arg(num(kpi.value(QStringLiteral("Ls_d")).toDouble(), 2)));
 
-    c.y += 8;
-    c.h2(QStringLiteral("Bilan mensuel"));
-    c.ensure(20);
-    c.setFont(8, true);
-    c.p->setPen(kPrimary);
-    c.p->drawText(c.margin, c.y, QStringLiteral("Mois"));
-    c.p->drawText(c.margin + 70, c.y, QStringLiteral("Prod (kWh)"));
-    c.p->drawText(c.margin + 160, c.y, QStringLiteral("Conso"));
-    c.p->drawText(c.margin + 240, c.y, QStringLiteral("Autoconso"));
-    c.p->drawText(c.margin + 340, c.y, QStringLiteral("Surplus"));
-    c.y += 14;
-    static const char* monthsFr[] = {"Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-                                     "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"};
-    for (int i = 0; i < 12; ++i) {
-        c.ensure(14);
-        double prod = 0, conso = 0, autoC = 0, surplus = 0;
-        if (i < monthlyMetrics.size()) {
-            const QVariantMap m = monthlyMetrics[i].toMap();
-            prod = m.value(QStringLiteral("prod")).toDouble();
-            conso = m.value(QStringLiteral("conso")).toDouble();
-            autoC = m.value(QStringLiteral("autoconsoKwh")).toDouble();
-            surplus = m.value(QStringLiteral("surplus")).toDouble();
-        } else if (i < monthly.size()) {
-            const QVariant mv = monthly[i];
-            if (mv.typeId() == QMetaType::QVariantMap)
-                prod = mv.toMap().value(QStringLiteral("E")).toDouble();
-            else
-                prod = mv.toDouble();
+    if (!balMonths.isEmpty()) {
+        drawMiniBars(balMonths, QStringLiteral("E_Grid"), QStringLiteral("E_Grid monthly (kWh)"));
+        drawMiniBars(balMonths, QStringLiteral("GlobInc"), QStringLiteral("GlobInc monthly (kWh/m²)"));
+
+        c.h2(QStringLiteral("Balances and main results"));
+        c.ensure(24);
+        c.setFont(6, true);
+        c.p->setPen(kPrimary);
+        const int cols[] = {0, 42, 84, 126, 168, 214, 262, 318, 370};
+        const char* hdrs[] = {"Month", "GlobHor", "DiffHor", "T_Amb", "GlobInc", "GlobEff",
+                              "EArray", "E_Grid", "PR"};
+        for (int i = 0; i < 9; ++i)
+            c.p->drawText(c.margin + cols[i], c.y, QString::fromUtf8(hdrs[i]));
+        c.y += 11;
+        for (int i = 0; i < balMonths.size() && i < 12; ++i) {
+            const QVariantMap m = balMonths[i].toMap();
+            c.ensure(11);
+            c.setFont(6);
+            c.p->setPen(kText);
+            c.p->drawText(c.margin + cols[0], c.y, m.value(QStringLiteral("name")).toString().left(3));
+            c.p->drawText(c.margin + cols[1], c.y, num(m.value(QStringLiteral("GlobHor")).toDouble(), 1));
+            c.p->drawText(c.margin + cols[2], c.y, num(m.value(QStringLiteral("DiffHor")).toDouble(), 1));
+            c.p->drawText(c.margin + cols[3], c.y, num(m.value(QStringLiteral("T_Amb")).toDouble(), 1));
+            c.p->drawText(c.margin + cols[4], c.y, num(m.value(QStringLiteral("GlobInc")).toDouble(), 1));
+            c.p->drawText(c.margin + cols[5], c.y, num(m.value(QStringLiteral("GlobEff")).toDouble(), 1));
+            c.p->drawText(c.margin + cols[6], c.y, num(m.value(QStringLiteral("EArray")).toDouble(), 0));
+            c.p->drawText(c.margin + cols[7], c.y, num(m.value(QStringLiteral("E_Grid")).toDouble(), 0));
+            c.p->drawText(c.margin + cols[8], c.y, num(m.value(QStringLiteral("PR")).toDouble(), 3));
+            c.y += 10;
         }
-        c.setFont(8);
-        c.p->setPen(kText);
-        c.p->drawText(c.margin, c.y, QString::fromUtf8(monthsFr[i]));
-        c.p->drawText(c.margin + 70, c.y, num(prod, 0));
-        c.p->drawText(c.margin + 160, c.y, conso > 0 ? num(conso, 0) : QStringLiteral("—"));
-        c.p->drawText(c.margin + 240, c.y, autoC > 0 ? num(autoC, 0) : QStringLiteral("—"));
-        c.p->drawText(c.margin + 340, c.y, surplus > 0 ? num(surplus, 0) : QStringLiteral("—"));
-        c.y += 13;
+        c.ensure(12);
+        c.setFont(6, true);
+        c.p->setPen(kPrimary);
+        c.p->drawText(c.margin + cols[0], c.y, QStringLiteral("Year"));
+        c.p->drawText(c.margin + cols[1], c.y, num(kpi.value(QStringLiteral("GlobHor_y")).toDouble(), 0));
+        c.p->drawText(c.margin + cols[2], c.y, num(kpi.value(QStringLiteral("DiffHor_y")).toDouble(), 0));
+        c.p->drawText(c.margin + cols[3], c.y, num(kpi.value(QStringLiteral("T_Amb_avg")).toDouble(), 1));
+        c.p->drawText(c.margin + cols[4], c.y, num(kpi.value(QStringLiteral("GlobInc_y")).toDouble(), 0));
+        c.p->drawText(c.margin + cols[5], c.y, num(kpi.value(QStringLiteral("GlobEff_y")).toDouble(), 0));
+        c.p->drawText(c.margin + cols[6], c.y, num(kpi.value(QStringLiteral("EArray_y")).toDouble(), 0));
+        c.p->drawText(c.margin + cols[7], c.y, num(kpi.value(QStringLiteral("E_Grid_y")).toDouble(), 0));
+        c.p->drawText(c.margin + cols[8], c.y, num(kpi.value(QStringLiteral("PR")).toDouble(), 3));
+        c.y += 14;
+        c.para(QStringLiteral("PR = E_Grid / (GlobInc × Pnom). GlobEff = after shade, soiling, IAM."), 7,
+               kMuted);
     }
 
-    // ── 6. Finances ──
+    if (sizing.contains(QStringLiteral("autoconsoRate"))) {
+        c.h2(QStringLiteral("Self-consumption (project load)"));
+        c.kv(QStringLiteral("Self-consumption rate"),
+             QStringLiteral("%1 %").arg(num(sizing.value(QStringLiteral("autoconsoRate")).toDouble(), 1)));
+    }
+
+    // 4 Loss diagram
     endPage();
-    c.h1(QStringLiteral("6. Évaluation économique"));
+    c.h1(QStringLiteral("4. Loss diagram"));
+    c.para(QStringLiteral("Energy balance (PVsyst-style). Percentages are relative to the previous step."),
+           8, kMuted);
+    if (!lossDiag.isEmpty()) {
+        for (const QVariant& v : lossDiag) {
+            const QVariantMap n = v.toMap();
+            c.ensure(13);
+            const double d = n.value(QStringLiteral("deltaPct")).toDouble();
+            const bool isLoss = n.value(QStringLiteral("isLoss")).toBool();
+            c.setFont(7);
+            if (std::abs(d) > 1e-9) {
+                c.p->setPen(isLoss && d < 0 ? QColor(0xb0, 0x3a, 0x2e) : kPrimary);
+                const QString dp = (d >= 0 ? QStringLiteral("+") : QString()) + num(d, 2)
+                                   + QStringLiteral(" %");
+                c.p->drawText(c.margin, c.y, dp);
+            }
+            c.p->setPen(kText);
+            c.setFont(7, true);
+            c.p->drawText(c.margin + 70, c.y,
+                          QStringLiteral("%1 %2")
+                              .arg(num(n.value(QStringLiteral("energy")).toDouble(), 1))
+                              .arg(n.value(QStringLiteral("unit")).toString()));
+            c.setFont(7);
+            c.p->setPen(kMuted);
+            c.p->drawText(c.margin + 180, c.y, n.value(QStringLiteral("label")).toString());
+            c.y += 12;
+        }
+    } else {
+        c.para(QStringLiteral("No loss diagram — load weather and re-export."), 9, kMuted);
+    }
+
+    // 5 PVGIS
+    endPage();
+    c.h1(QStringLiteral("5. PVGIS PVcalc reference (JRC)"));
+    if (pvgis.value(QStringLiteral("ok")).toBool()) {
+        c.kv(QStringLiteral("Database"),
+             QStringLiteral("%1 / %2 (%3–%4)")
+                 .arg(pvgis.value(QStringLiteral("radiation_db")).toString())
+                 .arg(pvgis.value(QStringLiteral("meteo_db")).toString())
+                 .arg(pvgis.value(QStringLiteral("year_min")).toInt())
+                 .arg(pvgis.value(QStringLiteral("year_max")).toInt()));
+        c.kv(QStringLiteral("Elevation (PVGIS)"),
+             QStringLiteral("%1 m").arg(num(pvgis.value(QStringLiteral("elevation")).toDouble(), 0)));
+        c.kv(QStringLiteral("E_y (PVGIS)"),
+             QStringLiteral("%1 kWh/year").arg(num(pvgis.value(QStringLiteral("E_y")).toDouble(), 0)));
+        c.kv(QStringLiteral("H(i)_y"),
+             QStringLiteral("%1 kWh/m²").arg(num(pvgis.value(QStringLiteral("H_i_y")).toDouble(), 0)));
+        c.kv(QStringLiteral("SD_y (interannual)"),
+             QStringLiteral("%1 kWh").arg(num(pvgis.value(QStringLiteral("SD_y")).toDouble(), 0)));
+        c.kv(QStringLiteral("l_aoi / l_spec / l_tg"),
+             QStringLiteral("%1 % / %2 / %3 %")
+                 .arg(num(pvgis.value(QStringLiteral("l_aoi")).toDouble(), 2))
+                 .arg(pvgis.value(QStringLiteral("l_spec")).toString())
+                 .arg(num(pvgis.value(QStringLiteral("l_tg")).toDouble(), 2)));
+        c.kv(QStringLiteral("l_total"),
+             QStringLiteral("%1 %").arg(num(pvgis.value(QStringLiteral("l_total")).toDouble(), 2)));
+        if (eGrid > 0 && pvgis.value(QStringLiteral("E_y")).toDouble() > 0) {
+            const double ey = pvgis.value(QStringLiteral("E_y")).toDouble();
+            const double d = (eGrid - ey) / ey * 100.0;
+            c.kv(QStringLiteral("OSE vs PVGIS"),
+                 QStringLiteral("%1%2 % (%3 kWh OSE)")
+                     .arg(d >= 0 ? QStringLiteral("+") : QString())
+                     .arg(num(d, 1))
+                     .arg(num(eGrid, 0)));
+        }
+        const QVariantList pm = pvgis.value(QStringLiteral("monthly")).toList();
+        if (!pm.isEmpty()) {
+            c.h2(QStringLiteral("PVGIS monthly E_m / H(i)_m"));
+            c.ensure(16);
+            c.setFont(7, true);
+            c.p->setPen(kPrimary);
+            c.p->drawText(c.margin, c.y, QStringLiteral("Month"));
+            c.p->drawText(c.margin + 60, c.y, QStringLiteral("E_d"));
+            c.p->drawText(c.margin + 110, c.y, QStringLiteral("E_m"));
+            c.p->drawText(c.margin + 170, c.y, QStringLiteral("H(i)_d"));
+            c.p->drawText(c.margin + 230, c.y, QStringLiteral("H(i)_m"));
+            c.p->drawText(c.margin + 300, c.y, QStringLiteral("SD_m"));
+            c.y += 11;
+            for (const QVariant& v : pm) {
+                const QVariantMap m = v.toMap();
+                c.ensure(11);
+                c.setFont(7);
+                c.p->setPen(kText);
+                c.p->drawText(c.margin, c.y, m.value(QStringLiteral("name")).toString());
+                c.p->drawText(c.margin + 60, c.y, num(m.value(QStringLiteral("E_d")).toDouble(), 2));
+                c.p->drawText(c.margin + 110, c.y, num(m.value(QStringLiteral("E_m")).toDouble(), 1));
+                c.p->drawText(c.margin + 170, c.y, num(m.value(QStringLiteral("H_i_d")).toDouble(), 2));
+                c.p->drawText(c.margin + 230, c.y, num(m.value(QStringLiteral("H_i_m")).toDouble(), 1));
+                c.p->drawText(c.margin + 300, c.y, num(m.value(QStringLiteral("SD_m")).toDouble(), 1));
+                c.y += 10;
+            }
+        }
+    } else {
+        c.para(QStringLiteral("No PVGIS PVcalc on project — Lieu → Comparer PVcalc, then re-export."), 9,
+               kMuted);
+    }
+
+    // 6 Economics
+    endPage();
+    c.h1(QStringLiteral("6. Economic evaluation"));
     const double cost = form.value(QStringLiteral("systemCost"),
-                                   sizing.value(QStringLiteral("systemCost"), ppeak * 1200)).toDouble();
-    c.kv(QStringLiteral("Investissement estimé"), euro(cost));
+                                   sizing.value(QStringLiteral("systemCost"), ppeak * 1200))
+                            .toDouble();
+    c.kv(QStringLiteral("System cost"), euro(cost));
     if (sizing.contains(QStringLiteral("paybackYears")) || sizing.contains(QStringLiteral("payback")))
-        c.kv(QStringLiteral("Temps de retour"),
-             QStringLiteral("%1 ans")
-                 .arg(num(sizing.value(QStringLiteral("paybackYears"),
-                                       sizing.value(QStringLiteral("payback")))
+        c.kv(QStringLiteral("Payback"),
+             QStringLiteral("%1 years")
+                 .arg(num(sizing.value(QStringLiteral("paybackYears"), sizing.value(QStringLiteral("payback")))
                               .toDouble(),
                           1)));
     if (sizing.contains(QStringLiteral("npv")) || sizing.contains(QStringLiteral("npv25")))
-        c.kv(QStringLiteral("VAN"),
+        c.kv(QStringLiteral("NPV"),
              euro(sizing.value(QStringLiteral("npv25"), sizing.value(QStringLiteral("npv"))).toDouble()));
     if (sizing.contains(QStringLiteral("lcoe")))
         c.kv(QStringLiteral("LCOE"),
              QStringLiteral("%1 €/kWh").arg(num(sizing.value(QStringLiteral("lcoe")).toDouble(), 3)));
     if (sizing.contains(QStringLiteral("incentive")))
-        c.kv(QStringLiteral("Prime / aides (estim.)"),
-             euro(sizing.value(QStringLiteral("incentive")).toDouble()));
-    if (grid.contains(QStringLiteral("payback")))
-        c.kv(QStringLiteral("Payback (simul. réseau)"),
-             QStringLiteral("%1 ans").arg(num(grid.value(QStringLiteral("payback")).toDouble(), 1)));
-    c.para(QStringLiteral(
-               "Hypothèses économiques simplifiées (tarif, inflation, dégradation modules ~0,5 %/an). "
-               "À affiner avec le devis commercial et le régime d’obligation d’achat / autoconsommation."),
-           8, kMuted);
+        c.kv(QStringLiteral("Incentive (est.)"), euro(sizing.value(QStringLiteral("incentive")).toDouble()));
+    c.para(QStringLiteral("Simplified economics — refine with commercial quote."), 8, kMuted);
 
-    // ── 7. Hors réseau ──
     if (!off.isEmpty() || install == QLatin1String("offgrid") || install == QLatin1String("hybrid")) {
-        c.h1(QStringLiteral("7. Simulation hors réseau / stockage"));
+        c.h1(QStringLiteral("7. Stand-alone / hybrid storage"));
         if (!off.isEmpty()) {
-            c.kv(QStringLiteral("Ppeak recommandé"),
+            c.kv(QStringLiteral("Ppeak"),
                  QStringLiteral("%1 kWc").arg(num(off.value(QStringLiteral("Ppeak")).toDouble(), 2)));
-            c.kv(QStringLiteral("Batterie"),
+            c.kv(QStringLiteral("Battery"),
                  QStringLiteral("%1 kWh").arg(num(off.value(QStringLiteral("battKwh")).toDouble(), 1)));
             if (off.contains(QStringLiteral("coverage")) || off.contains(QStringLiteral("coveragePct")))
-                c.kv(QStringLiteral("Couverture"),
+                c.kv(QStringLiteral("Coverage"),
                      QStringLiteral("%1 %")
-                         .arg(num(off.value(QStringLiteral("coveragePct"),
-                                            off.value(QStringLiteral("coverage")))
+                         .arg(num(off.value(QStringLiteral("coveragePct"), off.value(QStringLiteral("coverage")))
                                       .toDouble(),
                                   1)));
-            if (off.contains(QStringLiteral("cost")))
-                c.kv(QStringLiteral("Coût estimé"), euro(off.value(QStringLiteral("cost")).toDouble()));
         } else {
-            c.para(QStringLiteral("Aucun résultat hors réseau enregistré — lancez l’onglet Hors réseau."),
-                   9, kMuted);
+            c.para(QStringLiteral("No offgrid result — run Hors réseau."), 9, kMuted);
         }
     }
 
-    // ── 8. Méthode ──
-    c.h1(QStringLiteral("8. Méthode & limites (équivalent notice PVsyst)"));
+    c.h1(QStringLiteral("8. Method & limits"));
     c.para(QStringLiteral(
-               "• Irradiation : séries mensuelles (Open-Meteo / PVGIS / démo) transposées sur plan incliné.\n"
-               "• Production : modèle PV cristallin avec pertes système forfaitaires + ombrage site.\n"
-               "• Autoconsommation : profil de charge mensuel / jour-nuit (Enedis si importé).\n"
-               "• Hors réseau : simulation horaire / 30 min avec batterie et critères de couverture.\n"
-               "• Non inclus au niveau PVsyst Pro : 3D shading détaillé module-par-module, "
-               "thermal model avancé, aging multi-années complet, onduleur clipping courbe, "
-               "normes IEC détaillées, import Meteonorm payant."),
+               "• Irradiation: Open-Meteo / PVGIS monthly or hourly TMY.\n"
+               "• Balances / PR / loss diagram: YearPv::buildBalancesReport.\n"
+               "• Shading: halfHourlyKeep (+ electrical bypass in study).\n"
+               "• Inverter: η(P) Euro + clipping when enabled.\n"
+               "• Not vs PVsyst Pro: .PAN/.OND, ModuleLayout, Meteonorm, bifacial spectral, CAD SLD.\n"
+               "• PVGIS section: JRC API validation reference."),
            8, kMuted);
-
     c.y += 12;
-    c.para(QStringLiteral("Fin du rapport — Open Solar Energy %1")
-               .arg(QStringLiteral(OSE_APP_VERSION)),
-           8, kMuted);
+    c.para(QStringLiteral("End of report — Open Solar Energy %1").arg(QStringLiteral(OSE_APP_VERSION)), 8,
+           kMuted);
     drawFooter(c, QStringLiteral("Rapport %1").arg(name), pageNo);
     painter.end();
     return path;
 }
+
 
 QVariantList PdfExport::previewPages(const QString& pdfPath, int maxPages) const
 {
@@ -879,6 +1062,7 @@ QVariantList PdfExport::previewPages(const QString& pdfPath, int maxPages) const
     if (pdfPath.isEmpty() || !QFileInfo::exists(pdfPath))
         return out;
 
+#if defined(OSE_HAS_QPDFDOCUMENT)
     QPdfDocument doc;
     if (doc.load(pdfPath) != QPdfDocument::Error::None)
         return out;
@@ -906,6 +1090,10 @@ QVariantList PdfExport::previewPages(const QString& pdfPath, int maxPages) const
             {QStringLiteral("height"), h},
         });
     }
+#else
+    Q_UNUSED(maxPages);
+    // Qt Pdf (lecture) absent sur Android — ouvrir le fichier via intent
+#endif
     return out;
 }
 

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import OpenSolarEnergy
 import "controls"
 
 Rectangle {
@@ -12,7 +13,7 @@ Rectangle {
     signal requestGotoLocation()
     signal requestEditClient()
 
-    height: 56
+    height: 52
     color: Theme.surface
 
     Rectangle {
@@ -23,6 +24,7 @@ Rectangle {
     }
 
     readonly property var project: Projects.currentProject
+    readonly property bool compact: Ui.isCompact
 
     property string saveStatus: ""
 
@@ -32,26 +34,35 @@ Rectangle {
         onTriggered: root.saveStatus = ""
     }
 
+    function doSave() {
+        Projects.updateCurrent({})
+        AppController.autoSave("Sauvegarde manuelle")
+        root.saveStatus = "OK"
+        saveStatusTimer.restart()
+        AppController.toast("Projet sauvegardé")
+    }
+
     RowLayout {
         anchors.fill: parent
-        anchors.leftMargin: 8
-        anchors.rightMargin: 8
-        spacing: 6
+        anchors.leftMargin: 6
+        anchors.rightMargin: 6
+        spacing: 4
 
         OseBtn {
             text: "←"
             kind: "flat"
             implicitWidth: 40
+            implicitHeight: Theme.touchTarget
             onClicked: root.requestClose()
         }
 
         TextField {
-            Layout.preferredWidth: 200
-            Layout.minimumWidth: 140
             Layout.fillWidth: true
-            Layout.maximumWidth: 280
+            Layout.minimumWidth: root.compact ? 80 : 120
+            Layout.maximumWidth: root.compact ? 10000 : 280
             text: root.project.name || ""
-            placeholderText: "Nom du projet…"
+            // Évite le label flottant Material qui se superpose au nom
+            placeholderText: text.length > 0 ? "" : "Projet…"
             onEditingFinished: Projects.setCurrentField("name", text)
             background: Rectangle {
                 implicitHeight: 34
@@ -63,20 +74,21 @@ Rectangle {
 
         Button {
             flat: true
-            Layout.preferredWidth: Math.max(140, locLabel.implicitWidth + 16)
-            Layout.maximumWidth: 280
+            visible: !root.compact
+            Layout.preferredWidth: Math.min(200, Math.max(100, locLabel.implicitWidth + 16))
+            Layout.maximumWidth: 220
             text: {
                 const loc = root.project.location || {}
                 return loc.name || (loc.lat !== undefined
                     ? (Number(loc.lat).toFixed(3) + ", " + Number(loc.lon).toFixed(3))
-                    : "Lieu —")
+                    : "Lieu")
             }
             contentItem: Text {
                 id: locLabel
                 text: parent.text
                 color: Theme.primary
                 font.pixelSize: 12
-                elide: Text.ElideNone
+                elide: Text.ElideRight
                 verticalAlignment: Text.AlignVCenter
             }
             onClicked: {
@@ -87,27 +99,26 @@ Rectangle {
 
         Button {
             flat: true
-            Layout.preferredWidth: Math.max(100, clientLabel.implicitWidth + 16)
-            Layout.maximumWidth: 220
+            visible: !root.compact
+            Layout.preferredWidth: Math.min(160, Math.max(80, clientLabel.implicitWidth + 16))
+            Layout.maximumWidth: 180
             text: {
                 const c = Projects.clientObject()
-                return c.name || "Client…"
+                return c.name || "Client"
             }
             contentItem: Text {
                 id: clientLabel
                 text: parent.text
                 color: Theme.textDim
                 font.pixelSize: 12
-                elide: Text.ElideNone
+                elide: Text.ElideRight
                 verticalAlignment: Text.AlignVCenter
             }
             onClicked: root.requestEditClient()
         }
 
-        Item { Layout.fillWidth: true }
-
         Label {
-            visible: root.saveStatus.length > 0
+            visible: root.saveStatus.length > 0 && !root.compact
             text: root.saveStatus
             color: Theme.success
             font.pixelSize: Theme.fontSizeCaption
@@ -115,8 +126,8 @@ Rectangle {
 
         ComboBox {
             id: typeBox
-            Layout.preferredWidth: 140
-            Layout.minimumWidth: 140
+            visible: !root.compact
+            Layout.preferredWidth: 120
             model: [
                 { label: "Réseau", value: "grid" },
                 { label: "Hybride", value: "hybrid" },
@@ -142,16 +153,12 @@ Rectangle {
         }
 
         OseBtn {
+            visible: !root.compact
             text: "Sauver"
-            onClicked: {
-                Projects.updateCurrent({})
-                AppController.autoSave("Sauvegarde manuelle")
-                root.saveStatus = "Enregistré"
-                saveStatusTimer.restart()
-                AppController.toast("Projet sauvegardé (git)")
-            }
+            onClicked: root.doSave()
         }
         OseBtn {
+            visible: !root.compact
             text: "Export"
             kind: "outline"
             onClicked: {
@@ -159,8 +166,81 @@ Rectangle {
                     AppController.toast("Export JSON OK")
             }
         }
-        OseBtn { text: "Partager"; kind: "flat"; onClicked: root.requestShare() }
-        OseBtn { text: "Matériel"; kind: "flat"; onClicked: root.requestMateriel() }
-        OseBtn { text: "Historique"; kind: "flat"; onClicked: root.requestHistory() }
+        OseBtn {
+            visible: !root.compact
+            text: "Partager"
+            kind: "flat"
+            onClicked: root.requestShare()
+        }
+        OseBtn {
+            visible: !root.compact
+            text: "Matériel"
+            kind: "flat"
+            onClicked: root.requestMateriel()
+        }
+        OseBtn {
+            visible: !root.compact
+            text: "Historique"
+            kind: "flat"
+            onClicked: root.requestHistory()
+        }
+
+        ToolButton {
+            visible: root.compact
+            text: "⋯"
+            font.pixelSize: 22
+            implicitWidth: Theme.touchTarget
+            implicitHeight: Theme.touchTarget
+            onClicked: overflowMenu.open()
+            Menu {
+                id: overflowMenu
+                MenuItem {
+                    text: "Lieu"
+                    onTriggered: {
+                        AppController.currentTab = "location"
+                        root.requestGotoLocation()
+                    }
+                }
+                MenuItem {
+                    text: "Client"
+                    onTriggered: root.requestEditClient()
+                }
+                MenuSeparator {}
+                MenuItem {
+                    text: "Type : Réseau"
+                    onTriggered: {
+                        Projects.setCurrentField("installType", "grid")
+                        typeBox.currentIndex = 0
+                    }
+                }
+                MenuItem {
+                    text: "Type : Hybride"
+                    onTriggered: {
+                        Projects.setCurrentField("installType", "hybrid")
+                        typeBox.currentIndex = 1
+                    }
+                }
+                MenuItem {
+                    text: "Type : Autonome"
+                    onTriggered: {
+                        Projects.setCurrentField("installType", "offgrid")
+                        typeBox.currentIndex = 2
+                    }
+                }
+                MenuSeparator {}
+                MenuItem { text: "Sauver"; onTriggered: root.doSave() }
+                MenuItem {
+                    text: "Exporter JSON"
+                    onTriggered: {
+                        if (AppController.saveTextFile((root.project.name || "projet") + ".json",
+                                                       Projects.exportCurrentJson()))
+                            AppController.toast("Export JSON OK")
+                    }
+                }
+                MenuItem { text: "Partager"; onTriggered: root.requestShare() }
+                MenuItem { text: "Matériel"; onTriggered: root.requestMateriel() }
+                MenuItem { text: "Historique"; onTriggered: root.requestHistory() }
+            }
+        }
     }
 }

@@ -145,7 +145,9 @@ OseTabPage {
             }
         }
 
-        RowLayout {
+        Flow {
+            Layout.fillWidth: true
+            spacing: 8
             OseBtn { text: "Synchroniser projet"; kind: "outline"; onClicked: root.refresh() }
             OseBtn {
                 text: "+ Ligne"
@@ -194,11 +196,21 @@ OseTabPage {
             }
         }
 
-        RowLayout {
-            Label { text: "Remise" }
-            OseInputUnit { id: remiseField; text: "0"; unit: "%"; Layout.preferredWidth: 100 }
-            Label { text: "TVA" }
-            OseInputUnit { id: tvaField; text: "10"; unit: "%"; Layout.preferredWidth: 100 }
+        GridLayout {
+            columns: Ui.isPhone ? 1 : 2
+            Layout.fillWidth: true
+            columnSpacing: 8
+            rowSpacing: 6
+            RowLayout {
+                Layout.fillWidth: true
+                Label { text: "Remise"; Layout.preferredWidth: 64 }
+                OseInputUnit { id: remiseField; text: "0"; unit: "%"; Layout.fillWidth: true }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Label { text: "TVA"; Layout.preferredWidth: 64 }
+                OseInputUnit { id: tvaField; text: "10"; unit: "%"; Layout.fillWidth: true }
+            }
         }
 
         Label {
@@ -211,11 +223,11 @@ OseTabPage {
             color: Theme.primary
         }
 
-        RowLayout {
+        Flow {
             Layout.fillWidth: true
             spacing: 8
             OseBtn {
-                text: "Aperçu devis PDF"
+                text: Ui.isPhone ? "Aperçu PDF" : "Aperçu devis PDF"
                 kind: "outline"
                 onClicked: {
                     root.persistQuote()
@@ -267,7 +279,7 @@ OseTabPage {
                 }
             }
             OseBtn {
-                text: "Rapport simulation"
+                text: Ui.isPhone ? "Rapport" : "Rapport simulation"
                 kind: "outline"
                 onClicked: {
                     root.persistQuote()

@@ -18,6 +18,21 @@ Item {
                                      ? Pipeline.staleDiagnosis(project)
                                      : ({ stale: false, summary: "", actions: [], canRefresh: false })
 
+    readonly property string tab: AppController.currentTab
+    readonly property bool onSite: tab === "site"
+    readonly property bool onLayout: tab === "layout"
+    readonly property bool onHeavy3d: onSite || onLayout
+
+    property bool siteVisited: false
+    property bool layoutVisited: false
+
+    onOnSiteChanged: if (onSite) siteVisited = true
+    onOnLayoutChanged: if (onLayout) layoutVisited = true
+    Component.onCompleted: {
+        if (onSite) siteVisited = true
+        if (onLayout) layoutVisited = true
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -32,13 +47,67 @@ Item {
             onRequestGotoLocation: AppController.currentTab = "location"
         }
 
+        // Barre globale : TMY / météo / ombrage long
+        Rectangle {
+            id: globalBusyBar
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible ? busyCol.implicitHeight + 10 : 0
+            visible: Weather.busy || Pvgis.busy || ShadingEngine.computing
+            color: Theme.surface
+            clip: true
+
+            ColumnLayout {
+                id: busyCol
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: 6
+                spacing: 4
+
+                ProgressBar {
+                    Layout.fillWidth: true
+                    from: 0
+                    to: 100
+                    value: {
+                        if (Weather.busy)
+                            return Weather.progressPct
+                        if (ShadingEngine.computing)
+                            return ShadingEngine.computePercent
+                        return 0
+                    }
+                    indeterminate: {
+                        if (Weather.busy)
+                            return Weather.progressPct <= 0
+                        if (ShadingEngine.computing)
+                            return ShadingEngine.computePercent <= 0
+                        return Pvgis.busy
+                    }
+                }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    font.pixelSize: Theme.fontSizeCaption
+                    color: Theme.textDim
+                    text: {
+                        if (Weather.busy)
+                            return (Weather.status || "Météo…")
+                                   + (Weather.progressPct > 0 ? (" — " + Weather.progressPct + " %") : "")
+                        if (ShadingEngine.computing)
+                            return (ShadingEngine.computeStatus || "Ombrage…")
+                                   + " — " + ShadingEngine.computePercent + " %"
+                        if (Pvgis.busy)
+                            return Pvgis.status || "PVGIS…"
+                        return ""
+                    }
+                }
+            }
+        }
+
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: visible ? staleCol.implicitHeight + 16 : 0
             visible: root.stale && !!(project.sizingResult || project.offgridResult || project.gridResult)
             color: Theme.warningBg
-            border.color: "#ffcc80"
-            border.width: 0
 
             ColumnLayout {
                 id: staleCol
@@ -99,25 +168,43 @@ Item {
             installType: root.installType
         }
 
-        Loader {
-            id: tabLoader
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            sourceComponent: {
-                switch (AppController.currentTab) {
-                case "site": return siteComp
-                case "sizing": return sizingComp
-                case "offgrid": return offgridComp
-                case "grid": return gridComp
-                case "daily": return dailyComp
-                case "layout": return layoutComp
-                case "cables": return cablesComp
-                case "quote": return quoteComp
-                case "irradiation": return irrComp
-                case "optimizer": return optComp
-                case "tracker": return trackComp
-                default: return locComp
+
+            // Onglets légers : un seul à la fois
+            Loader {
+                anchors.fill: parent
+                active: !root.onHeavy3d
+                visible: active
+                sourceComponent: {
+                    switch (root.tab) {
+                    case "sizing": return sizingComp
+                    case "offgrid": return offgridComp
+                    case "grid": return gridComp
+                    case "daily": return dailyComp
+                    case "cables": return cablesComp
+                    case "quote": return quoteComp
+                    case "irradiation": return irrComp
+                    case "optimizer": return optComp
+                    case "tracker": return trackComp
+                    default: return locComp
+                    }
                 }
+            }
+
+            // Site / Layout : créés à la première visite, puis gardés (View3D)
+            Loader {
+                anchors.fill: parent
+                active: root.siteVisited
+                visible: root.onSite
+                sourceComponent: siteComp
+            }
+            Loader {
+                anchors.fill: parent
+                active: root.layoutVisited
+                visible: root.onLayout
+                sourceComponent: layoutComp
             }
         }
     }

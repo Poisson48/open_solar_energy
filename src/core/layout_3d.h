@@ -15,20 +15,24 @@ public:
     /** Disposition : surface, fits, cols/rows, positions monde [{x,y,z,yaw,tilt}]. */
     Q_INVOKABLE QVariantMap computeLayout(const QVariantMap& cfg) const;
 
-    /** Direction soleil unitaire (Y-up) depuis azimut/élévation app (0°=Sud). */
-    Q_INVOKABLE QVariantMap sunDirection(double azimutDeg, double elevDeg) const;
+    /** Direction soleil unitaire (Y-up) depuis azimut boussole (0°=Nord) + élévation. */
+    Q_INVOKABLE QVariantMap sunDirection(double azimutNorthDeg, double elevDeg) const;
 
-    /** eulerRotation DirectionalLight Quick3D pour viser le soleil. */
-    Q_INVOKABLE QVariantMap sunLightEuler(double azimutDeg, double elevDeg) const;
+    /** eulerRotation DirectionalLight Quick3D (azimut 0°=Nord). */
+    Q_INVOKABLE QVariantMap sunLightEuler(double azimutNorthDeg, double elevDeg) const;
+
+    /** Converters azimut (délègue à Azimuth). */
+    Q_INVOKABLE double northToPv(double azNorth) const;
+    Q_INVOKABLE double pvToNorth(double azPv) const;
 
     /**
      * Ombre panneau×obstacles×soleil.
-     * obstacles: [{az, elev, dist?}] horizon ; panels depuis computeLayout.
+     * sunAz / obstacles.az : 0°=Nord. panels : yaw PV 0°=Sud.
      * Retourne {shadedFraction, litPanels, totalPanels, keep}.
      */
     Q_INVOKABLE QVariantMap sampleShading(const QVariantMap& layout,
                                           const QVariantList& obstacles,
-                                          double sunAz, double sunElev) const;
+                                          double sunAzNorth, double sunElev) const;
 
     /** Profil 48 demi-heures keep[0..1] pour un mois (jour mid-month). */
     Q_INVOKABLE QVariantList halfHourlyKeepForMonth(double lat, int month,

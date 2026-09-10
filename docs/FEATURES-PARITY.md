@@ -1,6 +1,7 @@
 # Parité fonctionnalités — Legacy web vs QML natif
 
-Légende : **OK** = présent · **PARTIEL** = incomplet · **MANQUE** = à porter
+Légende : **OK** = présent et branché · **PARTIEL** = incomplet · **MANQUE** = absent  
+*Mis à jour 2026-09-09 — basé sur code + `ctest` / `--self-test`, pas sur intention.*
 
 ## Hub
 | Fonction | Statut |
@@ -16,6 +17,7 @@ Légende : **OK** = présent · **PARTIEL** = incomplet · **MANQUE** = à porte
 | Export projet ZIP | OK (via `zip` CLI, fallback JSON) |
 | Démos seedées grid + hybride | OK (seed si vide) |
 | Confirmation suppression | OK |
+| Largeur hub utilisable | OK (max 1100) |
 
 ## Barre projet
 | Fonction | Statut |
@@ -30,10 +32,12 @@ Légende : **OK** = présent · **PARTIEL** = incomplet · **MANQUE** = à porte
 | Fonction | Statut |
 |----------|--------|
 | Nominatim, lat/lon, lock, OSM tiles, météo Open-Meteo / PVGIS | OK |
-| Couches sat / fullscreen | MANQUE |
+| Couche satellite (Esri) | OK |
+| Plein écran carte | OK |
 | Terrain DEM → tilt/az | OK (Open-Meteo elevation) |
-| Météo horaire année | PARTIEL (mensuel + analyse 12 mois) |
-| Comparaison PVcalc | MANQUE |
+| Météo horaire année | OK (`Weather.fetchOpenMeteoHourly` + `hourlyWeatherData`) |
+| Mode énergie rapide / étude | OK (`formState.energyMode`) |
+| Comparaison PVcalc | OK (`Pvgis.fetchPvcalc` + écart vs OSE) |
 
 ## Site
 | Fonction | Statut |
@@ -41,8 +45,10 @@ Légende : **OK** = présent · **PARTIEL** = incomplet · **MANQUE** = à porte
 | Horizon manuel, canvas, pertes, halfHourlyKeep | OK |
 | Drag points | OK |
 | Boussole device | PARTIEL (offset manuel) |
-| Photo + caméra | PARTIEL (permission) |
+| Photo + caméra | PARTIEL (Android ; stub desktop) |
 | Terrain depuis Site | OK |
+| Obstacles 3D → ombrage | OK (`ShadingEngine` si panneaux/obstacles) |
+| Recalc horizon n’écrase plus le 3D si panneaux/obstacles | OK |
 
 ## Dimensionnement
 | Fonction | Statut |
@@ -52,6 +58,8 @@ Légende : **OK** = présent · **PARTIEL** = incomplet · **MANQUE** = à porte
 | Modes Objectif / Toiture / Nb fixe | OK (libre / toiture / Ppeak fixe) |
 | Optim tilt auto | OK |
 | Catalogue panneau dans Dim. | OK |
+| Arbre de pertes nommé + thermique U | OK (`lossTree`, `YearPv`) |
+| Mode étude → yield horaire TMY | OK |
 | Graphiques riches + PDF sizing | PARTIEL |
 | Prime FR modes | PARTIEL (calculé dans KPIs grid) |
 
@@ -76,14 +84,38 @@ Légende : **OK** = présent · **PARTIEL** = incomplet · **MANQUE** = à porte
 |----------|--------|
 | Jour type, SOC, ombrage | OK |
 | 12 mois auto + overlay | OK |
+| Mode étude année TMY + horizon 30 ans | OK (`YearPv` / `Horizon`) |
+| Onduleur η + clipping (étude) | OK |
 | Table durée jour | OK |
+
+## Mode étude vs rapide
+| Aspect | Rapide (`energyMode: fast`) | Étude (`study`) |
+|--------|----------------------------|-----------------|
+| Météo | Mensuelle GHI/DHI | Horaire TMY Open-Meteo |
+| Ombrage | Keep beam 30 min | Keep + heuristique électrique bypass |
+| Pertes | `%` unique ou `lossTree` | `lossTree` nommé (PDF) |
+| Thermique | NOCT | U / vent (`thermal.model=uValue`) |
+| Onduleur | PR forfaitaire | η(P) + clipping optionnel |
+| UI live | Défaut (sweeps, ombrage) | Async / toast durée |
+
+*Écart typique study vs fast : météo réelle vs synthétique mensuelle + keep électrique ≤ keep beam — documenté dans toasts Analyse / PDF méthode.*
 
 ## Implantation 3D
 | Fonction | Statut |
 |----------|--------|
-| Quick3D, soleil, obstacles, ombre→projet | OK |
-| Export PNG | OK |
+| Quick3D multi-toitures inclinées, soleil (0°N), panneaux | OK |
+| Obstacles éditables (Site **et** Implantation) | OK |
+| Ombrage auto → projet (debounce) + bouton manuel | OK |
+| Export PNG (chemin temp portable) | OK |
 | Push longueur → Câbles | OK |
+| Caméra presets (3D / Sud / Dessus) + StackLayout keep-alive | OK |
+| Helpers QML `RoofDeck3D` / `PanelArray3D` / `ObstacleLayer3D` | OK (branchés dans `SolarScene3D`) |
+
+## Site 3D
+| Fonction | Statut |
+|----------|--------|
+| Scène partagée `SolarScene3D` + presets cheminée/arbre/mur/velux | OK |
+| Persistance `siteSurvey.obstacles` | OK |
 
 ## Câbles
 | Fonction | Statut |
@@ -100,6 +132,8 @@ Légende : **OK** = présent · **PARTIEL** = incomplet · **MANQUE** = à porte
 | Client complet | OK |
 | Site / système détaillés | OK |
 | Lignes éditables, TVA, remise | OK |
+| Preview PDF (pages) | OK |
+| Rapport style PVsyst (balances, PR, loss diagram, PVGIS) | OK (`YearPv.buildBalancesReport` + PDF) |
 | Preview HTML | MANQUE |
 
 ## Avancé
@@ -112,11 +146,20 @@ Légende : **OK** = présent · **PARTIEL** = incomplet · **MANQUE** = à porte
 | Fonction | Statut |
 |----------|--------|
 | Nostr E2E, snapshots | OK |
-| QR code | OK (`qrencode` si installé) |
-| Git branches | MANQUE (snapshots OK) |
+| QR code | OK (générateur embarqué Nayuki ; fallback `qrencode`) |
+| Git branches / variantes | OK (`SnapshotHistory`) |
 
 ## Catalogue
 | Fonction | Statut |
 |----------|--------|
 | Panneaux / onduleurs locaux | OK |
-| Rexel remote + fiches | MANQUE |
+| Rexel embarqué (~92 / ~271) | OK |
+| Rexel remote / sync live | MANQUE |
+
+## Plateformes
+| Fonction | Statut |
+|----------|--------|
+| Linux AppImage | OK |
+| Android APK | OK |
+| Windows | MANQUE (volontairement reporté) |
+| macOS | MANQUE |

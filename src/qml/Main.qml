@@ -66,9 +66,14 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
+        Ui.windowWidth = width
+        Ui.windowHeight = height
         if (Qt.platform.os === "android")
             showMaximized()
     }
+
+    onWidthChanged: Ui.windowWidth = width
+    onHeightChanged: Ui.windowHeight = height
 
     Connections {
         target: Updater
@@ -89,6 +94,7 @@ ApplicationWindow {
 
     ColumnLayout {
         anchors.fill: parent
+        anchors.topMargin: Qt.platform.os === "android" ? 4 : 0
         spacing: 0
 
         Rectangle {

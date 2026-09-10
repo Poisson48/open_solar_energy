@@ -166,6 +166,7 @@ OseTabPage {
             costPerKwc: Number(costKwc.text),
             coverageTarget: Number(covTarget.text),
             losses: Number(lossField.text),
+            lossTree: form.lossTree || undefined,
             injectionPrice: Number(injPrice.text),
             installType: Projects.currentProject.installType || "grid",
             battKwh: isHybrid ? Number(battKwh.text) : 0,
@@ -173,6 +174,11 @@ OseTabPage {
             dayShare: dayShare,
             monthlyLoss: site.monthlyLoss || [],
             annualLossPct: site.annualLossPct || 0,
+            halfHourlyKeep: site.halfHourlyKeep || [],
+            energyMode: form.energyMode || "fast",
+            hourlyWeatherData: Projects.currentProject.hourlyWeatherData || {},
+            useElectricalShade: form.energyMode === "study",
+            thermal: form.thermal || undefined,
             limitMode: limitBox.currentValue,
             roofAreaM2: Number(roofArea.text) || 40,
             panelWp: Number(panelWpField.text) || 400,
@@ -180,6 +186,27 @@ OseTabPage {
             fixedPpeak: Number(fixedPpeak.text) || 3
         })
         const best = lastResult.best || {}
+        const bal = YearPv.buildBalancesReport({
+            lat: loc.lat || 43.6,
+            tilt: Number(tiltField.text),
+            azimuth: Number(azField.text),
+            Ppeak: best.Ppeak || Number(fixedPpeak.text) || 3,
+            weatherData: weather,
+            losses: Number(lossField.text),
+            lossTree: form.lossTree || YearPv.defaultLossTree(Number(lossField.text) || 14),
+            halfHourlyKeep: site.halfHourlyKeep || [],
+            monthlyLoss: site.monthlyLoss || [],
+            annualLossPct: site.annualLossPct || 0,
+            useElectricalShade: form.energyMode === "study",
+            useInverterModel: !!form.useInverterModel,
+            pacNom: Number(form.pacNom) || (best.Ppeak || 3) * 0.9,
+            etaEuro: Number(form.etaEuro) || 0.97,
+            thermal: form.thermal || {
+                model: form.energyMode === "study" ? "uValue" : "noct",
+                U: Number(form.mountU) || 29,
+                wind: Number(form.wind) || 1
+            }
+        })
         const bill = {
             tariff: tariffBox.currentValue,
             priceBase: Number(priceBase.text),
@@ -210,7 +237,8 @@ OseTabPage {
             sizingResult: lastResult,
             monthlyKwh: monthly,
             formState: nextForm,
-            bill: bill
+            bill: bill,
+            pvsystBalances: bal
         })
         Projects.updateCurrent({
             resultsFingerprint: Pipeline.fingerprint(Projects.currentProject),
@@ -259,7 +287,7 @@ OseTabPage {
             hint: "Facture EDF ou export Enedis — base de tout le calcul."
             RowLayout {
                 Layout.fillWidth: true
-                Label { text: "Tarif"; Layout.preferredWidth: 80 }
+                Label { text: "Tarif"; Layout.preferredWidth: Ui.isPhone ? 72 : 80 }
                 ComboBox {
                     id: tariffBox
                     Layout.fillWidth: true
@@ -272,24 +300,42 @@ OseTabPage {
                     onActivated: root.persistForm()
                 }
             }
-            RowLayout {
+            GridLayout {
+                columns: Ui.isPhone ? 1 : 2
                 Layout.fillWidth: true
-                Label { text: "Prix kWh"; Layout.preferredWidth: 80 }
-                OseInputUnit { id: priceBase; text: "0.2516"; unit: "€"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
-                Label { text: "Abo." }
-                OseInputUnit { id: subscription; text: "147"; unit: "€/an"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                columnSpacing: 8
+                rowSpacing: 6
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "Prix kWh"; Layout.preferredWidth: 80 }
+                    OseInputUnit { id: priceBase; text: "0.2516"; unit: "€"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "Abo."; Layout.preferredWidth: 80 }
+                    OseInputUnit { id: subscription; text: "147"; unit: "€/an"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                }
             }
-            RowLayout {
+            GridLayout {
                 visible: tariffBox.currentValue === "hphc"
+                columns: Ui.isPhone ? 1 : 2
                 Layout.fillWidth: true
-                Label { text: "HP"; Layout.preferredWidth: 80 }
-                OseInputUnit { id: priceHp; text: "0.246"; unit: "€"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
-                Label { text: "HC" }
-                OseInputUnit { id: priceHc; text: "0.186"; unit: "€"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                columnSpacing: 8
+                rowSpacing: 6
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "HP"; Layout.preferredWidth: 80 }
+                    OseInputUnit { id: priceHp; text: "0.246"; unit: "€"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "HC"; Layout.preferredWidth: 80 }
+                    OseInputUnit { id: priceHc; text: "0.186"; unit: "€"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                }
             }
             RowLayout {
                 Layout.fillWidth: true
-                Label { text: "Conso annuelle"; Layout.preferredWidth: 110 }
+                Label { text: "Conso annuelle"; Layout.preferredWidth: Ui.isPhone ? 110 : 110 }
                 OseInputUnit {
                     id: annualField
                     text: "4500"
@@ -299,11 +345,21 @@ OseTabPage {
                     onEditingFinished: root.persistForm()
                 }
             }
-            RowLayout {
+            GridLayout {
+                columns: Ui.isPhone ? 1 : 2
                 Layout.fillWidth: true
-                Label { text: "Jour / nuit"; Layout.preferredWidth: 110 }
-                OseInputUnit { id: loadDay; placeholderText: "jour"; unit: "kWh/j"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
-                OseInputUnit { id: loadNight; placeholderText: "nuit"; unit: "kWh/j"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                columnSpacing: 8
+                rowSpacing: 6
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "Jour"; Layout.preferredWidth: 80 }
+                    OseInputUnit { id: loadDay; placeholderText: "jour"; unit: "kWh/j"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "Nuit"; Layout.preferredWidth: 80 }
+                    OseInputUnit { id: loadNight; placeholderText: "nuit"; unit: "kWh/j"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                }
             }
             OseBtn {
                 text: "Importer Enedis…"
@@ -338,20 +394,151 @@ OseTabPage {
         OseStep {
             step: 2
             title: "Orientation & pertes"
-            RowLayout {
+            GridLayout {
+                columns: Ui.isPhone ? 1 : 2
                 Layout.fillWidth: true
-                Label { text: "Inclinaison"; Layout.preferredWidth: 100 }
-                OseInputUnit { id: tiltField; text: "30"; unit: "°"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
-                Label { text: "Azimut" }
-                OseInputUnit { id: azField; text: "0"; unit: "°"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                columnSpacing: 8
+                rowSpacing: 6
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "Inclinaison"; Layout.preferredWidth: 100 }
+                    OseInputUnit { id: tiltField; text: "30"; unit: "°"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "Azimut"; Layout.preferredWidth: 100 }
+                    OseInputUnit { id: azField; text: "0"; unit: "°"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                }
             }
-            OseBtn { text: "Optimiser tilt / azimut (météo)"; kind: "outline"; onClicked: root.optimTilt() }
+            OseBtn { text: Ui.isPhone ? "Optimiser tilt / azimut" : "Optimiser tilt / azimut (météo)"; kind: "outline"; onClicked: root.optimTilt() }
+            GridLayout {
+                columns: Ui.isPhone ? 1 : 2
+                Layout.fillWidth: true
+                columnSpacing: 8
+                rowSpacing: 6
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "Pertes"; Layout.preferredWidth: 100 }
+                    OseInputUnit {
+                        id: lossField
+                        text: "14"
+                        unit: "%"
+                        Layout.fillWidth: true
+                        onEditingFinished: {
+                            const form = Projects.currentProject.formState || {}
+                            Projects.updateCurrent({
+                                formState: Object.assign({}, form, {
+                                    losses: Number(lossField.text),
+                                    lossTree: YearPv.defaultLossTree(Number(lossField.text))
+                                })
+                            })
+                            root.persistForm()
+                        }
+                    }
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "Coût / kWc"; Layout.preferredWidth: 100 }
+                    OseInputUnit { id: costKwc; text: "1200"; unit: "€"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                font.pixelSize: 11
+                color: Theme.textDim
+                text: {
+                    const t = (Projects.currentProject.formState || {}).lossTree
+                              || YearPv.defaultLossTree(Number(lossField.text) || 14)
+                    const f = YearPv.effectiveLossFactor({ lossTree: t })
+                    return "Arbre pertes : soiling " + (t.soiling || 0)
+                           + " · LID " + (t.lid || 0)
+                           + " · mismatch " + (t.mismatch || 0)
+                           + " · IAM " + (t.iam || 0)
+                           + " · ohm DC/AC " + (t.ohmicDc || 0) + "/" + (t.ohmicAc || 0)
+                           + " · dispo " + (t.availability || 0)
+                           + " · autre " + (t.other || 0)
+                           + " → facteur " + f.toFixed(3)
+                           + " (" + (((Projects.currentProject.formState || {}).energyMode) || "fast") + ")"
+                }
+            }
+            GridLayout {
+                columns: Ui.isPhone ? 1 : 2
+                Layout.fillWidth: true
+                columnSpacing: 8
+                rowSpacing: 4
+                Repeater {
+                    model: [
+                        { key: "soiling", label: "Salissure" },
+                        { key: "lid", label: "LID" },
+                        { key: "mismatch", label: "Mismatch" },
+                        { key: "iam", label: "IAM" },
+                        { key: "ohmicDc", label: "Ohm DC" },
+                        { key: "ohmicAc", label: "Ohm AC" },
+                        { key: "availability", label: "Dispo" },
+                        { key: "other", label: "Autre" }
+                    ]
+                    delegate: RowLayout {
+                        Layout.fillWidth: true
+                        Label { text: modelData.label; Layout.preferredWidth: 90; font.pixelSize: 12 }
+                        OseInputUnit {
+                            text: {
+                                const t = (Projects.currentProject.formState || {}).lossTree
+                                          || YearPv.defaultLossTree(14)
+                                return String(t[modelData.key] !== undefined ? t[modelData.key] : 0)
+                            }
+                            unit: "%"
+                            Layout.fillWidth: true
+                            onEditingFinished: {
+                                const form = Projects.currentProject.formState || {}
+                                const t = Object.assign({}, form.lossTree || YearPv.defaultLossTree(14))
+                                t[modelData.key] = Number(text)
+                                const f = YearPv.effectiveLossFactor({ lossTree: t })
+                                lossField.text = String(Math.round((1 - f) * 1000) / 10)
+                                Projects.updateCurrent({
+                                    formState: Object.assign({}, form, {
+                                        lossTree: t,
+                                        losses: Number(lossField.text)
+                                    })
+                                })
+                            }
+                        }
+                    }
+                }
+            }
             RowLayout {
                 Layout.fillWidth: true
-                Label { text: "Pertes"; Layout.preferredWidth: 100 }
-                OseInputUnit { id: lossField; text: "14"; unit: "%"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
-                Label { text: "Coût / kWc" }
-                OseInputUnit { id: costKwc; text: "1200"; unit: "€"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                Label { text: "Montage U"; Layout.preferredWidth: 100 }
+                OseInputUnit {
+                    id: mountUField
+                    text: String(((Projects.currentProject.formState || {}).mountU) || 29)
+                    unit: "W/m²K"
+                    Layout.fillWidth: true
+                    onEditingFinished: {
+                        const form = Projects.currentProject.formState || {}
+                        Projects.updateCurrent({
+                            formState: Object.assign({}, form, {
+                                mountU: Number(mountUField.text),
+                                thermal: {
+                                    model: (form.energyMode === "study") ? "uValue" : "noct",
+                                    U: Number(mountUField.text),
+                                    wind: Number(form.wind) || 1
+                                }
+                            })
+                        })
+                    }
+                }
+            }
+            CheckBox {
+                id: invModelCheck
+                text: "Onduleur η(P) + clipping (mode étude)"
+                checked: !!(Projects.currentProject.formState || {}).useInverterModel
+                onToggled: {
+                    const form = Projects.currentProject.formState || {}
+                    Projects.updateCurrent({
+                        formState: Object.assign({}, form, { useInverterModel: checked })
+                    })
+                }
             }
             RowLayout {
                 Layout.fillWidth: true
@@ -409,12 +596,21 @@ OseTabPage {
                     onClicked: AppController.openMateriel()
                 }
             }
-            RowLayout {
+            GridLayout {
+                columns: Ui.isPhone ? 1 : 2
                 Layout.fillWidth: true
-                Label { text: "Wc module" }
-                OseInputUnit { id: panelWpField; text: "400"; unit: "Wc"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
-                Label { text: "Surface" }
-                OseInputUnit { id: panelArea; text: "2.0"; unit: "m²"; Layout.fillWidth: true }
+                columnSpacing: 8
+                rowSpacing: 6
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "Wc module"; Layout.preferredWidth: 90 }
+                    OseInputUnit { id: panelWpField; text: "400"; unit: "Wc"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "Surface"; Layout.preferredWidth: 90 }
+                    OseInputUnit { id: panelArea; text: "2.0"; unit: "m²"; Layout.fillWidth: true }
+                }
             }
         }
 
@@ -470,12 +666,21 @@ OseTabPage {
             title: "Batterie hybride"
             visible: root.isHybrid
             hint: "Mode Hybride : Enedis 30 min recommandé."
-            RowLayout {
+            GridLayout {
+                columns: Ui.isPhone ? 1 : 2
                 Layout.fillWidth: true
-                Label { text: "Capacité"; Layout.preferredWidth: 100 }
-                OseInputUnit { id: battKwh; text: "5"; unit: "kWh"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
-                Label { text: "DoD" }
-                OseInputUnit { id: battDod; text: "80"; unit: "%"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                columnSpacing: 8
+                rowSpacing: 6
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "Capacité"; Layout.preferredWidth: 100 }
+                    OseInputUnit { id: battKwh; text: "5"; unit: "kWh"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "DoD"; Layout.preferredWidth: 100 }
+                    OseInputUnit { id: battDod; text: "80"; unit: "%"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                }
             }
         }
 

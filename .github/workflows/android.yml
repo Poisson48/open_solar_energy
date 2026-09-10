@@ -19,6 +19,16 @@ on:
         required: false
       ANDROID_KEYSTORE_PASS:
         required: false
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: "versionName APK"
+        type: string
+        default: "2.0.76"
+      version_code:
+        description: "versionCode APK"
+        type: string
+        default: "20076"
 
 env:
   QT_VER: 6.8.2
@@ -52,13 +62,19 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/Qt
-          key: qt-${{ env.QT_VER }}-ose-android-native-qml-v1
+          key: qt-${{ env.QT_VER }}-ose-android-qml-quick3d-v2
       - name: Install Qt
         if: steps.cache-qt.outputs.cache-hit != 'true'
         run: |
           python3 -m pip install --user aqtinstall
-          python3 -m aqt install-qt linux desktop "$QT_VER" linux_gcc_64 -O "$HOME/Qt"
-          python3 -m aqt install-qt linux android "$QT_VER" android_arm64_v8a -m qtcharts qtsvg -O "$HOME/Qt"
+          python3 -m aqt install-qt linux desktop "$QT_VER" linux_gcc_64 \
+            -m qtcharts qtquick3d qtshadertools qtquicktimeline -O "$HOME/Qt"
+          python3 -m aqt install-qt all_os android "$QT_VER" android_arm64_v8a \
+            -m qtcharts qtquick3d qtshadertools qtquicktimeline -O "$HOME/Qt"
+      - name: Dépendances natives Android
+        run: |
+          git clone --depth 1 https://github.com/KDAB/android_openssl.git third_party/android_openssl
+          git clone --depth 1 --branch v0.5.1 https://github.com/bitcoin-core/secp256k1.git third_party/secp256k1
       - name: Vérifier clé release
         if: inputs.require_release_key
         env:

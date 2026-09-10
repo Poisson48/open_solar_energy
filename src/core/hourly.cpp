@@ -2,6 +2,7 @@
 
 #include "constants.h"
 #include "solar_math.h"
+#include "year_pv.h"
 
 #include <algorithm>
 #include <cmath>
@@ -155,6 +156,22 @@ QVariantMap HourlyAnalysis::analyzeMonth(const QVariantMap& params) const
 
 QVariantMap HourlyAnalysis::analyzeYear(const QVariantMap& params) const
 {
+    const QString mode = params.value(QStringLiteral("energyMode")).toString();
+    const QVariantMap hourly = params.value(QStringLiteral("hourlyWeatherData")).toMap();
+    if (mode == QLatin1String("study")
+        && hourly.value(QStringLiteral("ghi")).toList().size() >= 24 * 30) {
+        QVariantMap study = YearPv::analyzeStudyYear(params);
+        // Alias pour UI Analyse (noms legacy)
+        if (study.value(QStringLiteral("ok")).toBool()) {
+            study.insert(QStringLiteral("pvYear"), study.value(QStringLiteral("E_annual")));
+            study.insert(QStringLiteral("autoconsoYear"), study.value(QStringLiteral("autoconso")));
+            study.insert(QStringLiteral("surplusYear"), study.value(QStringLiteral("surplusYear")));
+            study.insert(QStringLiteral("gridYear"), study.value(QStringLiteral("gridYear")));
+            study.insert(QStringLiteral("loadYear"), study.value(QStringLiteral("loadYear")));
+        }
+        return study;
+    }
+
     const QVariantList weather = params.value(QStringLiteral("weatherData")).toList();
     QVariantList months;
     double pvY = 0, loadY = 0, acY = 0, surplusY = 0, gridY = 0;

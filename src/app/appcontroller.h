@@ -10,11 +10,14 @@
 #include "core/horizon_engine.h"
 #include "core/inverter.h"
 #include "core/layout_3d.h"
+#include "core/layout_roofs.h"
 #include "core/offgrid.h"
 #include "core/project_pipeline.h"
+#include "core/shading_engine.h"
 #include "core/site_shade.h"
 #include "core/sizing.h"
 #include "core/solar_math.h"
+#include "core/year_pv.h"
 #include "net/geocode_client.h"
 #include "net/news_client.h"
 #include "net/pvgis_client.h"
@@ -52,6 +55,9 @@ class AppController : public QObject {
     Q_PROPERTY(ose::PvgisClient* pvgis READ pvgis CONSTANT)
     Q_PROPERTY(ose::TerrainClient* terrain READ terrain CONSTANT)
     Q_PROPERTY(ose::Layout3D* layout3d READ layout3d CONSTANT)
+    Q_PROPERTY(ose::LayoutRoofs* layoutRoofs READ layoutRoofs CONSTANT)
+    Q_PROPERTY(ose::ShadingEngine* shadingEngine READ shadingEngine CONSTANT)
+    Q_PROPERTY(ose::YearPv* yearPv READ yearPv CONSTANT)
     Q_PROPERTY(ose::ProjectPipeline* pipeline READ pipeline CONSTANT)
     Q_PROPERTY(QString currentTab READ currentTab WRITE setCurrentTab NOTIFY currentTabChanged)
     Q_PROPERTY(bool inWorkspace READ inWorkspace NOTIFY inWorkspaceChanged)
@@ -83,6 +89,9 @@ public:
     ose::TerrainClient* terrain() { return m_terrain; }
     ose::ProjectPipeline* pipeline() { return m_pipeline; }
     ose::Layout3D* layout3d() { return m_layout3d; }
+    ose::LayoutRoofs* layoutRoofs() { return m_layoutRoofs; }
+    ose::ShadingEngine* shadingEngine() { return m_shadingEngine; }
+    ose::YearPv* yearPv() { return m_yearPv; }
 
     QString currentTab() const { return m_currentTab; }
     void setCurrentTab(const QString& tab);
@@ -95,6 +104,8 @@ public:
     Q_INVOKABLE bool openPdf(const QString& filename, const QString& base64Data);
     Q_INVOKABLE bool openPdfFromUrl(const QString& url);
     Q_INVOKABLE bool openLocalFile(const QString& path);
+    /** Chemin writable pour export image (PNG layout, etc.). */
+    Q_INVOKABLE QString tempExportPath(const QString& prefix, const QString& ext = QStringLiteral("png"));
     Q_INVOKABLE bool pickImportFile();
     Q_INVOKABLE QString pollImportResult();
     Q_INVOKABLE bool requestCameraPermission();
@@ -177,6 +188,9 @@ private:
     ose::TerrainClient* m_terrain = nullptr;
     ose::ProjectPipeline* m_pipeline = nullptr;
     ose::Layout3D* m_layout3d = nullptr;
+    ose::LayoutRoofs* m_layoutRoofs = nullptr;
+    ose::ShadingEngine* m_shadingEngine = nullptr;
+    ose::YearPv* m_yearPv = nullptr;
     QString m_currentTab = QStringLiteral("location");
     bool m_inWorkspace = false;
 };

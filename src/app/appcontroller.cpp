@@ -4,8 +4,10 @@
 
 #include <QDesktopServices>
 #include <QDir>
+#include <QDateTime>
 #include <QFile>
 #include <QHash>
+#include <QImage>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QProcess>
@@ -13,6 +15,8 @@
 #include <QStandardPaths>
 #include <QUrl>
 #include <cmath>
+
+#include "qrcodegen.hpp"
 #ifdef OSE_HAS_WIDGETS
 #  include <QtWidgets/QFileDialog>
 #endif
@@ -43,6 +47,9 @@ AppController::AppController(QObject* parent) : QObject(parent)
     m_terrain = new ose::TerrainClient(this);
     m_pipeline = new ose::ProjectPipeline(this);
     m_layout3d = new ose::Layout3D(this);
+    m_layoutRoofs = new ose::LayoutRoofs(this);
+    m_shadingEngine = new ose::ShadingEngine(this);
+    m_yearPv = new ose::YearPv(this);
 }
 
 bool AppController::init()
@@ -108,6 +115,16 @@ bool AppController::openLocalFile(const QString& path)
     if (path.isEmpty())
         return false;
     return QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+}
+
+QString AppController::tempExportPath(const QString& prefix, const QString& ext)
+{
+    const QString dir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+    QDir().mkpath(dir);
+    const QString safePrefix = prefix.isEmpty() ? QStringLiteral("ose") : prefix;
+    const QString safeExt = ext.isEmpty() ? QStringLiteral("png") : ext;
+    return dir + QLatin1Char('/') + safePrefix + QLatin1Char('-')
+           + QString::number(QDateTime::currentMSecsSinceEpoch()) + QLatin1Char('.') + safeExt;
 }
 
 bool AppController::pickImportFile()
@@ -499,13 +516,40 @@ QString AppController::makeQrPng(const QString& text) const
         QStandardPaths::writableLocation(QStandardPaths::TempLocation)
         + QStringLiteral("/ose-qr-")
         + QString::number(qHash(text)) + QStringLiteral(".png");
-    QProcess p;
-    p.start(QStringLiteral("qrencode"),
-            {QStringLiteral("-o"), path, QStringLiteral("-s"), QStringLiteral("6"),
-             QStringLiteral("-m"), QStringLiteral("1"), text});
-    if (!p.waitForFinished(8000) || p.exitCode() != 0 || !QFile::exists(path))
-        return {};
-    return path;
+
+    try {
+        using qrcodegen::QrCode;
+        const QrCode qr = QrCode::encodeText(text.toUtf8().constData(), QrCode::Ecc::MEDIUM);
+        const int size = qr.getSize();
+        const int scale = 6;
+        const int border = 2;
+        const int img = (size + border * 2) * scale;
+        QImage image(img, img, QImage::Format_RGB32);
+        image.fill(Qt::white);
+        for (int y = 0; y < size; ++y) {
+            for (int x = 0; x < size; ++x) {
+                if (!qr.getModule(x, y))
+                    continue;
+                const int px = (x + border) * scale;
+                const int py = (y + border) * scale;
+                for (int dy = 0; dy < scale; ++dy)
+                    for (int dx = 0; dx < scale; ++dx)
+                        image.setPixel(px + dx, py + dy, qRgb(0, 0, 0));
+            }
+        }
+        if (!image.save(path, "PNG"))
+            return {};
+        return path;
+    } catch (...) {
+        // Fallback CLI si le générateur embarqué échoue
+        QProcess p;
+        p.start(QStringLiteral("qrencode"),
+                {QStringLiteral("-o"), path, QStringLiteral("-s"), QStringLiteral("6"),
+                 QStringLiteral("-m"), QStringLiteral("1"), text});
+        if (!p.waitForFinished(8000) || p.exitCode() != 0 || !QFile::exists(path))
+            return {};
+        return path;
+    }
 }
 
 QString AppController::readTextFile(const QString& path) const
@@ -695,6 +739,93 @@ QVariantMap AppController::runSelfTest()
     const double shadeLoss = shade.value(QStringLiteral("annualLossPct")).toDouble();
     if (shadeLoss < 1.0)
         fail(QStringLiteral("shade annualLossPct too low for test horizon"));
+
+    // ── ShadingEngine 3D (panneaux + obstacle) → sizing ──
+    double shade3dLoss = 0;
+    {
+        const QVariantMap layoutRaw = m_layout3d->computeLayout({
+            {QStringLiteral("roofW"), 10},
+            {QStringLiteral("roofD"), 6},
+            {QStringLiteral("nPanels"), 8},
+            {QStringLiteral("rows"), 2},
+            {QStringLiteral("tilt"), 30},
+            {QStringLiteral("azimuth"), 0},
+        });
+        {
+            // Grille 2×4 : centres espacés > largeur panneau (contrat rendu 3D m/100)
+            const QVariantMap grid = m_layoutRoofs->generateGrid(
+                m_layoutRoofs->migrate({}), 2, 4,
+                {{QStringLiteral("roofW"), 10},
+                 {QStringLiteral("roofD"), 6},
+                 {QStringLiteral("panelW"), 1.13},
+                 {QStringLiteral("panelH"), 1.76},
+                 {QStringLiteral("gap"), 0.03},
+                 {QStringLiteral("tilt"), 30}},
+                {});
+            const QVariantList gp =
+                m_layoutRoofs->getActiveRoof(grid).value(QStringLiteral("positions")).toList();
+            if (gp.size() != 8)
+                fail(QStringLiteral("generateGrid expected 8 panels, got %1").arg(gp.size()));
+            else {
+                const double x0 = gp[0].toMap().value(QStringLiteral("x")).toDouble();
+                const double x1 = gp[1].toMap().value(QStringLiteral("x")).toDouble();
+                const double pw = gp[0].toMap().value(QStringLiteral("w")).toDouble();
+                if (std::abs(x1 - x0) < pw * 0.9)
+                    fail(QStringLiteral("generateGrid panels overlap in data (dx=%1 pw=%2)")
+                             .arg(std::abs(x1 - x0))
+                             .arg(pw));
+            }
+        }
+        const QVariantMap migrated = m_layoutRoofs->migrate({
+            {QStringLiteral("roofL"), 10},
+            {QStringLiteral("roofW"), 6},
+            {QStringLiteral("nPanels"), 8},
+            {QStringLiteral("positions"), layoutRaw.value(QStringLiteral("positions"))},
+            {QStringLiteral("tilt"), 30},
+            {QStringLiteral("azimuth"), 0},
+        });
+        const QVariantMap clear3d = m_shadingEngine->computeFull({
+            {QStringLiteral("lat"), 43.6045},
+            {QStringLiteral("weatherData"), weather},
+            {QStringLiteral("layout"), migrated},
+            {QStringLiteral("obstacles"), QVariantList{}},
+            {QStringLiteral("horizonPoints"), QVariantList{}},
+        });
+        const QVariantList boxObs{
+            QVariantMap{{QStringLiteral("x"), 0},
+                        {QStringLiteral("y"), 0},
+                        {QStringLiteral("w"), 4},
+                        {QStringLiteral("d"), 4},
+                        {QStringLiteral("h"), 8},
+                        {QStringLiteral("type"), QStringLiteral("box")}}};
+        const QVariantMap box3d = m_shadingEngine->computeFull({
+            {QStringLiteral("lat"), 43.6045},
+            {QStringLiteral("weatherData"), weather},
+            {QStringLiteral("layout"), migrated},
+            {QStringLiteral("obstacles"), boxObs},
+            {QStringLiteral("horizonPoints"), QVariantList{}},
+        });
+        shade3dLoss = box3d.value(QStringLiteral("annualLossPct")).toDouble();
+        if (!(shade3dLoss > clear3d.value(QStringLiteral("annualLossPct")).toDouble() + 0.5))
+            fail(QStringLiteral("3d obstacle should increase annualLossPct"));
+        const QVariantMap sizing3d = m_sizing->run({
+            {QStringLiteral("lat"), 43.6045},
+            {QStringLiteral("weatherData"), weather},
+            {QStringLiteral("monthlyKwh"), monthly},
+            {QStringLiteral("tilt"), 30},
+            {QStringLiteral("azimuth"), 0},
+            {QStringLiteral("strategy"), QStringLiteral("roi")},
+            {QStringLiteral("installType"), QStringLiteral("grid")},
+            {QStringLiteral("monthlyLoss"), box3d.value(QStringLiteral("monthlyLoss"))},
+            {QStringLiteral("annualLossPct"), shade3dLoss},
+        });
+        if (!sizing3d.value(QStringLiteral("shadeApplied")).toBool())
+            fail(QStringLiteral("sizing from shading3d missing shadeApplied"));
+    }
+
+    const QString qrPath = makeQrPng(QStringLiteral("ose://selftest"));
+    if (qrPath.isEmpty() || !QFile::exists(qrPath))
+        fail(QStringLiteral("embedded QR generation failed"));
 
     m_projects->updateCurrent({
         {QStringLiteral("location"),
@@ -959,6 +1090,8 @@ QVariantMap AppController::runSelfTest()
             {QStringLiteral("pdf"), pdf},
             {QStringLiteral("hourlyPv"), hourly.value(QStringLiteral("pvTotal"))},
             {QStringLiteral("shadeLoss"), shadeLoss},
+            {QStringLiteral("shade3dLoss"), shade3dLoss},
+            {QStringLiteral("qr"), qrPath},
             {QStringLiteral("quoteLines"), quoteLines.size()},
             {QStringLiteral("quoteHt"), ht},
             {QStringLiteral("nPanels"), nPanels},

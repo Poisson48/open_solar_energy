@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import OpenSolarEnergy
 import "controls"
 
 OseTabPage {
@@ -204,17 +205,20 @@ OseTabPage {
 
         OseCard {
             title: "Recherche"
-            RowLayout {
+            Flow {
                 Layout.fillWidth: true
+                spacing: 8
                 TextField {
                     id: searchField
-                    Layout.fillWidth: true
+                    width: Ui.isPhone
+                           ? Math.max(120, parent.width - (Geocode.busy ? 48 : 100))
+                           : Math.max(160, parent.width - 120)
                     placeholderText: "Adresse (Nominatim)…"
                     enabled: !root.locked
                     onAccepted: { if (!root.locked) Geocode.search(text) }
                 }
                 OseBtn {
-                    text: Geocode.busy ? "…" : "Chercher"
+                    text: Geocode.busy ? "…" : (Ui.isPhone ? "OK" : "Chercher")
                     enabled: !Geocode.busy && !root.locked
                     onClicked: Geocode.search(searchField.text)
                 }
@@ -238,13 +242,54 @@ OseTabPage {
         OsmMapView {
             id: osmMap
             Layout.fillWidth: true
-            Layout.preferredHeight: 420
+            Layout.preferredHeight: Ui.locationMapHeight
             interactive: !root.locked
             onLocationChanged: (lat, lon) => root.applyMapToFields(lat, lon)
             onZoomChangedByUser: (z) => { root.zoom = z }
             Component.onCompleted: {
                 setLocation(root.mapLat, root.mapLon, true)
                 zoom = root.zoom
+            }
+        }
+        RowLayout {
+            Layout.fillWidth: true
+            OseBtn {
+                text: "Plein écran"
+                kind: "outline"
+                onClicked: {
+                    mapFs.latitude = osmMap.latitude
+                    mapFs.longitude = osmMap.longitude
+                    mapFs.viewLat = osmMap.viewLat
+                    mapFs.viewLon = osmMap.viewLon
+                    mapFs.zoom = osmMap.zoom
+                    mapFs.mapLayer = osmMap.mapLayer
+                    mapFullscreen.open()
+                }
+            }
+            Item { Layout.fillWidth: true }
+        }
+        Dialog {
+            id: mapFullscreen
+            parent: Overlay.overlay
+            modal: true
+            anchors.centerIn: parent
+            width: Overlay.overlay ? Overlay.overlay.width : 800
+            height: Overlay.overlay ? Overlay.overlay.height : 600
+            padding: 0
+            title: ""
+            standardButtons: Dialog.Close
+            OsmMapView {
+                id: mapFs
+                anchors.fill: parent
+                interactive: !root.locked
+                onLocationChanged: (lat, lon) => {
+                    osmMap.setLocation(lat, lon, false)
+                    root.applyMapToFields(lat, lon)
+                }
+                onZoomChangedByUser: (z) => {
+                    osmMap.zoom = z
+                    root.zoom = z
+                }
             }
         }
         GridLayout {
@@ -303,7 +348,9 @@ OseTabPage {
             }
         }
 
-        RowLayout {
+        Flow {
+            Layout.fillWidth: true
+            spacing: 8
             OseBtn {
                 text: Terrain.busy ? "Relief…"
                       : (root.terrainMatchesPlace ? "Réestimer pente" : "Estimer pente (DEM)")
@@ -315,7 +362,7 @@ OseTabPage {
                 }
             }
             Label {
-                Layout.fillWidth: true
+                width: Ui.isPhone ? parent.width : Math.max(120, parent.width - 220)
                 wrapMode: Text.WordWrap
                 color: root.terrainMatchesPlace ? Theme.textDim : Theme.warning
                 font.pixelSize: 12
@@ -350,14 +397,19 @@ OseTabPage {
             }
         }
 
-        RowLayout {
+        Flow {
+            Layout.fillWidth: true
+            spacing: 8
             OseBtn {
-                text: root.locked ? "Modifier" : "Valider le lieu"
+                text: root.locked ? "Modifier" : (Ui.isPhone ? "Valider" : "Valider le lieu")
                 kind: root.locked ? "outline" : "primary"
                 onClicked: root.setValidated(!root.locked)
             }
             OseBtn {
-                text: Weather.busy ? "…" : (root.weatherMatchesPlace ? "Réimporter Open-Meteo" : "Open-Meteo")
+                text: Weather.busy ? "…"
+                      : (root.weatherMatchesPlace
+                         ? (Ui.isPhone ? "Open-Meteo ↻" : "Réimporter Open-Meteo")
+                         : "Open-Meteo")
                 enabled: !Weather.busy
                 onClicked: {
                     root.saveLocation()
@@ -365,7 +417,10 @@ OseTabPage {
                 }
             }
             OseBtn {
-                text: Pvgis.busy ? "…" : (root.weatherMatchesPlace ? "Réimporter PVGIS" : "PVGIS")
+                text: Pvgis.busy ? "…"
+                      : (root.weatherMatchesPlace
+                         ? (Ui.isPhone ? "PVGIS ↻" : "Réimporter PVGIS")
+                         : "PVGIS")
                 kind: "outline"
                 enabled: !Pvgis.busy
                 onClicked: {
@@ -374,12 +429,153 @@ OseTabPage {
                                 Number(terrainTilt.text), Number(terrainAz.text))
                 }
             }
+            OseBtn {
+                text: Pvgis.busy ? "…" : (Ui.isPhone ? "PVcalc" : "Comparer PVcalc")
+                kind: "outline"
+                enabled: !Pvgis.busy
+                onClicked: {
+                    root.saveLocation()
+                    const form = Projects.currentProject.formState || {}
+                    const peak = Number(form.Ppeak)
+                        || Number(((Projects.currentProject.sizingResult || {}).best || {}).Ppeak)
+                        || 3
+                    const tilt = Number(terrainTilt.text) || Number(form.tilt) || 30
+                    const az = Number(terrainAz.text) || Number(form.azimuth) || 0
+                    Pvgis.fetchPvcalc(Number(latField.text), Number(lonField.text),
+                                      peak, tilt, az, 14)
+                }
+            }
+            OseBtn {
+                text: Weather.busy ? "…"
+                      : (Ui.isPhone ? "TMY horaire" : "Importer TMY horaire")
+                kind: "outline"
+                enabled: !Weather.busy
+                onClicked: {
+                    root.saveLocation()
+                    Weather.fetchOpenMeteoHourly(Number(latField.text), Number(lonField.text), 2020)
+                }
+            }
+        }
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 4
+            visible: Weather.busy || Pvgis.busy
+            ProgressBar {
+                Layout.fillWidth: true
+                from: 0
+                to: 100
+                value: Weather.busy ? Weather.progressPct : 0
+                indeterminate: (Weather.busy && Weather.progressPct <= 0) || Pvgis.busy
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                font.pixelSize: 12
+                color: Theme.textDim
+                text: Weather.busy
+                      ? ((Weather.status || "Import météo…")
+                         + (Weather.progressPct > 0 ? (" — " + Weather.progressPct + " %") : ""))
+                      : (Pvgis.status || "PVGIS…")
+            }
+        }
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+            Label {
+                text: "Mode énergie"
+                color: Theme.textDim
+                font.pixelSize: 12
+            }
+            ComboBox {
+                id: energyModeBox
+                Layout.fillWidth: true
+                model: [
+                    { label: "Rapide (mensuel)", value: "fast" },
+                    { label: "Étude (horaire TMY)", value: "study" }
+                ]
+                textRole: "label"
+                valueRole: "value"
+                Component.onCompleted: {
+                    const m = (Projects.currentProject.formState || {}).energyMode || "fast"
+                    currentIndex = m === "study" ? 1 : 0
+                }
+                onActivated: {
+                    const form = Projects.currentProject.formState || {}
+                    Projects.updateCurrent({
+                        formState: Object.assign({}, form, {
+                            energyMode: energyModeBox.currentValue
+                        }),
+                        resultsFingerprint: ""
+                    })
+                    AppController.toast(energyModeBox.currentValue === "study"
+                                        ? "Mode étude — importez un TMY horaire"
+                                        : "Mode rapide (mensuel)")
+                }
+            }
+        }
+        Label {
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+            visible: !!(Projects.currentProject.hourlyWeatherData
+                        && (Projects.currentProject.hourlyWeatherData.nHours
+                            || (Projects.currentProject.hourlyWeatherData.ghi || []).length))
+            color: Theme.primary
+            font.pixelSize: 12
+            text: {
+                const h = Projects.currentProject.hourlyWeatherData || {}
+                const n = h.nHours || (h.ghi || []).length || 0
+                if (!n) return ""
+                return "TMY horaire : " + (h.source || "?") + " · " + n + " h · année "
+                       + (h.year || "?") + " · GHI ≈ " + (h.annualGhiKwh || "?") + " kWh/m²"
+            }
+        }
+        Label {
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+            visible: !!(Pvgis.lastPvcalc && Pvgis.lastPvcalc.ok)
+            color: Theme.text
+            font.pixelSize: 13
+            text: {
+                const p = Pvgis.lastPvcalc || {}
+                if (!p.ok) return ""
+                const ours = (Projects.currentProject.gridResult || {}).E_annual
+                    || ((Projects.currentProject.sizingResult || {}).best || {}).E_annual
+                    || 0
+                let s = "PVcalc " + Math.round(p.E_y) + " kWh/an"
+                    + " · " + (p.peakpower || "?") + " kWc"
+                    + " · tilt " + (p.tilt || 0) + "°"
+                if (ours > 0) {
+                    const d = ((ours - p.E_y) / p.E_y) * 100
+                    s += " · OSE " + Math.round(ours) + " kWh/an ("
+                         + (d >= 0 ? "+" : "") + d.toFixed(1) + " %)"
+                }
+                return s
+            }
+        }
+        Connections {
+            target: Pvgis
+            function onPvcalcFinished(ok) {
+                if (ok) {
+                    const elev = Number(Pvgis.lastPvcalc.elevation) || 0
+                    const loc = Object.assign({}, Projects.currentProject.location || {},
+                                             elev > 0 ? { alt: elev } : {})
+                    Projects.updateCurrent({
+                        pvgisPvcalc: Pvgis.lastPvcalc,
+                        location: loc
+                    })
+                    AppController.toast(Pvgis.status)
+                } else
+                    AppController.toast(Pvgis.status || "PVcalc échoué", 4000)
+            }
         }
 
         Connections {
             target: Weather
             function onFinished(ok) {
                 if (!ok) return
+                // Import horaire : géré par onHourlyFinished
+                if ((Weather.meta && Weather.meta.source) === "open-meteo-hourly")
+                    return
                 const lat = Number(latField.text)
                 const lon = Number(lonField.text)
                 const meta = Object.assign({}, Weather.meta || {}, {
@@ -389,6 +585,28 @@ OseTabPage {
                 })
                 Projects.updateCurrent({ weatherData: Weather.weatherData, weatherMeta: meta })
                 AppController.toast("Météo Open-Meteo enregistrée")
+            }
+            function onHourlyFinished(ok) {
+                if (!ok) {
+                    AppController.toast(Weather.status || "Import TMY échoué", 4000)
+                    return
+                }
+                const lat = Number(latField.text)
+                const lon = Number(lonField.text)
+                Projects.updateCurrent({
+                    weatherData: Weather.weatherData,
+                    weatherMeta: Object.assign({}, Weather.meta || {}, {
+                        source: "open-meteo-hourly",
+                        lat: lat,
+                        lon: lon
+                    }),
+                    hourlyWeatherData: Weather.hourlyWeatherData,
+                    formState: Object.assign({}, Projects.currentProject.formState || {}, {
+                        energyMode: "study"
+                    })
+                })
+                energyModeBox.currentIndex = 1
+                AppController.toast("TMY horaire OK — mode étude activé")
             }
         }
         Connections {

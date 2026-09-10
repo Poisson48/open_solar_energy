@@ -2,6 +2,7 @@
 
 #include "constants.h"
 #include "solar_math.h"
+#include "year_pv.h"
 
 #include <algorithm>
 #include <array>
@@ -162,7 +163,9 @@ QVariantMap OffgridSizing::run(const QVariantMap& input) const
     const double maxDeficitDaysPct = input.value(QStringLiteral("maxDeficitDaysPct"), 10).toDouble();
     const QString mode = input.value(QStringLiteral("mode"), QStringLiteral("autonomy")).toString();
     const double systemLosses = input.value(QStringLiteral("losses"), 14).toDouble();
-    const double lossF = std::max(0.5, 1.0 - systemLosses / 100.0);
+    double lossF = std::max(0.5, 1.0 - systemLosses / 100.0);
+    if (input.contains(QStringLiteral("lossTree")))
+        lossF = YearPv::effectiveLossFactor(input);
 
     // Charge : Enedis demi-heures > jour/nuit explicite > total journalier
     std::array<double, kHours> loadHour{};
@@ -205,27 +208,69 @@ QVariantMap OffgridSizing::run(const QVariantMap& input) const
 
     const auto wx = SolarMath::weatherFromVariant(weather);
 
+    const QString energyMode = input.value(QStringLiteral("energyMode"), QStringLiteral("fast")).toString();
+    const QVariantMap hourlyWx = input.value(QStringLiteral("hourlyWeatherData")).toMap();
+    const bool studyYield = energyMode == QLatin1String("study")
+                            && hourlyWx.value(QStringLiteral("ghi")).toList().size() >= 24 * 30;
+
     // PV horaire @ 1 kWc : météo + tilt/azimut + ombrage demi-heure (ou facteur mensuel)
     std::array<std::array<double, kHours>, 12> pvUnit{};
-    for (int m = 0; m < 12; ++m) {
-        const int month = m + 1;
-        double GHI = 100, DHI = 40, Tavg = 15;
-        if (m < static_cast<int>(wx.size())) {
-            GHI = wx[static_cast<size_t>(m)].GHI;
-            DHI = wx[static_cast<size_t>(m)].DHI;
-            Tavg = wx[static_cast<size_t>(m)].T_avg;
+    if (studyYield) {
+        QVariantMap yp = input;
+        yp.insert(QStringLiteral("lat"), lat);
+        yp.insert(QStringLiteral("tilt"), tilt);
+        yp.insert(QStringLiteral("azimuth"), azimuth);
+        if (!yp.contains(QStringLiteral("lossTree")))
+            yp.insert(QStringLiteral("losses"), systemLosses);
+        const bool useElec = energyMode == QLatin1String("study")
+                             && input.value(QStringLiteral("useElectricalShade"), true).toBool();
+        yp.insert(QStringLiteral("useElectricalShade"), useElec);
+        if (hasTemporalShade)
+            yp.insert(QStringLiteral("halfHourlyKeep"), halfHourlyKeep);
+        const QVariantList pvSlots = YearPv::buildYearPvSlots(hourlyWx, yp);
+        const int year = hourlyWx.value(QStringLiteral("year"), 2020).toInt();
+        int idx = 0;
+        static const int mdaysLeap[] = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+        static const int mdays[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+        const bool leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+        for (int m = 0; m < 12; ++m) {
+            const int nDays = leap ? mdaysLeap[m] : mdays[m];
+            std::array<double, kHours> sumH{};
+            for (int d = 0; d < nDays; ++d) {
+                for (int h = 0; h < kHours; ++h) {
+                    double hourKwh = 0;
+                    if (idx < pvSlots.size())
+                        hourKwh += pvSlots[idx++].toDouble();
+                    if (idx < pvSlots.size())
+                        hourKwh += pvSlots[idx++].toDouble();
+                    sumH[static_cast<size_t>(h)] += hourKwh;
+                }
+            }
+            for (int h = 0; h < kHours; ++h)
+                pvUnit[static_cast<size_t>(m)][static_cast<size_t>(h)] =
+                    sumH[static_cast<size_t>(h)] / std::max(1, nDays);
         }
-        const double monthFactor = hasTemporalShade
-            ? 1.0
-            : monthlyShadeFactor(monthlyLoss, m, annualLossPct);
+    } else {
+        for (int m = 0; m < 12; ++m) {
+            const int month = m + 1;
+            double GHI = 100, DHI = 40, Tavg = 15;
+            if (m < static_cast<int>(wx.size())) {
+                GHI = wx[static_cast<size_t>(m)].GHI;
+                DHI = wx[static_cast<size_t>(m)].DHI;
+                Tavg = wx[static_cast<size_t>(m)].T_avg;
+            }
+            const double monthFactor = hasTemporalShade
+                ? 1.0
+                : monthlyShadeFactor(monthlyLoss, m, annualLossPct);
 
-        for (int h = 0; h < kHours; ++h) {
-            double irr = SolarMath::hourlyIrradiance(lat, month, h, GHI, DHI, tilt, azimuth);
-            irr *= keepHour(halfHourlyKeep, m, h, monthFactor);
-            const double Tcell = Tavg + 25.0 * irr / 800.0;
-            const double PRtemp = 1.0 - 0.0045 * std::max(0.0, Tcell - 25.0);
-            pvUnit[static_cast<size_t>(m)][static_cast<size_t>(h)] =
-                (irr / 1000.0) * lossF * std::min(1.0, PRtemp);
+            for (int h = 0; h < kHours; ++h) {
+                double irr = SolarMath::hourlyIrradiance(lat, month, h, GHI, DHI, tilt, azimuth);
+                irr *= keepHour(halfHourlyKeep, m, h, monthFactor);
+                const double Tcell = Tavg + 25.0 * irr / 800.0;
+                const double PRtemp = 1.0 - 0.0045 * std::max(0.0, Tcell - 25.0);
+                pvUnit[static_cast<size_t>(m)][static_cast<size_t>(h)] =
+                    (irr / 1000.0) * lossF * std::min(1.0, PRtemp);
+            }
         }
     }
 

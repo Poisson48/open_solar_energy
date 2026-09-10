@@ -63,5 +63,10 @@ Voir audit complet dans le transcript agent. Tokens clés :
 - [x] Sprint 1 — chrome Main.qml (barre titre supprimée, bandeau MAJ sans checking seul)
 - [x] Sprint 1 — persistance formState TabSizing (+ TabSite inputs, TabLayout panels partiel)
 - [x] Sprint 1 — indicateur « Enregistré » ProjectBar
-- [ ] Sprint 2 shell + rail + Hub + Devis
-- [ ] Sprint 3 finition
+- [x] Sprint 2 rail d’étapes (`TabBarNav` chips numérotés) + Hub élargi
+- [ ] Sprint 2 shell 3 zones / Devis table dense (restant léger)
+- [x] Sprint 3 — Site/3D objets principaux (SolarScene3D, multi-toitures, obstacles, ombrage riche)
+- [x] Ombrage unifié Site/Layout + auto-apply Implantation + obstacles éditables Layout
+- [x] PVcalc compare + carte plein écran + QR embarqué
+- [x] Helpers 3D branchés dans SolarScene3D
+- [ ] Sprint 3 finition (fr-FR + a11y + états vides restants)

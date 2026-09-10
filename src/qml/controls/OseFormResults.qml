@@ -1,11 +1,12 @@
 import QtQuick
 import QtQuick.Layouts
+import OpenSolarEnergy
 
 GridLayout {
     id: root
-    columns: width > 780 ? 2 : 1
-    columnSpacing: 16
-    rowSpacing: 12
+    columns: width > Ui.formResultsBreakpoint ? 2 : 1
+    columnSpacing: Ui.isPhone ? 10 : 16
+    rowSpacing: Ui.isPhone ? 10 : 12
     Layout.fillWidth: true
 
     default property alias form: formCol.data
@@ -16,7 +17,7 @@ GridLayout {
         Layout.fillWidth: true
         Layout.preferredWidth: 1
         Layout.alignment: Qt.AlignTop
-        spacing: 12
+        spacing: Ui.isPhone ? 10 : 12
     }
 
     ColumnLayout {
@@ -24,6 +25,6 @@ GridLayout {
         Layout.fillWidth: true
         Layout.preferredWidth: 1
         Layout.alignment: Qt.AlignTop
-        spacing: 12
+        spacing: Ui.isPhone ? 10 : 12
     }
 }

@@ -83,7 +83,13 @@ OseTabPage {
             mode: modeBox.currentValue,
             monthlyLoss: site.monthlyLoss || [],
             halfHourlyKeep: site.halfHourlyKeep || [],
-            annualLossPct: site.annualLossPct || 0
+            annualLossPct: site.annualLossPct || 0,
+            energyMode: form.energyMode || "fast",
+            hourlyWeatherData: Projects.currentProject.hourlyWeatherData || {},
+            lossTree: form.lossTree || undefined,
+            losses: Number(form.losses !== undefined ? form.losses : 14),
+            useElectricalShade: form.energyMode === "study",
+            thermal: form.thermal || undefined
         }
         // Si Enedis a fourni un profil 30 min, on l’utilise (forme réelle jour/nuit)
         if (en.halfHourly && en.halfHourlyProfile && en.halfHourlyProfile.length >= 48)
@@ -248,14 +254,16 @@ OseTabPage {
 
         results: ColumnLayout {
             spacing: 10
-            RowLayout {
+            Flow {
                 visible: lastResult.best !== undefined && lastResult.best !== null
+                Layout.fillWidth: true
                 spacing: 8
-                KpiCard { title: "PV"; value: ((lastResult.best && lastResult.best.Ppeak) || 0) + " kWc" }
-                KpiCard { title: "Batterie"; value: ((lastResult.best && lastResult.best.battKwh) || 0) + " kWh" }
+                KpiCard { title: "PV"; value: ((lastResult.best && lastResult.best.Ppeak) || 0) + " kWc"; width: Ui.isPhone ? (parent.width - 8) / 2 : implicitWidth }
+                KpiCard { title: "Batterie"; value: ((lastResult.best && lastResult.best.battKwh) || 0) + " kWh"; width: Ui.isPhone ? (parent.width - 8) / 2 : implicitWidth }
                 KpiCard {
                     title: "Couverture"
                     value: ((lastResult.best && lastResult.best.coverage) || 0) + " %"
+                    width: Ui.isPhone ? (parent.width - 8) / 2 : implicitWidth
                 }
             }
             Label {

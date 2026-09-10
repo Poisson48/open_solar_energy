@@ -1,5 +1,6 @@
 #include "layout_3d.h"
 
+#include "azimuth.h"
 #include "site_shade.h"
 
 #include <QtMath>
@@ -16,7 +17,12 @@ QVariantMap Layout3D::computeLayout(const QVariantMap& cfg) const
     const double roofD = std::clamp(cfg.value(QStringLiteral("roofD"), 6).toDouble(), 1.0, 200.0);
     const double panelW = std::clamp(cfg.value(QStringLiteral("panelW"), 1.134).toDouble(), 0.2, 3.0);
     const double panelH = std::clamp(cfg.value(QStringLiteral("panelH"), 1.722).toDouble(), 0.2, 3.0);
-    const double gap = std::clamp(cfg.value(QStringLiteral("gap"), 0.02).toDouble(), 0.0, 1.0);
+    // gap legacy → les deux axes ; gapX (colonnes) / gapZ (rangées le long du plan)
+    const double gapLegacy = std::clamp(cfg.value(QStringLiteral("gap"), 0.02).toDouble(), 0.0, 1.0);
+    const double gapX = std::clamp(cfg.value(QStringLiteral("gapX"), gapLegacy).toDouble(), 0.0, 1.0);
+    const double gapZ = std::clamp(cfg.value(QStringLiteral("gapZ"), gapLegacy).toDouble(), 0.0, 1.0);
+    const double mountHeight =
+        std::clamp(cfg.value(QStringLiteral("mountHeight"), 0.08).toDouble(), 0.0, 5.0);
     const double tilt = std::clamp(cfg.value(QStringLiteral("tilt"), 30).toDouble(), 0.0, 90.0);
     const double azimuth = std::clamp(cfg.value(QStringLiteral("azimuth"), 0).toDouble(), -180.0, 180.0);
     int nPanels = std::max(0, cfg.value(QStringLiteral("nPanels"), 0).toInt());
@@ -31,10 +37,17 @@ QVariantMap Layout3D::computeLayout(const QVariantMap& cfg) const
         cols = 1;
 
     const double tiltRad = tilt * M_PI / 180.0;
-    const double footprintH = panelH * std::cos(tiltRad);
-    const double riseZ = panelH * std::sin(tiltRad);
-    const double arrayW = cols > 0 ? cols * panelW + (cols - 1) * gap : 0;
-    const double arrayD = rows > 0 ? rows * footprintH + (rows - 1) * gap : 0;
+    const double cosT = std::cos(tiltRad);
+    const double sinT = std::sin(tiltRad);
+    // Emprise horizontale (plan + épaisseur ~7 cm à fort tilt / 90°)
+    constexpr double kPanelThick = 0.07;
+    const double footprintH = panelH * cosT + kPanelThick * sinT;
+    const double riseZ = panelH * sinT;
+    // Pas le long du plan des modules (rangées collées), puis projeté en XZ via sin/cos (pas tan → OK à 90°)
+    const double stepAlong = panelH + gapZ;
+    const double arrayAlong = rows > 0 ? rows * panelH + (rows - 1) * gapZ : 0;
+    const double arrayW = cols > 0 ? cols * panelW + (cols - 1) * gapX : 0;
+    const double arrayD = arrayAlong * cosT + kPanelThick * sinT;
     const bool fitsW = arrayW <= roofW + 1e-6;
     const bool fitsD = arrayD <= roofD + 1e-6;
     const int placed = std::min(nPanels, rows * cols);
@@ -43,29 +56,33 @@ QVariantMap Layout3D::computeLayout(const QVariantMap& cfg) const
     const double surfaceRoof = std::round(roofW * roofD * 100) / 100;
 
     // Positions monde Quick3D : Y up, toiture centrée sur origine, X=largeur, Z=profondeur
-    // Azimut app 0° = Sud → -Z
+    // Azimut PV 0° = Sud → -Z monde
+    // Rangées coplanaires : (z,y) = along·(cos,sin) — à 90° tout le pas est en Y, z≈0.
     const double yawRad = azimuth * M_PI / 180.0;
     const double cosY = std::cos(yawRad);
     const double sinY = std::sin(yawRad);
+    const double clear = mountHeight + (arrayAlong / 2.0) * sinT;
 
     QVariantList positions;
     int n = 0;
     const double originX = -arrayW / 2.0;
-    const double originZ = -arrayD / 2.0;
+    const double originAlong = -arrayAlong / 2.0;
     for (int r = 0; r < rows; ++r) {
         for (int c = 0; c < cols; ++c) {
             if (n >= placed)
                 break;
-            const double lx = originX + c * (panelW + gap) + panelW / 2.0;
-            const double lz = originZ + r * (footprintH + gap) + footprintH / 2.0;
+            const double lx = originX + c * (panelW + gapX) + panelW / 2.0;
+            const double along = originAlong + r * stepAlong + panelH / 2.0;
+            const double lz = along * cosT;
+            const double wy = along * sinT + clear;
             // Rotation yaw autour de Y
             const double wx = lx * cosY - lz * sinY;
             const double wz = lx * sinY + lz * cosY;
-            const double wy = riseZ / 2.0 + 0.05;
             positions.append(QVariantMap{
                 {QStringLiteral("x"), wx},
                 {QStringLiteral("y"), wy},
                 {QStringLiteral("z"), wz},
+                {QStringLiteral("along"), along},
                 {QStringLiteral("tilt"), tilt},
                 {QStringLiteral("yaw"), azimuth},
                 {QStringLiteral("w"), panelW},
@@ -84,13 +101,17 @@ QVariantMap Layout3D::computeLayout(const QVariantMap& cfg) const
         {QStringLiteral("nPanels"), nPanels},
         {QStringLiteral("rows"), rows},
         {QStringLiteral("cols"), cols},
-        {QStringLiteral("gap"), gap},
+        {QStringLiteral("gap"), gapLegacy},
+        {QStringLiteral("gapX"), gapX},
+        {QStringLiteral("gapZ"), gapZ},
+        {QStringLiteral("mountHeight"), mountHeight},
         {QStringLiteral("tilt"), tilt},
         {QStringLiteral("azimuth"), azimuth},
         {QStringLiteral("footprintH"), footprintH},
         {QStringLiteral("riseZ"), riseZ},
         {QStringLiteral("arrayW"), arrayW},
         {QStringLiteral("arrayD"), arrayD},
+        {QStringLiteral("arrayAlong"), arrayAlong},
         {QStringLiteral("fits"), fitsW && fitsD},
         {QStringLiteral("fitsW"), fitsW},
         {QStringLiteral("fitsD"), fitsD},
@@ -103,26 +124,29 @@ QVariantMap Layout3D::computeLayout(const QVariantMap& cfg) const
     };
 }
 
-QVariantMap Layout3D::sunDirection(double azimutDeg, double elevDeg) const
+QVariantMap Layout3D::sunDirection(double azimutNorthDeg, double elevDeg) const
 {
-    // App : 0° = Sud, +90° = Ouest, -90° = Est. Y-up world : Sud = -Z, Est = +X
-    const double az = azimutDeg * M_PI / 180.0;
-    const double el = elevDeg * M_PI / 180.0;
-    const double cosEl = std::cos(el);
-    const double x = std::sin(az) * cosEl;   // Est
-    const double y = std::sin(el);           // Up
-    const double z = -std::cos(az) * cosEl;  // Sud négatif
+    double x = 0, y = 0, z = 0;
+    Azimuth::sunDirectionFromNorth(azimutNorthDeg, elevDeg, &x, &y, &z);
     return {{QStringLiteral("x"), x}, {QStringLiteral("y"), y}, {QStringLiteral("z"), z},
-            {QStringLiteral("elev"), elevDeg}, {QStringLiteral("az"), azimutDeg}};
+            {QStringLiteral("elev"), elevDeg}, {QStringLiteral("az"), azimutNorthDeg}};
 }
 
-QVariantMap Layout3D::sunLightEuler(double azimutDeg, double elevDeg) const
+QVariantMap Layout3D::sunLightEuler(double azimutNorthDeg, double elevDeg) const
 {
-    // DirectionalLight pointe vers -Z local ; on oriente pour que -Z_local ≈ direction soleil
-    // eulerRotation XYZ : pitch (X) = -(90-elev), yaw (Y) = azimut
-    const double pitch = -(90.0 - elevDeg);
-    const double yaw = azimutDeg;
-    return {{QStringLiteral("x"), pitch}, {QStringLiteral("y"), yaw}, {QStringLiteral("z"), 0}};
+    double pitch = 0, yaw = 0, roll = 0;
+    Azimuth::sunLightEulerFromNorth(azimutNorthDeg, elevDeg, &pitch, &yaw, &roll);
+    return {{QStringLiteral("x"), pitch}, {QStringLiteral("y"), yaw}, {QStringLiteral("z"), roll}};
+}
+
+double Layout3D::northToPv(double azNorth) const
+{
+    return Azimuth::northToPv(azNorth);
+}
+
+double Layout3D::pvToNorth(double azPv) const
+{
+    return Azimuth::pvToNorth(azPv);
 }
 
 static bool rayHitsObstacle(double px, double py, double pz, double dx, double dy, double dz,
@@ -138,8 +162,9 @@ static bool rayHitsObstacle(double px, double py, double pz, double dx, double d
         if (oEl <= 0)
             continue;
         const double dist = o.value(QStringLiteral("dist"), roofScale * 1.2).toDouble();
+        // Obstacles horizon : azimut 0°=Nord → Nord = +Z
         const double ox = std::sin(oAz) * dist;
-        const double oz = -std::cos(oAz) * dist;
+        const double oz = std::cos(oAz) * dist;
         const double oh = std::tan(oEl) * dist;
         // Segment obstacle comme slab vertical (boîte mince)
         const double halfW = o.value(QStringLiteral("width"), 2.0).toDouble() / 2.0;
@@ -166,9 +191,9 @@ static bool rayHitsObstacle(double px, double py, double pz, double dx, double d
 }
 
 QVariantMap Layout3D::sampleShading(const QVariantMap& layout, const QVariantList& obstacles,
-                                    double sunAz, double sunElev) const
+                                    double sunAzNorth, double sunElev) const
 {
-    const QVariantMap sun = sunDirection(sunAz, sunElev);
+    const QVariantMap sun = sunDirection(sunAzNorth, sunElev);
     const double dx = sun.value(QStringLiteral("x")).toDouble();
     const double dy = sun.value(QStringLiteral("y")).toDouble();
     const double dz = sun.value(QStringLiteral("z")).toDouble();

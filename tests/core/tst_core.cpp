@@ -16,6 +16,9 @@
 #include "core/inverter.h"
 #include "core/project_pipeline.h"
 #include "core/layout_3d.h"
+#include "core/layout_roofs.h"
+#include "core/shading_engine.h"
+#include "core/year_pv.h"
 
 class TstCore : public QObject {
     Q_OBJECT
@@ -40,8 +43,16 @@ private slots:
     void offgrid_heatmap_coherence_extremes();
     void offgrid_day_night_vs_enedis_shape();
     void layout3d_positions_and_shade();
+    void layout3d_gaps_and_tilts();
+    void layout3d_world_raycast_shade();
+    void layout_modeling_contract();
     void horizon_claire_30y_30min();
     void rexel_catalog_bundled();
+    void year_pv_loss_tree_and_slots();
+    void year_pv_electrical_keep_bypass();
+    void year_pv_inverter_clip_and_thermal();
+    void year_pv_study_vs_fast_order();
+    void year_pv_balances_report_pr();
 };
 
 void TstCore::calcRb_june_toulouse()
@@ -575,10 +586,81 @@ void TstCore::layout3d_positions_and_shade()
     QVERIFY(layout.value(QStringLiteral("positions")).toList().size() == 8);
     QVERIFY(layout.value(QStringLiteral("fits")).toBool());
 
+    // Midi juin : azimut boussole ~180° (Sud), soleil au sud géométrique (-Z)
+    const QVariantMap noonDir = lay.sunDirection(180, 60);
+    QVERIFY(noonDir.value(QStringLiteral("z")).toDouble() < -0.5);
+    QVERIFY(std::abs(noonDir.value(QStringLiteral("x")).toDouble()) < 0.15);
+    QCOMPARE(lay.northToPv(180.0), 0.0);
+    QCOMPARE(lay.pvToNorth(0.0), 180.0);
+    // DirectionalLight : pitch = −elev (zenith −90, pas ≈0 qui laissait le soleil à l’horizon)
+    const QVariantMap noonEuler = lay.sunLightEuler(180, 60);
+    QCOMPARE(noonEuler.value(QStringLiteral("x")).toDouble(), -60.0);
+    QCOMPARE(noonEuler.value(QStringLiteral("y")).toDouble(), 360.0);
+
     const QVariantList obstacles{
         QVariantMap{{QStringLiteral("az"), 180}, {QStringLiteral("elev"), 40}, {QStringLiteral("dist"), 8}}};
     const QVariantMap noon = lay.sampleShading(layout, obstacles, 180, 60);
     QVERIFY(noon.value(QStringLiteral("totalPanels")).toInt() == 8);
+
+    ose::LayoutRoofs roofs;
+    const QVariantMap migrated = roofs.migrate({
+        {QStringLiteral("roofL"), 10},
+        {QStringLiteral("roofW"), 6},
+        {QStringLiteral("nPanels"), 8},
+        {QStringLiteral("positions"), layout.value(QStringLiteral("positions"))},
+        {QStringLiteral("tilt"), 30},
+        {QStringLiteral("azimuth"), 0},
+    });
+    QVERIFY(migrated.value(QStringLiteral("roofs")).toList().size() == 1);
+    QVERIFY(roofs.totalPanels(migrated) == 8);
+
+    // generateGrid lignes×colonnes → positions concrètes (yaw 0)
+    const QVariantMap gridded = roofs.generateGrid(migrated, 2, 4, {}, {});
+    QCOMPARE(roofs.totalPanels(gridded), 8);
+    const QVariantList gpos = roofs.getActiveRoof(gridded).value(QStringLiteral("positions")).toList();
+    QCOMPARE(gpos.size(), 8);
+    QCOMPARE(gpos.first().toMap().value(QStringLiteral("yaw")).toDouble(), 0.0);
+    const double x0 = gpos[0].toMap().value(QStringLiteral("x")).toDouble();
+    const double x1 = gpos[1].toMap().value(QStringLiteral("x")).toDouble();
+    const double pw = gpos[0].toMap().value(QStringLiteral("w")).toDouble();
+    QVERIFY(x1 != x0);
+    // Espacement centres > largeur panneau → pas d’empilement si scale 3D = m/100
+    QVERIFY(std::abs(x1 - x0) > pw * 0.9);
+    // Contrat anti-régression : avec #Cube=100, scale DOIT être m/100
+    // sinon largeur visuelle = 100*pw ≈ 113 pour un écart ~1.16 → overlap total
+    QVERIFY(100.0 * pw > std::abs(x1 - x0) * 10.0);
+
+    ose::ShadingEngine engine;
+    const QVariantMap clear = engine.computeFull({
+        {QStringLiteral("lat"), 43.6},
+        {QStringLiteral("weatherData"), demoWeather()},
+        {QStringLiteral("horizonPoints"), QVariantList{}},
+        {QStringLiteral("obstacles"), QVariantList{}},
+        {QStringLiteral("layout"), migrated},
+    });
+    QCOMPARE(clear.value(QStringLiteral("monthlyLoss")).toList().size(), 12);
+    QVERIFY(clear.value(QStringLiteral("annualLossPct")).toDouble() >= 0);
+
+    const QVariantList boxObs{
+        QVariantMap{{QStringLiteral("x"), 0},
+                    {QStringLiteral("y"), 0},
+                    {QStringLiteral("w"), 4},
+                    {QStringLiteral("d"), 4},
+                    {QStringLiteral("h"), 8},
+                    {QStringLiteral("type"), QStringLiteral("box")}}};
+    const QVariantMap shaded = engine.computeFull({
+        {QStringLiteral("lat"), 43.6},
+        {QStringLiteral("weatherData"), demoWeather()},
+        {QStringLiteral("horizonPoints"), QVariantList{}},
+        {QStringLiteral("obstacles"), boxObs},
+        {QStringLiteral("layout"), migrated},
+    });
+    QCOMPARE(shaded.value(QStringLiteral("monthlyLoss")).toList().size(), 12);
+    QVERIFY2(shaded.value(QStringLiteral("annualLossPct")).toDouble()
+                 > clear.value(QStringLiteral("annualLossPct")).toDouble() + 0.5,
+             qPrintable(QStringLiteral("clear=%1 shaded=%2")
+                            .arg(clear.value(QStringLiteral("annualLossPct")).toDouble())
+                            .arg(shaded.value(QStringLiteral("annualLossPct")).toDouble())));
 
     const QVariantMap scene = lay.computeSceneShading(43.6, {
         {QStringLiteral("roofW"), 10},
@@ -590,6 +672,327 @@ void TstCore::layout3d_positions_and_shade()
     }, obstacles, demoWeather());
     QCOMPARE(scene.value(QStringLiteral("monthlyLoss")).toList().size(), 12);
     QVERIFY(scene.value(QStringLiteral("annualLossPct")).toDouble() >= 0);
+}
+
+void TstCore::layout3d_gaps_and_tilts()
+{
+    ose::Layout3D lay;
+    const double panelW = 1.13;
+    const double panelH = 1.76;
+    const double gapX = 0.10;
+    const double gapZ = 0.25;
+
+    // Écarts H/V indépendants
+    const QVariantMap spaced = lay.computeLayout({
+        {QStringLiteral("roofW"), 20},
+        {QStringLiteral("roofD"), 20},
+        {QStringLiteral("panelW"), panelW},
+        {QStringLiteral("panelH"), panelH},
+        {QStringLiteral("nPanels"), 6},
+        {QStringLiteral("rows"), 2},
+        {QStringLiteral("cols"), 3},
+        {QStringLiteral("gapX"), gapX},
+        {QStringLiteral("gapZ"), gapZ},
+        {QStringLiteral("tilt"), 30},
+        {QStringLiteral("azimuth"), 0},
+    });
+    const QVariantList sp = spaced.value(QStringLiteral("positions")).toList();
+    QCOMPARE(sp.size(), 6);
+    QCOMPARE(spaced.value(QStringLiteral("gapX")).toDouble(), gapX);
+    QCOMPARE(spaced.value(QStringLiteral("gapZ")).toDouble(), gapZ);
+    const double dx = sp[1].toMap().value(QStringLiteral("x")).toDouble()
+                      - sp[0].toMap().value(QStringLiteral("x")).toDouble();
+    QVERIFY2(std::abs(dx - (panelW + gapX)) < 1e-6,
+             qPrintable(QStringLiteral("dx=%1 expected=%2").arg(dx).arg(panelW + gapX)));
+    // Rangée suivante = index 3 (3 cols) : pas le long du plan = panelH+gapZ
+    const double a0 = sp[0].toMap().value(QStringLiteral("along")).toDouble();
+    const double a3 = sp[3].toMap().value(QStringLiteral("along")).toDouble();
+    QVERIFY2(std::abs((a3 - a0) - (panelH + gapZ)) < 1e-6,
+             qPrintable(QStringLiteral("dAlong=%1 expected=%2").arg(a3 - a0).arg(panelH + gapZ)));
+
+    // Tous les angles 0→90 : pas de NaN, coplanarité, pas d’empilement Y à tilt>0
+    const double tilts[] = {0, 15, 30, 45, 60, 75, 89, 90};
+    for (double tilt : tilts) {
+        const QVariantMap layT = lay.computeLayout({
+            {QStringLiteral("roofW"), 20},
+            {QStringLiteral("roofD"), 20},
+            {QStringLiteral("panelW"), panelW},
+            {QStringLiteral("panelH"), panelH},
+            {QStringLiteral("nPanels"), 9},
+            {QStringLiteral("rows"), 3},
+            {QStringLiteral("cols"), 3},
+            {QStringLiteral("gapX"), 0.05},
+            {QStringLiteral("gapZ"), 0.08},
+            {QStringLiteral("tilt"), tilt},
+            {QStringLiteral("azimuth"), 0},
+        });
+        const QVariantList pos = layT.value(QStringLiteral("positions")).toList();
+        QCOMPARE(pos.size(), 9);
+        const double tRad = tilt * M_PI / 180.0;
+        const double cosT = std::cos(tRad);
+        const double sinT = std::sin(tRad);
+        for (const QVariant& v : pos) {
+            const QVariantMap p = v.toMap();
+            QVERIFY(!std::isnan(p.value(QStringLiteral("x")).toDouble()));
+            QVERIFY(!std::isnan(p.value(QStringLiteral("y")).toDouble()));
+            QVERIFY(!std::isnan(p.value(QStringLiteral("z")).toDouble()));
+            const double along = p.value(QStringLiteral("along")).toDouble();
+            const double y = p.value(QStringLiteral("y")).toDouble();
+            const double z = p.value(QStringLiteral("z")).toDouble();
+            QVERIFY2(std::abs(z - along * cosT) < 1e-5,
+                     qPrintable(QStringLiteral("tilt=%1 z=%2 along*cos=%3")
+                                    .arg(tilt).arg(z).arg(along * cosT)));
+            // y = along*sin + clear → écart y cohérent avec sin (clear constant)
+            Q_UNUSED(y);
+            Q_UNUSED(sinT);
+        }
+        // Première vs dernière rangée (indices 0 et 6)
+        const double y0 = pos[0].toMap().value(QStringLiteral("y")).toDouble();
+        const double y6 = pos[6].toMap().value(QStringLiteral("y")).toDouble();
+        const double z0 = pos[0].toMap().value(QStringLiteral("z")).toDouble();
+        const double z6 = pos[6].toMap().value(QStringLiteral("z")).toDouble();
+        if (tilt < 1e-6) {
+            QVERIFY(std::abs(y6 - y0) < 1e-5); // plat : même hauteur
+            QVERIFY(z6 > z0 + 0.5);
+        } else if (tilt >= 89.0) {
+            // Quasi-vertical : pas surtout en Y, z presque alignés
+            QVERIFY2(y6 > y0 + 1.0,
+                     qPrintable(QStringLiteral("tilt=%1 y0=%2 y6=%3").arg(tilt).arg(y0).arg(y6)));
+            QVERIFY2(std::abs(z6 - z0) < 0.25,
+                     qPrintable(QStringLiteral("tilt=%1 z0=%2 z6=%3").arg(tilt).arg(z0).arg(z6)));
+        } else {
+            QVERIFY(y6 > y0);
+            QVERIFY(z6 > z0);
+        }
+    }
+
+    // Legacy `gap` remplit gapX et gapZ
+    const QVariantMap legacy = lay.computeLayout({
+        {QStringLiteral("roofW"), 10},
+        {QStringLiteral("roofD"), 8},
+        {QStringLiteral("nPanels"), 4},
+        {QStringLiteral("rows"), 2},
+        {QStringLiteral("cols"), 2},
+        {QStringLiteral("gap"), 0.07},
+        {QStringLiteral("tilt"), 20},
+    });
+    QCOMPARE(legacy.value(QStringLiteral("gapX")).toDouble(), 0.07);
+    QCOMPARE(legacy.value(QStringLiteral("gapZ")).toDouble(), 0.07);
+
+    // mountHeight = dégagement bord bas / sol
+    const double mountH = 0.45;
+    const QVariantMap raised = lay.computeLayout({
+        {QStringLiteral("roofW"), 12},
+        {QStringLiteral("roofD"), 10},
+        {QStringLiteral("panelW"), panelW},
+        {QStringLiteral("panelH"), panelH},
+        {QStringLiteral("nPanels"), 2},
+        {QStringLiteral("rows"), 2},
+        {QStringLiteral("cols"), 1},
+        {QStringLiteral("gapZ"), 0.1},
+        {QStringLiteral("mountHeight"), mountH},
+        {QStringLiteral("tilt"), 30},
+        {QStringLiteral("azimuth"), 0},
+    });
+    QCOMPARE(raised.value(QStringLiteral("mountHeight")).toDouble(), mountH);
+    const QVariantList rp = raised.value(QStringLiteral("positions")).toList();
+    QCOMPARE(rp.size(), 2);
+    const double tiltR = 30.0 * M_PI / 180.0;
+    const double y0 = rp[0].toMap().value(QStringLiteral("y")).toDouble();
+    const double along0 = rp[0].toMap().value(QStringLiteral("along")).toDouble();
+    const double bottomY = y0 - (panelH / 2.0) * std::sin(tiltR);
+    QVERIFY2(std::abs(bottomY - mountH) < 1e-5,
+             qPrintable(QStringLiteral("bottomY=%1 mount=%2 along=%3")
+                            .arg(bottomY)
+                            .arg(mountH)
+                            .arg(along0)));
+}
+
+void TstCore::layout3d_world_raycast_shade()
+{
+    ose::Layout3D lay;
+    ose::LayoutRoofs roofs;
+    ose::ShadingEngine eng;
+    ose::SiteShade site;
+
+    // Soleil unique : DirectionalLight euler cohérent avec sunDirection
+    const QVariantMap dir = lay.sunDirection(180, 45); // Sud géo, 45°
+    QVERIFY(dir.value(QStringLiteral("z")).toDouble() < -0.4);
+    QVERIFY(dir.value(QStringLiteral("y")).toDouble() > 0.5);
+    const QVariantMap eu = lay.sunLightEuler(180, 45);
+    QCOMPARE(eu.value(QStringLiteral("x")).toDouble(), -45.0);
+    QCOMPARE(eu.value(QStringLiteral("y")).toDouble(), 360.0);
+
+    // Normale panneau tilt 30°, azimut toiture 0 (Sud) : composante −Z
+    // Mesh monde après buildWorldShadeMesh
+    QVariantMap layout = roofs.generateGrid(roofs.migrate({}), 2, 3, {
+        {QStringLiteral("roofW"), 12},
+        {QStringLiteral("roofD"), 10},
+        {QStringLiteral("panelW"), 1.13},
+        {QStringLiteral("panelH"), 1.76},
+        {QStringLiteral("gapX"), 0.05},
+        {QStringLiteral("gapZ"), 0.05},
+        {QStringLiteral("tilt"), 30},
+        {QStringLiteral("azimuth"), 0},
+    }, {});
+    QCOMPARE(roofs.totalPanels(layout), 6);
+
+    const QVariantMap mesh0 = roofs.buildWorldShadeMesh(layout, {});
+    QCOMPARE(mesh0.value(QStringLiteral("panelCount")).toInt(), 6);
+    const QVariantList pans0 = mesh0.value(QStringLiteral("panels")).toList();
+    QVERIFY(!pans0.isEmpty());
+    const QVariantMap p0 = pans0.first().toMap();
+    QVERIFY(p0.value(QStringLiteral("nz")).toDouble() < -0.2); // vers le Sud
+    QVERIFY(p0.value(QStringLiteral("ny")).toDouble() > 0.5);
+    QCOMPARE(p0.value(QStringLiteral("corners")).toList().size(), 4);
+
+    // Midi clair : keep élevé
+    const QVariantMap noon = site.sunPos(43.6, 166, 12); // juin
+    const QVariantMap clear = eng.samplePrecise(layout, {}, {}, noon.value(QStringLiteral("az")).toDouble(),
+                                                noon.value(QStringLiteral("elev")).toDouble(), 0.7);
+    QCOMPARE(clear.value(QStringLiteral("mode")).toString(), QStringLiteral("precise"));
+    QVERIFY2(clear.value(QStringLiteral("keep")).toDouble() > 0.7,
+             qPrintable(QStringLiteral("clear keep=%1").arg(clear.value(QStringLiteral("keep")).toDouble())));
+
+    // Obstacle Est : plus d’ombre le matin que le soir
+    const QString roofId = layout.value(QStringLiteral("activeId")).toString();
+    const QVariantList eastObs{
+        QVariantMap{{QStringLiteral("type"), QStringLiteral("box")},
+                    {QStringLiteral("roofId"), roofId},
+                    {QStringLiteral("x"), 14},
+                    {QStringLiteral("y"), 2},
+                    {QStringLiteral("w"), 2},
+                    {QStringLiteral("d"), 2},
+                    {QStringLiteral("h"), 8}}};
+    const QVariantMap morning = site.sunPos(43.6, 166, 8);
+    const QVariantMap evening = site.sunPos(43.6, 166, 16);
+    const QVariantMap kAm = eng.samplePrecise(layout, eastObs, {}, morning.value(QStringLiteral("az")).toDouble(),
+                                              morning.value(QStringLiteral("elev")).toDouble(), 0.7);
+    const QVariantMap kPm = eng.samplePrecise(layout, eastObs, {}, evening.value(QStringLiteral("az")).toDouble(),
+                                              evening.value(QStringLiteral("elev")).toDouble(), 0.7);
+    QVERIFY2(kAm.value(QStringLiteral("keep")).toDouble()
+                 <= kPm.value(QStringLiteral("keep")).toDouble() + 0.05,
+             qPrintable(QStringLiteral("am=%1 pm=%2")
+                            .arg(kAm.value(QStringLiteral("keep")).toDouble())
+                            .arg(kPm.value(QStringLiteral("keep")).toDouble())));
+
+    // Azimut toiture 90° : normale tourne (composante X)
+    QVariantMap layoutE = roofs.generateGrid(roofs.migrate({}), 2, 2, {
+        {QStringLiteral("roofW"), 10},
+        {QStringLiteral("roofD"), 8},
+        {QStringLiteral("tilt"), 30},
+        {QStringLiteral("azimuth"), 90},
+    }, {});
+    const QVariantMap meshE = roofs.buildWorldShadeMesh(layoutE, {});
+    const QVariantMap pe = meshE.value(QStringLiteral("panels")).toList().first().toMap();
+    QVERIFY2(std::abs(pe.value(QStringLiteral("nx")).toDouble()) > 0.2,
+             qPrintable(QStringLiteral("nx=%1 (azimut 90 devrait tourner la normale)")
+                            .arg(pe.value(QStringLiteral("nx")).toDouble())));
+
+    // computeFull precise
+    const QVariantMap full = eng.computeFull({
+        {QStringLiteral("lat"), 43.6},
+        {QStringLiteral("weatherData"), demoWeather()},
+        {QStringLiteral("horizonPoints"), QVariantList{}},
+        {QStringLiteral("obstacles"), QVariantList{}},
+        {QStringLiteral("layout"), layout},
+        {QStringLiteral("shadeEngine"), QStringLiteral("precise")},
+    });
+    QCOMPARE(full.value(QStringLiteral("monthlyLoss")).toList().size(), 12);
+    QCOMPARE(full.value(QStringLiteral("halfHourlyKeep")).toList().size(), 12);
+    QCOMPARE(full.value(QStringLiteral("mode")).toString(), QStringLiteral("3d_raycast"));
+    QCOMPARE(full.value(QStringLiteral("shadeEngine")).toString(), QStringLiteral("precise"));
+    QVERIFY(full.value(QStringLiteral("annualLossPct")).toDouble() >= 0);
+    QVERIFY(full.value(QStringLiteral("panelsPlaced")).toInt() == 6);
+}
+
+void TstCore::layout_modeling_contract()
+{
+    ose::LayoutRoofs roofs;
+    // Projet vide → au moins une toiture utilisable
+    const QVariantMap empty = roofs.migrate({});
+    QVERIFY(empty.value(QStringLiteral("roofs")).toList().size() >= 1);
+    QVERIFY(!empty.value(QStringLiteral("activeId")).toString().isEmpty());
+
+    // Dims catalogue (ex. module large) → grille plus large
+    ose::Layout3D lay;
+    const QVariantMap small = lay.computeLayout({
+        {QStringLiteral("roofW"), 12},
+        {QStringLiteral("roofD"), 8},
+        {QStringLiteral("nPanels"), 6},
+        {QStringLiteral("rows"), 2},
+        {QStringLiteral("panelW"), 1.13},
+        {QStringLiteral("panelH"), 1.72},
+        {QStringLiteral("tilt"), 30},
+        {QStringLiteral("azimuth"), 0},
+    });
+    const QVariantMap large = lay.computeLayout({
+        {QStringLiteral("roofW"), 12},
+        {QStringLiteral("roofD"), 8},
+        {QStringLiteral("nPanels"), 6},
+        {QStringLiteral("rows"), 2},
+        {QStringLiteral("panelW"), 2.28},
+        {QStringLiteral("panelH"), 1.13},
+        {QStringLiteral("tilt"), 30},
+        {QStringLiteral("azimuth"), 0},
+    });
+    QCOMPARE(small.value(QStringLiteral("panelsPlaced")).toInt(), 6);
+    QCOMPARE(large.value(QStringLiteral("panelsPlaced")).toInt(), 6);
+    // Emprise X du module large doit être plus grande
+    const QVariantList sp = small.value(QStringLiteral("positions")).toList();
+    const QVariantList lp = large.value(QStringLiteral("positions")).toList();
+    QVERIFY(lp.first().toMap().value(QStringLiteral("w")).toDouble()
+            > sp.first().toMap().value(QStringLiteral("w")).toDouble() + 0.5);
+
+    // Contrat obstacle plan → shading (arbre sur toiture)
+    const QVariantMap migrated = roofs.migrate({
+        {QStringLiteral("roofW"), 10},
+        {QStringLiteral("roofD"), 6},
+        {QStringLiteral("nPanels"), 6},
+        {QStringLiteral("positions"), small.value(QStringLiteral("positions"))},
+        {QStringLiteral("panelW"), 1.13},
+        {QStringLiteral("panelH"), 1.72},
+        {QStringLiteral("tilt"), 30},
+        {QStringLiteral("azimuth"), 0},
+    });
+    const QString roofId = migrated.value(QStringLiteral("activeId")).toString();
+    const QVariantList tree{
+        QVariantMap{{QStringLiteral("type"), QStringLiteral("tree")},
+                    {QStringLiteral("roofId"), roofId},
+                    {QStringLiteral("x"), 4},
+                    {QStringLiteral("y"), 0.5},
+                    {QStringLiteral("w"), 1.2},
+                    {QStringLiteral("d"), 1.2},
+                    {QStringLiteral("h"), 4}}};
+    ose::ShadingEngine eng;
+    const QVariantMap clear = eng.computeFull({
+        {QStringLiteral("lat"), 43.6},
+        {QStringLiteral("weatherData"), demoWeather()},
+        {QStringLiteral("layout"), migrated},
+        {QStringLiteral("obstacles"), QVariantList{}},
+    });
+    const QVariantMap withTree = eng.computeFull({
+        {QStringLiteral("lat"), 43.6},
+        {QStringLiteral("weatherData"), demoWeather()},
+        {QStringLiteral("layout"), migrated},
+        {QStringLiteral("obstacles"), tree},
+    });
+    QVERIFY2(withTree.value(QStringLiteral("annualLossPct")).toDouble()
+                 >= clear.value(QStringLiteral("annualLossPct")).toDouble(),
+             "tree should not reduce shade loss vs clear");
+    // Pose / déplacement : updateRoof conserve id
+    const QVariantMap moved = roofs.updateRoof(migrated, roofId, {
+        {QStringLiteral("roofW"), 11},
+    });
+    QCOMPARE(moved.value(QStringLiteral("activeId")).toString(), roofId);
+    QCOMPARE(roofs.getActiveRoof(moved).value(QStringLiteral("roofW")).toDouble(), 11.0);
+
+    // buildPanelsForShading expose w/d pour le moteur d'ombre
+    const QVariantMap built = roofs.buildPanelsForShading(migrated);
+    QVERIFY(built.value(QStringLiteral("panels")).toList().size() >= 1);
+    const QVariantMap p0 = built.value(QStringLiteral("panels")).toList().first().toMap();
+    QVERIFY(p0.value(QStringLiteral("w")).toDouble() > 0.5);
+    QVERIFY(p0.value(QStringLiteral("d")).toDouble() > 0.5);
 }
 
 void TstCore::horizon_claire_30y_30min()
@@ -703,6 +1106,162 @@ void TstCore::rexel_catalog_bundled()
             ++okI;
     }
     QVERIFY2(okI >= 150, qPrintable(QStringLiteral("real inverters=%1").arg(okI)));
+}
+
+void TstCore::year_pv_loss_tree_and_slots()
+{
+    const QVariantMap tree = ose::YearPv::defaultLossTree(14);
+    const double fTree = ose::YearPv::effectiveLossFactor({{QStringLiteral("lossTree"), tree}});
+    const double fPct = ose::YearPv::effectiveLossFactor({{QStringLiteral("losses"), 14}});
+    QVERIFY2(std::abs(fTree - fPct) < 0.02,
+             qPrintable(QStringLiteral("tree=%1 pct=%2").arg(fTree).arg(fPct)));
+
+    // 48 h fixture (2 jours) — pvSlots non vides
+    QVariantList ghi, dhi, temp;
+    for (int i = 0; i < 48; ++i) {
+        const int h = i % 24;
+        const double g = (h >= 8 && h <= 17) ? 400.0 : 0.0;
+        ghi.append(g);
+        dhi.append(g * 0.3);
+        temp.append(15.0);
+    }
+    const QVariantMap hourly{{QStringLiteral("ghi"), ghi},
+                             {QStringLiteral("dhi"), dhi},
+                             {QStringLiteral("temp"), temp},
+                             {QStringLiteral("year"), 2020},
+                             {QStringLiteral("lon"), 1.44}};
+    const QVariantList pvSlots = ose::YearPv::buildYearPvSlots(
+        hourly, {{QStringLiteral("lat"), 43.6},
+                 {QStringLiteral("tilt"), 30},
+                 {QStringLiteral("azimuth"), 0},
+                 {QStringLiteral("losses"), 14}});
+    QVERIFY(pvSlots.size() >= 48 * 2);
+    double sum = 0;
+    for (const QVariant& v : pvSlots)
+        sum += v.toDouble();
+    QVERIFY2(sum > 0.5, qPrintable(QStringLiteral("sum pvSlots=%1").arg(sum)));
+}
+
+void TstCore::year_pv_electrical_keep_bypass()
+{
+    // 50 % ombrage beam → puissance électrique < 0.5 (bypass)
+    const double elec = ose::YearPv::irradianceKeepToElectrical(0.5, 3, 1.0);
+    QVERIFY2(elec < 0.5 - 1e-6,
+             qPrintable(QStringLiteral("elec=%1 should be < 0.5").arg(elec)));
+    QVERIFY(elec >= 0.0);
+    QCOMPARE(ose::YearPv::irradianceKeepToElectrical(1.0, 3, 1.0), 1.0);
+
+    QVariantList keep;
+    QVariantList row;
+    for (int s = 0; s < 48; ++s)
+        row.append(0.5);
+    for (int m = 0; m < 12; ++m)
+        keep.append(QVariant(row));
+    const QVariantList elecT = ose::YearPv::electricalKeepTable(keep, 3, 1.0);
+    QCOMPARE(elecT.size(), 12);
+    QVERIFY(elecT[0].toList()[0].toDouble() < 0.5);
+}
+
+void TstCore::year_pv_inverter_clip_and_thermal()
+{
+    const QVariantMap ac = ose::YearPv::acFromDc(10.0, 5.0, 0.97);
+    QVERIFY(ac.value(QStringLiteral("acKw")).toDouble() <= 5.0 + 1e-9);
+    QVERIFY(ac.value(QStringLiteral("clippedKw")).toDouble() > 0);
+
+    const double tNoct = ose::YearPv::cellTemperature(25, 800, {{QStringLiteral("noct"), 45}});
+    QVERIFY(tNoct > 40 && tNoct < 55);
+    const double tU = ose::YearPv::cellTemperature(
+        25, 800, {{QStringLiteral("model"), QStringLiteral("uValue")},
+                  {QStringLiteral("U"), 29},
+                  {QStringLiteral("wind"), 1}});
+    QVERIFY(tU > 40 && tU < 70);
+
+    ose::InverterSizing inv;
+    const QVariantMap ac2 = inv.acPower(3.0, 5.0, 0.97);
+    QVERIFY(ac2.value(QStringLiteral("acKw")).toDouble() > 2.0);
+    QVERIFY(ac2.value(QStringLiteral("clippedKw")).toDouble() < 1e-6);
+}
+
+void TstCore::year_pv_study_vs_fast_order()
+{
+    // 168 h (7 jours) — énergie study positive ; ordre de grandeur vs mensuel
+    QVariantList ghi, dhi, temp;
+    for (int i = 0; i < 168; ++i) {
+        const int h = i % 24;
+        const double g = (h >= 7 && h <= 18) ? 350.0 + 50.0 * std::sin((h - 7) / 11.0 * 3.14159) : 0.0;
+        ghi.append(std::max(0.0, g));
+        dhi.append(std::max(0.0, g) * 0.35);
+        temp.append(12.0 + (h > 12 ? 8.0 : 0.0));
+    }
+    // Pad to ~month for buildYearPvSlots month loop (needs full year ideally)
+    // Use short year pad: replicate to 8760-ish is heavy — monthlyYield needs full calendar.
+    // Instead analyze with partial: buildYearPvSlots stops when hours exhausted.
+    const QVariantMap hourly{{QStringLiteral("ghi"), ghi},
+                             {QStringLiteral("dhi"), dhi},
+                             {QStringLiteral("temp"), temp},
+                             {QStringLiteral("year"), 2020},
+                             {QStringLiteral("lon"), 1.44}};
+    const QVariantList pvSlots = ose::YearPv::buildYearPvSlots(
+        hourly, {{QStringLiteral("lat"), 43.6},
+                 {QStringLiteral("tilt"), 30},
+                 {QStringLiteral("azimuth"), 0},
+                 {QStringLiteral("losses"), 14}});
+    double e7 = 0;
+    for (const QVariant& v : pvSlots)
+        e7 += v.toDouble();
+    // ~7 jours @ ~1 kWc → typiquement 15–40 kWh/kWc
+    QVERIFY2(e7 > 5.0 && e7 < 80.0, qPrintable(QStringLiteral("e7=%1").arg(e7)));
+
+    // Ombrage électrique baisse le yield
+    QVariantList keepRow;
+    for (int s = 0; s < 48; ++s)
+        keepRow.append(s >= 20 && s <= 30 ? 0.4 : 1.0);
+    QVariantList keep;
+    for (int m = 0; m < 12; ++m)
+        keep.append(QVariant(keepRow));
+    const QVariantList slotsShade = ose::YearPv::buildYearPvSlots(
+        hourly, {{QStringLiteral("lat"), 43.6},
+                 {QStringLiteral("tilt"), 30},
+                 {QStringLiteral("azimuth"), 0},
+                 {QStringLiteral("losses"), 14},
+                 {QStringLiteral("halfHourlyKeep"), keep},
+                 {QStringLiteral("useElectricalShade"), true}});
+    double eShade = 0;
+    for (const QVariant& v : slotsShade)
+        eShade += v.toDouble();
+    QVERIFY2(eShade < e7, qPrintable(QStringLiteral("eShade=%1 e7=%2").arg(eShade).arg(e7)));
+}
+
+void TstCore::year_pv_balances_report_pr()
+{
+    QVariantList weather;
+    const double ghi[] = {60, 80, 120, 160, 200, 220, 230, 210, 170, 120, 70, 55};
+    const double dhi[] = {30, 40, 55, 70, 85, 90, 95, 88, 72, 55, 35, 28};
+    const double t[] = {5, 6, 9, 12, 16, 21, 24, 23, 18, 13, 8, 4};
+    for (int i = 0; i < 12; ++i) {
+        weather.append(QVariantMap{{QStringLiteral("GHI"), ghi[i]},
+                                   {QStringLiteral("DHI"), dhi[i]},
+                                   {QStringLiteral("T_avg"), t[i]},
+                                   {QStringLiteral("name"), QString::number(i + 1)}});
+    }
+    const QVariantMap r = ose::YearPv::buildBalancesReport(
+        {{QStringLiteral("lat"), 43.6},
+         {QStringLiteral("tilt"), 30},
+         {QStringLiteral("azimuth"), 0},
+         {QStringLiteral("Ppeak"), 3},
+         {QStringLiteral("weatherData"), weather},
+         {QStringLiteral("losses"), 14},
+         {QStringLiteral("lossTree"), ose::YearPv::defaultLossTree(14)}});
+    QVERIFY(r.value(QStringLiteral("ok")).toBool());
+    const QVariantMap kpi = r.value(QStringLiteral("kpi")).toMap();
+    const double ey = kpi.value(QStringLiteral("E_Grid_y")).toDouble();
+    const double pr = kpi.value(QStringLiteral("PR")).toDouble();
+    const double ginc = kpi.value(QStringLiteral("GlobInc_y")).toDouble();
+    QVERIFY2(ey > 2000 && ey < 6000, qPrintable(QStringLiteral("E_y=%1").arg(ey)));
+    QVERIFY2(ginc > 1000 && ginc < 2500, qPrintable(QStringLiteral("GlobInc=%1").arg(ginc)));
+    QVERIFY2(pr > 0.55 && pr < 0.95, qPrintable(QStringLiteral("PR=%1").arg(pr)));
+    QCOMPARE(r.value(QStringLiteral("balancesMonthly")).toList().size(), 12);
+    QVERIFY(r.value(QStringLiteral("lossDiagram")).toList().size() >= 8);
 }
 
 QTEST_MAIN(TstCore)

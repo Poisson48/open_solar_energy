@@ -1,7 +1,9 @@
 #include "site_shade.h"
 
+#include "azimuth.h"
 #include "constants.h"
 #include "solar_math.h"
+#include "year_pv.h"
 
 #include <algorithm>
 #include <cmath>
@@ -52,6 +54,16 @@ double horizonElevAt(const std::vector<Pt>& points, double az)
 } // namespace
 
 SiteShade::SiteShade(QObject* parent) : QObject(parent) {}
+
+double SiteShade::northToPv(double azNorth) const
+{
+    return Azimuth::northToPv(azNorth);
+}
+
+double SiteShade::pvToNorth(double azPv) const
+{
+    return Azimuth::pvToNorth(azPv);
+}
 
 QVariantMap SiteShade::sunPos(double lat, int dayOfYear, double solarHour) const
 {
@@ -142,6 +154,8 @@ QVariantMap SiteShade::computeShading(double lat, const QVariantList& points,
 
     return {{QStringLiteral("monthly"), monthly},
             {QStringLiteral("halfHourlyKeep"), halfHourlyKeep},
+            {QStringLiteral("halfHourlyKeepElectrical"),
+             YearPv::electricalKeepTable(halfHourlyKeep, 3, 1.0)},
             {QStringLiteral("annualLossPct"), annual}};
 }
 

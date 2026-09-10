@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import OpenSolarEnergy
 
 Button {
     id: root
@@ -9,9 +10,9 @@ Button {
     font.pixelSize: Theme.fontSizeBody
     font.weight: Font.DemiBold
     implicitHeight: Qt.platform.os === "android" ? Theme.touchTarget : Theme.controlHeightMd
-    padding: 12
-    leftPadding: 16
-    rightPadding: 16
+    padding: Ui.isPhone ? 10 : 12
+    leftPadding: Ui.isPhone ? 12 : 16
+    rightPadding: Ui.isPhone ? 12 : 16
 
     contentItem: Text {
         text: root.text

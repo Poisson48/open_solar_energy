@@ -12,10 +12,18 @@ Dialog {
     modal: true
     focus: true
     padding: 0
-    margins: 16
+    margins: Ui.isPhone ? 8 : 16
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    width: Math.min(Overlay.overlay ? Overlay.overlay.width - 32 : 920, 920)
-    height: Math.min(Overlay.overlay ? Overlay.overlay.height - 40 : 720, 720)
+    width: {
+        const ow = Overlay.overlay ? Overlay.overlay.width : 920
+        const margin = Ui.isPhone ? 16 : 32
+        return Math.min(ow - margin, Ui.isPhone ? ow - margin : 920)
+    }
+    height: {
+        const oh = Overlay.overlay ? Overlay.overlay.height : 720
+        const margin = Ui.isPhone ? 24 : 40
+        return Math.min(oh - margin, Ui.isPhone ? oh - margin : 720)
+    }
 
     property int tab: 0
     property string search: ""
@@ -542,13 +550,13 @@ Dialog {
 
                         GridLayout {
                             visible: root.tab === 0
-                            columns: 2
+                            columns: Ui.isPhone ? 1 : 2
                             Layout.fillWidth: true
                             columnSpacing: Theme.spaceSm
                             rowSpacing: Theme.spaceSm
 
-                            Label { text: "Modèle *"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim; Layout.columnSpan: 2 }
-                            OseTextField { id: pModel; Layout.fillWidth: true; Layout.columnSpan: 2; hint: "ex. JA Solar JAM60S20" }
+                            Label { text: "Modèle *"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim; Layout.columnSpan: Ui.isPhone ? 1 : 2 }
+                            OseTextField { id: pModel; Layout.fillWidth: true; Layout.columnSpan: Ui.isPhone ? 1 : 2; hint: "ex. JA Solar JAM60S20" }
 
                             Label { text: "Fabricant"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim }
                             Label { text: "Technologie"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim }
@@ -577,7 +585,7 @@ Dialog {
                             OseTextField { id: pH; Layout.fillWidth: true; hint: "1.722"; inputMethodHints: Qt.ImhFormattedNumbersOnly; onEditingFinished: root.autoDims() }
 
                             Label {
-                                Layout.columnSpan: 2
+                                Layout.columnSpan: Ui.isPhone ? 1 : 2
                                 Layout.topMargin: Theme.spaceXs
                                 text: "Électrique STC"
                                 font.pixelSize: Theme.fontSizeBody
@@ -596,15 +604,15 @@ Dialog {
 
                             CheckBox {
                                 id: pBifacial
-                                Layout.columnSpan: 2
+                                Layout.columnSpan: Ui.isPhone ? 1 : 2
                                 text: "Panneau bifacial"
                                 font.pixelSize: Theme.fontSizeBody
                             }
 
-                            Label { text: "Notes"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim; Layout.columnSpan: 2 }
+                            Label { text: "Notes"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim; Layout.columnSpan: Ui.isPhone ? 1 : 2 }
                             ScrollView {
                                 Layout.fillWidth: true
-                                Layout.columnSpan: 2
+                                Layout.columnSpan: Ui.isPhone ? 1 : 2
                                 Layout.preferredHeight: 64
                                 TextArea {
                                     id: pNotes
@@ -616,7 +624,7 @@ Dialog {
 
                         GridLayout {
                             visible: root.tab === 1
-                            columns: 2
+                            columns: Ui.isPhone ? 1 : 2
                             Layout.fillWidth: true
                             columnSpacing: Theme.spaceSm
                             rowSpacing: Theme.spaceSm
@@ -658,10 +666,10 @@ Dialog {
                             OseTextField { id: iMaxV; Layout.fillWidth: true; hint: "600"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
                             OseTextField { id: iMaxI; Layout.fillWidth: true; hint: "18"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
 
-                            Label { text: "Notes"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim; Layout.columnSpan: 2 }
+                            Label { text: "Notes"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim; Layout.columnSpan: Ui.isPhone ? 1 : 2 }
                             ScrollView {
                                 Layout.fillWidth: true
-                                Layout.columnSpan: 2
+                                Layout.columnSpan: Ui.isPhone ? 1 : 2
                                 Layout.preferredHeight: 64
                                 TextArea {
                                     id: iNotes

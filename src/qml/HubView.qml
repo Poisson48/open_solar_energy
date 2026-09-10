@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import OpenSolarEnergy
 import "controls"
 
 Item {
@@ -39,18 +40,20 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 24
+        anchors.margins: Ui.isPhone ? 12 : 24
         spacing: 16
 
         Label {
             text: "Open Solar Energy"
-            font.pixelSize: 26
+            font.pixelSize: Ui.isPhone ? 22 : 26
             font.weight: Font.DemiBold
             color: Theme.primary
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
         }
         Label {
             Layout.fillWidth: true
-            Layout.maximumWidth: 720
+            Layout.maximumWidth: 1100
             wrapMode: Text.WordWrap
             color: Theme.textDim
             text: "Dimensionnement photovoltaïque 100 % local — projets, météo, ombrage, devis."
@@ -95,7 +98,7 @@ Item {
         TextField {
             id: searchField
             Layout.fillWidth: true
-            Layout.maximumWidth: 720
+            Layout.maximumWidth: 1100
             placeholderText: "Rechercher un projet…"
             onTextChanged: root.filter = text.trim().toLowerCase()
             background: Rectangle {

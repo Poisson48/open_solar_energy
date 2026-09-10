@@ -14,7 +14,11 @@ public:
     /** points: [{az, elev}], weather: monthly GHI/DHI. Retourne monthlyLoss, halfHourlyKeep, annualLossPct. */
     Q_INVOKABLE QVariantMap computeShading(double lat, const QVariantList& points,
                                            const QVariantList& weatherData) const;
+    /** Soleil : élévation + azimut boussole (0°=Nord). */
     Q_INVOKABLE QVariantMap sunPos(double lat, int dayOfYear, double solarHour) const;
+
+    Q_INVOKABLE double northToPv(double azNorth) const;
+    Q_INVOKABLE double pvToNorth(double azPv) const;
 };
 
 } // namespace ose

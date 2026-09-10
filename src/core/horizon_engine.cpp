@@ -2,6 +2,7 @@
 
 #include "constants.h"
 #include "solar_math.h"
+#include "year_pv.h"
 
 #include <QElapsedTimer>
 
@@ -28,6 +29,12 @@ HorizonEngine::HorizonEngine(QObject* parent) : QObject(parent) {}
 
 QVariantMap HorizonEngine::simulate(const QVariantMap& params) const
 {
+    const QString mode = params.value(QStringLiteral("energyMode")).toString();
+    const QVariantMap hourly = params.value(QStringLiteral("hourlyWeatherData")).toMap();
+    if (mode == QLatin1String("study")
+        && hourly.value(QStringLiteral("ghi")).toList().size() >= 24 * 30)
+        return YearPv::simulateHorizonStudy(params);
+
     QElapsedTimer timer;
     timer.start();
 

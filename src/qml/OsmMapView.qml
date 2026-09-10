@@ -508,12 +508,14 @@ Item {
             anchors.left: parent.left
             anchors.bottom: parent.bottom
             anchors.margins: 8
+            anchors.rightMargin: 72
+            width: Math.min(implicitWidth + 10, parent.width - 88)
+            wrapMode: Text.WordWrap
             z: 6
             text: {
                 if (root.interactionMode === "line")
-                    return "Tracer A→B = sens de la pente (face panneaux) · Satellite recommandé · z"
-                           + root.zoom.toFixed(1)
-                return (root.interactive ? "Glisser = carte · Clic = lieu · " : "Lieu validé · ")
+                    return "A→B = pente · z" + root.zoom.toFixed(1)
+                return (root.interactive ? "Glisser / clic · " : "Validé · ")
                        + "z" + root.zoom.toFixed(1)
             }
             color: root.mapLayer === "sat" ? "#ffffff" : "#16211c"

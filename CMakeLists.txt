@@ -8,7 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(ANDROID)
     find_package(Qt6 REQUIRED COMPONENTS
         Core Network Quick QuickControls2 Sql Concurrent)
-    find_package(Qt6 OPTIONAL_COMPONENTS Widgets Charts ChartsQml Pdf)
+    find_package(Qt6 OPTIONAL_COMPONENTS
+        Widgets Charts ChartsQml Quick3D Quick3DHelpers)
 else()
     find_package(Qt6 REQUIRED COMPONENTS
         Core Network Quick QuickControls2 Widgets Test Sql Concurrent)

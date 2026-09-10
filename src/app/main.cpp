@@ -20,6 +20,13 @@ int main(int argc, char* argv[])
         }
         return false;
     }();
+    const bool gridProof = [&]() {
+        for (int i = 1; i < argc; ++i) {
+            if (QString::fromLocal8Bit(argv[i]) == QLatin1String("--grid-proof"))
+                return true;
+        }
+        return false;
+    }();
 
     QApplication app(argc, argv);
     app.setOrganizationName(QStringLiteral("OpenSolarEnergy"));
@@ -83,8 +90,13 @@ int main(int argc, char* argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("Terrain"), controller.terrain());
     engine.rootContext()->setContextProperty(QStringLiteral("Pipeline"), controller.pipeline());
     engine.rootContext()->setContextProperty(QStringLiteral("Layout3D"), controller.layout3d());
+    engine.rootContext()->setContextProperty(QStringLiteral("LayoutRoofs"), controller.layoutRoofs());
+    engine.rootContext()->setContextProperty(QStringLiteral("ShadingEngine"), controller.shadingEngine());
+    engine.rootContext()->setContextProperty(QStringLiteral("YearPv"), controller.yearPv());
 
-    const QUrl url(QStringLiteral("qrc:/qt/qml/OpenSolarEnergy/qml/Main.qml"));
+    const QUrl url = gridProof
+                         ? QUrl(QStringLiteral("qrc:/qt/qml/OpenSolarEnergy/qml/GridProof.qml"))
+                         : QUrl(QStringLiteral("qrc:/qt/qml/OpenSolarEnergy/qml/Main.qml"));
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreated, &app,
         [url](QObject* obj, const QUrl& objUrl) {

@@ -2,6 +2,7 @@
 
 #include "finance.h"
 #include "solar_math.h"
+#include "year_pv.h"
 
 #include <algorithm>
 #include <cmath>
@@ -88,8 +89,28 @@ QVariantMap SizingEngine::run(const QVariantMap& input) const
 
     // Pertes système effectives : pertes techniques + ombrage annuel si pas de courbe mensuelle
     double effLosses = losses;
+    if (input.contains(QStringLiteral("lossTree"))) {
+        const double f = YearPv::effectiveLossFactor(input);
+        effLosses = (1.0 - f) * 100.0;
+    }
     if (monthlyLoss.isEmpty() && annualLossPct > 0)
-        effLosses = losses + annualLossPct * (1.0 - losses / 100.0);
+        effLosses = effLosses + annualLossPct * (1.0 - effLosses / 100.0);
+
+    const QString energyMode = input.value(QStringLiteral("energyMode"), QStringLiteral("fast")).toString();
+    const QVariantMap hourlyWx = input.value(QStringLiteral("hourlyWeatherData")).toMap();
+    const bool studyYield = energyMode == QLatin1String("study")
+                            && hourlyWx.value(QStringLiteral("ghi")).toList().size() >= 24 * 30;
+    QVariantList studyMonthlyPerKwc;
+    if (studyYield) {
+        QVariantMap yp = input;
+        yp.insert(QStringLiteral("losses"), effLosses);
+        if (input.contains(QStringLiteral("halfHourlyKeep")))
+            yp.insert(QStringLiteral("halfHourlyKeep"), input.value(QStringLiteral("halfHourlyKeep")));
+        else if (!monthlyLoss.isEmpty()) {
+            // Pas de keep horaire : ombrage déjà dans monthlyLoss plus bas
+        }
+        studyMonthlyPerKwc = YearPv::monthlyYieldPerKwc(hourlyWx, yp);
+    }
 
     const QString limitMode = input.value(QStringLiteral("limitMode"), QStringLiteral("none")).toString();
     double maxPpeak = 15.0;
@@ -132,10 +153,29 @@ QVariantMap SizingEngine::run(const QVariantMap& input) const
         double E = annual.value(QStringLiteral("E_annual")).toDouble();
         double autoconso = 0;
         double injected = 0;
-        const QVariantList months = annual.value(QStringLiteral("monthly")).toList();
+        QVariantList months = annual.value(QStringLiteral("monthly")).toList();
+        if (studyYield && studyMonthlyPerKwc.size() >= 12) {
+            E = 0;
+            QVariantList rebuilt;
+            for (int i = 0; i < 12; ++i) {
+                double E_m = studyMonthlyPerKwc[i].toDouble() * Ppeak;
+                // Si keep déjà dans YearPv, ne pas re-appliquer monthlyLoss
+                if (!input.contains(QStringLiteral("halfHourlyKeep"))
+                    || input.value(QStringLiteral("halfHourlyKeep")).toList().isEmpty())
+                    E_m *= shadeFactor(monthlyLoss, i);
+                E += E_m;
+                QVariantMap row;
+                if (i < months.size())
+                    row = months[i].toMap();
+                row.insert(QStringLiteral("E_month"), E_m);
+                rebuilt.append(row);
+            }
+            months = rebuilt;
+        }
         for (int i = 0; i < months.size(); ++i) {
             double E_m = months[i].toMap().value(QStringLiteral("E_month")).toDouble();
-            E_m *= shadeFactor(monthlyLoss, i);
+            if (!studyYield)
+                E_m *= shadeFactor(monthlyLoss, i);
             const double load_m = monthLoad(monthlyKwh, i, annualLoad);
             if (hybrid && battUsable > 0) {
                 double ac = 0, inj = 0;
@@ -148,13 +188,15 @@ QVariantMap SizingEngine::run(const QVariantMap& input) const
                 injected += std::max(0.0, E_m - load_m);
             }
         }
-        // Recalcule E après shade mensuel
-        if (!monthlyLoss.isEmpty()) {
+        // Recalcule E après shade mensuel (sauf study avec keep déjà dans YearPv)
+        if (!studyYield && !monthlyLoss.isEmpty()) {
             E = 0;
             for (int i = 0; i < months.size(); ++i) {
                 double E_m = months[i].toMap().value(QStringLiteral("E_month")).toDouble();
                 E += E_m * shadeFactor(monthlyLoss, i);
             }
+        } else if (studyYield) {
+            // E déjà construit depuis studyMonthlyPerKwc
         }
 
         const double savings = autoconso * priceBase + injected * injectionPrice;

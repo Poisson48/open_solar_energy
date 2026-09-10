@@ -6,6 +6,12 @@ on:
       version_name:
         type: string
         default: "2.0.0"
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: "Version AppImage (ex. 2.0.76)"
+        type: string
+        default: "2.0.76"
 
 env:
   QT_VER: 6.8.2
@@ -24,7 +30,8 @@ jobs:
               libxkbcommon-dev libxkbcommon-x11-0 \
               libxcb-cursor0 libxcb-icccm4 libxcb-image0 \
               libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 \
-              libxcb-xinerama0 libxcb-xkb1 libxcb-util1 && break
+              libxcb-xinerama0 libxcb-xkb1 libxcb-util1 \
+              libssl-dev libsecp256k1-dev && break
             echo "apt tentatif $i échoué — nouvel essai…"
             sleep $((i * 15))
           done
@@ -33,14 +40,13 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/Qt
-          key: qt-desktop-${{ env.QT_VER }}-ose-native-qml-v1
+          key: qt-desktop-${{ env.QT_VER }}-ose-qml-quick3d-v2
       - name: Install Qt
         if: steps.cache-qt.outputs.cache-hit != 'true'
         run: |
           python3 -m pip install --user aqtinstall
           python3 -m aqt install-qt linux desktop "$QT_VER" linux_gcc_64 \
-            -m qtcharts qtsvg -O "$HOME/Qt"
-          sudo apt-get install -y libssl-dev libsecp256k1-dev
+            -m qtcharts qtsvg qtquick3d qtshadertools qtquicktimeline -O "$HOME/Qt"
       - name: Cache AppImage tools
         uses: actions/cache@v5
         with:

@@ -19,6 +19,13 @@ jobs:
             libqt6charts6-dev libqt6svg6-dev libssl-dev libsecp256k1-dev \
             qml6-module-qtquick qml6-module-qtquick-controls \
             qml6-module-qtquick-layouts qml6-module-qtquick-window \
+            qml6-module-qtqml-workerscript \
+            qt6-quick3d-dev qml6-module-qtquick3d || true
+          sudo apt-get install -y ninja-build cmake \
+            qt6-base-dev qt6-declarative-dev qt6-tools-dev \
+            libqt6charts6-dev libqt6svg6-dev libssl-dev libsecp256k1-dev \
+            qml6-module-qtquick qml6-module-qtquick-controls \
+            qml6-module-qtquick-layouts qml6-module-qtquick-window \
             qml6-module-qtqml-workerscript
       - name: Build + tests Qt
         run: |

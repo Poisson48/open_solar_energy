@@ -1,12 +1,16 @@
 # Dependencies
 node_modules/
+third_party/android_openssl/
+third_party/secp256k1/
 
 # Build outputs (Qt AppImage / APK)
 dist/
 out/
 build/
+build-qml/
 build-qt/
 build-android/
+opensolarenergy-arm64.apk
 release/
 *.AppImage
 *.deb
@@ -56,3 +60,4 @@ memory/
 
 # Rexel datasheet PDFs (lourds — régénérables via scripts/scrape_rexel_catalog.py --download-pdfs)
 data/rexel_catalog/pdfs/
+.tmp-shots/

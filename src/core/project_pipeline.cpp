@@ -50,6 +50,21 @@ QVariantMap ProjectPipeline::fingerprintParts(const QVariantMap& project) const
         {QStringLiteral("battKwh"), form.value(QStringLiteral("battKwh")).toDouble()},
         {QStringLiteral("strategy"), form.value(QStringLiteral("strategy")).toString()},
         {QStringLiteral("annualKwh"), form.value(QStringLiteral("annualKwh")).toDouble()},
+        {QStringLiteral("energyMode"),
+         form.value(QStringLiteral("energyMode"), QStringLiteral("fast")).toString()},
+        {QStringLiteral("hourlyWeather"),
+         [&]() {
+             const QVariantMap h = project.value(QStringLiteral("hourlyWeatherData")).toMap();
+             return QStringLiteral("%1|n=%2|y=%3")
+                 .arg(h.value(QStringLiteral("source")).toString())
+                 .arg(h.value(QStringLiteral("nHours"), h.value(QStringLiteral("ghi")).toList().size())
+                          .toInt())
+                 .arg(h.value(QStringLiteral("year")).toInt());
+         }()},
+        {QStringLiteral("lossTree"),
+         QString::fromUtf8(
+             QJsonDocument(QJsonObject::fromVariantMap(form.value(QStringLiteral("lossTree")).toMap()))
+                 .toJson(QJsonDocument::Compact))},
     };
 }
 
@@ -103,6 +118,9 @@ QVariantMap ProjectPipeline::staleDiagnosis(const QVariantMap& project) const
     addIf(QStringLiteral("battKwh"), QStringLiteral("batterie"));
     addIf(QStringLiteral("strategy"), QStringLiteral("stratégie de dimensionnement"));
     addIf(QStringLiteral("annualKwh"), QStringLiteral("conso annuelle"));
+    addIf(QStringLiteral("energyMode"), QStringLiteral("mode énergie (rapide/étude)"));
+    addIf(QStringLiteral("hourlyWeather"), QStringLiteral("météo horaire TMY"));
+    addIf(QStringLiteral("lossTree"), QStringLiteral("arbre de pertes"));
 
     if (changes.isEmpty()) {
         if (project.value(QStringLiteral("resultsFingerprint")).toString().isEmpty())

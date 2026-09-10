@@ -58,7 +58,7 @@ OseDialog {
 
         Label {
             visible: Share.lastInvite.length > 0 && root.qrPath.length === 0
-            text: "QR indisponible (installez qrencode) — copiez l’invite ci-dessus."
+            text: "QR indisponible — copiez l’invite ci-dessus."
             color: Theme.textDim
             font.pixelSize: 12
             wrapMode: Text.WordWrap

@@ -14,6 +14,8 @@ OseTabPage {
     property var yearResult: Projects.currentProject.hourlyYear || ({})
     property var horizonResult: Projects.currentProject.horizonResult || ({})
     property bool _syncing: false
+    property bool calculating: false
+    property string calcStatus: ""
     /** day | year | horizon — un seul mode affiché à la fois */
     property string analysisMode: "day"
 
@@ -178,49 +180,107 @@ OseTabPage {
     }
 
     function simulateYear() {
+        if (root.calculating) return
         const b = baseParams()
         if (!b) return
-        yearResult = Hourly.analyzeYear({
-            lat: b.loc.lat || 43.6,
-            weatherData: b.weather,
-            Ppeak: Number(pField.text),
-            tilt: b.form.tilt || 30,
-            azimuth: b.form.azimuth || 0,
-            losses: 14,
-            dailyKwh: b.daily,
-            dayShare: b.dayShare,
-            battKwh: Number(battField.text),
-            dod: Number(dodField.text),
-            halfHourlyKeep: b.site.halfHourlyKeep || []
+        root.calculating = true
+        root.calcStatus = (b.form.energyMode === "study")
+                          ? "Calcul année étude (TMY horaire)…"
+                          : "Calcul année (12 mois)…"
+        Qt.callLater(function() {
+            try {
+                const losses = Number(b.form["og2-losses"] || b.form["inp-losses"] || b.form.losses || 14)
+                const energyMode = b.form.energyMode || "fast"
+                const hourly = Projects.currentProject.hourlyWeatherData || {}
+                const keep = b.site.halfHourlyKeep || []
+                const params = {
+                    lat: b.loc.lat || 43.6,
+                    lon: b.loc.lon || 0,
+                    weatherData: b.weather,
+                    hourlyWeatherData: hourly,
+                    energyMode: energyMode,
+                    Ppeak: Number(pField.text),
+                    tilt: b.form.tilt || 30,
+                    azimuth: b.form.azimuth || 0,
+                    losses: losses,
+                    lossTree: b.form.lossTree || undefined,
+                    dailyKwh: b.daily,
+                    dayShare: b.dayShare,
+                    battKwh: Number(battField.text),
+                    dod: Number(dodField.text),
+                    halfHourlyKeep: keep,
+                    useElectricalShade: energyMode === "study",
+                    useInverterModel: energyMode === "study" && !!b.form.useInverterModel,
+                    pacNom: Number(b.form.pacNom) || Number(pField.text) * 0.9,
+                    etaEuro: Number(b.form.etaEuro) || 0.97,
+                    thermal: b.form.thermal || { model: energyMode === "study" ? "uValue" : "noct",
+                                                 U: Number(b.form.mountU) || 29,
+                                                 wind: Number(b.form.wind) || 1 }
+                }
+                yearResult = Hourly.analyzeYear(params)
+                Projects.updateCurrent({ hourlyYear: yearResult })
+                const modeLabel = yearResult.mode === "study" ? "étude TMY" : "rapide mensuel"
+                AppController.toast("12 mois (" + modeLabel + ") — PV "
+                                    + Math.round(yearResult.pvYear || yearResult.E_annual || 0) + " kWh"
+                                    + (yearResult.clippedKwh ? " · clip " + yearResult.clippedKwh + " kWh" : "")
+                                    + (yearResult.elapsedMs ? (" · " + yearResult.elapsedMs + " ms") : ""))
+            } finally {
+                root.calculating = false
+                root.calcStatus = ""
+            }
         })
-        Projects.updateCurrent({ hourlyYear: yearResult })
-        AppController.toast("12 mois calculés")
     }
 
     function simulateHorizon30() {
+        if (root.calculating) return
         const b = baseParams()
         if (!b) return
-        const losses = Number(b.form["og2-losses"] || b.form["inp-losses"] || b.form.losses || 14)
-        horizonResult = Horizon.simulate({
-            lat: b.loc.lat || 43.6,
-            weatherData: b.weather,
-            halfHourlyKeep: b.site.halfHourlyKeep || [],
-            Ppeak: Number(pField.text),
-            tilt: Number(b.form.tilt || 30),
-            azimuth: Number(b.form.azimuth || 0),
-            losses: losses,
-            dailyKwh: b.daily,
-            dayShare: b.dayShare,
-            battKwh: Number(battField.text),
-            dod: Number(dodField.text),
-            years: 30,
-            stepMin: 30
+        root.calculating = true
+        root.calcStatus = (b.form.energyMode === "study")
+                          ? "Horizon 30 ans (slots TMY)…"
+                          : "Horizon 30 ans @ 30 min…"
+        Qt.callLater(function() {
+            try {
+                const losses = Number(b.form["og2-losses"] || b.form["inp-losses"] || b.form.losses || 14)
+                const energyMode = b.form.energyMode || "fast"
+                const hourly = Projects.currentProject.hourlyWeatherData || {}
+                const keep = b.site.halfHourlyKeep || []
+                horizonResult = Horizon.simulate({
+                    lat: b.loc.lat || 43.6,
+                    lon: b.loc.lon || 0,
+                    weatherData: b.weather,
+                    hourlyWeatherData: hourly,
+                    energyMode: energyMode,
+                    halfHourlyKeep: keep,
+                    useElectricalShade: energyMode === "study",
+                    Ppeak: Number(pField.text),
+                    tilt: Number(b.form.tilt || 30),
+                    azimuth: Number(b.form.azimuth || 0),
+                    losses: losses,
+                    lossTree: b.form.lossTree || undefined,
+                    dailyKwh: b.daily,
+                    dayShare: b.dayShare,
+                    battKwh: Number(battField.text),
+                    dod: Number(dodField.text),
+                    years: 30,
+                    stepMin: 30,
+                    useInverterModel: energyMode === "study" && !!b.form.useInverterModel,
+                    pacNom: Number(b.form.pacNom) || Number(pField.text) * 0.9,
+                    etaEuro: Number(b.form.etaEuro) || 0.97,
+                    thermal: b.form.thermal || { model: energyMode === "study" ? "uValue" : "noct",
+                                                 U: Number(b.form.mountU) || 29 }
+                })
+                Projects.updateCurrent({ horizonResult: horizonResult })
+                AppController.toast(
+                    (horizonResult.mode === "study" ? "30 ans étude" : "30 ans")
+                    + " @ 30 min : " + (horizonResult.steps || 0) + " pas en "
+                    + (horizonResult.elapsedMs || 0) + " ms — couverture "
+                    + (horizonResult.coveragePct || 0) + " %", 4500)
+            } finally {
+                root.calculating = false
+                root.calcStatus = ""
+            }
         })
-        Projects.updateCurrent({ horizonResult: horizonResult })
-        AppController.toast(
-            "30 ans @ 30 min : " + (horizonResult.steps || 0) + " pas en "
-            + (horizonResult.elapsedMs || 0) + " ms — couverture "
-            + (horizonResult.coveragePct || 0) + " %", 4500)
     }
 
     Component.onCompleted: {
@@ -338,25 +398,23 @@ OseTabPage {
                 wrapMode: Text.WordWrap
                 font.pixelSize: 12
                 color: Theme.textDim
-                text: "Choisissez un mode — seuls ses graphiques s’affichent à droite."
+                text: "Choisissez un mode — les graphiques s’affichent "
+                      + (Ui.isPhone ? "plus bas." : "à droite.")
             }
-            RowLayout {
+            Flow {
                 Layout.fillWidth: true
                 spacing: 6
                 OseBtn {
-                    Layout.fillWidth: true
                     text: "Journée"
                     kind: root.analysisMode === "day" ? "primary" : "outline"
                     onClicked: root.setMode("day")
                 }
                 OseBtn {
-                    Layout.fillWidth: true
                     text: "Année"
                     kind: root.analysisMode === "year" ? "primary" : "outline"
                     onClicked: root.setMode("year")
                 }
                 OseBtn {
-                    Layout.fillWidth: true
                     text: "30 ans"
                     kind: root.analysisMode === "horizon" ? "primary" : "outline"
                     onClicked: root.setMode("horizon")
@@ -372,7 +430,9 @@ OseTabPage {
             }
             OseBtn {
                 Layout.fillWidth: true
+                enabled: !root.calculating
                 text: {
+                    if (root.calculating) return "Calcul en cours…"
                     if (root.analysisMode === "year") return "Recalculer les 12 mois"
                     if (root.analysisMode === "horizon") return "Recalculer 30 ans @ 30 min"
                     return "Recalculer " + monthBox.currentText
@@ -381,6 +441,22 @@ OseTabPage {
                     if (root.analysisMode === "year") root.simulateYear()
                     else if (root.analysisMode === "horizon") root.simulateHorizon30()
                     else root.simulate()
+                }
+            }
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 4
+                visible: root.calculating
+                ProgressBar {
+                    Layout.fillWidth: true
+                    indeterminate: true
+                }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    font.pixelSize: 12
+                    color: Theme.textDim
+                    text: root.calcStatus || "Calcul…"
                 }
             }
         }

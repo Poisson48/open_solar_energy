@@ -1,12 +1,19 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import OpenSolarEnergy
 
 Flickable {
     id: root
     contentHeight: pageCol.implicitHeight + 32
     clip: true
-    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+    ScrollBar.vertical: ScrollBar {
+        policy: ScrollBar.AsNeeded
+        // Overlay pour ne pas réduire la largeur utile sur téléphone
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+    }
 
     property string title: ""
     property string subtitle: ""
@@ -23,15 +30,17 @@ Flickable {
 
         ColumnLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: 16
-            Layout.rightMargin: 16
-            Layout.topMargin: 16
+            Layout.leftMargin: Ui.pageMargin
+            Layout.rightMargin: Ui.pageMargin
+            Layout.topMargin: Ui.pageMargin
             spacing: 4
             Label {
                 text: root.title
-                font.pixelSize: 20
+                font.pixelSize: Ui.isPhone ? 18 : 20
                 font.weight: Font.DemiBold
                 color: Theme.text
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
             }
             Label {
                 visible: root.subtitle.length > 0
@@ -46,18 +55,18 @@ Flickable {
         ColumnLayout {
             id: bodySlot
             Layout.fillWidth: true
-            Layout.leftMargin: 16
-            Layout.rightMargin: 16
+            Layout.leftMargin: Ui.pageMargin
+            Layout.rightMargin: Ui.pageMargin
             Layout.topMargin: 12
             spacing: 12
         }
 
         OseBtn {
             Layout.fillWidth: true
-            Layout.leftMargin: 16
-            Layout.rightMargin: 16
+            Layout.leftMargin: Ui.pageMargin
+            Layout.rightMargin: Ui.pageMargin
             Layout.topMargin: 8
-            Layout.bottomMargin: 16
+            Layout.bottomMargin: Ui.pageMargin
             visible: root.nextTabId.length > 0 || root.nextTabLabel.length > 0
             text: root.nextTabLabel.length
                   ? ("Continuer → " + root.nextTabLabel)

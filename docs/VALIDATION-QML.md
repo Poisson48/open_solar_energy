@@ -58,12 +58,19 @@ Continuer → suit `primaryTabFlow()` selon Réseau / Hybride / Autonome.
 
 | Check | Résultat |
 |-------|----------|
-| Scène toiture + panneaux + soleil + obstacles | **pass** (GUI alive) |
-| `Layout3D` unit tests | **pass** (ctest) |
-| Ombrage scène → `siteSurvey` / Dim. | **pass** (bouton « Calculer ombrage scène → projet ») |
-| Ombres GPU DirectionalLight | **pass** |
+| Scène multi-toitures inclinées + panneaux + soleil (az 0°=Nord via SiteShade) | **pass** |
+| DirectionalLight = `Layout3D.sunLightEuler` (même soleil que le raycast) | **pass** |
+| Obstacles Site (cheminée/arbre/mur) visibles en Implantation ; édition L×l×H + dist. panneau | **pass** |
+| `buildWorldShadeMesh` + `ShadingEngine.samplePrecise` / `computeFull(precise)` | **pass** (ctest) |
+| Ombrage 3D raycast → `siteSurvey` (`source: shading3d`, mode `3d_raycast`) / Dim. | **pass** |
+| KPI live Implantation = raycast (mois/heure) ; apply au relâché / timer 700 ms | **pass** |
+| Changement dims/azimut toiture → `scheduleShadeApply` (pas de profil stale) | **pass** |
+| Ombres GPU DirectionalLight (aperçu) alignées sur le même soleil | **pass** |
+| Switch Site ↔ Layout sans tear-down RHI (StackLayout) | **pass** |
 
 ```bash
 # Dépendance desktop
 sudo apt install qt6-quick3d-dev
+# Tests ombre 3D
+./build-qml/tests/tst_core layout3d_world_raycast_shade
 ```

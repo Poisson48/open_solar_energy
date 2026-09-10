@@ -16,7 +16,7 @@
 
 - [x] **Rapport PDF enrichi** : dual reco hors-réseau, hybrid, export menu mobile.
 - [x] **Mode sombre** : toggle header + `prefers-color-scheme` + persistance localStorage.
-- [ ] **TMY Open-Meteo** : année météo typique.
+- [x] **TMY Open-Meteo** : année météo typique horaire (`Weather.fetchOpenMeteoHourly` + mode `energyMode: study`).
 - [x] **Tracker solaire 1 axe** : calculateur réel basé météo projet (onglet avancé).
 - [ ] **Internationalisation EN**.
 - [ ] **Tests unitaires PVGIS reference** : valeurs de référence tiltedIrradiation.
