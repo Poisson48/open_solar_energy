@@ -6,9 +6,9 @@
 #include <cmath>
 
 #ifdef Q_OS_ANDROID
+#  include <QCoreApplication>
 #  include <QJniEnvironment>
 #  include <QJniObject>
-#  include <QNativeInterface>
 #endif
 
 #ifdef OSE_HAS_SENSORS
