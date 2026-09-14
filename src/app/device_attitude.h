@@ -3,15 +3,16 @@
 #include <QObject>
 #include <QString>
 
-class QRotationSensor;
 class QCompass;
-class QTiltSensor;
+class QAccelerometer;
+class QRotationSensor;
 
 namespace app {
 
 /**
- * Cap (0°=N) + élévation regard caméra (0°=horizon) pour le mode photo Site.
- * Priorité : QRotationSensor (vecteur de rotation), secours boussole + tilt.
+ * Cap magnétique (0°=N) + élévation regard caméra (0°=horizon) pour le mode photo Site.
+ * Source principale : boussole + accéléromètre (fiable sur Android).
+ * Secours : QRotationSensor en angles d’Euler.
  */
 class DeviceAttitude : public QObject {
     Q_OBJECT
@@ -46,9 +47,10 @@ signals:
 
 private:
     void setStatus(const QString& s);
-    void onRotation();
+    void refreshStatus();
     void onCompass();
-    void onTilt();
+    void onAccel();
+    void onRotation();
     void applySmoothed(qreal heading, qreal elev, qreal pitch, bool haveH, bool haveE);
 
     bool m_active = false;
@@ -61,9 +63,9 @@ private:
     bool m_smoothInit = false;
     QString m_status;
 
-    QRotationSensor* m_rotation = nullptr;
     QCompass* m_compass = nullptr;
-    QTiltSensor* m_tilt = nullptr;
+    QAccelerometer* m_accel = nullptr;
+    QRotationSensor* m_rotation = nullptr;
 };
 
 } // namespace app

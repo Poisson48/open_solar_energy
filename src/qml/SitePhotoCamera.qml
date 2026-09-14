@@ -294,12 +294,12 @@ Item {
                         if (ov !== "" && !isNaN(Number(ov)))
                             elev = Number(ov)
                         if (isNaN(az)) {
-                            AppController.toast("Boussole indisponible — attendez le cap ou saisissez l’azimut sur le diagramme.", 4500)
+                            AppController.toast("Boussole indisponible — attendez le cap (HUD) ou placez sur le diagramme.", 4500)
                             return
                         }
                         if (isNaN(elev)) {
-                            AppController.toast("Pitch indisponible — penchez l’appareil ou forcez l’élévation.", 4500)
-                            return
+                            elev = 0
+                            AppController.toast("Élévation indisponible → 0° (horizon). Forcez-la si besoin.", 3500)
                         }
                         root.placeRequested(az, elev)
                         AppController.toast("Point az " + Math.round(az) + "° · élév " + Math.round(elev) + "°", 2500)

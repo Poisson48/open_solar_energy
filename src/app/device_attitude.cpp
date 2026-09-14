@@ -5,12 +5,12 @@
 #include <cmath>
 
 #ifdef OSE_HAS_SENSORS
+#  include <QAccelerometer>
+#  include <QAccelerometerReading>
 #  include <QCompass>
+#  include <QCompassReading>
 #  include <QRotationReading>
 #  include <QRotationSensor>
-#  include <QSensor>
-#  include <QTiltReading>
-#  include <QTiltSensor>
 #endif
 
 namespace app {
@@ -31,40 +31,14 @@ qreal elevFromPitch(qreal pitch)
     return qBound(0.0, pitch - 90.0, 90.0);
 }
 
-/** Cap + élévation du regard caméra (−Z device) depuis quaternion capteur. */
-bool attitudeFromQuat(qreal qx, qreal qy, qreal qz, qreal* headingOut, qreal* elevOut, qreal* pitchOut)
+/** Pitch écran portrait (0=à plat face up, ~90=debout) depuis la gravité. */
+qreal pitchFromAccel(qreal ax, qreal ay, qreal az)
 {
-    const qreal n2 = qx * qx + qy * qy + qz * qz;
-    if (n2 > 1.0)
-        return false;
-    const qreal qw = std::sqrt(std::max(0.0, 1.0 - static_cast<double>(n2)));
-
-    // look = rotate (0,0,-1) by quaternion (caméra arrière)
-    const qreal tx = 2.0 * (-qy);
-    const qreal ty = 2.0 * qx;
-    const qreal tz = 0.0;
-    const qreal lx = 0.0 + qw * tx + (qy * tz - qz * ty);
-    const qreal ly = 0.0 + qw * ty + (qz * tx - qx * tz);
-    const qreal lz = -1.0 + qw * tz + (qx * ty - qy * tx);
-
-    const qreal len = std::sqrt(lx * lx + ly * ly + lz * lz);
-    if (len < 1e-6)
-        return false;
-    const qreal nx = lx / len;
-    const qreal ny = ly / len;
-    const qreal nz = lz / len;
-
-    qreal heading = qRadiansToDegrees(std::atan2(nx, ny));
-    heading = normAz(heading);
-    const qreal elev = qBound(0.0, qRadiansToDegrees(std::asin(qBound(-1.0, nz, 1.0))), 90.0);
-    const qreal pitch = elev + 90.0;
-    if (headingOut)
-        *headingOut = heading;
-    if (elevOut)
-        *elevOut = elev;
-    if (pitchOut)
-        *pitchOut = pitch;
-    return true;
+    const qreal g = std::sqrt(ax * ax + ay * ay + az * az);
+    if (g < 1e-3)
+        return 90.0;
+    // Portrait : axe Y vers le haut de l’écran, Z vers l’utilisateur
+    return qRadiansToDegrees(std::atan2(-ay, std::sqrt(ax * ax + az * az)));
 }
 
 } // namespace
@@ -72,31 +46,37 @@ bool attitudeFromQuat(qreal qx, qreal qy, qreal qz, qreal* headingOut, qreal* el
 DeviceAttitude::DeviceAttitude(QObject* parent) : QObject(parent)
 {
 #ifdef OSE_HAS_SENSORS
-    m_rotation = new QRotationSensor(this);
     m_compass = new QCompass(this);
-    m_tilt = new QTiltSensor(this);
+    m_accel = new QAccelerometer(this);
+    m_rotation = new QRotationSensor(this);
 
-    const bool rotOk = m_rotation->connectToBackend();
     const bool compOk = m_compass->connectToBackend();
-    const bool tiltOk = m_tilt->connectToBackend();
-    m_available = rotOk || (compOk && tiltOk);
+    const bool accelOk = m_accel->connectToBackend();
+    const bool rotOk = m_rotation->connectToBackend();
+    m_available = compOk || accelOk || rotOk;
+
+    if (compOk) {
+        m_compass->setDataRate(25);
+        connect(m_compass, &QCompass::readingChanged, this, &DeviceAttitude::onCompass);
+    }
+    if (accelOk) {
+        m_accel->setDataRate(25);
+        connect(m_accel, &QAccelerometer::readingChanged, this, &DeviceAttitude::onAccel);
+    }
     if (rotOk) {
+        // Secours / complément — x,y,z sont des angles d’Euler (°), pas un quaternion
         m_rotation->setDataRate(25);
         connect(m_rotation, &QRotationSensor::readingChanged, this, &DeviceAttitude::onRotation);
-        setStatus(QStringLiteral("Capteurs rotation OK"));
-    } else if (compOk || tiltOk) {
-        if (compOk) {
-            m_compass->setDataRate(25);
-            connect(m_compass, &QCompass::readingChanged, this, &DeviceAttitude::onCompass);
-        }
-        if (tiltOk) {
-            m_tilt->setDataRate(25);
-            connect(m_tilt, &QTiltSensor::readingChanged, this, &DeviceAttitude::onTilt);
-        }
-        setStatus(QStringLiteral("Boussole / tilt OK"));
-    } else {
-        setStatus(QStringLiteral("Aucun capteur d’orientation"));
     }
+
+    if (compOk && accelOk)
+        setStatus(QStringLiteral("Boussole + accel OK — bougez l’appareil"));
+    else if (compOk)
+        setStatus(QStringLiteral("Boussole OK — élévation via force manuelle si besoin"));
+    else if (rotOk)
+        setStatus(QStringLiteral("Rotation OK"));
+    else
+        setStatus(QStringLiteral("Aucun capteur d’orientation"));
 #else
     setStatus(QStringLiteral("Capteurs non compilés (desktop)"));
 #endif
@@ -115,29 +95,42 @@ void DeviceAttitude::setStatus(const QString& s)
     emit statusChanged();
 }
 
+void DeviceAttitude::refreshStatus()
+{
+    if (m_hasHeading && m_hasElevation) {
+        setStatus(QStringLiteral("Cap %1° · élév %2°")
+                      .arg(qRound(m_heading))
+                      .arg(qRound(m_elevation)));
+    } else if (m_hasHeading) {
+        setStatus(QStringLiteral("Cap %1° · élév — (penchez ou forcez)").arg(qRound(m_heading)));
+    } else if (m_hasElevation) {
+        setStatus(QStringLiteral("Cap — · élév %1°").arg(qRound(m_elevation)));
+    }
+}
+
 void DeviceAttitude::setActive(bool on)
 {
     if (m_active == on)
         return;
     m_active = on;
 #ifdef OSE_HAS_SENSORS
-    if (m_rotation) {
-        if (on)
-            m_rotation->start();
-        else
-            m_rotation->stop();
-    }
     if (m_compass) {
         if (on)
             m_compass->start();
         else
             m_compass->stop();
     }
-    if (m_tilt) {
+    if (m_accel) {
         if (on)
-            m_tilt->start();
+            m_accel->start();
         else
-            m_tilt->stop();
+            m_accel->stop();
+    }
+    if (m_rotation) {
+        if (on)
+            m_rotation->start();
+        else
+            m_rotation->stop();
     }
 #endif
     if (!on) {
@@ -155,7 +148,6 @@ void DeviceAttitude::applySmoothed(qreal heading, qreal elev, qreal pitch, bool 
         if (!m_smoothInit || !m_hasHeading) {
             m_heading = heading;
         } else {
-            // Lissage circulaire léger
             qreal d = heading - m_heading;
             while (d > 180)
                 d -= 360;
@@ -175,26 +167,7 @@ void DeviceAttitude::applySmoothed(qreal heading, qreal elev, qreal pitch, bool 
     }
     m_smoothInit = true;
     emit attitudeChanged();
-}
-
-void DeviceAttitude::onRotation()
-{
-#ifdef OSE_HAS_SENSORS
-    if (!m_rotation)
-        return;
-    auto* r = m_rotation->reading();
-    if (!r)
-        return;
-    qreal h = 0, e = 0, p = 90;
-    if (!attitudeFromQuat(r->x(), r->y(), r->z(), &h, &e, &p))
-        return;
-    applySmoothed(h, e, p, true, true);
-    setStatus(QStringLiteral("Cap %1° · élév %2°")
-                  .arg(qRound(h))
-                  .arg(qRound(e)));
-#else
-    Q_UNUSED(0);
-#endif
+    refreshStatus();
 }
 
 void DeviceAttitude::onCompass()
@@ -205,36 +178,67 @@ void DeviceAttitude::onCompass()
     auto* r = m_compass->reading();
     if (!r)
         return;
-    applySmoothed(normAz(r->azimuth()), m_elevation, m_pitch, true, m_hasElevation);
-    if (m_hasHeading && m_hasElevation)
-        setStatus(QStringLiteral("Cap %1° · élév %2°")
-                      .arg(qRound(m_heading))
-                      .arg(qRound(m_elevation)));
-    else if (m_hasHeading)
-        setStatus(QStringLiteral("Cap %1° · élév —").arg(qRound(m_heading)));
+    applySmoothed(normAz(r->azimuth()), m_elevation, m_pitch, true, false);
 #else
     Q_UNUSED(0);
 #endif
 }
 
-void DeviceAttitude::onTilt()
+void DeviceAttitude::onAccel()
 {
 #ifdef OSE_HAS_SENSORS
-    if (!m_tilt)
+    if (!m_accel)
         return;
-    auto* r = m_tilt->reading();
+    auto* r = m_accel->reading();
     if (!r)
         return;
-    // yRotation ≈ pitch écran en portrait (0 à plat, ~±90 debout)
-    const qreal pitch = std::abs(r->yRotation());
+    const qreal pitch = pitchFromAccel(r->x(), r->y(), r->z());
     const qreal elev = elevFromPitch(pitch);
-    applySmoothed(m_heading, elev, pitch, m_hasHeading, true);
-    if (m_hasHeading && m_hasElevation)
-        setStatus(QStringLiteral("Cap %1° · élév %2°")
-                      .arg(qRound(m_heading))
-                      .arg(qRound(m_elevation)));
-    else
-        setStatus(QStringLiteral("Cap — · élév %1°").arg(qRound(m_elevation)));
+    applySmoothed(m_heading, elev, pitch, false, true);
+#else
+    Q_UNUSED(0);
+#endif
+}
+
+void DeviceAttitude::onRotation()
+{
+#ifdef OSE_HAS_SENSORS
+    if (!m_rotation)
+        return;
+    auto* r = m_rotation->reading();
+    if (!r)
+        return;
+    // Qt : x,y,z = Euler en degrés (setFromEuler). Sur Android (orientation) :
+    // z ≈ azimut, x ≈ pitch. On ne remplace la boussole / accel que si absents.
+    const qreal rx = r->x();
+    const qreal ry = r->y();
+    const qreal rz = r->z();
+
+    const bool needH = !m_hasHeading;
+    const bool needE = !m_hasElevation;
+    if (!needH && !needE)
+        return;
+
+    qreal heading = m_heading;
+    qreal pitch = m_pitch;
+    qreal elev = m_elevation;
+    bool haveH = false;
+    bool haveE = false;
+
+    if (needH) {
+        // Azimut souvent sur Z ; sinon combinaison typique orientation Android
+        heading = normAz(rz);
+        haveH = true;
+    }
+    if (needE) {
+        // Pitch écran ≈ |x| en portrait (convention courante Qt/Android)
+        pitch = std::abs(rx);
+        if (pitch < 5.0 && std::abs(ry) > pitch)
+            pitch = std::abs(ry);
+        elev = elevFromPitch(pitch);
+        haveE = true;
+    }
+    applySmoothed(heading, elev, pitch, haveH, haveE);
 #else
     Q_UNUSED(0);
 #endif
