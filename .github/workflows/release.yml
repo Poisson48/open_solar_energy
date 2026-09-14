@@ -63,9 +63,12 @@ jobs:
     uses: ./.github/workflows/desktop.yml
     with:
       version_name: ${{ needs.version.outputs.name }}
+    # Ne bloque plus la Release Android si le packaging AppImage flanche (504 runtime, etc.)
+    continue-on-error: true
 
   publish:
     needs: [version, apk, appimage]
+    if: ${{ always() && needs.apk.result == 'success' }}
     runs-on: ubuntu-latest
     env:
       TAG: ${{ needs.version.outputs.ref }}
@@ -90,6 +93,8 @@ jobs:
         with:
           pattern: opensolarenergy-*
           merge-multiple: true
+          # AppImage optionnel
+          if-no-files-found: warn
       - name: Renommer APK
         run: mv opensolarenergy-arm64.apk "opensolarenergy-${TAG}-arm64.apk"
       - name: Publier Release
@@ -97,8 +102,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           APK="opensolarenergy-${TAG}-arm64.apk"
-          APPIMAGE="$(ls OpenSolarEnergy-*-x86_64.AppImage 2>/dev/null | head -1)"
-          [ -n "$APPIMAGE" ] || { echo "AppImage introuvable" >&2; exit 1; }
+          APPIMAGE="$(ls OpenSolarEnergy-*-x86_64.AppImage 2>/dev/null | head -1 || true)"
           [ -f "$APK" ] || { echo "APK introuvable : $APK" >&2; exit 1; }
           {
             printf '%s\n\n' "$NOTES"
@@ -114,15 +118,21 @@ jobs:
           L'AppImage Qt est le binaire desktop recommandé à partir de v2.0.0.
           EOF
           } > notes.md
+          FILES=("$APK")
+          if [ -n "$APPIMAGE" ] && [ -f "$APPIMAGE" ]; then
+            FILES+=("$APPIMAGE")
+          else
+            echo "::warning::AppImage absente — publication APK seule"
+          fi
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$APK" "$APPIMAGE" \
+            gh release upload "$TAG" "${FILES[@]}" \
               --repo "$GITHUB_REPOSITORY" --clobber
             gh release edit "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
               --title "Open Solar Energy $TAG" \
               --notes-file notes.md
           else
-            gh release create "$TAG" "$APK" "$APPIMAGE" \
+            gh release create "$TAG" "${FILES[@]}" \
               --repo "$GITHUB_REPOSITORY" \
               --title "Open Solar Energy $TAG" \
               --notes-file notes.md

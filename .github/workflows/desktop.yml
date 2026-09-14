@@ -40,13 +40,13 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/Qt
-          key: qt-desktop-${{ env.QT_VER }}-ose-qml-quick3d-v2
+          key: qt-desktop-${{ env.QT_VER }}-ose-qml-mm-sensors-v1
       - name: Install Qt
         if: steps.cache-qt.outputs.cache-hit != 'true'
         run: |
           python3 -m pip install --user aqtinstall
           python3 -m aqt install-qt linux desktop "$QT_VER" linux_gcc_64 \
-            -m qtcharts qtquick3d qtshadertools qtquicktimeline -O "$HOME/Qt"
+            -m qtcharts qtquick3d qtshadertools qtquicktimeline qtconnectivity qtmultimedia qtsensors -O "$HOME/Qt"
       - name: Dépendances natives
         run: |
           git clone --depth 1 --branch v0.5.1 https://github.com/bitcoin-core/secp256k1.git third_party/secp256k1
@@ -54,7 +54,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: build/appimage-tools
-          key: appimage-tools-ose-native
+          key: appimage-tools-ose-native-runtime-v2
       - name: Build
         env:
           VERSION_NAME: ${{ inputs.version_name }}

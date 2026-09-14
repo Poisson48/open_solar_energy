@@ -66,8 +66,22 @@ cd "$ROOT/build"
   --icon-file "$APPDIR/usr/share/icons/hicolor/512x512/apps/opensolarenergy.png"
 
 fetch appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+# Runtime type2 : téléchargement manuel (évite les 504 appimagetool → GitHub)
+RUNTIME="$TOOLS/runtime-x86_64"
+if [ ! -f "$RUNTIME" ]; then
+  for i in 1 2 3 4 5; do
+    if wget -q --timeout=60 -O "$RUNTIME" \
+      "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64"; then
+      break
+    fi
+    echo "runtime type2 tentatif $i échoué — nouvel essai…"
+    rm -f "$RUNTIME"
+    sleep $((i * 10))
+  done
+  [ -f "$RUNTIME" ] || { echo "Échec téléchargement runtime AppImage" >&2; exit 1; }
+fi
 cd "$ROOT/build"
-ARCH=x86_64 "$TOOLS/appimagetool" "$APPDIR" "$OUTPUT"
+ARCH=x86_64 "$TOOLS/appimagetool" --runtime-file "$RUNTIME" "$APPDIR" "$OUTPUT"
 
 mkdir -p "$OUT_DIR"
 mv "$ROOT/build/$OUTPUT" "$OUT_DIR/$OUTPUT"
