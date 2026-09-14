@@ -6,12 +6,14 @@
 
 class QAccelerometer;
 class QMagnetometer;
+class QTimer;
 
 namespace app {
 
 /**
- * Attitude du regard caméra arrière (−Z), indépendante de l’orientation
- * (portrait / paysage / tête en bas / roll) : seul compte où pointe l’objectif.
+ * Attitude regard caméra (−Z), style SkyView / Stellarium.
+ * Android : vecteur de rotation HAL (gyro+accel+mag).
+ * Secours : fusion accel + magnéto Qt Sensors.
  */
 class DeviceAttitude : public QObject {
     Q_OBJECT
@@ -24,7 +26,6 @@ class DeviceAttitude : public QObject {
     Q_PROPERTY(bool hasElevation READ hasElevation NOTIFY attitudeChanged)
     Q_PROPERTY(bool hasBasis READ hasBasis NOTIFY attitudeChanged)
     Q_PROPERTY(QString status READ status NOTIFY statusChanged)
-    /** Rotation écran vs capteurs (0/90/180/270), pour l’overlay QML. */
     Q_PROPERTY(qreal screenAngle READ screenAngle WRITE setScreenAngle NOTIFY screenAngleChanged)
 
 public:
@@ -44,11 +45,6 @@ public:
     qreal screenAngle() const { return m_screenAngle; }
     void setScreenAngle(qreal deg);
 
-    /**
-     * Projette un point horizon (az, élév) dans le viseur.
-     * Retourne (-1,-1) si hors champ / pas prêt.
-     * Gère n’importe quel roll / orientation via la base Est-Nord-Ciel.
-     */
     Q_INVOKABLE QPointF projectToScreen(qreal azDeg, qreal elevDeg,
                                         qreal width, qreal height,
                                         qreal hFovDeg, qreal vFovDeg) const;
@@ -66,13 +62,16 @@ private:
     void onAccel();
     void onMag();
     void tryFusion();
+    void pollAndroid();
     void applyAttitude(qreal heading, qreal elev,
                        qreal ex, qreal ey, qreal ez,
                        qreal nx, qreal ny, qreal nz,
-                       qreal ux, qreal uy, qreal uz);
+                       qreal ux, qreal uy, qreal uz,
+                       bool fromAndroid);
 
     bool m_active = false;
     bool m_available = false;
+    bool m_useAndroid = false;
     qreal m_heading = 0;
     qreal m_elevation = 0;
     qreal m_pitch = 90;
@@ -83,7 +82,6 @@ private:
     qreal m_screenAngle = 0;
     QString m_status;
 
-    // Base monde exprimée dans le repère appareil (X droite, Y haut, Z vers l’utilisateur)
     qreal m_ex = 1, m_ey = 0, m_ez = 0;
     qreal m_nx = 0, m_ny = 1, m_nz = 0;
     qreal m_ux = 0, m_uy = 0, m_uz = 1;
@@ -95,6 +93,7 @@ private:
 
     QAccelerometer* m_accel = nullptr;
     QMagnetometer* m_mag = nullptr;
+    QTimer* m_androidPoll = nullptr;
 };
 
 } // namespace app
