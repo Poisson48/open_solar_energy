@@ -8,9 +8,9 @@ OseDialog {
     id: root
     title: "Synchronisation"
     width: Math.min((Overlay.overlay ? Overlay.overlay.width : 560) - 24, 560)
-    acceptEnabled: root.mode === "send"
+    acceptEnabled: !AppController.syncBusy && (root.mode === "send"
                    ? (!root.isPhone || root.hasSelection)
-                   : (root.hasSelection && root.mode.length > 0)
+                   : (root.hasSelection && root.mode.length > 0))
     acceptText: root.mode === "send"
                 ? (root.isPhone ? "Envoyer au PC" : "Héberger (LAN + Bluetooth)")
                 : (root.mode === "receive" ? "Importer la sélection" : "Appliquer le fichier")
@@ -168,11 +168,21 @@ OseDialog {
     property bool _remoteHasInverters: false
 
     function loadRemoteCatalog() {
-        const tree = AppController.syncFetchRemoteCatalog()
-        if (!tree || Object.keys(tree).length === 0)
-            return
-        applyTree(tree, true)
-        selectAllGroups(true)
+        AppController.requestRemoteCatalog()
+    }
+
+    Connections {
+        target: AppController
+        function onRemoteCatalogReady(tree) {
+            if (!tree || Object.keys(tree).length === 0)
+                return
+            root.applyTree(tree, true)
+            root.selectAllGroups(true)
+        }
+        function onSyncFinished(ok, message) {
+            if (ok && (root.mode === "receive" || (root.mode === "send" && root.isPhone)))
+                root.close()
+        }
     }
 
     function selectAllGroups(on) {
@@ -265,12 +275,12 @@ OseDialog {
 
     onAccepted: {
         if (mode === "send") {
-            AppController.syncSend(isPhone ? buildSelection() : {})
+            AppController.requestSyncSend(isPhone ? buildSelection() : {})
             return
         }
         const sel = buildSelection()
         if (mode === "receive")
-            AppController.syncReceive(sel)
+            AppController.requestSyncReceive(sel)
         else if (mode === "applyFile" && pendingFile)
             AppController.syncApplyFile(pendingFile, sel)
     }
@@ -370,7 +380,7 @@ OseDialog {
                       : ("Chercher et appairer le " + peerLabel)
                 kind: "primary"
                 enabled: !SyncBluetooth.busy && !SyncBluetooth.scanning && !SyncBluetooth.pairing
-                         && !SyncLan.busy && !SyncLan.scanning
+                         && !SyncLan.busy && !SyncLan.scanning && !AppController.syncBusy
                 onClicked: root.loadRemoteCatalog()
             }
             Item { Layout.fillWidth: true }

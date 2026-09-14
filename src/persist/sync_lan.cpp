@@ -12,6 +12,7 @@
 #include <QJsonObject>
 #include <QNetworkDatagram>
 #include <QNetworkInterface>
+#include <QPointer>
 #include <QRandomGenerator>
 #include <QSysInfo>
 #include <QTcpServer>
@@ -20,6 +21,7 @@
 #include <QUdpSocket>
 #include <QUrl>
 #include <QUrlQuery>
+#include <QtConcurrent>
 
 namespace ose {
 namespace {
@@ -44,6 +46,100 @@ bool isLinkLocalV4(const QHostAddress& ip)
 {
     const quint32 v = ip.toIPv4Address();
     return (v & 0xffff0000u) == 0xa9fe0000u; // 169.254.0.0/16
+}
+
+/** HTTP bloquant sans processEvents — safe hors thread UI (évite ANR Android). */
+QByteArray httpExchangeThreaded(const QString& host, quint16 port, const QByteArray& method,
+                                const QString& pathAndQuery, const QByteArray& body,
+                                const QByteArray& contentType, int timeoutMs, QString* errOut)
+{
+    QTcpSocket sock;
+    sock.connectToHost(host, port);
+    if (!sock.waitForConnected(qMin(4000, timeoutMs))) {
+        if (errOut)
+            *errOut = QStringLiteral("LAN : %1 injoignable").arg(host);
+        return {};
+    }
+
+    QByteArray req;
+    req += method + ' ' + pathAndQuery.toUtf8() + " HTTP/1.1\r\n";
+    req += "Host: " + host.toUtf8() + "\r\n";
+    req += "Connection: close\r\n";
+    if (!body.isEmpty()) {
+        req += "Content-Type: " + contentType + "\r\n";
+        req += "Content-Length: " + QByteArray::number(body.size()) + "\r\n";
+    }
+    req += "\r\n";
+    sock.write(req);
+    if (!body.isEmpty())
+        sock.write(body);
+    sock.waitForBytesWritten(qMin(10000, timeoutMs));
+
+    QByteArray raw;
+    QElapsedTimer t;
+    t.start();
+    while (t.elapsed() < timeoutMs) {
+        if (sock.waitForReadyRead(200))
+            raw += sock.readAll();
+        else if (sock.state() == QAbstractSocket::UnconnectedState) {
+            raw += sock.readAll();
+            break;
+        }
+    }
+    raw += sock.readAll();
+
+    const int hdrEnd = raw.indexOf("\r\n\r\n");
+    if (hdrEnd < 0) {
+        if (errOut)
+            *errOut = QStringLiteral("LAN : réponse HTTP invalide");
+        return {};
+    }
+    const QByteArray hdr = raw.left(hdrEnd);
+    QByteArray respBody = raw.mid(hdrEnd + 4);
+    if (!hdr.startsWith("HTTP/1.1 200") && !hdr.startsWith("HTTP/1.0 200")) {
+        if (errOut) {
+            *errOut = QStringLiteral("LAN : refusé (%1)")
+                          .arg(QString::fromUtf8(hdr.left(48)).trimmed());
+        }
+        return {};
+    }
+    const int cl = hdr.toLower().indexOf("content-length:");
+    if (cl >= 0) {
+        const int lineEnd = hdr.indexOf("\r\n", cl);
+        const QByteArray line = hdr.mid(cl, lineEnd > cl ? lineEnd - cl : -1);
+        const int n = line.mid(QByteArray("content-length:").size()).trimmed().toInt();
+        while (respBody.size() < n && t.elapsed() < timeoutMs) {
+            if (sock.waitForReadyRead(500))
+                respBody += sock.readAll();
+            else if (sock.state() == QAbstractSocket::UnconnectedState)
+                break;
+        }
+        if (n > 0 && respBody.size() > n)
+            respBody = respBody.left(n);
+    }
+    return respBody;
+}
+
+QByteArray tryHostsHttp(const QStringList& hosts, quint16 port, const QByteArray& method,
+                        const QString& pathAndQuery, const QByteArray& body,
+                        const QByteArray& contentType, int timeoutMs, QString* errOut)
+{
+    QString lastErr;
+    for (const QString& host : hosts) {
+        QString err;
+        const QByteArray r =
+            httpExchangeThreaded(host, port, method, pathAndQuery, body, contentType, timeoutMs, &err);
+        if (!r.isEmpty()) {
+            if (errOut)
+                errOut->clear();
+            return r;
+        }
+        if (!err.isEmpty())
+            lastErr = err;
+    }
+    if (errOut)
+        *errOut = lastErr.isEmpty() ? QStringLiteral("LAN : échec HTTP") : lastErr;
+    return {};
 }
 
 } // namespace
@@ -652,100 +748,215 @@ QByteArray SyncLan::httpExchange(const QString& host, quint16 port, const QByteA
                                  const QString& pathAndQuery, const QByteArray& body,
                                  const QByteArray& contentType, int timeoutMs)
 {
-    QTcpSocket sock;
-    sock.connectToHost(host, port);
-    if (!sock.waitForConnected(qMin(4000, timeoutMs))) {
-        setError(QStringLiteral("LAN : %1 injoignable").arg(host));
-        return {};
-    }
+    QString err;
+    const QByteArray r =
+        httpExchangeThreaded(host, port, method, pathAndQuery, body, contentType, timeoutMs, &err);
+    if (r.isEmpty() && !err.isEmpty())
+        setError(err);
+    return r;
+}
 
-    QByteArray req;
-    req += method + ' ' + pathAndQuery.toUtf8() + " HTTP/1.1\r\n";
-    req += "Host: " + host.toUtf8() + "\r\n";
-    req += "Connection: close\r\n";
-    if (!body.isEmpty()) {
-        req += "Content-Type: " + contentType + "\r\n";
-        req += "Content-Length: " + QByteArray::number(body.size()) + "\r\n";
+bool SyncLan::peerHttpTargets(int peerIndex, quint16* portOut, QStringList* hostsOut, QString* tokenOut,
+                              bool* interactiveOut) const
+{
+    const int idx = resolvePeerIndex(peerIndex);
+    if (idx < 0)
+        return false;
+    const QVariantMap peer = m_peers.at(idx).toMap();
+    if (portOut)
+        *portOut = quint16(peer.value(QStringLiteral("port")).toUInt());
+    if (tokenOut)
+        *tokenOut = peer.value(QStringLiteral("token")).toString();
+    if (interactiveOut)
+        *interactiveOut = peer.value(QStringLiteral("interactive")).toBool();
+    if (hostsOut) {
+        *hostsOut = peer.value(QStringLiteral("hosts")).toStringList();
+        if (hostsOut->isEmpty())
+            hostsOut->append(peer.value(QStringLiteral("host")).toString());
     }
-    req += "\r\n";
-    sock.write(req);
-    if (!body.isEmpty())
-        sock.write(body);
-    sock.waitForBytesWritten(qMin(10000, timeoutMs));
-
-    QByteArray raw;
-    QElapsedTimer t;
-    t.start();
-    while (t.elapsed() < timeoutMs) {
-        if (sock.waitForReadyRead(200))
-            raw += sock.readAll();
-        else if (sock.state() == QAbstractSocket::UnconnectedState) {
-            raw += sock.readAll();
-            break;
-        }
-        QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
-    }
-    raw += sock.readAll();
-
-    const int hdrEnd = raw.indexOf("\r\n\r\n");
-    if (hdrEnd < 0) {
-        setError(QStringLiteral("LAN : réponse HTTP invalide"));
-        return {};
-    }
-    const QByteArray hdr = raw.left(hdrEnd);
-    QByteArray respBody = raw.mid(hdrEnd + 4);
-    if (!hdr.startsWith("HTTP/1.1 200") && !hdr.startsWith("HTTP/1.0 200")) {
-        setError(QStringLiteral("LAN : refusé (%1)").arg(QString::fromUtf8(hdr.left(48)).trimmed()));
-        return {};
-    }
-    const int cl = hdr.toLower().indexOf("content-length:");
-    if (cl >= 0) {
-        const int lineEnd = hdr.indexOf("\r\n", cl);
-        const QByteArray line = hdr.mid(cl, lineEnd > cl ? lineEnd - cl : -1);
-        const int n = line.mid(QByteArray("content-length:").size()).trimmed().toInt();
-        while (respBody.size() < n && t.elapsed() < timeoutMs) {
-            if (sock.waitForReadyRead(500))
-                respBody += sock.readAll();
-            else if (sock.state() == QAbstractSocket::UnconnectedState)
-                break;
-        }
-        if (n > 0 && respBody.size() > n)
-            respBody = respBody.left(n);
-    }
-    return respBody;
+    return true;
 }
 
 QByteArray SyncLan::tryPeersHttp(int peerIndex, const QByteArray& method, const QString& pathAndQuery,
                                  const QByteArray& body, const QByteArray& contentType, int timeoutMs)
 {
-    const int idx = resolvePeerIndex(peerIndex);
-    if (idx < 0) {
+    quint16 port = 0;
+    QStringList hosts;
+    if (!peerHttpTargets(peerIndex, &port, &hosts, nullptr, nullptr)) {
         setError(QStringLiteral("Aucun appareil LAN"));
         return {};
     }
-    const QVariantMap peer = m_peers.at(idx).toMap();
-    const quint16 port = quint16(peer.value(QStringLiteral("port")).toUInt());
-    QStringList hosts = peer.value(QStringLiteral("hosts")).toStringList();
-    if (hosts.isEmpty())
-        hosts.append(peer.value(QStringLiteral("host")).toString());
-
+    QString err;
     QString lastErr;
     for (const QString& host : hosts) {
         setStatus(QStringLiteral("LAN → %1…").arg(host));
         setError({});
         const QByteArray r =
-            httpExchange(host, port, method, pathAndQuery, body, contentType, timeoutMs);
-        if (!r.isEmpty() || m_lastError.isEmpty()) {
-            if (!r.isEmpty()) {
-                m_lastPeerIndex = idx;
-                return r;
-            }
+            httpExchangeThreaded(host, port, method, pathAndQuery, body, contentType, timeoutMs, &err);
+        if (!r.isEmpty()) {
+            m_lastPeerIndex = resolvePeerIndex(peerIndex);
+            setError({});
+            return r;
         }
-        lastErr = m_lastError;
+        if (!err.isEmpty())
+            lastErr = err;
     }
-    if (m_lastError.isEmpty())
-        setError(lastErr.isEmpty() ? QStringLiteral("LAN : toutes les IP ont échoué") : lastErr);
+    setError(lastErr.isEmpty() ? QStringLiteral("LAN : toutes les IP ont échoué") : lastErr);
     return {};
+}
+
+void SyncLan::fetchCatalogFromPeerAsync(int peerIndex)
+{
+    if (m_httpAsyncRunning)
+        return;
+    setError({});
+    m_remoteCatalog.clear();
+    emit remoteCatalogChanged();
+
+    quint16 port = 0;
+    QStringList hosts;
+    QString token;
+    if (!peerHttpTargets(peerIndex, &port, &hosts, &token, nullptr)) {
+        setError(QStringLiteral("Aucun appareil LAN"));
+        emit catalogFetched({});
+        return;
+    }
+    m_lastPeerIndex = resolvePeerIndex(peerIndex);
+    m_httpAsyncRunning = true;
+    setBusy(true);
+    setStatus(QStringLiteral("LAN : catalogue…"));
+
+    const QString path = QStringLiteral("/ose/v1/catalog?token=%1").arg(token);
+    QPointer<SyncLan> self(this);
+    (void)QtConcurrent::run([self, hosts, port, path]() {
+        QString err;
+        const QByteArray body =
+            tryHostsHttp(hosts, port, "GET", path, {}, "application/json", 20000, &err);
+        QTimer::singleShot(0, self, [self, body, err]() {
+            if (!self)
+                return;
+            self->m_httpAsyncRunning = false;
+            self->setBusy(false);
+            if (body.isEmpty()) {
+                self->setError(err.isEmpty() ? QStringLiteral("Catalogue LAN vide") : err);
+                emit self->catalogFetched({});
+                return;
+            }
+            const QJsonDocument doc = QJsonDocument::fromJson(body);
+            if (!doc.isObject()) {
+                self->setError(QStringLiteral("Catalogue LAN invalide"));
+                emit self->catalogFetched({});
+                return;
+            }
+            self->m_remoteCatalog = doc.object().toVariantMap();
+            emit self->remoteCatalogChanged();
+            const int n = self->m_remoteCatalog.value(QStringLiteral("projects")).toList().size();
+            self->setStatus(QStringLiteral("LAN : %1 projet(s)").arg(n));
+            emit self->catalogFetched(self->m_remoteCatalog);
+        });
+    });
+}
+
+void SyncLan::fetchBundleFromPeerAsync(int peerIndex, const QVariantMap& selection)
+{
+    if (m_httpAsyncRunning)
+        return;
+    setError({});
+
+    quint16 port = 0;
+    QStringList hosts;
+    QString token;
+    bool interactive = false;
+    if (!peerHttpTargets(peerIndex, &port, &hosts, &token, &interactive)) {
+        setError(QStringLiteral("Aucun appareil LAN"));
+        emit bundleFetched({});
+        return;
+    }
+    m_lastPeerIndex = resolvePeerIndex(peerIndex);
+    m_httpAsyncRunning = true;
+    setBusy(true);
+    setStatus(QStringLiteral("LAN : téléchargement…"));
+
+    const QByteArray selJson = QJsonDocument::fromVariant(selection).toJson(QJsonDocument::Compact);
+    const QString path = QStringLiteral("/ose/v1/bundle?token=%1").arg(token);
+    QPointer<SyncLan> self(this);
+    (void)QtConcurrent::run([self, hosts, port, path, selJson, interactive]() {
+        QString err;
+        QByteArray zip;
+        if (interactive) {
+            zip = tryHostsHttp(hosts, port, "POST", path, selJson, "application/json", 180000, &err);
+        } else {
+            zip = tryHostsHttp(hosts, port, "GET", path, {}, "application/octet-stream", 180000, &err);
+        }
+        QTimer::singleShot(0, self, [self, zip, err]() {
+            if (!self)
+                return;
+            self->m_httpAsyncRunning = false;
+            self->setBusy(false);
+            if (zip.isEmpty()) {
+                self->setError(err.isEmpty() ? QStringLiteral("LAN : bundle vide") : err);
+                emit self->bundleFetched({});
+                return;
+            }
+            self->setStatus(QStringLiteral("LAN : reçu (%1 Ko)").arg(zip.size() / 1024));
+            emit self->bundleFetched(zip);
+        });
+    });
+}
+
+void SyncLan::pushBundleToPeerAsync(int peerIndex, const QByteArray& zipBytes)
+{
+    if (m_httpAsyncRunning)
+        return;
+    setError({});
+    if (zipBytes.isEmpty()) {
+        setError(QStringLiteral("Bundle vide"));
+        emit pushFinished(false);
+        return;
+    }
+
+    quint16 port = 0;
+    QStringList hosts;
+    QString token;
+    if (!peerHttpTargets(peerIndex, &port, &hosts, &token, nullptr)) {
+        setError(QStringLiteral("Aucun appareil LAN"));
+        emit pushFinished(false);
+        return;
+    }
+    m_lastPeerIndex = resolvePeerIndex(peerIndex);
+    m_httpAsyncRunning = true;
+    setBusy(true);
+    setStatus(QStringLiteral("LAN : envoi…"));
+
+    const QString path = QStringLiteral("/ose/v1/push?token=%1").arg(token);
+    QPointer<SyncLan> self(this);
+    (void)QtConcurrent::run([self, hosts, port, path, zipBytes]() {
+        QString err;
+        const QByteArray resp =
+            tryHostsHttp(hosts, port, "POST", path, zipBytes, "application/octet-stream", 180000, &err);
+        QTimer::singleShot(0, self, [self, resp, err]() {
+            if (!self)
+                return;
+            self->m_httpAsyncRunning = false;
+            self->setBusy(false);
+            if (resp.isEmpty()) {
+                self->setError(err.isEmpty() ? QStringLiteral("LAN : envoi échoué") : err);
+                emit self->pushFinished(false);
+                return;
+            }
+            const QJsonDocument doc = QJsonDocument::fromJson(resp);
+            const bool ok = doc.isObject() && doc.object().value(QStringLiteral("ok")).toBool();
+            if (!ok) {
+                self->setError(doc.isObject() ? doc.object().value(QStringLiteral("error")).toString()
+                                              : QStringLiteral("Import LAN refusé"));
+                emit self->pushFinished(false);
+                return;
+            }
+            self->setStatus(QStringLiteral("LAN : données poussées"));
+            emit self->bundleServed();
+            emit self->pushFinished(true);
+        });
+    });
 }
 
 QVariantMap SyncLan::fetchCatalogFromPeer(int peerIndex)

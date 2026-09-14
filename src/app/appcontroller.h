@@ -177,6 +177,14 @@ public:
      * Sync USB : construit le bundle selon selection et l’écrit pour l’autre appareil.
      * toOther=true : PC→tel ou tel→PC selon isPhoneDevice.
      */
+    /**
+     * Sync : API asynchrone (pas de blocage UI / ANR Android).
+     * Les anciennes méthodes sync* restent pour le CLI headless.
+     */
+    Q_PROPERTY(bool syncBusy READ syncBusy NOTIFY syncBusyChanged)
+    Q_INVOKABLE void requestRemoteCatalog();
+    Q_INVOKABLE void requestSyncReceive(const QVariantMap& selection);
+    Q_INVOKABLE void requestSyncSend(const QVariantMap& selection);
     Q_INVOKABLE bool syncSend(const QVariantMap& selection);
     /** Scan BT + catalogue distant (projets de l’autre appareil). */
     Q_INVOKABLE QVariantMap syncFetchRemoteCatalog();
@@ -188,14 +196,31 @@ public:
     Q_INVOKABLE bool syncSaveBundleFile(const QString& suggestedName, const QVariantMap& selection);
     Q_INVOKABLE QString syncDirPath() const;
     Q_INVOKABLE void syncRefreshTransport();
+    bool syncBusy() const { return m_syncBusy; }
 
 signals:
     void currentTabChanged();
     void inWorkspaceChanged();
     void toastRequested(const QString& message, int ms);
     void materielRequested();
+    void syncBusyChanged();
+    void remoteCatalogReady(const QVariantMap& tree);
+    void syncFinished(bool ok, const QString& message);
 
 private:
+    void setSyncBusy(bool v);
+    void clearSyncConnections();
+    void finishSync(bool ok, const QString& message);
+    void onCatalogLanScanFinished();
+    void onCatalogLanPeersChanged();
+    void continueCatalogAfterLanScan();
+    void onLanCatalogFetched(const QVariantMap& tree);
+    void onReceiveBundleFetched(const QByteArray& zip);
+    void onSendLanPushFinished(bool ok);
+    void startCatalogBluetooth();
+    void startReceiveBluetooth(const QVariantMap& selection);
+    void startSendBluetooth(const QByteArray& zip);
+
     Updater m_updater;
     ose::ProjectStore* m_projects = nullptr;
     ose::SolarMath* m_solar = nullptr;
@@ -227,6 +252,12 @@ private:
     ose::SyncBluetooth* m_syncBluetooth = nullptr;
     ose::UsbFileTransport* m_syncTransport = nullptr;
     bool m_lastSyncViaLan = false;
+    bool m_syncBusy = false;
+    enum class SyncOp { None, Catalog, Receive, SendPhone };
+    SyncOp m_syncOp = SyncOp::None;
+    QVariantMap m_pendingSyncSelection;
+    QByteArray m_pendingSyncZip;
+    QList<QMetaObject::Connection> m_syncConnections;
     QString m_currentTab = QStringLiteral("location");
     bool m_inWorkspace = false;
 };

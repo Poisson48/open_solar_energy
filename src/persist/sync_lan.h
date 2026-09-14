@@ -77,6 +77,10 @@ public:
     Q_INVOKABLE QVariantMap fetchCatalogFromPeer(int peerIndex = -1);
     Q_INVOKABLE QByteArray fetchBundleFromPeer(int peerIndex, const QVariantMap& selection);
     Q_INVOKABLE bool pushBundleToPeer(int peerIndex, const QByteArray& zipBytes);
+    /** HTTP hors thread UI — évite les ANR Android. */
+    Q_INVOKABLE void fetchCatalogFromPeerAsync(int peerIndex = -1);
+    Q_INVOKABLE void fetchBundleFromPeerAsync(int peerIndex, const QVariantMap& selection);
+    Q_INVOKABLE void pushBundleToPeerAsync(int peerIndex, const QByteArray& zipBytes);
     Q_INVOKABLE QByteArray fetchFromPeer(int peerIndex = 0);
     Q_INVOKABLE QByteArray fetchFromUrl(const QString& urlOrInvite);
     Q_INVOKABLE QString makeInvite() const;
@@ -92,6 +96,9 @@ signals:
     void selectedPeerIndexChanged();
     void bundleServed();
     void scanFinished();
+    void catalogFetched(const QVariantMap& catalog);
+    void bundleFetched(const QByteArray& zip);
+    void pushFinished(bool ok);
 
 private:
     void setStatus(const QString& s);
@@ -114,8 +121,12 @@ private:
                             const QByteArray& contentType, int timeoutMs);
     QByteArray tryPeersHttp(int peerIndex, const QByteArray& method, const QString& pathAndQuery,
                             const QByteArray& body, const QByteArray& contentType, int timeoutMs);
+    /** Copie le peer pour un worker thread (pas d’accès à this). */
+    bool peerHttpTargets(int peerIndex, quint16* portOut, QStringList* hostsOut, QString* tokenOut,
+                         bool* interactiveOut) const;
 
     SyncEngine* m_engine = nullptr;
+    bool m_httpAsyncRunning = false;
     QTcpServer* m_tcp = nullptr;
     QUdpSocket* m_udp = nullptr;
     QTimer* m_beaconTimer = nullptr;

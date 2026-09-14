@@ -14,6 +14,7 @@
 #include <QProcess>
 #include <QRegularExpression>
 #include <QStandardPaths>
+#include <QTimer>
 #include <QUrl>
 #include <cmath>
 
@@ -1136,6 +1137,384 @@ bool AppController::isPhoneDevice() const
     return true;
 #else
     return false;
+#endif
+}
+
+void AppController::setSyncBusy(bool v)
+{
+    if (m_syncBusy == v)
+        return;
+    m_syncBusy = v;
+    emit syncBusyChanged();
+}
+
+void AppController::clearSyncConnections()
+{
+    for (const QMetaObject::Connection& c : m_syncConnections)
+        QObject::disconnect(c);
+    m_syncConnections.clear();
+}
+
+void AppController::finishSync(bool ok, const QString& message)
+{
+    clearSyncConnections();
+    m_syncOp = SyncOp::None;
+    m_pendingSyncSelection.clear();
+    m_pendingSyncZip.clear();
+    setSyncBusy(false);
+    if (!message.isEmpty())
+        toast(message, ok ? 4000 : 5500);
+    emit syncFinished(ok, message);
+}
+
+void AppController::requestRemoteCatalog()
+{
+    if (m_syncBusy)
+        return;
+    if (!m_syncBluetooth && !m_syncLan) {
+        emit remoteCatalogReady({});
+        return;
+    }
+    setSyncBusy(true);
+    m_syncOp = SyncOp::Catalog;
+    clearSyncConnections();
+
+    if (m_syncBluetooth && m_syncBluetooth->hosting())
+        m_syncBluetooth->stopHosting();
+    if (m_syncLan && m_syncLan->hosting())
+        m_syncLan->stopHosting();
+
+    if (m_syncLan) {
+        m_syncConnections.append(QObject::connect(m_syncLan, &ose::SyncLan::scanFinished, this,
+                                                  &AppController::onCatalogLanScanFinished));
+        m_syncConnections.append(QObject::connect(m_syncLan, &ose::SyncLan::peersChanged, this,
+                                                  &AppController::onCatalogLanPeersChanged));
+        m_syncConnections.append(QObject::connect(m_syncLan, &ose::SyncLan::catalogFetched, this,
+                                                  &AppController::onLanCatalogFetched));
+        m_syncLan->startScan(3500);
+        return;
+    }
+    startCatalogBluetooth();
+}
+
+void AppController::onCatalogLanPeersChanged()
+{
+    if (m_syncOp != SyncOp::Catalog || !m_syncLan)
+        return;
+    if (!m_syncLan->peers().isEmpty()) {
+        m_syncLan->stopScan();
+        continueCatalogAfterLanScan();
+    }
+}
+
+void AppController::onCatalogLanScanFinished()
+{
+    if (m_syncOp != SyncOp::Catalog || !m_syncLan)
+        return;
+    continueCatalogAfterLanScan();
+}
+
+void AppController::continueCatalogAfterLanScan()
+{
+    if (m_syncOp != SyncOp::Catalog || !m_syncLan)
+        return;
+    if (!m_syncLan->peers().isEmpty()) {
+        m_syncLan->fetchCatalogFromPeerAsync(m_syncLan->selectedPeerIndex());
+        return;
+    }
+    startCatalogBluetooth();
+}
+
+void AppController::onLanCatalogFetched(const QVariantMap& tree)
+{
+    if (m_syncOp != SyncOp::Catalog)
+        return;
+    if (!tree.isEmpty()) {
+        m_lastSyncViaLan = true;
+        const int n = tree.value(QStringLiteral("projects")).toList().size();
+        clearSyncConnections();
+        setSyncBusy(false);
+        m_syncOp = SyncOp::None;
+        toast(QStringLiteral("%1 projet(s) via LAN sur le %2")
+                  .arg(n)
+                  .arg(isPhoneDevice() ? QStringLiteral("PC") : QStringLiteral("téléphone")),
+              3500);
+        emit remoteCatalogReady(tree);
+        return;
+    }
+    // LAN échoué → BT
+    startCatalogBluetooth();
+}
+
+void AppController::startCatalogBluetooth()
+{
+    if (!m_syncBluetooth) {
+        finishSync(false, QStringLiteral("Aucun appareil LAN / Bluetooth"));
+        emit remoteCatalogReady({});
+        return;
+    }
+    if (!platformEnsureBluetoothPermissions()) {
+        finishSync(false, QStringLiteral("Aucun appareil LAN — autorisez Bluetooth"));
+        emit remoteCatalogReady({});
+        return;
+    }
+    // BT scan bloquant = ANR : on limite et on laisse le timer Qt tourner sans QEventLoop.
+    // Pour l’instant, toast + abandon si pas de LAN (chemin principal).
+    // Relancer un scan BT non bloquant :
+    m_syncBluetooth->prepareVisibility();
+    m_syncConnections.append(QObject::connect(
+        m_syncBluetooth, &ose::SyncBluetooth::scanFinished, this, [this]() {
+            if (m_syncOp != SyncOp::Catalog)
+                return;
+            if (m_syncBluetooth->peers().isEmpty()) {
+                finishSync(false,
+                           QStringLiteral(
+                               "Aucun appareil. Sur l’autre : Envoyer / Héberger (Wi‑Fi / USB / BT)."));
+                emit remoteCatalogReady({});
+                return;
+            }
+            const int idx = m_syncBluetooth->selectedPeerIndex();
+            QTimer::singleShot(0, this, [this, idx]() {
+                if (m_syncOp != SyncOp::Catalog)
+                    return;
+                if (!m_syncBluetooth->pairPeer(idx)) {
+                    finishSync(false, m_syncBluetooth->lastError().isEmpty()
+                                          ? QStringLiteral("Appairage refusé ou annulé")
+                                          : m_syncBluetooth->lastError());
+                    emit remoteCatalogReady({});
+                    return;
+                }
+                const QVariantMap tree = m_syncBluetooth->fetchCatalogFromPeer(idx);
+                if (tree.isEmpty()) {
+                    finishSync(false, m_syncBluetooth->lastError().isEmpty()
+                                          ? QStringLiteral("Liste distante inaccessible")
+                                          : m_syncBluetooth->lastError());
+                    emit remoteCatalogReady({});
+                    return;
+                }
+                m_lastSyncViaLan = false;
+                const int n = tree.value(QStringLiteral("projects")).toList().size();
+                clearSyncConnections();
+                setSyncBusy(false);
+                m_syncOp = SyncOp::None;
+                toast(QStringLiteral("%1 projet(s) via Bluetooth sur le %2")
+                          .arg(n)
+                          .arg(isPhoneDevice() ? QStringLiteral("PC") : QStringLiteral("téléphone")),
+                      3500);
+                emit remoteCatalogReady(tree);
+            });
+        }));
+    m_syncBluetooth->startScan(8000);
+}
+
+void AppController::requestSyncReceive(const QVariantMap& selection)
+{
+    if (m_syncBusy || !m_syncEngine)
+        return;
+    setSyncBusy(true);
+    m_syncOp = SyncOp::Receive;
+    m_pendingSyncSelection = selection;
+    clearSyncConnections();
+
+    if (m_lastSyncViaLan && m_syncLan && !m_syncLan->peers().isEmpty()) {
+        m_syncConnections.append(QObject::connect(m_syncLan, &ose::SyncLan::bundleFetched, this,
+                                                  &AppController::onReceiveBundleFetched));
+        int peerIndex = m_syncLan->lastPeerIndex();
+        if (peerIndex < 0)
+            peerIndex = m_syncLan->selectedPeerIndex();
+        m_syncLan->fetchBundleFromPeerAsync(peerIndex, selection);
+        return;
+    }
+    startReceiveBluetooth(selection);
+}
+
+void AppController::onReceiveBundleFetched(const QByteArray& zip)
+{
+    if (m_syncOp != SyncOp::Receive)
+        return;
+    if (zip.isEmpty()) {
+        // fallback BT
+        startReceiveBluetooth(m_pendingSyncSelection);
+        return;
+    }
+    if (!m_syncEngine->applyBundle(zip, m_pendingSyncSelection)) {
+        finishSync(false, m_syncEngine->lastError().isEmpty() ? QStringLiteral("Import sync échoué")
+                                                              : m_syncEngine->lastError());
+        return;
+    }
+    finishSync(true, QStringLiteral("Données importées via LAN"));
+}
+
+void AppController::startReceiveBluetooth(const QVariantMap& selection)
+{
+    if (!m_syncBluetooth) {
+        finishSync(false, QStringLiteral("Réception échouée"));
+        return;
+    }
+    if (!platformEnsureBluetoothPermissions()) {
+        finishSync(false, QStringLiteral("Autorisez Bluetooth pour synchroniser"));
+        return;
+    }
+    if (m_syncBluetooth->hosting())
+        m_syncBluetooth->stopHosting();
+
+    auto doFetch = [this, selection]() {
+        if (m_syncOp != SyncOp::Receive)
+            return;
+        int peerIndex = m_syncBluetooth->lastPeerIndex();
+        if (peerIndex < 0 || m_syncBluetooth->peers().isEmpty())
+            peerIndex = 0;
+        // Hors tick critique : download BT peut être long
+        QTimer::singleShot(0, this, [this, selection, peerIndex]() {
+            if (m_syncOp != SyncOp::Receive)
+                return;
+            const QByteArray zip = m_syncBluetooth->fetchBundleFromPeer(peerIndex, selection);
+            if (zip.isEmpty()) {
+                finishSync(false, m_syncBluetooth->lastError().isEmpty()
+                                      ? QStringLiteral("Réception échouée")
+                                      : m_syncBluetooth->lastError());
+                return;
+            }
+            if (!m_syncEngine->applyBundle(zip, selection)) {
+                finishSync(false, m_syncEngine->lastError().isEmpty()
+                                      ? QStringLiteral("Import sync échoué")
+                                      : m_syncEngine->lastError());
+                return;
+            }
+            finishSync(true, QStringLiteral("Données importées via Bluetooth"));
+        });
+    };
+
+    if (m_syncBluetooth->lastPeerIndex() >= 0 && !m_syncBluetooth->peers().isEmpty()) {
+        doFetch();
+        return;
+    }
+    m_syncConnections.append(QObject::connect(
+        m_syncBluetooth, &ose::SyncBluetooth::scanFinished, this, [this, doFetch]() {
+            if (m_syncOp != SyncOp::Receive)
+                return;
+            if (m_syncBluetooth->peers().isEmpty()) {
+                finishSync(false, QStringLiteral("Aucun appareil. Sur l’émetteur : Envoyer / Héberger."));
+                return;
+            }
+            doFetch();
+        }));
+    m_syncBluetooth->startScan(8000);
+}
+
+void AppController::requestSyncSend(const QVariantMap& selection)
+{
+    if (m_syncBusy)
+        return;
+
+#ifndef Q_OS_ANDROID
+    // PC : hébergement immédiat (non bloquant)
+    syncSend(selection);
+    return;
+#else
+    if (!m_syncEngine || !m_syncBluetooth)
+        return;
+    setSyncBusy(true);
+    m_syncOp = SyncOp::SendPhone;
+    clearSyncConnections();
+
+    QVariantMap sel = selection;
+    if (sel.isEmpty())
+        sel = m_syncEngine->selectionAll(false);
+    const QByteArray zip = m_syncEngine->buildBundle(sel);
+    if (zip.isEmpty()) {
+        finishSync(false, m_syncEngine->lastError().isEmpty() ? QStringLiteral("Export sync échoué")
+                                                              : m_syncEngine->lastError());
+        return;
+    }
+    m_pendingSyncZip = zip;
+
+    if (m_syncBluetooth->hosting())
+        m_syncBluetooth->stopHosting();
+
+    if (m_syncLan) {
+        m_syncConnections.append(QObject::connect(m_syncLan, &ose::SyncLan::pushFinished, this,
+                                                  &AppController::onSendLanPushFinished));
+        m_syncConnections.append(QObject::connect(
+            m_syncLan, &ose::SyncLan::scanFinished, this, [this]() {
+                if (m_syncOp != SyncOp::SendPhone || !m_syncLan)
+                    return;
+                if (!m_syncLan->peers().isEmpty()) {
+                    m_syncLan->pushBundleToPeerAsync(m_syncLan->selectedPeerIndex(), m_pendingSyncZip);
+                    return;
+                }
+                startSendBluetooth(m_pendingSyncZip);
+            }));
+        m_syncConnections.append(QObject::connect(
+            m_syncLan, &ose::SyncLan::peersChanged, this, [this]() {
+                if (m_syncOp != SyncOp::SendPhone || !m_syncLan)
+                    return;
+                if (!m_syncLan->peers().isEmpty()) {
+                    m_syncLan->stopScan();
+                    m_syncLan->pushBundleToPeerAsync(m_syncLan->selectedPeerIndex(), m_pendingSyncZip);
+                }
+            }));
+        m_syncLan->startScan(3000);
+        return;
+    }
+    startSendBluetooth(zip);
+#endif
+}
+
+void AppController::onSendLanPushFinished(bool ok)
+{
+    if (m_syncOp != SyncOp::SendPhone)
+        return;
+    if (ok) {
+        finishSync(true, QStringLiteral("Données envoyées au PC via Wi‑Fi / USB (LAN)"));
+        return;
+    }
+    startSendBluetooth(m_pendingSyncZip);
+}
+
+void AppController::startSendBluetooth(const QByteArray& zip)
+{
+#ifdef Q_OS_ANDROID
+    if (!m_syncBluetooth) {
+        finishSync(false, QStringLiteral("Envoi échoué"));
+        return;
+    }
+    if (!platformEnsureBluetoothPermissions()) {
+        finishSync(false, QStringLiteral("Autorisez Bluetooth (ou même Wi‑Fi / USB partage)"));
+        return;
+    }
+    m_syncBluetooth->prepareVisibility();
+    m_syncConnections.append(QObject::connect(
+        m_syncBluetooth, &ose::SyncBluetooth::scanFinished, this,
+        [this, zip]() {
+            if (m_syncOp != SyncOp::SendPhone)
+                return;
+            if (m_syncBluetooth->peers().isEmpty()) {
+                finishSync(false, QStringLiteral(
+                                      "Aucun PC. Sur le PC : Envoyer / Héberger."));
+                return;
+            }
+            QTimer::singleShot(0, this, [this, zip]() {
+                if (m_syncOp != SyncOp::SendPhone)
+                    return;
+                if (!m_syncBluetooth->pairPeer(m_syncBluetooth->selectedPeerIndex())) {
+                    finishSync(false, m_syncBluetooth->lastError().isEmpty()
+                                          ? QStringLiteral("Appairage refusé")
+                                          : m_syncBluetooth->lastError());
+                    return;
+                }
+                if (!m_syncBluetooth->pushBundleToPeer(m_syncBluetooth->selectedPeerIndex(), zip)) {
+                    finishSync(false, m_syncBluetooth->lastError().isEmpty()
+                                          ? QStringLiteral("Envoi échoué")
+                                          : m_syncBluetooth->lastError());
+                    return;
+                }
+                finishSync(true, QStringLiteral("Données envoyées au PC via Bluetooth"));
+            });
+        }));
+    m_syncBluetooth->startScan(8000);
+#else
+    Q_UNUSED(zip);
 #endif
 }
 
