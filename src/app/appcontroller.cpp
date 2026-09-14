@@ -58,6 +58,7 @@ AppController::AppController(QObject* parent) : QObject(parent)
     m_syncLan->setSyncEngine(m_syncEngine);
     m_syncBluetooth->setSyncEngine(m_syncEngine);
     m_syncTransport = new ose::UsbFileTransport(this);
+    m_deviceAttitude = new DeviceAttitude(this);
     m_syncEngine->setStores(m_projects, m_catalog, m_history);
 }
 

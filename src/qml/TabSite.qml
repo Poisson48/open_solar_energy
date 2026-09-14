@@ -17,6 +17,7 @@ OseTabPage {
     property var obstacles: []
     property var shadeResult: ({})
     property bool syncing: false
+    property bool photoMode: false
     property int nextPointId: 1
     property real roofAzimuth: 0
     property real roofLineLenM: 0
@@ -310,11 +311,22 @@ OseTabPage {
         // Ne pas recalculer l'ombrage horizon au boot (lent) — bouton « Calculer »
     }
 
-    function addPoint(az, elev) {
+    function addPoint(az, elev, source, deferShade) {
         let pts = root.points.slice()
-        pts.push({ az: az, elev: elev, source: "manual", id: root.nextPointId++ })
+        pts.push({
+            az: az,
+            elev: elev,
+            source: source || "manual",
+            id: root.nextPointId++
+        })
         pts.sort(function (a, b) { return a.az - b.az })
         root.points = pts
+        if (deferShade || root.photoMode) {
+            root.persistSiteInputs()
+            if (typeof sunHost !== "undefined" && sunHost.repaintAll)
+                sunHost.repaintAll()
+            return
+        }
         root.persistAndCompute()
     }
 
@@ -322,11 +334,23 @@ OseTabPage {
         let pts = root.points.slice()
         pts.splice(index, 1)
         root.points = pts
+        if (root.photoMode) {
+            root.persistSiteInputs()
+            if (typeof sunHost !== "undefined" && sunHost.repaintAll)
+                sunHost.repaintAll()
+            return
+        }
         root.persistAndCompute()
     }
 
     function removePointById(id) {
         root.points = root.points.filter(function (p) { return Number(p.id) !== Number(id) })
+        if (root.photoMode) {
+            root.persistSiteInputs()
+            if (typeof sunHost !== "undefined" && sunHost.repaintAll)
+                sunHost.repaintAll()
+            return
+        }
         root.persistAndCompute()
     }
 
@@ -462,14 +486,26 @@ OseTabPage {
                     onClicked: root.addPoint(Number(azIn.text), Number(elIn.text))
                 }
                 OseBtn {
+                    text: root.photoMode ? "Stop photo + calcul" : "📷 Mode photo + boussole"
+                    kind: "primary"
+                    visible: AppController.isPhoneDevice || Qt.platform.os === "android"
+                    onClicked: {
+                        if (root.photoMode)
+                            photoCam.stop()
+                        else
+                            root.startPhotoMode()
+                    }
+                }
+                OseBtn {
                     text: "Recalculer"
                     kind: "outline"
+                    enabled: !root.photoMode
                     onClicked: root.persistAndCompute()
                 }
                 OseBtn {
                     text: "Tout effacer"
                     kind: "flat"
-                    enabled: root.points.length > 0
+                    enabled: root.points.length > 0 && !root.photoMode
                     onClicked: {
                         root.points = []
                         root.shadeResult = {}
@@ -712,13 +748,13 @@ OseTabPage {
                 wrapMode: Text.WordWrap
                 font.pixelSize: 12
                 color: Theme.textDim
-                text: "Boussole device / photo terrain : pas encore branchés en natif — offset manuel pour l’instant."
+                text: "Mode photo + boussole : viseur, mire et points en direct. L’ombrage se calcule seulement après Stop photo."
             }
         }
 
         OseCard {
             title: "Diagramme solaire"
-            hint: "Horizon (vert) · trajectoires soleil été / équinoxe / hiver. Cliquez pour ajouter, glissez un point."
+            hint: "Horizon (vert) · trajectoires soleil été / équinoxe / hiver. Cliquez pour ajouter, glissez un point. Ou mode photo (cap + pitch)."
 
             Item {
                 id: sunHost
@@ -1401,5 +1437,48 @@ OseTabPage {
                 text: "Le masque 30 min alimente Analyse ; les pertes mensuelles sont reprises dans Dimensionnement / Hors réseau."
             }
         }
+    }
+
+    Popup {
+        id: photoPopup
+        parent: Overlay.overlay
+        modal: true
+        focus: true
+        closePolicy: Popup.NoAutoClose
+        width: parent ? parent.width : 400
+        height: parent ? parent.height : 700
+        padding: 0
+        background: Rectangle { color: "#000" }
+        onOpened: photoCam.start()
+        onClosed: {
+            photoCam.active = false
+            DeviceAttitude.active = false
+            // Calcul ombrage uniquement à la sortie (pas pendant la prise de points)
+            if (root.photoMode) {
+                root.photoMode = false
+                root.persistAndCompute()
+                AppController.toast("Ombrage recalculé (" + root.points.length + " point(s))", 3000)
+            }
+        }
+
+        SitePhotoCamera {
+            id: photoCam
+            anchors.fill: parent
+            points: root.points
+            compassOffset: Number(compass.text) || 0
+            onPlaceRequested: function (az, elev) {
+                root.addPoint(az, elev, "photo", true)
+            }
+            onStopRequested: {
+                // photoMode reste true → onClosed lance le calcul une seule fois
+                photoPopup.close()
+            }
+        }
+    }
+
+    function startPhotoMode() {
+        root.photoMode = true
+        photoPopup.open()
+        AppController.toast("Mode photo : visez, placez les points — l’ombrage se calcule à l’arrêt.", 4500)
     }
 }

@@ -45,8 +45,8 @@ Légende : **OK** = présent et branché · **PARTIEL** = incomplet · **MANQUE*
 |----------|--------|
 | Horizon manuel, canvas, pertes, halfHourlyKeep | OK |
 | Drag points | OK |
-| Boussole device | PARTIEL (offset manuel) |
-| Photo + caméra | PARTIEL (Android ; stub desktop) |
+| Boussole device | OK (DeviceAttitude + offset manuel) |
+| Photo + caméra | OK (mode photo Site : mire, points live, ombrage différé) |
 | Terrain depuis Site | OK |
 | Obstacles 3D → ombrage | OK (`ShadingEngine` si panneaux/obstacles) |
 | Recalc horizon n’écrase plus le 3D si panneaux/obstacles | OK |

@@ -32,6 +32,7 @@
 #include "persist/sync_lan.h"
 #include "persist/sync_bluetooth.h"
 #include "persist/sync_transport.h"
+#include "device_attitude.h"
 
 namespace app {
 
@@ -67,6 +68,7 @@ class AppController : public QObject {
     Q_PROPERTY(ose::SyncLan* syncLan READ syncLan CONSTANT)
     Q_PROPERTY(ose::SyncBluetooth* syncBluetooth READ syncBluetooth CONSTANT)
     Q_PROPERTY(ose::UsbFileTransport* syncTransport READ syncTransport CONSTANT)
+    Q_PROPERTY(DeviceAttitude* deviceAttitude READ deviceAttitude CONSTANT)
     Q_PROPERTY(QString currentTab READ currentTab WRITE setCurrentTab NOTIFY currentTabChanged)
     Q_PROPERTY(bool inWorkspace READ inWorkspace NOTIFY inWorkspaceChanged)
     /** true sur Android / téléphone ; false sur PC. */
@@ -106,6 +108,7 @@ public:
     ose::SyncLan* syncLan() { return m_syncLan; }
     ose::SyncBluetooth* syncBluetooth() { return m_syncBluetooth; }
     ose::UsbFileTransport* syncTransport() { return m_syncTransport; }
+    DeviceAttitude* deviceAttitude() { return m_deviceAttitude; }
     bool isPhoneDevice() const;
 
     QString currentTab() const { return m_currentTab; }
@@ -251,6 +254,7 @@ private:
     ose::SyncLan* m_syncLan = nullptr;
     ose::SyncBluetooth* m_syncBluetooth = nullptr;
     ose::UsbFileTransport* m_syncTransport = nullptr;
+    DeviceAttitude* m_deviceAttitude = nullptr;
     bool m_lastSyncViaLan = false;
     bool m_syncBusy = false;
     enum class SyncOp { None, Catalog, Receive, SendPhone };

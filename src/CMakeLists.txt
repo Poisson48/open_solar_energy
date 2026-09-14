@@ -1,7 +1,7 @@
 set(OSE_WARN_FLAGS -Wall -Wextra -Wpedantic -Wno-unused-parameter)
 
-set(OSE_VERSION_NAME "2.0.96" CACHE STRING "Version affichée")
-set(OSE_VERSION_CODE "20096" CACHE STRING "versionCode Android")
+set(OSE_VERSION_NAME "2.0.97" CACHE STRING "Version affichée")
+set(OSE_VERSION_CODE "20097" CACHE STRING "versionCode Android")
 
 # OpenSSL : KDAB prebuilts sur Android, système ailleurs
 if(ANDROID)
@@ -41,6 +41,7 @@ add_library(applib STATIC
     app/appcontroller.cpp
     app/updater.cpp
     app/platform.cpp
+    app/device_attitude.cpp
     core/solar_math.cpp
     core/finance.cpp
     core/cable.cpp
@@ -105,6 +106,10 @@ if(TARGET Qt6::Bluetooth)
     target_link_libraries(applib PUBLIC Qt6::Bluetooth)
     target_compile_definitions(applib PUBLIC OSE_HAS_BLUETOOTH=1)
 endif()
+if(TARGET Qt6::Sensors)
+    target_link_libraries(applib PUBLIC Qt6::Sensors)
+    target_compile_definitions(applib PUBLIC OSE_HAS_SENSORS=1)
+endif()
 if(TARGET Qt6::Pdf)
     target_link_libraries(applib PUBLIC Qt6::Pdf)
 endif()
@@ -149,6 +154,7 @@ set(OSE_QML_FILES
     qml/TabGrid.qml
     qml/TabDaily.qml
     qml/TabSite.qml
+    qml/SitePhotoCamera.qml
     qml/TabLayout.qml
     qml/SceneRoof3D.qml
     qml/SolarScene3D.qml
@@ -210,6 +216,13 @@ endif()
 
 if(TARGET Qt6::ChartsQml)
     target_link_libraries(opensolarenergy PRIVATE Qt6::ChartsQml)
+endif()
+if(TARGET Qt6::Multimedia)
+    target_link_libraries(opensolarenergy PRIVATE Qt6::Multimedia)
+    target_compile_definitions(opensolarenergy PRIVATE OSE_HAS_MULTIMEDIA=1)
+endif()
+if(TARGET Qt6::Sensors)
+    target_link_libraries(opensolarenergy PRIVATE Qt6::Sensors)
 endif()
 
 if(ANDROID)

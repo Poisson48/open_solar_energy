@@ -143,6 +143,7 @@ int main(int argc, char* argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("SyncLan"), controller.syncLan());
     engine.rootContext()->setContextProperty(QStringLiteral("SyncBluetooth"), controller.syncBluetooth());
     engine.rootContext()->setContextProperty(QStringLiteral("SyncTransport"), controller.syncTransport());
+    engine.rootContext()->setContextProperty(QStringLiteral("DeviceAttitude"), controller.deviceAttitude());
 
     const QUrl url = gridProof
                          ? QUrl(QStringLiteral("qrc:/qt/qml/OpenSolarEnergy/qml/GridProof.qml"))
