@@ -28,7 +28,7 @@ Dialog {
     function openPath(path, title) {
         pdfPath = path || ""
         titleText = title || "Aperçu PDF"
-        pages = path ? PdfExport.previewPages(path, 12) : []
+        pages = path ? PdfExport.previewPages(path, 20) : []
         open()
     }
 
