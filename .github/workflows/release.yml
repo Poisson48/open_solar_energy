@@ -63,12 +63,12 @@ jobs:
     uses: ./.github/workflows/desktop.yml
     with:
       version_name: ${{ needs.version.outputs.name }}
-    # Ne bloque plus la Release Android si le packaging AppImage flanche (504 runtime, etc.)
-    continue-on-error: true
 
+  # AppImage optionnelle : publish tourne même si desktop échoue (pas de continue-on-error
+  # sur un job reusable workflow — interdit par GitHub Actions).
   publish:
     needs: [version, apk, appimage]
-    if: ${{ always() && needs.apk.result == 'success' }}
+    if: ${{ always() && needs.version.result == 'success' && needs.apk.result == 'success' }}
     runs-on: ubuntu-latest
     env:
       TAG: ${{ needs.version.outputs.ref }}
@@ -93,7 +93,6 @@ jobs:
         with:
           pattern: opensolarenergy-*
           merge-multiple: true
-          # AppImage optionnel
           if-no-files-found: warn
       - name: Renommer APK
         run: mv opensolarenergy-arm64.apk "opensolarenergy-${TAG}-arm64.apk"
