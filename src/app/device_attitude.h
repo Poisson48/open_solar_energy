@@ -1,18 +1,17 @@
 #pragma once
 
 #include <QObject>
+#include <QPointF>
 #include <QString>
 
-class QCompass;
 class QAccelerometer;
-class QRotationSensor;
+class QMagnetometer;
 
 namespace app {
 
 /**
- * Cap magnétique (0°=N) + élévation regard caméra (0°=horizon) pour le mode photo Site.
- * Source principale : boussole + accéléromètre (fiable sur Android).
- * Secours : QRotationSensor en angles d’Euler.
+ * Attitude du regard caméra arrière (−Z), indépendante de l’orientation
+ * (portrait / paysage / tête en bas / roll) : seul compte où pointe l’objectif.
  */
 class DeviceAttitude : public QObject {
     Q_OBJECT
@@ -23,7 +22,10 @@ class DeviceAttitude : public QObject {
     Q_PROPERTY(qreal pitch READ pitch NOTIFY attitudeChanged)
     Q_PROPERTY(bool hasHeading READ hasHeading NOTIFY attitudeChanged)
     Q_PROPERTY(bool hasElevation READ hasElevation NOTIFY attitudeChanged)
+    Q_PROPERTY(bool hasBasis READ hasBasis NOTIFY attitudeChanged)
     Q_PROPERTY(QString status READ status NOTIFY statusChanged)
+    /** Rotation écran vs capteurs (0/90/180/270), pour l’overlay QML. */
+    Q_PROPERTY(qreal screenAngle READ screenAngle WRITE setScreenAngle NOTIFY screenAngleChanged)
 
 public:
     explicit DeviceAttitude(QObject* parent = nullptr);
@@ -37,21 +39,37 @@ public:
     qreal pitch() const { return m_pitch; }
     bool hasHeading() const { return m_hasHeading; }
     bool hasElevation() const { return m_hasElevation; }
+    bool hasBasis() const { return m_hasBasis; }
     QString status() const { return m_status; }
+    qreal screenAngle() const { return m_screenAngle; }
+    void setScreenAngle(qreal deg);
+
+    /**
+     * Projette un point horizon (az, élév) dans le viseur.
+     * Retourne (-1,-1) si hors champ / pas prêt.
+     * Gère n’importe quel roll / orientation via la base Est-Nord-Ciel.
+     */
+    Q_INVOKABLE QPointF projectToScreen(qreal azDeg, qreal elevDeg,
+                                        qreal width, qreal height,
+                                        qreal hFovDeg, qreal vFovDeg) const;
 
 signals:
     void activeChanged();
     void availableChanged();
     void attitudeChanged();
     void statusChanged();
+    void screenAngleChanged();
 
 private:
     void setStatus(const QString& s);
     void refreshStatus();
-    void onCompass();
     void onAccel();
-    void onRotation();
-    void applySmoothed(qreal heading, qreal elev, qreal pitch, bool haveH, bool haveE);
+    void onMag();
+    void tryFusion();
+    void applyAttitude(qreal heading, qreal elev,
+                       qreal ex, qreal ey, qreal ez,
+                       qreal nx, qreal ny, qreal nz,
+                       qreal ux, qreal uy, qreal uz);
 
     bool m_active = false;
     bool m_available = false;
@@ -60,12 +78,23 @@ private:
     qreal m_pitch = 90;
     bool m_hasHeading = false;
     bool m_hasElevation = false;
+    bool m_hasBasis = false;
     bool m_smoothInit = false;
+    qreal m_screenAngle = 0;
     QString m_status;
 
-    QCompass* m_compass = nullptr;
+    // Base monde exprimée dans le repère appareil (X droite, Y haut, Z vers l’utilisateur)
+    qreal m_ex = 1, m_ey = 0, m_ez = 0;
+    qreal m_nx = 0, m_ny = 1, m_nz = 0;
+    qreal m_ux = 0, m_uy = 0, m_uz = 1;
+
+    qreal m_ax = 0, m_ay = 0, m_az = 9.81;
+    qreal m_mx = 0, m_my = 1, m_mz = 0;
+    bool m_haveAccel = false;
+    bool m_haveMag = false;
+
     QAccelerometer* m_accel = nullptr;
-    QRotationSensor* m_rotation = nullptr;
+    QMagnetometer* m_mag = nullptr;
 };
 
 } // namespace app

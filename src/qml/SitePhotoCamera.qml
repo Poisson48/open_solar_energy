@@ -38,13 +38,30 @@ Item {
     signal placeRequested(real az, real elev)
     signal stopRequested()
 
+    function syncScreenAngle() {
+        // Aligne le repère overlay sur le viseur, quelle que soit l’orientation
+        let ang = 0
+        try {
+            ang = Screen.angleBetween(Qt.PrimaryOrientation, Screen.orientation)
+        } catch (e) {
+            ang = 0
+        }
+        DeviceAttitude.screenAngle = ang
+    }
+
     Connections {
         target: DeviceAttitude
         function onAttitudeChanged() { root.attitudeTick++ }
     }
 
+    Connections {
+        target: Screen
+        function onOrientationChanged() { root.syncScreenAngle() }
+    }
+
     function start() {
         active = true
+        syncScreenAngle()
         DeviceAttitude.active = true
         ensureCamera()
         AppController.requestCameraPermission()
@@ -77,23 +94,20 @@ Item {
         camera.active = true
     }
 
-    function azDelta(az, heading) {
-        let d = az - heading
-        while (d > 180) d -= 360
-        while (d < -180) d += 360
-        return d
-    }
-
     function pointScreen(p) {
-        if (isNaN(liveHeading) || isNaN(liveElev))
+        void attitudeTick
+        if (!DeviceAttitude.hasBasis)
             return null
-        const dAz = azDelta(Number(p.az) || 0, liveHeading)
-        const dEl = (Number(p.elev) || 0) - liveElev
-        if (Math.abs(dAz) > hFov * 0.55 || Math.abs(dEl) > vFov * 0.55)
+        let az = Number(p.az) || 0
+        // Offset boussole utilisateur = rotation du nord de référence
+        az += compassOffset
+        while (az < 0) az += 360
+        while (az >= 360) az -= 360
+        const pt = DeviceAttitude.projectToScreen(az, Number(p.elev) || 0,
+                                                  width, height, hFov, vFov)
+        if (!pt || pt.x < 0 || pt.y < 0)
             return null
-        const x = width * 0.5 + (dAz / (hFov * 0.5)) * (width * 0.5)
-        const y = height * 0.5 - (dEl / (vFov * 0.5)) * (height * 0.5)
-        return Qt.point(x, y)
+        return pt
     }
 
     MediaDevices { id: mediaDevices }
@@ -294,7 +308,7 @@ Item {
                         if (ov !== "" && !isNaN(Number(ov)))
                             elev = Number(ov)
                         if (isNaN(az)) {
-                            AppController.toast("Boussole indisponible — attendez le cap (HUD) ou placez sur le diagramme.", 4500)
+                            AppController.toast("Cap indisponible — éloignez le métal / attendez le magnéto.", 4500)
                             return
                         }
                         if (isNaN(elev)) {
