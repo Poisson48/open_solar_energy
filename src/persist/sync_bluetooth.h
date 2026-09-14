@@ -1,9 +1,5 @@
 #pragma once
 
-#include <QBluetoothAddress>
-#include <QBluetoothDeviceInfo>
-#include <QBluetoothServiceInfo>
-#include <QBluetoothUuid>
 #include <QByteArray>
 #include <QElapsedTimer>
 #include <QHash>
@@ -11,11 +7,18 @@
 #include <QVariantList>
 #include <QVariantMap>
 
+#if defined(OSE_HAS_BLUETOOTH) && OSE_HAS_BLUETOOTH
+#  include <QBluetoothAddress>
+#  include <QBluetoothDeviceInfo>
+#  include <QBluetoothServiceInfo>
+#  include <QBluetoothUuid>
 class QBluetoothLocalDevice;
 class QBluetoothServer;
 class QBluetoothSocket;
 class QBluetoothServiceDiscoveryAgent;
 class QBluetoothDeviceDiscoveryAgent;
+#endif
+
 class QTimer;
 
 namespace ose {
@@ -24,10 +27,7 @@ class SyncEngine;
 
 /**
  * Sync Bluetooth Classic (RFCOMM) + appairage in-app.
- * Protocole typé (OSEB) :
- *   1 catalog_req / 2 catalog_res (JSON arbre)
- *   3 bundle_req  / 4 bundle_res  (ZIP .osebundle)
- *   5 bundle_push / 6 push_ack
+ * Si Qt Bluetooth absent (ex. CI Android sans qtconnectivity) : stub no-op.
  */
 class SyncBluetooth : public QObject {
     Q_OBJECT
@@ -44,7 +44,10 @@ class SyncBluetooth : public QObject {
                    selectedPeerIndexChanged)
 
 public:
+#if defined(OSE_HAS_BLUETOOTH) && OSE_HAS_BLUETOOTH
     static QBluetoothUuid serviceUuid();
+#endif
+    static QString serviceUuidString();
 
     explicit SyncBluetooth(QObject* parent = nullptr);
     ~SyncBluetooth() override;
@@ -64,23 +67,15 @@ public:
     int selectedPeerIndex() const { return m_selectedPeerIndex; }
     void setSelectedPeerIndex(int idx);
 
-    /** BT allumé, sans dialogue de visibilité. */
     Q_INVOKABLE bool ensureBluetoothReady();
-    /** Visible pour être trouvé — hôte uniquement (dialogue Android au plus 1× / session). */
     Q_INVOKABLE bool makeDiscoverable();
-    /** Alias de ensureBluetoothReady (ne demande plus d’être visible). */
     Q_INVOKABLE bool prepareVisibility();
-
-    /** Appaire l’appareil peers[index] si besoin (dialogue système si requis). */
     Q_INVOKABLE bool pairPeer(int peerIndex);
-
     Q_INVOKABLE bool startHosting(const QByteArray& zipBytes);
     Q_INVOKABLE bool startInteractiveHosting();
     Q_INVOKABLE void stopHosting();
-
     Q_INVOKABLE void startScan(int timeoutMs = 14000);
     Q_INVOKABLE void stopScan();
-
     Q_INVOKABLE QVariantMap fetchCatalogFromPeer(int peerIndex = -1);
     Q_INVOKABLE QByteArray fetchBundleFromPeer(int peerIndex, const QVariantMap& selection);
     Q_INVOKABLE bool pushBundleToPeer(int peerIndex, const QByteArray& zipBytes);
@@ -103,6 +98,7 @@ signals:
     void pairingFinished(bool ok, const QString& address);
 
 private:
+#if defined(OSE_HAS_BLUETOOTH) && OSE_HAS_BLUETOOTH
     enum MsgType : quint8 {
         CatalogReq = 1,
         CatalogRes = 2,
@@ -158,6 +154,19 @@ private:
     bool m_pairResult = false;
     QElapsedTimer m_discoverableAsked;
     bool m_discoverableAskedOnce = false;
+#else
+    SyncEngine* m_engine = nullptr;
+    bool m_hosting = false;
+    bool m_scanning = false;
+    bool m_busy = false;
+    bool m_pairing = false;
+    QString m_status;
+    QString m_lastError;
+    QVariantList m_peers;
+    QVariantMap m_remoteCatalog;
+    int m_lastPeerIndex = -1;
+    int m_selectedPeerIndex = 0;
+#endif
 };
 
 } // namespace ose
