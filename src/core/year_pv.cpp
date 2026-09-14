@@ -60,26 +60,46 @@ QVariantMap YearPv::defaultLossTree(double totalLossPct)
             {QStringLiteral("other"), pct(2.5)}};
 }
 
+static bool lossTreeHasValues(const QVariantMap& t)
+{
+    static const char* keys[] = {"soiling", "lid", "mismatch", "iam",
+                                 "ohmicDc", "ohmicAc", "availability", "other"};
+    for (const char* k : keys) {
+        if (t.value(QString::fromLatin1(k)).toDouble() > 1e-9)
+            return true;
+    }
+    return false;
+}
+
 double YearPv::effectiveLossFactor(const QVariantMap& params)
 {
     if (params.contains(QStringLiteral("lossTree"))) {
         const QVariantMap t = params.value(QStringLiteral("lossTree")).toMap();
-        // Pourcentages de perte (0–100) ; absents → 0
-        const double soiling = t.value(QStringLiteral("soiling"), 0).toDouble();
-        const double lid = t.value(QStringLiteral("lid"), 0).toDouble();
-        const double mismatch = t.value(QStringLiteral("mismatch"), 0).toDouble();
-        const double iam = t.value(QStringLiteral("iam"), 0).toDouble();
-        const double ohmDc = t.value(QStringLiteral("ohmicDc"), 0).toDouble();
-        const double ohmAc = t.value(QStringLiteral("ohmicAc"), 0).toDouble();
-        const double avail = t.value(QStringLiteral("availability"), 0).toDouble();
-        const double other = t.value(QStringLiteral("other"), 0).toDouble();
-        double f = 1.0;
-        for (double p : {soiling, lid, mismatch, iam, ohmDc, ohmAc, avail, other})
-            f *= std::max(0.0, 1.0 - p / 100.0);
-        return std::clamp(f, 0.5, 1.0);
+        // {} vide ou tout à 0 → ignorer (sinon pertes techniques = 0 % et PR ~ 1)
+        if (lossTreeHasValues(t)) {
+            const double soiling = t.value(QStringLiteral("soiling"), 0).toDouble();
+            const double lid = t.value(QStringLiteral("lid"), 0).toDouble();
+            const double mismatch = t.value(QStringLiteral("mismatch"), 0).toDouble();
+            const double iam = t.value(QStringLiteral("iam"), 0).toDouble();
+            const double ohmDc = t.value(QStringLiteral("ohmicDc"), 0).toDouble();
+            const double ohmAc = t.value(QStringLiteral("ohmicAc"), 0).toDouble();
+            const double avail = t.value(QStringLiteral("availability"), 0).toDouble();
+            const double other = t.value(QStringLiteral("other"), 0).toDouble();
+            double f = 1.0;
+            for (double p : {soiling, lid, mismatch, iam, ohmDc, ohmAc, avail, other})
+                f *= std::max(0.0, 1.0 - p / 100.0);
+            return std::clamp(f, 0.5, 1.0);
+        }
     }
     const double losses = params.value(QStringLiteral("losses"), 14).toDouble();
     return std::max(0.5, 1.0 - losses / 100.0);
+}
+
+/** Profil charge 48 × 30 min via lever/coucher (délègue à SolarMath). */
+static void fillLoadSlots30min(std::array<double, 48>& loadSlot, double dailyKwh, double dayShare,
+                               double lat, int dayOfYear, double lonCorr = 0)
+{
+    SolarMath::fillDayNightLoadSlots48(loadSlot.data(), dailyKwh, dayShare, lat, dayOfYear, lonCorr);
 }
 
 QVariantList YearPv::monthlyYieldPerKwc(const QVariantMap& hourly, const QVariantMap& params)
@@ -268,25 +288,11 @@ QVariantMap YearPv::analyzeStudyYear(const QVariantMap& params)
     const bool useInv = params.value(QStringLiteral("useInverterModel"), false).toBool();
     const double pacNom = params.value(QStringLiteral("pacNom"), Ppeak * 0.9).toDouble();
     const double etaEuro = params.value(QStringLiteral("etaEuro"), 0.97).toDouble();
-
-    // Profil charge 48 demi-heures
-    std::array<double, kSlotsDay> loadSlot{};
-    {
-        const double weights[24] = {
-            0.02, 0.015, 0.012, 0.012, 0.015, 0.025, 0.045, 0.06,
-            0.05, 0.04,  0.035, 0.035, 0.04,  0.04,  0.035, 0.035,
-            0.04, 0.055, 0.07,  0.075, 0.065, 0.05,  0.035, 0.025};
-        double sumW = 0;
-        for (double w : weights)
-            sumW += w;
-        for (int h = 0; h < 24; ++h) {
-            const bool day = h >= 7 && h < 22;
-            const double adj = day ? (dayShare / 0.55) : ((1.0 - dayShare) / 0.45);
-            const double hourKwh = dailyKwh * (weights[h] / sumW) * adj;
-            loadSlot[static_cast<size_t>(h * 2)] = hourKwh * 0.5;
-            loadSlot[static_cast<size_t>(h * 2 + 1)] = hourKwh * 0.5;
-        }
-    }
+    const double lat = params.value(QStringLiteral("lat"),
+                                    hourly.value(QStringLiteral("lat"), 46.0)).toDouble();
+    const double lon = params.value(QStringLiteral("lon"),
+                                    hourly.value(QStringLiteral("lon"), 0)).toDouble();
+    const double lonCorr = lon / 15.0;
 
     double soc = usable * 0.5;
     double pvTot = 0, loadTot = 0, acTot = 0, surplusTot = 0, gridTot = 0, clippedTot = 0;
@@ -295,10 +301,13 @@ QVariantMap YearPv::analyzeStudyYear(const QVariantMap& params)
     const int year = hourly.value(QStringLiteral("year"), 2020).toInt();
 
     int idx = 0;
+    int doy = 1;
     for (int m = 0; m < 12; ++m) {
         const int nDays = daysInMonth(m + 1, year);
         double mPv = 0, mLoad = 0, mAc = 0, mGrid = 0;
-        for (int d = 0; d < nDays; ++d) {
+        for (int d = 0; d < nDays; ++d, ++doy) {
+            std::array<double, kSlotsDay> loadSlot{};
+            fillLoadSlots30min(loadSlot, dailyKwh, dayShare, lat, doy, lonCorr);
             for (int s = 0; s < kSlotsDay; ++s) {
                 if (idx >= nSlots)
                     break;
@@ -391,24 +400,12 @@ QVariantMap YearPv::simulateHorizonStudy(const QVariantMap& params)
     const bool useInv = params.value(QStringLiteral("useInverterModel"), false).toBool();
     const double pacNom = params.value(QStringLiteral("pacNom"), Ppeak0 * 0.9).toDouble();
     const double etaEuro = params.value(QStringLiteral("etaEuro"), 0.97).toDouble();
-
-    std::array<double, kSlotsDay> loadSlot{};
-    {
-        const double weights[24] = {
-            0.02, 0.015, 0.012, 0.012, 0.015, 0.025, 0.045, 0.06,
-            0.05, 0.04,  0.035, 0.035, 0.04,  0.04,  0.035, 0.035,
-            0.04, 0.055, 0.07,  0.075, 0.065, 0.05,  0.035, 0.025};
-        double sumW = 0;
-        for (double w : weights)
-            sumW += w;
-        for (int h = 0; h < 24; ++h) {
-            const bool day = h >= 7 && h < 22;
-            const double adj = day ? (dayShare / 0.55) : ((1.0 - dayShare) / 0.45);
-            const double hourKwh = dailyKwh * (weights[h] / sumW) * adj;
-            loadSlot[static_cast<size_t>(h * 2)] = hourKwh * 0.5;
-            loadSlot[static_cast<size_t>(h * 2 + 1)] = hourKwh * 0.5;
-        }
-    }
+    const double lat = params.value(QStringLiteral("lat"),
+                                    hourly.value(QStringLiteral("lat"), 46.0)).toDouble();
+    const double lon = params.value(QStringLiteral("lon"),
+                                    hourly.value(QStringLiteral("lon"), 0)).toDouble();
+    const double lonCorr = lon / 15.0;
+    const int calYear = hourly.value(QStringLiteral("year"), 2020).toInt();
 
     double soc = usable0 * 0.5;
     double pvTot = 0, loadTot = 0, acTot = 0, surplusTot = 0, gridTot = 0;
@@ -423,46 +420,52 @@ QVariantMap YearPv::simulateHorizonStudy(const QVariantMap& params)
         double yPv = 0, yLoad = 0, yAc = 0, ySurplus = 0, yGrid = 0;
         int yDefDays = 0;
         int idx = 0;
-        while (idx + slotsPerDay <= nSlots) {
-            double dayGrid = 0;
-            for (int s = 0; s < slotsPerDay; ++s) {
-                double pv = pvSlots[idx + s].toDouble() * pScale;
-                if (useInv) {
-                    const auto acMap = acFromDc(pv, pacNom * (pScale / std::max(0.1, Ppeak0)), etaEuro);
-                    pv = acMap.value(QStringLiteral("acKw")).toDouble();
-                }
-                const double load = loadSlot[static_cast<size_t>(s)];
-                ++steps;
-                yPv += pv;
-                yLoad += load;
-                if (usable0 <= 1e-9) {
-                    yAc += std::min(pv, load);
-                    ySurplus += std::max(0.0, pv - load);
-                    const double g = std::max(0.0, load - pv);
-                    yGrid += g;
-                    dayGrid += g;
-                } else {
-                    const double balance = pv - load;
-                    if (balance >= 0) {
-                        yAc += load;
-                        const double charge = std::min(balance * etaBatt, usable0 - soc);
-                        soc += charge;
-                        ySurplus += balance - charge / std::max(1e-9, etaBatt);
-                    } else {
-                        yAc += pv;
-                        const double needed = -balance;
-                        const double fromBatt = std::min(needed, soc);
-                        soc -= fromBatt;
-                        yAc += fromBatt;
-                        const double g = needed - fromBatt;
+        int doy = 1;
+        for (int m = 0; m < 12 && idx + slotsPerDay <= nSlots; ++m) {
+            const int nDays = daysInMonth(m + 1, calYear);
+            for (int d = 0; d < nDays && idx + slotsPerDay <= nSlots; ++d, ++doy) {
+                std::array<double, kSlotsDay> loadSlot{};
+                fillLoadSlots30min(loadSlot, dailyKwh, dayShare, lat, doy, lonCorr);
+                double dayGrid = 0;
+                for (int s = 0; s < slotsPerDay; ++s) {
+                    double pv = pvSlots[idx + s].toDouble() * pScale;
+                    if (useInv) {
+                        const auto acMap = acFromDc(pv, pacNom * (pScale / std::max(0.1, Ppeak0)), etaEuro);
+                        pv = acMap.value(QStringLiteral("acKw")).toDouble();
+                    }
+                    const double load = loadSlot[static_cast<size_t>(s)];
+                    ++steps;
+                    yPv += pv;
+                    yLoad += load;
+                    if (usable0 <= 1e-9) {
+                        yAc += std::min(pv, load);
+                        ySurplus += std::max(0.0, pv - load);
+                        const double g = std::max(0.0, load - pv);
                         yGrid += g;
                         dayGrid += g;
+                    } else {
+                        const double balance = pv - load;
+                        if (balance >= 0) {
+                            yAc += load;
+                            const double charge = std::min(balance * etaBatt, usable0 - soc);
+                            soc += charge;
+                            ySurplus += balance - charge / std::max(1e-9, etaBatt);
+                        } else {
+                            yAc += pv;
+                            const double needed = -balance;
+                            const double fromBatt = std::min(needed, soc);
+                            soc -= fromBatt;
+                            yAc += fromBatt;
+                            const double g = needed - fromBatt;
+                            yGrid += g;
+                            dayGrid += g;
+                        }
                     }
                 }
+                idx += slotsPerDay;
+                if (dayGrid > 0.05)
+                    ++yDefDays;
             }
-            idx += slotsPerDay;
-            if (dayGrid > 0.05)
-                ++yDefDays;
         }
         pvTot += yPv;
         loadTot += yLoad;
@@ -518,7 +521,7 @@ QVariantMap YearPv::buildBalancesReport(const QVariantMap& params)
     const QVariantList halfKeep = params.value(QStringLiteral("halfHourlyKeep")).toList();
     const double annualLossPct = params.value(QStringLiteral("annualLossPct"), 0).toDouble();
     const bool useElec = params.value(QStringLiteral("useElectricalShade"), false).toBool();
-    const bool useInv = params.value(QStringLiteral("useInverterModel"), true).toBool();
+    const bool useInv = params.value(QStringLiteral("useInverterModel"), false).toBool();
     const double pacNom = params.value(QStringLiteral("pacNom"), Ppeak * 0.9).toDouble();
     const double etaEuro = params.value(QStringLiteral("etaEuro"), 0.97).toDouble();
 
@@ -550,11 +553,21 @@ QVariantMap YearPv::buildBalancesReport(const QVariantMap& params)
             const QVariantList row = keepIn[m0].toList();
             if (row.isEmpty())
                 return 1.0;
+            // Moyenne diurne seulement (nuit ≈ 1.0 diluait l’ombrage → prod trop haute)
             double s = 0;
             int n = 0;
-            for (const QVariant& v : row) {
-                s += v.toDouble();
-                ++n;
+            for (int i = 0; i < row.size(); ++i) {
+                const int h = i / 2;
+                if (h >= 6 && h < 20) {
+                    s += row[i].toDouble();
+                    ++n;
+                }
+            }
+            if (n <= 0) {
+                for (const QVariant& v : row) {
+                    s += v.toDouble();
+                    ++n;
+                }
             }
             return n > 0 ? std::clamp(s / n, 0.0, 1.0) : 1.0;
         }
@@ -670,6 +683,35 @@ QVariantMap YearPv::buildBalancesReport(const QVariantMap& params)
         sumEGrid += E_Grid;
         sumTAmb += Tavg;
         ++nMonths;
+    }
+
+    // Mode étude : E_Grid = même moteur que dimensionnement (slots horaires)
+    const QVariantMap hourlyWx = params.value(QStringLiteral("hourlyWeatherData")).toMap();
+    if (hourlyWx.value(QStringLiteral("ghi")).toList().size() >= 24 * 30) {
+        QVariantMap yp = params;
+        yp.insert(QStringLiteral("lossTree"), tree);
+        // Garder le keep géométrique + flag électrique (identique SizingEngine)
+        yp.insert(QStringLiteral("halfHourlyKeep"),
+                  params.value(QStringLiteral("halfHourlyKeep")));
+        yp.insert(QStringLiteral("useElectricalShade"),
+                  params.value(QStringLiteral("useElectricalShade"), false));
+        const QVariantList perKwc = monthlyYieldPerKwc(hourlyWx, yp);
+        if (perKwc.size() >= 12) {
+            sumEGrid = 0;
+            sumEArrMpp = 0;
+            for (int m = 0; m < 12 && m < months.size(); ++m) {
+                const double e = perKwc[m].toDouble() * Ppeak;
+                QVariantMap row = months[m].toMap();
+                row.insert(QStringLiteral("E_Grid"), std::round(e * 10) / 10);
+                row.insert(QStringLiteral("EArray"), std::round(e * 10) / 10);
+                const double gInc = row.value(QStringLiteral("GlobInc")).toDouble();
+                const double prM = (Ppeak * gInc > 1e-9) ? e / (Ppeak * gInc) : 0;
+                row.insert(QStringLiteral("PR"), std::round(prM * 1000) / 1000);
+                months[m] = row;
+                sumEGrid += e;
+                sumEArrMpp += e;
+            }
+        }
     }
 
     auto relPct = [](double prev, double next) -> double {

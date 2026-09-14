@@ -29,4 +29,27 @@ bool platformRequestCameraPermission();
 QString platformPollCameraPermission();
 bool platformHasCameraPermission();
 
+/** Demande BLUETOOTH_* (Android 12+). true si déjà OK ou dialogue lancé. */
+bool platformRequestBluetoothPermission();
+QString platformPollBluetoothPermission();
+bool platformHasBluetoothPermission();
+/** Bloque jusqu’à réponse utilisateur (Android) ; true si accordé. */
+bool platformEnsureBluetoothPermissions();
+/** BT ON seulement (pas de dialogue « visible »). */
+bool platformEnsureBluetoothOn();
+/** true si déjà en mode discoverable. */
+bool platformIsBluetoothDiscoverable();
+/**
+ * Rend l’appareil visible. Sur Android : dialogue système au plus une fois
+ * tant que déjà visible / demandé récemment. Desktop : HostDiscoverable silencieux.
+ */
+bool platformRequestBluetoothDiscoverable(int seconds = 120);
+
+/** Dossier Documents/OpenSolarEnergy/sync (Android public / desktop Documents). */
+QString platformSyncDocumentsDir();
+/** Publie un fichier sync (MediaStore Documents) pour le rendre visible en MTP. */
+bool platformPublishSyncFile(const QString& filename, const QByteArray& data);
+/** Lit un fichier sync depuis le stockage public si possible. */
+QByteArray platformReadSyncFile(const QString& filename);
+
 } // namespace app

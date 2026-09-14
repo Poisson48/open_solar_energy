@@ -53,6 +53,11 @@ private slots:
     void year_pv_inverter_clip_and_thermal();
     void year_pv_study_vs_fast_order();
     void year_pv_balances_report_pr();
+    void empty_loss_tree_not_zero_losses();
+    void horizon_load_conserves_daily_kwh();
+    void grid_applies_monthly_shade();
+    void quote_prefers_sizing_over_unshaded_grid();
+    void load_day_night_follows_sunrise();
 };
 
 void TstCore::calcRb_june_toulouse()
@@ -1262,6 +1267,185 @@ void TstCore::year_pv_balances_report_pr()
     QVERIFY2(pr > 0.55 && pr < 0.95, qPrintable(QStringLiteral("PR=%1").arg(pr)));
     QCOMPARE(r.value(QStringLiteral("balancesMonthly")).toList().size(), 12);
     QVERIFY(r.value(QStringLiteral("lossDiagram")).toList().size() >= 8);
+}
+
+void TstCore::empty_loss_tree_not_zero_losses()
+{
+    // {} ne doit pas annuler les pertes techniques (régression Voisine PR≈0.98)
+    const double fEmpty = ose::YearPv::effectiveLossFactor(
+        {{QStringLiteral("lossTree"), QVariantMap{}},
+         {QStringLiteral("losses"), 14}});
+    const double fLegacy = ose::YearPv::effectiveLossFactor(
+        {{QStringLiteral("losses"), 14}});
+    QVERIFY2(std::abs(fEmpty - fLegacy) < 1e-9,
+             qPrintable(QStringLiteral("fEmpty=%1 fLegacy=%2").arg(fEmpty).arg(fLegacy)));
+    QVERIFY(fEmpty < 0.95);
+
+    ose::SizingEngine eng;
+    QVariantList monthly;
+    for (int i = 0; i < 12; ++i)
+        monthly.append(300.0);
+    const QVariantMap withEmpty = eng.run(
+        {{QStringLiteral("lat"), 43.6},
+         {QStringLiteral("weatherData"), demoWeather()},
+         {QStringLiteral("monthlyKwh"), monthly},
+         {QStringLiteral("annualKwh"), 3600},
+         {QStringLiteral("tilt"), 30},
+         {QStringLiteral("azimuth"), 0},
+         {QStringLiteral("losses"), 14},
+         {QStringLiteral("lossTree"), QVariantMap{}},
+         {QStringLiteral("limitMode"), QStringLiteral("fixed")},
+         {QStringLiteral("fixedPpeak"), 3},
+         {QStringLiteral("strategy"), QStringLiteral("roi")}});
+    const double pr = withEmpty.value(QStringLiteral("best")).toMap()
+                          .value(QStringLiteral("PR")).toDouble();
+    QVERIFY2(pr > 0.5 && pr < 0.92,
+             qPrintable(QStringLiteral("sizing PR with empty tree=%1").arg(pr)));
+}
+
+void TstCore::horizon_load_conserves_daily_kwh()
+{
+    ose::HorizonEngine hz;
+    const double daily = 5.5;
+    const double dayShare = 4.5 / 5.5; // ≠ 0.55 → ancien bug gonflait la charge
+    const QVariantMap r = hz.simulate(
+        {{QStringLiteral("lat"), 44.0},
+         {QStringLiteral("Ppeak"), 4.4},
+         {QStringLiteral("tilt"), 5.6},
+         {QStringLiteral("azimuth"), -88},
+         {QStringLiteral("losses"), 14},
+         {QStringLiteral("dailyKwh"), daily},
+         {QStringLiteral("dayShare"), dayShare},
+         {QStringLiteral("years"), 1},
+         {QStringLiteral("stepMin"), 30},
+         {QStringLiteral("weatherData"), demoWeather()},
+         {QStringLiteral("energyMode"), QStringLiteral("fast")}});
+    QVERIFY(r.value(QStringLiteral("ok")).toBool() || r.contains(QStringLiteral("yearSeries"))
+            || r.contains(QStringLiteral("loadTotal")));
+    const QVariantList years = r.value(QStringLiteral("yearSeries")).toList();
+    QVERIFY2(!years.isEmpty(), "horizon yearSeries empty");
+    const double loadY = years.first().toMap().value(QStringLiteral("load")).toDouble();
+    // 365 ou 366 jours selon moteur fast
+    QVERIFY2(loadY > daily * 360 && loadY < daily * 370,
+             qPrintable(QStringLiteral("loadY=%1 expected~%2").arg(loadY).arg(daily * 365)));
+}
+
+void TstCore::grid_applies_monthly_shade()
+{
+    ose::SolarMath sm;
+    QVariantList loss;
+    for (int i = 0; i < 12; ++i)
+        loss.append(0.20);
+    const QVariantMap clear = sm.gridSystemAnnual(
+        {{QStringLiteral("lat"), 43.6},
+         {QStringLiteral("weatherData"), demoWeather()},
+         {QStringLiteral("Ppeak"), 4},
+         {QStringLiteral("losses"), 14},
+         {QStringLiteral("tilt"), 30},
+         {QStringLiteral("azimuth"), 0},
+         {QStringLiteral("systemCost"), 4800},
+         {QStringLiteral("kwhPrice"), 0.25}});
+    const QVariantMap shaded = sm.gridSystemAnnual(
+        {{QStringLiteral("lat"), 43.6},
+         {QStringLiteral("weatherData"), demoWeather()},
+         {QStringLiteral("Ppeak"), 4},
+         {QStringLiteral("losses"), 14},
+         {QStringLiteral("tilt"), 30},
+         {QStringLiteral("azimuth"), 0},
+         {QStringLiteral("systemCost"), 4800},
+         {QStringLiteral("kwhPrice"), 0.25},
+         {QStringLiteral("monthlyLoss"), loss}});
+    const double eClear = clear.value(QStringLiteral("E_annual")).toDouble();
+    const double eShade = shaded.value(QStringLiteral("E_annual")).toDouble();
+    QVERIFY2(eShade < eClear * 0.85,
+             qPrintable(QStringLiteral("clear=%1 shaded=%2").arg(eClear).arg(eShade)));
+    QVERIFY(shaded.value(QStringLiteral("shadeApplied")).toBool());
+}
+
+void TstCore::quote_prefers_sizing_over_unshaded_grid()
+{
+    ose::ProjectPipeline pipe;
+    QVariantMap project{
+        {QStringLiteral("name"), QStringLiteral("V")},
+        {QStringLiteral("installType"), QStringLiteral("grid")},
+        {QStringLiteral("formState"),
+         QVariantMap{{QStringLiteral("Ppeak"), 4.4},
+                     {QStringLiteral("systemCost"), 5280},
+                     {QStringLiteral("panelWp"), 440}}},
+        {QStringLiteral("sizingResult"),
+         QVariantMap{{QStringLiteral("best"),
+                      QVariantMap{{QStringLiteral("Ppeak"), 4.4},
+                                  {QStringLiteral("E_annual"), 3236},
+                                  {QStringLiteral("systemCost"), 5280}}}}},
+        {QStringLiteral("gridResult"),
+         QVariantMap{{QStringLiteral("E_annual"), 5230}}},
+        {QStringLiteral("pvsystBalances"),
+         QVariantMap{{QStringLiteral("kpi"),
+                      QVariantMap{{QStringLiteral("E_Grid_y"), 3453}}}}},
+    };
+    const QVariantList lines = pipe.buildQuoteLines(project);
+    bool found = false;
+    for (const QVariant& v : lines) {
+        const QString label = v.toMap().value(QStringLiteral("label")).toString();
+        if (label.contains(QStringLiteral("production estimée"))) {
+            found = true;
+            QVERIFY2(label.contains(QStringLiteral("3453")),
+                     qPrintable(label));
+            QVERIFY2(!label.contains(QStringLiteral("5230")),
+                     qPrintable(label));
+        }
+    }
+    QVERIFY(found);
+}
+
+void TstCore::load_day_night_follows_sunrise()
+{
+    // Décembre vs juin à 44°N : bien moins d'heures « jour »
+    const auto jun = ose::SolarMath::sunriseSunset(44.0, 172); // ~21 juin
+    const auto dec = ose::SolarMath::sunriseSunset(44.0, 355); // ~21 déc
+    const double dayJun = jun.value(QStringLiteral("daylightHours")).toDouble();
+    const double dayDec = dec.value(QStringLiteral("daylightHours")).toDouble();
+    QVERIFY2(dayJun > 14 && dayJun < 16, qPrintable(QStringLiteral("juin=%1").arg(dayJun)));
+    QVERIFY2(dayDec > 8 && dayDec < 10, qPrintable(QStringLiteral("déc=%1").arg(dayDec)));
+
+    const QVariantList loadJun =
+        ose::SolarMath::dayNightLoadProfile24(5.5, 4.5 / 5.5, 44.0, 172);
+    const QVariantList loadDec =
+        ose::SolarMath::dayNightLoadProfile24(5.5, 4.5 / 5.5, 44.0, 355);
+    QCOMPARE(loadJun.size(), 24);
+    double sumJ = 0, sumD = 0;
+    for (int h = 0; h < 24; ++h) {
+        sumJ += loadJun[h].toDouble();
+        sumD += loadDec[h].toDouble();
+    }
+    QVERIFY2(std::abs(sumJ - 5.5) < 1e-6, qPrintable(QStringLiteral("sumJ=%1").arg(sumJ)));
+    QVERIFY2(std::abs(sumD - 5.5) < 1e-6, qPrintable(QStringLiteral("sumD=%1").arg(sumD)));
+
+    // Conservation jour/nuit sur les 48 demi-heures (pas sur les heures mixtes lever/coucher)
+    double slotsJun[48], slotsDec[48];
+    ose::SolarMath::fillDayNightLoadSlots48(slotsJun, 5.5, 4.5 / 5.5, 44.0, 172, 0.0);
+    ose::SolarMath::fillDayNightLoadSlots48(slotsDec, 5.5, 4.5 / 5.5, 44.0, 355, 0.0);
+    double dayEnergyJun = 0, dayEnergyDec = 0;
+    int nDayJun = 0, nDayDec = 0;
+    for (int s = 0; s < 48; ++s) {
+        const double mid = s * 0.5 + 0.25;
+        if (ose::SolarMath::isDaylightSolar(44.0, 172, mid)) {
+            ++nDayJun;
+            dayEnergyJun += slotsJun[s];
+        }
+        if (ose::SolarMath::isDaylightSolar(44.0, 355, mid)) {
+            ++nDayDec;
+            dayEnergyDec += slotsDec[s];
+        }
+    }
+    QVERIFY(nDayJun > nDayDec);
+    QVERIFY2(std::abs(dayEnergyJun - 4.5) < 1e-6, qPrintable(QStringLiteral("dayJ=%1").arg(dayEnergyJun)));
+    QVERIFY2(std::abs(dayEnergyDec - 4.5) < 1e-6, qPrintable(QStringLiteral("dayD=%1").arg(dayEnergyDec)));
+    // En décembre la conso jour est concentrée sur moins de créneaux → plus dense
+    const double densJun = dayEnergyJun / std::max(1, nDayJun);
+    const double densDec = dayEnergyDec / std::max(1, nDayDec);
+    QVERIFY2(densDec > densJun * 1.2,
+             qPrintable(QStringLiteral("densJun=%1 densDec=%2").arg(densJun).arg(densDec)));
 }
 
 QTEST_MAIN(TstCore)

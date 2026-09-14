@@ -30,3 +30,11 @@ jobs:
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
           cmake --build build -j"$(nproc)"
           ctest --test-dir build --output-on-failure
+      - name: Garde-fous MAJ (QML + workflows Release)
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          # Relance ciblée : bandeau Android, Hub startUpdate, versions, assets Release
+          ctest --test-dir build --output-on-failure -R '^updater$'
+          test -x build/tests/tst_updater
+          build/tests/tst_updater

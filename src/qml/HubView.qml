@@ -9,6 +9,8 @@ Item {
     signal requestNewProject()
     signal requestJoin()
     signal requestMateriel()
+    signal requestSyncSend()
+    signal requestSyncReceive()
 
     property string filter: ""
     property string pendingDeleteId: ""
@@ -92,7 +94,22 @@ Item {
                 kind: "flat"
                 onClicked: AppController.exportProjectsZip()
             }
-            OseBtn { text: "Mises à jour"; kind: "flat"; onClicked: Updater.check() }
+            OseBtn {
+                text: AppController.isPhoneDevice ? "Envoyer → PC" : "Envoyer → téléphone"
+                kind: "outline"
+                onClicked: root.requestSyncSend()
+            }
+            OseBtn {
+                text: AppController.isPhoneDevice ? "Récupérer ← PC" : "Récupérer ← téléphone"
+                kind: "outline"
+                onClicked: root.requestSyncReceive()
+            }
+            OseBtn {
+                text: "Mises à jour"
+                kind: "flat"
+                // check + téléchargement + install (APK / AppImage) si une version plus récente existe
+                onClicked: Updater.startUpdate()
+            }
         }
 
         TextField {

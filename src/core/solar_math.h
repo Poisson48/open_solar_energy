@@ -23,6 +23,20 @@ public:
     static double declination(int dayOfYear);
     static double sunriseHourAngle(double lat, double decl);
     Q_INVOKABLE static double daylightHours(double lat, int month);
+    /** Lever / coucher en heure solaire (midi = 12) pour un jour de l’année 1–365/366. */
+    Q_INVOKABLE static QVariantMap sunriseSunset(double lat, int dayOfYear);
+    /** true si solarHour (0–24, éventuellement fractionnaire) est entre lever et coucher. */
+    Q_INVOKABLE static bool isDaylightSolar(double lat, int dayOfYear, double solarHour);
+    /**
+     * Profil charge 24 h : part jour sur les heures de soleil, part nuit sinon.
+     * lonCorr = longitude/15 pour aligner heure locale ≈ solaire (comme le PV étude).
+     */
+    Q_INVOKABLE static QVariantList dayNightLoadProfile24(double dailyKwh, double dayShare,
+                                                         double lat, int dayOfYear,
+                                                         double lonCorr = 0);
+    /** Idem en 48 créneaux de 30 min (écrit out[48]). */
+    static void fillDayNightLoadSlots48(double* out48, double dailyKwh, double dayShare,
+                                        double lat, int dayOfYear, double lonCorr = 0);
     Q_INVOKABLE static double extraterrestrialIrradiation(double lat, int month);
     Q_INVOKABLE static double calcRb(double lat, double tilt, double azimuth, int month);
     Q_INVOKABLE static double tiltedIrradiation(double GHI, double DHI, double lat,

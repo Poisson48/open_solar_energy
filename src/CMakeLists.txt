@@ -1,7 +1,7 @@
 set(OSE_WARN_FLAGS -Wall -Wextra -Wpedantic -Wno-unused-parameter)
 
-set(OSE_VERSION_NAME "2.0.75" CACHE STRING "Version affichée")
-set(OSE_VERSION_CODE "20075" CACHE STRING "versionCode Android")
+set(OSE_VERSION_NAME "2.0.94" CACHE STRING "Version affichée")
+set(OSE_VERSION_CODE "20094" CACHE STRING "versionCode Android")
 
 # OpenSSL : KDAB prebuilts sur Android, système ailleurs
 if(ANDROID)
@@ -61,6 +61,13 @@ add_library(applib STATIC
     persist/pdf_export.cpp
     persist/project_share.cpp
     persist/catalog_store.cpp
+    persist/sync_paths.cpp
+    persist/sync_selection.cpp
+    persist/sync_bundle.cpp
+    persist/sync_engine.cpp
+    persist/sync_transport.cpp
+    persist/sync_lan.cpp
+    persist/sync_bluetooth.cpp
     net/weather_client.cpp
     net/news_client.cpp
     net/geocode_client.cpp
@@ -93,6 +100,10 @@ target_link_libraries(applib PUBLIC
 if(TARGET Qt6::Widgets)
     target_link_libraries(applib PUBLIC Qt6::Widgets)
     target_compile_definitions(applib PUBLIC OSE_HAS_WIDGETS)
+endif()
+if(TARGET Qt6::Bluetooth)
+    target_link_libraries(applib PUBLIC Qt6::Bluetooth)
+    target_compile_definitions(applib PUBLIC OSE_HAS_BLUETOOTH=1)
 endif()
 if(TARGET Qt6::Pdf)
     target_link_libraries(applib PUBLIC Qt6::Pdf)
@@ -160,6 +171,7 @@ set(OSE_QML_FILES
     qml/MaterielDialog.qml
     qml/ShareDialog.qml
     qml/JoinDialog.qml
+    qml/SyncDialog.qml
     qml/EditClientDialog.qml
     qml/controls/OseBtn.qml
     qml/controls/OseCard.qml

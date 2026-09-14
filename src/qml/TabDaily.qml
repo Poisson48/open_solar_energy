@@ -497,7 +497,26 @@ OseTabPage {
                 RowLayout {
                     visible: root.hasChartData()
                     spacing: 8
-                    KpiCard { title: "Autoconso"; value: (result.autoconsoRate || 0) + " %" }
+                    KpiCard {
+                        title: "Taux autoconso"
+                        value: (result.autoconsoRate || 0) + " %"
+                        subtitle: "part de la prod."
+                    }
+                    KpiCard {
+                        title: "Couverture"
+                        value: {
+                            const load = Number(result.loadTotal) || 0
+                            const ac = Number(result.autoconso) || 0
+                            if (load <= 0) return "—"
+                            return (Math.round(ac / load * 1000) / 10) + " %"
+                        }
+                        subtitle: "part de la charge"
+                    }
+                }
+                RowLayout {
+                    visible: root.hasChartData()
+                    spacing: 8
+                    KpiCard { title: "Autoconso"; value: (result.autoconso || 0) + " kWh" }
                     KpiCard { title: "Surplus"; value: (result.surplus || 0) + " kWh" }
                 }
                 Label {

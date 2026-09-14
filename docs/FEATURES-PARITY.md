@@ -15,6 +15,7 @@ Légende : **OK** = présent et branché · **PARTIEL** = incomplet · **MANQUE*
 | Import JSON | OK |
 | Export tous les projets | OK |
 | Export projet ZIP | OK (via `zip` CLI, fallback JSON) |
+| Sync USB sélectif PC↔téléphone | SUPERSEDE → Sync BT in-app pairing, PC héberge (v2.0.92) |
 | Démos seedées grid + hybride | OK (seed si vide) |
 | Confirmation suppression | OK |
 | Largeur hub utilisable | OK (max 1100) |

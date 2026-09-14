@@ -5,6 +5,7 @@
 #include <QDesktopServices>
 #include <QDir>
 #include <QDateTime>
+#include <QEventLoop>
 #include <QFile>
 #include <QHash>
 #include <QImage>
@@ -50,6 +51,13 @@ AppController::AppController(QObject* parent) : QObject(parent)
     m_layoutRoofs = new ose::LayoutRoofs(this);
     m_shadingEngine = new ose::ShadingEngine(this);
     m_yearPv = new ose::YearPv(this);
+    m_syncEngine = new ose::SyncEngine(this);
+    m_syncLan = new ose::SyncLan(this);
+    m_syncBluetooth = new ose::SyncBluetooth(this);
+    m_syncLan->setSyncEngine(m_syncEngine);
+    m_syncBluetooth->setSyncEngine(m_syncEngine);
+    m_syncTransport = new ose::UsbFileTransport(this);
+    m_syncEngine->setStores(m_projects, m_catalog, m_history);
 }
 
 bool AppController::init()
@@ -426,16 +434,39 @@ QVariantMap AppController::refreshStaleResults()
 
     if (wantGrid && m_solar) {
         const double ppeak = form.value(QStringLiteral("Ppeak"), 3).toDouble();
-        const QVariantMap grid = m_solar->gridSystemAnnual({
+        const QVariantMap site = project.value(QStringLiteral("siteSurvey")).toMap();
+        QVariantMap tree = form.value(QStringLiteral("lossTree")).toMap();
+        if (tree.isEmpty())
+            tree = ose::YearPv::defaultLossTree(form.value(QStringLiteral("losses"), 14).toDouble());
+        QVariantMap gridIn{
             {QStringLiteral("lat"), lat},
             {QStringLiteral("weatherData"), weather},
             {QStringLiteral("Ppeak"), ppeak},
             {QStringLiteral("losses"), form.value(QStringLiteral("losses"), 14)},
+            {QStringLiteral("lossTree"), tree},
             {QStringLiteral("tilt"), tilt},
             {QStringLiteral("azimuth"), azimuth},
             {QStringLiteral("systemCost"), form.value(QStringLiteral("systemCost"), ppeak * 1200.0)},
             {QStringLiteral("kwhPrice"), form.value(QStringLiteral("priceBase"), 0.25)},
-        });
+            {QStringLiteral("monthlyLoss"), site.value(QStringLiteral("monthlyLoss"))},
+            {QStringLiteral("annualLossPct"), site.value(QStringLiteral("annualLossPct"), 0)},
+            {QStringLiteral("halfHourlyKeep"), site.value(QStringLiteral("halfHourlyKeep"))},
+            {QStringLiteral("energyMode"), form.value(QStringLiteral("energyMode"), QStringLiteral("fast"))},
+            {QStringLiteral("hourlyWeatherData"), project.value(QStringLiteral("hourlyWeatherData"))},
+            {QStringLiteral("useElectricalShade"),
+             form.value(QStringLiteral("energyMode")).toString() == QLatin1String("study")},
+        };
+        QVariantMap grid = m_solar->gridSystemAnnual(gridIn);
+        // Aligner finance sur le dimensionnement si même puissance
+        const QVariantMap sizingBest = project.value(QStringLiteral("sizingResult")).toMap()
+                                           .value(QStringLiteral("best")).toMap();
+        if (std::abs(sizingBest.value(QStringLiteral("Ppeak")).toDouble() - ppeak) < 0.06
+            && sizingBest.value(QStringLiteral("savings")).toDouble() > 0) {
+            grid.insert(QStringLiteral("savings"), sizingBest.value(QStringLiteral("savings")));
+            grid.insert(QStringLiteral("payback"), sizingBest.value(QStringLiteral("payback")));
+            grid.insert(QStringLiteral("npv"), sizingBest.value(QStringLiteral("npv")));
+            grid.insert(QStringLiteral("incentive"), sizingBest.value(QStringLiteral("incentive")));
+        }
         patch.insert(QStringLiteral("gridResult"), grid);
         done.append(QStringLiteral("Système PV"));
     }
@@ -1097,6 +1128,334 @@ QVariantMap AppController::runSelfTest()
             {QStringLiteral("nPanels"), nPanels},
             {QStringLiteral("hybrid"), true},
             {QStringLiteral("journey"), QStringLiteral("location>site>sizing>grid>daily>layout>cables>quote")}};
+}
+
+bool AppController::isPhoneDevice() const
+{
+#ifdef Q_OS_ANDROID
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool AppController::syncSend(const QVariantMap& selection)
+{
+    if (!m_syncEngine || !m_syncBluetooth)
+        return false;
+
+#ifdef Q_OS_ANDROID
+    // Phone : pousse le bundle — LAN d’abord (Wi‑Fi / USB partage), sinon Bluetooth.
+    QVariantMap sel = selection;
+    if (sel.isEmpty())
+        sel = m_syncEngine->selectionAll(false);
+    const QByteArray zip = m_syncEngine->buildBundle(sel);
+    if (zip.isEmpty()) {
+        toast(m_syncEngine->lastError().isEmpty() ? QStringLiteral("Export sync échoué")
+                                                  : m_syncEngine->lastError(),
+              4000);
+        return false;
+    }
+
+    if (m_syncBluetooth->hosting())
+        m_syncBluetooth->stopHosting();
+
+    // --- LAN rapide ---
+    if (m_syncLan) {
+        m_syncLan->startScan(3000);
+        QEventLoop loop;
+        QObject::connect(m_syncLan, &ose::SyncLan::peersChanged, &loop, [&]() {
+            if (!m_syncLan->peers().isEmpty())
+                loop.quit();
+        });
+        QObject::connect(m_syncLan, &ose::SyncLan::scanFinished, &loop, &QEventLoop::quit);
+        loop.exec();
+        if (!m_syncLan->peers().isEmpty()) {
+            if (m_syncLan->pushBundleToPeer(m_syncLan->selectedPeerIndex(), zip)) {
+                toast(QStringLiteral("Données envoyées au PC via Wi‑Fi / USB (LAN)"));
+                return true;
+            }
+            // sinon bascule BT
+        }
+    }
+
+    if (!platformEnsureBluetoothPermissions()) {
+        toast(QStringLiteral("Autorisez Bluetooth (ou connectez-vous au même Wi‑Fi / USB partage)"), 5500);
+        return false;
+    }
+    m_syncBluetooth->prepareVisibility();
+    m_syncBluetooth->startScan(14000);
+    {
+        QEventLoop loop;
+        QObject::connect(m_syncBluetooth, &ose::SyncBluetooth::peersChanged, &loop, [&]() {
+            if (!m_syncBluetooth->peers().isEmpty())
+                loop.quit();
+        });
+        QObject::connect(m_syncBluetooth, &ose::SyncBluetooth::scanFinished, &loop, &QEventLoop::quit);
+        loop.exec();
+    }
+    if (m_syncBluetooth->peers().isEmpty()) {
+        toast(QStringLiteral(
+                  "Aucun PC. Sur le PC : Envoyer / Héberger. Même Wi‑Fi, USB partage, ou Bluetooth."),
+              6500);
+        return false;
+    }
+    if (!m_syncBluetooth->pairPeer(m_syncBluetooth->selectedPeerIndex())) {
+        toast(m_syncBluetooth->lastError().isEmpty() ? QStringLiteral("Appairage refusé")
+                                                     : m_syncBluetooth->lastError(),
+              5000);
+        return false;
+    }
+    if (!m_syncBluetooth->pushBundleToPeer(m_syncBluetooth->selectedPeerIndex(), zip)) {
+        toast(m_syncBluetooth->lastError().isEmpty() ? QStringLiteral("Envoi échoué")
+                                                     : m_syncBluetooth->lastError(),
+              5000);
+        return false;
+    }
+    toast(QStringLiteral("Données envoyées au PC via Bluetooth"));
+    return true;
+#else
+    Q_UNUSED(selection);
+    // PC : héberge LAN + Bluetooth en parallèle
+    bool lanOk = false;
+    if (m_syncLan)
+        lanOk = m_syncLan->startInteractiveHosting();
+
+    if (!platformEnsureBluetoothPermissions()) {
+        if (lanOk) {
+            toast(QStringLiteral("PC en écoute LAN (Wi‑Fi / USB). Bluetooth non autorisé."), 5500);
+            return true;
+        }
+        toast(QStringLiteral("Autorisez Bluetooth ou utilisez le même Wi‑Fi / USB partage"), 5500);
+        return false;
+    }
+    m_syncBluetooth->prepareVisibility();
+    const bool btOk = m_syncBluetooth->startInteractiveHosting();
+    if (!lanOk && !btOk) {
+        toast(m_syncBluetooth->lastError().isEmpty() ? QStringLiteral("Hébergement impossible")
+                                                     : m_syncBluetooth->lastError(),
+              5000);
+        return false;
+    }
+    if (lanOk && btOk) {
+        toast(QStringLiteral(
+                  "PC prêt (LAN + Bluetooth) — sur le téléphone : Récupérer ou Envoyer"),
+              6500);
+    } else if (lanOk) {
+        toast(QStringLiteral("PC prêt en LAN — même Wi‑Fi ou USB partage de connexion"), 6000);
+    } else {
+        toast(QStringLiteral(
+                  "PC visible en Bluetooth — sur le téléphone : Récupérer (appairage dans l’app)"),
+              6500);
+    }
+    return true;
+#endif
+}
+
+QVariantMap AppController::syncFetchRemoteCatalog()
+{
+    if (!m_syncBluetooth && !m_syncLan)
+        return {};
+
+    if (m_syncBluetooth && m_syncBluetooth->hosting())
+        m_syncBluetooth->stopHosting();
+    // Ne pas couper le LAN host sur le PC si on est en train d’héberger… mais ici on fetch.
+    if (m_syncLan && m_syncLan->hosting())
+        m_syncLan->stopHosting();
+
+    // 1) LAN
+    if (m_syncLan) {
+        m_syncLan->startScan(3500);
+        QEventLoop loop;
+        QObject::connect(m_syncLan, &ose::SyncLan::peersChanged, &loop, [&]() {
+            if (!m_syncLan->peers().isEmpty())
+                loop.quit();
+        });
+        QObject::connect(m_syncLan, &ose::SyncLan::scanFinished, &loop, &QEventLoop::quit);
+        loop.exec();
+        if (!m_syncLan->peers().isEmpty()) {
+            const int idx = m_syncLan->selectedPeerIndex();
+            const QVariantMap tree = m_syncLan->fetchCatalogFromPeer(idx);
+            if (!tree.isEmpty()) {
+                m_lastSyncViaLan = true;
+                const int n = tree.value(QStringLiteral("projects")).toList().size();
+                toast(QStringLiteral("%1 projet(s) via LAN sur le %2")
+                          .arg(n)
+                          .arg(isPhoneDevice() ? QStringLiteral("PC") : QStringLiteral("téléphone")),
+                      3500);
+                return tree;
+            }
+        }
+    }
+
+    // 2) Bluetooth
+    if (!m_syncBluetooth)
+        return {};
+    if (!platformEnsureBluetoothPermissions()) {
+        toast(QStringLiteral("Aucun appareil LAN — autorisez Bluetooth"), 5000);
+        return {};
+    }
+    m_syncBluetooth->prepareVisibility();
+    m_syncBluetooth->startScan(14000);
+    {
+        QEventLoop loop;
+        QObject::connect(m_syncBluetooth, &ose::SyncBluetooth::peersChanged, &loop, [&]() {
+            if (!m_syncBluetooth->peers().isEmpty())
+                loop.quit();
+        });
+        QObject::connect(m_syncBluetooth, &ose::SyncBluetooth::scanFinished, &loop, &QEventLoop::quit);
+        loop.exec();
+    }
+    if (m_syncBluetooth->peers().isEmpty()) {
+        toast(QStringLiteral(
+                  "Aucun appareil. Sur l’autre : Envoyer / Héberger (même Wi‑Fi, USB partage ou BT)."),
+              6500);
+        return {};
+    }
+    const int idx = m_syncBluetooth->selectedPeerIndex();
+    if (!m_syncBluetooth->pairPeer(idx)) {
+        toast(m_syncBluetooth->lastError().isEmpty() ? QStringLiteral("Appairage refusé ou annulé")
+                                                     : m_syncBluetooth->lastError(),
+              5500);
+        return {};
+    }
+    const QVariantMap tree = m_syncBluetooth->fetchCatalogFromPeer(idx);
+    if (tree.isEmpty()) {
+        toast(m_syncBluetooth->lastError().isEmpty() ? QStringLiteral("Liste distante inaccessible")
+                                                     : m_syncBluetooth->lastError(),
+              5000);
+        return {};
+    }
+    m_lastSyncViaLan = false;
+    const int n = tree.value(QStringLiteral("projects")).toList().size();
+    toast(QStringLiteral("%1 projet(s) via Bluetooth sur le %2")
+              .arg(n)
+              .arg(isPhoneDevice() ? QStringLiteral("PC") : QStringLiteral("téléphone")),
+          3500);
+    return tree;
+}
+
+bool AppController::syncReceive(const QVariantMap& selection)
+{
+    if (!m_syncEngine)
+        return false;
+
+    // Reprendre le transport du catalogue si possible
+    if (m_lastSyncViaLan && m_syncLan && !m_syncLan->peers().isEmpty()) {
+        int peerIndex = m_syncLan->lastPeerIndex();
+        if (peerIndex < 0)
+            peerIndex = m_syncLan->selectedPeerIndex();
+        const QByteArray zip = m_syncLan->fetchBundleFromPeer(peerIndex, selection);
+        if (!zip.isEmpty() && m_syncEngine->applyBundle(zip, selection)) {
+            toast(QStringLiteral("Données importées via LAN"));
+            return true;
+        }
+        // fallback BT
+    }
+
+    if (!m_syncBluetooth)
+        return false;
+    if (!platformEnsureBluetoothPermissions()) {
+        toast(QStringLiteral("Autorisez Bluetooth pour synchroniser"), 5000);
+        return false;
+    }
+
+    if (m_syncBluetooth->hosting())
+        m_syncBluetooth->stopHosting();
+
+    int peerIndex = m_syncBluetooth->lastPeerIndex();
+    if (peerIndex < 0 || m_syncBluetooth->peers().isEmpty()) {
+        m_syncBluetooth->startScan(14000);
+        QEventLoop loop;
+        QObject::connect(m_syncBluetooth, &ose::SyncBluetooth::peersChanged, &loop, [&]() {
+            if (!m_syncBluetooth->peers().isEmpty())
+                loop.quit();
+        });
+        QObject::connect(m_syncBluetooth, &ose::SyncBluetooth::scanFinished, &loop, &QEventLoop::quit);
+        loop.exec();
+        if (m_syncBluetooth->peers().isEmpty()) {
+            toast(QStringLiteral(
+                      "Aucun appareil. Sur l’émetteur : Envoyer / Héberger."),
+                  6000);
+            return false;
+        }
+        peerIndex = 0;
+    }
+
+    const QByteArray zip = m_syncBluetooth->fetchBundleFromPeer(peerIndex, selection);
+    if (zip.isEmpty()) {
+        toast(m_syncBluetooth->lastError().isEmpty() ? QStringLiteral("Réception échouée")
+                                                     : m_syncBluetooth->lastError(),
+              5000);
+        return false;
+    }
+    if (!m_syncEngine->applyBundle(zip, selection)) {
+        toast(m_syncEngine->lastError().isEmpty() ? QStringLiteral("Import sync échoué")
+                                                  : m_syncEngine->lastError(),
+              4000);
+        return false;
+    }
+    toast(QStringLiteral("Données importées via Bluetooth"));
+    return true;
+}
+
+bool AppController::syncApplyFile(const QString& path, const QVariantMap& selection)
+{
+    if (!m_syncEngine || path.isEmpty())
+        return false;
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly)) {
+        toast(QStringLiteral("Fichier illisible"));
+        return false;
+    }
+    const QByteArray zip = f.readAll();
+    if (!m_syncEngine->applyBundle(zip, selection)) {
+        toast(m_syncEngine->lastError().isEmpty() ? QStringLiteral("Import échoué")
+                                                  : m_syncEngine->lastError(),
+              4000);
+        return false;
+    }
+    toast(QStringLiteral("Bundle appliqué"));
+    return true;
+}
+
+bool AppController::syncSaveBundleFile(const QString& suggestedName, const QVariantMap& selection)
+{
+    if (!m_syncEngine)
+        return false;
+    const QByteArray zip = m_syncEngine->buildBundle(selection);
+    if (zip.isEmpty())
+        return false;
+    QString name = suggestedName;
+    if (name.isEmpty())
+        name = QStringLiteral("ose-sync.osebundle");
+#ifdef OSE_HAS_WIDGETS
+    const QString path = QFileDialog::getSaveFileName(
+        nullptr, QStringLiteral("Enregistrer le bundle sync"), name,
+        QStringLiteral("OSE Bundle (*.osebundle);;Tous (*.*)"));
+    if (path.isEmpty())
+        return false;
+    QFile f(path);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        return false;
+    f.write(zip);
+    toast(QStringLiteral("Bundle enregistré"));
+    return true;
+#else
+    return shareFile(name, QStringLiteral("application/octet-stream"),
+                     QString::fromLatin1(zip.toBase64()));
+#endif
+}
+
+QString AppController::syncDirPath() const
+{
+    return m_syncTransport ? m_syncTransport->syncDir() : QString{};
+}
+
+void AppController::syncRefreshTransport()
+{
+    if (m_syncTransport)
+        m_syncTransport->refresh();
 }
 
 } // namespace app

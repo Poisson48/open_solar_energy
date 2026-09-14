@@ -9,6 +9,30 @@
 #include <cmath>
 
 namespace ose {
+namespace {
+
+/** Production annuelle de référence : étude PVsyst > dimensionnement > réseau. */
+double preferredAnnualProduction(const QVariantMap& project)
+{
+    const QVariantMap bal = project.value(QStringLiteral("pvsystBalances")).toMap();
+    const double eBal = bal.value(QStringLiteral("kpi")).toMap()
+                            .value(QStringLiteral("E_Grid_y")).toDouble();
+    if (eBal > 0)
+        return eBal;
+
+    const QVariantMap sizing = project.value(QStringLiteral("sizingResult")).toMap();
+    double eSz = sizing.value(QStringLiteral("best")).toMap()
+                     .value(QStringLiteral("E_annual")).toDouble();
+    if (eSz <= 0)
+        eSz = sizing.value(QStringLiteral("E_annual")).toDouble();
+    if (eSz > 0)
+        return eSz;
+
+    return project.value(QStringLiteral("gridResult")).toMap()
+        .value(QStringLiteral("E_annual")).toDouble();
+}
+
+} // namespace
 
 ProjectPipeline::ProjectPipeline(QObject* parent) : QObject(parent) {}
 
@@ -224,7 +248,6 @@ QVariantList ProjectPipeline::buildQuoteLines(const QVariantMap& project) const
                                    .value(QStringLiteral("best")).toMap();
     const QVariantMap off = project.value(QStringLiteral("offgridResult")).toMap()
                                 .value(QStringLiteral("best")).toMap();
-    const QVariantMap grid = project.value(QStringLiteral("gridResult")).toMap();
 
     const double ppeak = form.value(QStringLiteral("Ppeak"),
                                     sizing.value(QStringLiteral("Ppeak"),
@@ -246,8 +269,7 @@ QVariantList ProjectPipeline::buildQuoteLines(const QVariantMap& project) const
     const QString invModel = form.value(QStringLiteral("inverterModel"),
                                         QStringLiteral("Onduleur")).toString();
 
-    const double eAnnual = grid.value(QStringLiteral("E_annual"),
-                                      sizing.value(QStringLiteral("E_annual"), 0)).toDouble();
+    const double eAnnual = preferredAnnualProduction(project);
 
     const double modules = cost * 0.52;
     const double inverter = cost * 0.18;

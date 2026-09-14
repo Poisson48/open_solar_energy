@@ -1,6 +1,7 @@
 #include "solar_math.h"
 
 #include "constants.h"
+#include "year_pv.h"
 
 #include <algorithm>
 #include <cmath>
@@ -17,6 +18,23 @@ double tempCoeff(const QString& tech)
     if (tech == QLatin1String("crystSi"))
         return -0.0045;
     return -0.004;
+}
+
+double monthShadeFactor(const QVariantList& monthlyLoss, int month0, double annualLossPct)
+{
+    if (month0 >= 0 && month0 < monthlyLoss.size()) {
+        double loss = monthlyLoss[month0].toDouble();
+        if (loss > 1.0)
+            loss /= 100.0;
+        return 1.0 - std::clamp(loss, 0.0, 0.95);
+    }
+    if (annualLossPct > 0) {
+        double loss = annualLossPct;
+        if (loss > 1.0)
+            loss /= 100.0;
+        return 1.0 - std::clamp(loss, 0.0, 0.95);
+    }
+    return 1.0;
 }
 
 } // namespace
@@ -55,6 +73,82 @@ double SolarMath::daylightHours(double lat, int month)
 {
     const int day = midMonthDay(month);
     return (2.0 / 15.0) * sunriseHourAngle(lat, declination(day));
+}
+
+QVariantMap SolarMath::sunriseSunset(double lat, int dayOfYear)
+{
+    dayOfYear = std::clamp(dayOfYear, 1, 366);
+    const double decl = declination(dayOfYear);
+    double dayH = (2.0 / 15.0) * sunriseHourAngle(lat, decl);
+    dayH = std::clamp(dayH, 0.0, 24.0);
+    const double rise = 12.0 - dayH / 2.0;
+    const double set = 12.0 + dayH / 2.0;
+    return {{QStringLiteral("sunrise"), rise},
+            {QStringLiteral("sunset"), set},
+            {QStringLiteral("daylightHours"), dayH},
+            {QStringLiteral("dayOfYear"), dayOfYear}};
+}
+
+bool SolarMath::isDaylightSolar(double lat, int dayOfYear, double solarHour)
+{
+    const QVariantMap ss = sunriseSunset(lat, dayOfYear);
+    const double rise = ss.value(QStringLiteral("sunrise")).toDouble();
+    const double set = ss.value(QStringLiteral("sunset")).toDouble();
+    const double dayH = ss.value(QStringLiteral("daylightHours")).toDouble();
+    if (dayH <= 1e-6)
+        return false; // nuit polaire
+    if (dayH >= 24.0 - 1e-6)
+        return true; // jour polaire
+    // Normalise dans [0, 24)
+    double h = solarHour;
+    while (h < 0)
+        h += 24.0;
+    while (h >= 24.0)
+        h -= 24.0;
+    return h >= rise && h < set;
+}
+
+void SolarMath::fillDayNightLoadSlots48(double* out48, double dailyKwh, double dayShare,
+                                        double lat, int dayOfYear, double lonCorr)
+{
+    if (!out48)
+        return;
+    dayShare = std::clamp(dayShare, 0.0, 1.0);
+    dailyKwh = std::max(0.0, dailyKwh);
+    const double dayKwh = dailyKwh * dayShare;
+    const double nightKwh = dailyKwh - dayKwh;
+    bool daySlot[48];
+    int nDay = 0, nNight = 0;
+    for (int s = 0; s < 48; ++s) {
+        const double solarHour = s * 0.5 + 0.25 + lonCorr;
+        daySlot[s] = isDaylightSolar(lat, dayOfYear, solarHour);
+        (daySlot[s] ? nDay : nNight)++;
+    }
+    double perDay = 0, perNight = 0;
+    if (nDay > 0 && nNight > 0) {
+        perDay = dayKwh / nDay;
+        perNight = nightKwh / nNight;
+    } else if (nDay > 0) {
+        perDay = dailyKwh / nDay; // jour polaire
+    } else if (nNight > 0) {
+        perNight = dailyKwh / nNight; // nuit polaire
+    } else {
+        perDay = dailyKwh / 48.0;
+    }
+    for (int s = 0; s < 48; ++s)
+        out48[s] = daySlot[s] ? perDay : perNight;
+}
+
+QVariantList SolarMath::dayNightLoadProfile24(double dailyKwh, double dayShare, double lat,
+                                              int dayOfYear, double lonCorr)
+{
+    double halfHour[48];
+    fillDayNightLoadSlots48(halfHour, dailyKwh, dayShare, lat, dayOfYear, lonCorr);
+    QVariantList out;
+    out.reserve(24);
+    for (int h = 0; h < 24; ++h)
+        out.append(halfHour[h * 2] + halfHour[h * 2 + 1]);
+    return out;
 }
 
 double SolarMath::extraterrestrialIrradiation(double lat, int month)
@@ -293,27 +387,74 @@ QVariantMap SolarMath::gridSystemAnnual(const QVariantMap& params) const
     const double systemCost = params.value(QStringLiteral("systemCost")).toDouble();
     const double kwhPrice = params.value(QStringLiteral("kwhPrice")).toDouble();
     const double co2Factor = params.value(QStringLiteral("co2Factor"), 0.052).toDouble();
+    const QVariantList monthlyLoss = params.value(QStringLiteral("monthlyLoss")).toList();
+    const double annualLossPct = params.value(QStringLiteral("annualLossPct"), 0).toDouble();
+    const QString energyMode = params.value(QStringLiteral("energyMode")).toString();
+    const QVariantMap hourly = params.value(QStringLiteral("hourlyWeatherData")).toMap();
+    const QVariantList halfKeep = params.value(QStringLiteral("halfHourlyKeep")).toList();
 
     QVariantList monthly;
     double E_annual = 0;
     double H_annual = 0;
-    for (size_t i = 0; i < weather.size(); ++i) {
-        const int month = static_cast<int>(i) + 1;
-        const double Htilt = tiltedIrradiation(weather[i].GHI, weather[i].DHI, lat, tilt, azimuth, month);
-        const double E = pvProduction(Htilt, Ppeak, losses, weather[i].T_avg, tech, month, lat);
-        E_annual += E;
-        H_annual += Htilt;
-        monthly.append(QVariantMap{
-            {QStringLiteral("month"), month},
-            {QStringLiteral("name"), weather[i].name},
-            {QStringLiteral("GHI"), weather[i].GHI},
-            {QStringLiteral("Htilt"), std::round(Htilt * 10) / 10},
-            {QStringLiteral("E_month"), std::round(E * 10) / 10},
-            {QStringLiteral("T_avg"), weather[i].T_avg},
-        });
+    bool usedStudy = false;
+
+    // Mode étude : même moteur que dimensionnement / balances (ombrage 30 min inclus)
+    if (energyMode == QLatin1String("study")
+        && hourly.value(QStringLiteral("ghi")).toList().size() >= 24 * 30 && Ppeak > 0) {
+        QVariantMap yp = params;
+        QVariantMap tree = params.value(QStringLiteral("lossTree")).toMap();
+        if (tree.isEmpty())
+            tree = YearPv::defaultLossTree(losses);
+        yp.insert(QStringLiteral("lossTree"), tree);
+        yp.insert(QStringLiteral("losses"), losses);
+        if (!halfKeep.isEmpty())
+            yp.insert(QStringLiteral("halfHourlyKeep"), halfKeep);
+        const QVariantList perKwc = YearPv::monthlyYieldPerKwc(hourly, yp);
+        if (perKwc.size() >= 12) {
+            usedStudy = true;
+            for (size_t i = 0; i < weather.size() && static_cast<int>(i) < 12; ++i) {
+                const int month = static_cast<int>(i) + 1;
+                const double Htilt = tiltedIrradiation(weather[i].GHI, weather[i].DHI, lat, tilt,
+                                                       azimuth, month);
+                double E = perKwc[static_cast<int>(i)].toDouble() * Ppeak;
+                // Keep déjà dans YearPv ; sinon appliquer courbe mensuelle
+                if (halfKeep.isEmpty())
+                    E *= monthShadeFactor(monthlyLoss, static_cast<int>(i), annualLossPct);
+                E_annual += E;
+                H_annual += Htilt;
+                monthly.append(QVariantMap{
+                    {QStringLiteral("month"), month},
+                    {QStringLiteral("name"), weather[i].name},
+                    {QStringLiteral("GHI"), weather[i].GHI},
+                    {QStringLiteral("Htilt"), std::round(Htilt * 10) / 10},
+                    {QStringLiteral("E_month"), std::round(E * 10) / 10},
+                    {QStringLiteral("T_avg"), weather[i].T_avg},
+                });
+            }
+        }
     }
 
-    const double PR = H_annual > 0 ? E_annual / (Ppeak * H_annual) : 0;
+    if (!usedStudy) {
+        for (size_t i = 0; i < weather.size(); ++i) {
+            const int month = static_cast<int>(i) + 1;
+            const double Htilt = tiltedIrradiation(weather[i].GHI, weather[i].DHI, lat, tilt,
+                                                   azimuth, month);
+            double E = pvProduction(Htilt, Ppeak, losses, weather[i].T_avg, tech, month, lat);
+            E *= monthShadeFactor(monthlyLoss, static_cast<int>(i), annualLossPct);
+            E_annual += E;
+            H_annual += Htilt;
+            monthly.append(QVariantMap{
+                {QStringLiteral("month"), month},
+                {QStringLiteral("name"), weather[i].name},
+                {QStringLiteral("GHI"), weather[i].GHI},
+                {QStringLiteral("Htilt"), std::round(Htilt * 10) / 10},
+                {QStringLiteral("E_month"), std::round(E * 10) / 10},
+                {QStringLiteral("T_avg"), weather[i].T_avg},
+            });
+        }
+    }
+
+    const double PR = H_annual > 0 && Ppeak > 0 ? E_annual / (Ppeak * H_annual) : 0;
     const double CF = E_annual / (Ppeak * 8760);
     const double omAnnual = systemCost * 0.005;
     const double inverterRpl = systemCost * 0.12;
@@ -331,12 +472,15 @@ QVariantMap SolarMath::gridSystemAnnual(const QVariantMap& params) const
         {QStringLiteral("monthly"), monthly},
         {QStringLiteral("E_annual"), int(std::lround(E_annual))},
         {QStringLiteral("H_annual"), int(std::lround(H_annual))},
-        {QStringLiteral("PR"), std::round(PR * 100) / 100},
+        {QStringLiteral("PR"), std::round(PR * 1000) / 1000},
         {QStringLiteral("CF"), std::round(CF * 10000) / 100},
         {QStringLiteral("ROI"), std::round(ROI * 10) / 10},
         {QStringLiteral("LCOE"), std::round(LCOE * 10000) / 10000},
         {QStringLiteral("CO2"), int(std::lround(CO2))},
         {QStringLiteral("specificYield"), Ppeak > 0 ? int(std::lround(E_annual / Ppeak)) : 0},
+        {QStringLiteral("shadeApplied"),
+         !monthlyLoss.isEmpty() || annualLossPct > 0 || !halfKeep.isEmpty() || usedStudy},
+        {QStringLiteral("energyMode"), usedStudy ? QStringLiteral("study") : QStringLiteral("fast")},
     };
 }
 

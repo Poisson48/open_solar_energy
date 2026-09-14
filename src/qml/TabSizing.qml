@@ -13,6 +13,12 @@ OseTabPage {
     property var lastResult: Projects.currentProject.sizingResult || ({})
     property bool isHybrid: (Projects.currentProject.installType || "grid") === "hybrid"
     property bool syncing: false
+    readonly property var monthShort: [
+        "Jan", "Fév", "Mar", "Avr", "Mai", "Juin",
+        "Juil", "Aoû", "Sep", "Oct", "Nov", "Déc"
+    ]
+    /** Textes des 12 champs kWh (source de vérité UI). */
+    property var monthKwhTexts: ["0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0"]
 
     function comboIndexFor(box, value, fallback) {
         const m = box.model
@@ -21,6 +27,89 @@ OseTabPage {
                 return i
         }
         return fallback !== undefined ? fallback : 0
+    }
+
+    function setMonthKwhTexts(arr) {
+        const next = []
+        for (let i = 0; i < 12; ++i)
+            next.push(String(Math.round(Number(arr && arr[i]) || 0)))
+        monthKwhTexts = next
+    }
+
+    function monthlyFromUi() {
+        const out = []
+        for (let i = 0; i < 12; ++i)
+            out.push(Math.max(0, Number(monthKwhTexts[i]) || 0))
+        return out
+    }
+
+    function sumMonths(arr) {
+        let s = 0
+        for (let i = 0; i < 12; ++i)
+            s += Math.max(0, Number(arr[i]) || 0)
+        return Math.round(s)
+    }
+
+    function syncAnnualFromMonths() {
+        annualField.text = String(sumMonths(monthlyFromUi()))
+    }
+
+    /** Enregistre seulement l’annuel — ne touche pas aux 12 mois. */
+    function persistAnnualOnly() {
+        if (syncing)
+            return
+        const a = Math.round(Math.max(0, Number(annualField.text) || 0))
+        annualField.text = String(a)
+        const f = Projects.currentProject.formState || {}
+        syncing = true
+        Projects.updateCurrent({
+            formState: Object.assign({}, f, { annualKwh: a })
+        })
+        syncing = false
+    }
+
+    function distributeAnnualToMonths() {
+        if (syncing)
+            return
+        const a = Math.round(Math.max(0, Number(annualField.text) || 0))
+        annualField.text = String(a)
+        setMonthKwhTexts(monthlyFromAnnual(a))
+        persistMonthlyAndForm()
+        AppController.toast("Annuel réparti sur 12 mois (" + a + " kWh)", 2500)
+    }
+
+    function onMonthEdited(index, text) {
+        if (syncing)
+            return
+        const next = monthKwhTexts.slice()
+        next[index] = text
+        monthKwhTexts = next
+        syncAnnualFromMonths()
+        persistMonthlyAndForm()
+    }
+
+    function persistMonthlyAndForm() {
+        if (syncing)
+            return
+        const monthly = monthlyFromUi()
+        const annual = sumMonths(monthly)
+        annualField.text = String(annual)
+        const f = Projects.currentProject.formState || {}
+        const b = Projects.currentProject.bill || {}
+        // syncing pendant update pour éviter loadFromProject qui écrase la saisie
+        syncing = true
+        Projects.updateCurrent({
+            monthlyKwh: monthly,
+            formState: Object.assign({}, f, { annualKwh: annual }),
+            bill: Object.assign({}, b, {
+                tariff: tariffBox.currentValue,
+                priceBase: Number(priceBase.text),
+                subscriptionPerYear: Number(subscription.text),
+                priceHpHc: { hp: Number(priceHp.text), hc: Number(priceHc.text) },
+                monthlyKwh: monthly
+            })
+        })
+        syncing = false
     }
 
     function loadFromProject() {
@@ -39,7 +128,21 @@ OseTabPage {
                               : (f.priceHp !== undefined ? f.priceHp : "0.246"))
         priceHc.text = String(hpHc.hc !== undefined ? hpHc.hc
                               : (f.priceHc !== undefined ? f.priceHc : "0.186"))
-        annualField.text = String(f.annualKwh !== undefined ? f.annualKwh : 4500)
+
+        let monthly = Projects.currentProject.monthlyKwh || b.monthlyKwh || []
+        if (!monthly.length || monthly.length < 12) {
+            const annual = Number(f.annualKwh !== undefined ? f.annualKwh : 4500)
+            monthly = monthlyFromAnnual(annual)
+        }
+        setMonthKwhTexts(monthly)
+        // Garder l’annuel saisi (formState) même s’il n’a pas encore été réparti
+        const monthSum = sumMonths(monthly)
+        const storedAnnual = Number(f.annualKwh)
+        if (storedAnnual > 0)
+            annualField.text = String(Math.round(storedAnnual))
+        else
+            annualField.text = String(monthSum > 0 ? monthSum : 4500)
+
         loadDay.text = f.loadDayKwh !== undefined ? String(f.loadDayKwh)
                       : (e.loadDayKwh !== undefined ? String(e.loadDayKwh) : "")
         loadNight.text = f.loadNightKwh !== undefined ? String(f.loadNightKwh)
@@ -99,20 +202,29 @@ OseTabPage {
             loadDayKwh: loadDay.text.length ? Number(loadDay.text) : undefined,
             loadNightKwh: loadNight.text.length ? Number(loadNight.text) : undefined
         }, extra || {})
+        const monthly = monthlyFromUi()
         const bill = Object.assign({}, b, {
             tariff: tariffBox.currentValue,
             priceBase: Number(priceBase.text),
             subscriptionPerYear: Number(subscription.text),
-            priceHpHc: { hp: Number(priceHp.text), hc: Number(priceHc.text) }
+            priceHpHc: { hp: Number(priceHp.text), hc: Number(priceHc.text) },
+            monthlyKwh: monthly
         })
-        Projects.updateCurrent({ formState: Object.assign({}, f, patch), bill: bill })
+        Projects.updateCurrent({
+            formState: Object.assign({}, f, patch),
+            bill: bill,
+            monthlyKwh: monthly
+        })
     }
 
     Component.onCompleted: loadFromProject()
 
     Connections {
         target: Projects
-        function onCurrentChanged() { root.loadFromProject() }
+        function onCurrentChanged() {
+            if (!root.syncing)
+                root.loadFromProject()
+        }
     }
 
     function ensureWeather() {
@@ -134,10 +246,14 @@ OseTabPage {
     function runSizing() {
         const weather = ensureWeather()
         if (!weather.length) return
-        let monthly = Projects.currentProject.monthlyKwh || []
-        const annual = Number(annualField.text) || 4500
-        if (!monthly.length)
+        let monthly = monthlyFromUi()
+        let annual = sumMonths(monthly)
+        if (annual <= 0) {
+            annual = Number(annualField.text) || 4500
             monthly = monthlyFromAnnual(annual)
+            setMonthKwhTexts(monthly)
+        }
+        annualField.text = String(annual)
         const loc = Projects.currentProject.location || {}
         const form = Projects.currentProject.formState || {}
         const site = Projects.currentProject.siteSurvey || {}
@@ -166,12 +282,16 @@ OseTabPage {
             costPerKwc: Number(costKwc.text),
             coverageTarget: Number(covTarget.text),
             losses: Number(lossField.text),
-            lossTree: form.lossTree || undefined,
+            lossTree: (form.lossTree && Object.keys(form.lossTree).length)
+                      ? form.lossTree
+                      : YearPv.defaultLossTree(Number(lossField.text) || 14),
             injectionPrice: Number(injPrice.text),
             installType: Projects.currentProject.installType || "grid",
             battKwh: isHybrid ? Number(battKwh.text) : 0,
             dod: isHybrid ? Number(battDod.text) : 80,
             dayShare: dayShare,
+            loadDayKwh: day || undefined,
+            loadNightKwh: night || undefined,
             monthlyLoss: site.monthlyLoss || [],
             annualLossPct: site.annualLossPct || 0,
             halfHourlyKeep: site.halfHourlyKeep || [],
@@ -193,7 +313,9 @@ OseTabPage {
             Ppeak: best.Ppeak || Number(fixedPpeak.text) || 3,
             weatherData: weather,
             losses: Number(lossField.text),
-            lossTree: form.lossTree || YearPv.defaultLossTree(Number(lossField.text) || 14),
+            lossTree: (form.lossTree && Object.keys(form.lossTree).length)
+                      ? form.lossTree
+                      : YearPv.defaultLossTree(Number(lossField.text) || 14),
             halfHourlyKeep: site.halfHourlyKeep || [],
             monthlyLoss: site.monthlyLoss || [],
             annualLossPct: site.annualLossPct || 0,
@@ -201,6 +323,8 @@ OseTabPage {
             useInverterModel: !!form.useInverterModel,
             pacNom: Number(form.pacNom) || (best.Ppeak || 3) * 0.9,
             etaEuro: Number(form.etaEuro) || 0.97,
+            energyMode: form.energyMode || "fast",
+            hourlyWeatherData: Projects.currentProject.hourlyWeatherData || {},
             thermal: form.thermal || {
                 model: form.energyMode === "study" ? "uValue" : "noct",
                 U: Number(form.mountU) || 29,
@@ -315,6 +439,24 @@ OseTabPage {
                     Label { text: "Abo."; Layout.preferredWidth: 80 }
                     OseInputUnit { id: subscription; text: "147"; unit: "€/an"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
                 }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "Revente surplus"; Layout.preferredWidth: Ui.isPhone ? 110 : 110 }
+                    OseInputUnit {
+                        id: injPrice
+                        text: "0.04"
+                        unit: "€/kWh"
+                        Layout.fillWidth: true
+                        onEditingFinished: root.persistForm()
+                    }
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                font.pixelSize: 11
+                color: Theme.textDim
+                text: "Tarif de rachat du surplus injecté (EDF OA / agrégateur). Défaut 0,04 €/kWh."
             }
             GridLayout {
                 visible: tariffBox.currentValue === "hphc"
@@ -342,7 +484,69 @@ OseTabPage {
                     unit: "kWh"
                     Layout.fillWidth: true
                     inputMethodHints: Qt.ImhFormattedNumbersOnly
-                    onEditingFinished: root.persistForm()
+                    onEditingFinished: root.persistAnnualOnly()
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                font.pixelSize: 12
+                font.weight: Font.DemiBold
+                color: Theme.text
+                text: "Conso mensuelle (kWh)"
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                font.pixelSize: 11
+                color: Theme.textDim
+                text: "Saisissez les 12 mois, ou l’annuel puis « Répartir l’annuel sur 12 mois »."
+            }
+            GridLayout {
+                columns: Ui.isPhone ? 2 : 4
+                Layout.fillWidth: true
+                columnSpacing: 8
+                rowSpacing: 6
+                Repeater {
+                    model: 12
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+                        Label {
+                            text: root.monthShort[index]
+                            Layout.preferredWidth: Ui.isPhone ? 36 : 40
+                            font.pixelSize: 12
+                            color: Theme.textDim
+                        }
+                        OseInputUnit {
+                            Layout.fillWidth: true
+                            text: root.monthKwhTexts[index]
+                            unit: "kWh"
+                            inputMethodHints: Qt.ImhFormattedNumbersOnly
+                            onEditingFinished: root.onMonthEdited(index, text)
+                        }
+                    }
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                OseBtn {
+                    text: "Répartir l’annuel sur 12 mois"
+                    kind: "outline"
+                    Layout.fillWidth: true
+                    onClicked: root.distributeAnnualToMonths()
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                font.pixelSize: 12
+                color: Theme.textDim
+                text: {
+                    const a = Number(annualField.text) || 0
+                    const d = a / 365
+                    return "Moyenne : " + d.toFixed(1).replace(".", ",") + " kWh/jour"
                 }
             }
             GridLayout {
@@ -373,19 +577,23 @@ OseTabPage {
                         statusLabel.text = r.error || "Import échoué"
                         return
                     }
-                    annualField.text = String(r.annualKwh)
+                    root.setMonthKwhTexts(r.monthlyKwh || root.monthlyFromAnnual(r.annualKwh || 0))
+                    annualField.text = String(r.annualKwh || root.sumMonths(root.monthlyFromUi()))
                     if (r.loadDayKwh !== undefined) loadDay.text = String(r.loadDayKwh)
                     if (r.loadNightKwh !== undefined) loadNight.text = String(r.loadNightKwh)
                     Projects.updateCurrent({
-                        monthlyKwh: r.monthlyKwh,
+                        monthlyKwh: root.monthlyFromUi(),
                         enedisImport: r,
                         formState: Object.assign({}, Projects.currentProject.formState || {}, {
-                            annualKwh: r.annualKwh,
+                            annualKwh: Number(annualField.text),
                             loadDayKwh: r.loadDayKwh,
                             loadNightKwh: r.loadNightKwh
+                        }),
+                        bill: Object.assign({}, Projects.currentProject.bill || {}, {
+                            monthlyKwh: root.monthlyFromUi()
                         })
                     })
-                    statusLabel.text = "Enedis OK — " + r.annualKwh + " kWh/an"
+                    statusLabel.text = "Enedis OK — " + annualField.text + " kWh/an"
                               + (r.halfHourly ? " (profil 30 min)" : "")
                 }
             }
@@ -539,11 +747,6 @@ OseTabPage {
                         formState: Object.assign({}, form, { useInverterModel: checked })
                     })
                 }
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                Label { text: "Injection"; Layout.preferredWidth: 100 }
-                OseInputUnit { id: injPrice; text: "0.04"; unit: "€/kWh"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
             }
             Label { text: "Panneau catalogue"; color: Theme.textDim; font.pixelSize: 12 }
             RowLayout {

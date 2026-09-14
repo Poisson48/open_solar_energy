@@ -37,6 +37,13 @@ public:
     Q_INVOKABLE bool switchBranch(const QString& projectId, const QString& branchName);
     Q_INVOKABLE bool gitAvailable() const;
 
+    /** Chemin du dépôt local (créé si besoin). */
+    QString repoPath(const QString& projectId) const { return repoDir(projectId); }
+    /** Export git bundle (--all) vers un fichier. */
+    bool exportGitBundle(const QString& projectId, const QString& outFile) const;
+    /** Remplace le dépôt local par le contenu d’un git bundle. */
+    bool importGitBundle(const QString& projectId, const QString& bundleFile);
+
 signals:
     void historyChanged();
 

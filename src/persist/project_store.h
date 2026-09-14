@@ -52,6 +52,18 @@ public:
     Q_INVOKABLE QVariantMap clientObject() const;
     Q_INVOKABLE bool setClientObject(const QVariantMap& client);
 
+    /** Objet projet brut (sync). */
+    QJsonObject projectObject(const QString& id) const;
+    /** Liste des ids. */
+    QStringList projectIds() const;
+    /**
+     * Remplace ou crée un projet entier (sync full).
+     * stampUpdatedAt=false conserve updatedAt distant.
+     */
+    bool upsertProjectObject(const QJsonObject& obj, bool stampUpdatedAt = true);
+    /** Remplace uniquement l’objet déjà merge-sélectif (sync partiel). */
+    bool replaceProjectObject(const QJsonObject& obj);
+
 signals:
     void countChanged();
     void currentChanged();

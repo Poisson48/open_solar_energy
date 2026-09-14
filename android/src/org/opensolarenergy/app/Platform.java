@@ -34,6 +34,7 @@ public class Platform {
     public static final String ACTION_INSTALL_STATUS = "org.opensolarenergy.app.INSTALL_STATUS";
     public static final int REQ_PICK_IMPORT = 0x05E1;
     public static final int REQ_CAMERA = 0x05E2;
+    public static final int REQ_BLUETOOTH = 0x05E3;
 
     private static final String TAG = "OSE-Platform";
     private static final Object IMPORT_LOCK = new Object();
@@ -51,6 +52,10 @@ public class Platform {
     private static final Object CAMERA_LOCK = new Object();
     /** null | "pending" | "granted" | "denied" | "unavailable" */
     private static String sCameraPermStatus;
+
+    private static final Object BT_LOCK = new Object();
+    /** null | "pending" | "granted" | "denied" | "unavailable" */
+    private static String sBtPermStatus;
 
     public static boolean shareText(Context ctx, String text) {
         if (ctx == null)
@@ -652,5 +657,209 @@ public class Platform {
             return true;
         return ctx.checkSelfPermission(Manifest.permission.CAMERA)
                 == PackageManager.PERMISSION_GRANTED;
+    }
+
+    static void setBluetoothPermissionResult(String status) {
+        synchronized (BT_LOCK) {
+            sBtPermStatus = status;
+        }
+    }
+
+    private static String[] bluetoothRuntimePerms() {
+        if (Build.VERSION.SDK_INT < 31)
+            return new String[0];
+        return new String[]{
+                Manifest.permission.BLUETOOTH_CONNECT,
+                Manifest.permission.BLUETOOTH_SCAN,
+                Manifest.permission.BLUETOOTH_ADVERTISE
+        };
+    }
+
+    public static boolean hasBluetoothPermission(Context ctx) {
+        if (ctx == null)
+            return false;
+        if (Build.VERSION.SDK_INT < 31)
+            return true;
+        for (String p : bluetoothRuntimePerms()) {
+            if (ctx.checkSelfPermission(p) != PackageManager.PERMISSION_GRANTED)
+                return false;
+        }
+        return true;
+    }
+
+    /**
+     * Demande CONNECT / SCAN / ADVERTISE (Android 12+).
+     * @return true si déjà accordée ou dialogue lancé
+     */
+    public static boolean requestBluetoothPermission(Context ctx) {
+        if (!(ctx instanceof Activity)) {
+            setBluetoothPermissionResult("unavailable");
+            return false;
+        }
+        final Activity activity = (Activity) ctx;
+        if (Build.VERSION.SDK_INT < 31) {
+            setBluetoothPermissionResult("granted");
+            return true;
+        }
+        if (hasBluetoothPermission(activity)) {
+            setBluetoothPermissionResult("granted");
+            return true;
+        }
+        setBluetoothPermissionResult("pending");
+        final String[] need = bluetoothRuntimePerms();
+        activity.runOnUiThread(() -> activity.requestPermissions(need, REQ_BLUETOOTH));
+        return true;
+    }
+
+    public static String pollBluetoothPermission() {
+        synchronized (BT_LOCK) {
+            if (sBtPermStatus == null)
+                return null;
+            String s = sBtPermStatus;
+            if (!"pending".equals(s))
+                sBtPermStatus = null;
+            return s;
+        }
+    }
+
+    /**
+     * true si déjà en mode visible (évite de relancer le dialogue).
+     */
+    public static boolean isBluetoothDiscoverable(Context ctx) {
+        try {
+            android.bluetooth.BluetoothAdapter adapter =
+                    android.bluetooth.BluetoothAdapter.getDefaultAdapter();
+            if (adapter == null)
+                return false;
+            return adapter.getScanMode()
+                    == android.bluetooth.BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Demande la visibilité Bluetooth (dialogue système) — une seule fois si déjà visible.
+     * @return true si déjà visible ou dialogue lancé
+     */
+    public static boolean requestBluetoothDiscoverable(Context ctx, int seconds) {
+        if (isBluetoothDiscoverable(ctx))
+            return true;
+        if (!(ctx instanceof Activity))
+            return false;
+        final Activity activity = (Activity) ctx;
+        try {
+            Intent intent = new Intent(android.bluetooth.BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
+            // 120 s suffit ; 300 s était trop agressif et relancé trop souvent
+            int dur = Math.max(60, Math.min(seconds, 180));
+            intent.putExtra(android.bluetooth.BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, dur);
+            activity.runOnUiThread(() -> {
+                try {
+                    activity.startActivity(intent);
+                } catch (Exception e) {
+                    Log.w(TAG, "requestBluetoothDiscoverable", e);
+                }
+            });
+            return true;
+        } catch (Exception e) {
+            Log.w(TAG, "requestBluetoothDiscoverable", e);
+            return false;
+        }
+    }
+
+    /** Documents/OpenSolarEnergy/sync — visible en MTP USB. */
+    public static String syncDocumentsDir(Context ctx) {
+        if (ctx == null)
+            return null;
+        try {
+            File docs = android.os.Environment.getExternalStoragePublicDirectory(
+                    android.os.Environment.DIRECTORY_DOCUMENTS);
+            File sync = new File(new File(docs, "OpenSolarEnergy"), "sync");
+            if (!sync.exists() && !sync.mkdirs()) {
+                File fallback = new File(ctx.getFilesDir(), "sync");
+                fallback.mkdirs();
+                new File(fallback, "inbox").mkdirs();
+                new File(fallback, "outbox").mkdirs();
+                return fallback.getAbsolutePath();
+            }
+            new File(sync, "inbox").mkdirs();
+            new File(sync, "outbox").mkdirs();
+            return sync.getAbsolutePath();
+        } catch (Exception e) {
+            Log.w(TAG, "syncDocumentsDir", e);
+            return null;
+        }
+    }
+
+    public static boolean publishSyncFile(Context ctx, String filename, byte[] data) {
+        if (ctx == null || filename == null || data == null)
+            return false;
+        try {
+            String dir = syncDocumentsDir(ctx);
+            if (dir == null)
+                return false;
+            String safe = filename.replaceAll("[^a-zA-Z0-9._\\-]", "_");
+            File out = new File(dir, safe);
+            try (FileOutputStream fos = new FileOutputStream(out)) {
+                fos.write(data);
+            }
+            File inbox = new File(new File(dir, "inbox"), safe);
+            try (FileOutputStream fos = new FileOutputStream(inbox)) {
+                fos.write(data);
+            }
+            // Index MediaStore pour MTP
+            try {
+                ContentValues values = new ContentValues();
+                values.put(MediaStore.MediaColumns.DISPLAY_NAME, safe);
+                values.put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream");
+                values.put(MediaStore.MediaColumns.RELATIVE_PATH,
+                        android.os.Environment.DIRECTORY_DOCUMENTS + "/OpenSolarEnergy/sync");
+                Uri uri = ctx.getContentResolver().insert(
+                        MediaStore.Files.getContentUri("external"), values);
+                if (uri != null) {
+                    try (OutputStream os = ctx.getContentResolver().openOutputStream(uri)) {
+                        if (os != null)
+                            os.write(data);
+                    }
+                }
+            } catch (Exception ignore) {
+                // Fichier filesystem suffit souvent pour MTP
+            }
+            return true;
+        } catch (Exception e) {
+            Log.w(TAG, "publishSyncFile", e);
+            return false;
+        }
+    }
+
+    public static byte[] readSyncFile(Context ctx, String filename) {
+        if (ctx == null || filename == null)
+            return null;
+        try {
+            String dir = syncDocumentsDir(ctx);
+            if (dir == null)
+                return null;
+            String safe = filename.replaceAll("[^a-zA-Z0-9._\\-]", "_");
+            File[] candidates = new File[] {
+                    new File(dir, safe),
+                    new File(new File(dir, "inbox"), safe),
+                    new File(new File(dir, "outbox"), safe),
+            };
+            for (File f : candidates) {
+                if (f.isFile() && f.length() > 0) {
+                    try (FileInputStream fis = new FileInputStream(f);
+                         ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+                        byte[] buf = new byte[8192];
+                        int n;
+                        while ((n = fis.read(buf)) > 0)
+                            bos.write(buf, 0, n);
+                        return bos.toByteArray();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "readSyncFile", e);
+        }
+        return null;
     }
 }

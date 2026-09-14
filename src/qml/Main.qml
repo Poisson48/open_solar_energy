@@ -27,6 +27,7 @@ ApplicationWindow {
     MaterielDialog { id: materielDialog }
     ShareDialog { id: shareDialog }
     JoinDialog { id: joinDialog }
+    SyncDialog { id: syncDialog }
     EditClientDialog { id: editClientDialog }
 
     function showToast(msg, ms) { toast.show(msg, ms || 2800) }
@@ -54,9 +55,10 @@ ApplicationWindow {
         if (materielDialog.opened) { materielDialog.close(); return }
         if (shareDialog.opened) { shareDialog.close(); return }
         if (joinDialog.opened) { joinDialog.close(); return }
+        if (syncDialog.opened) { syncDialog.close(); return }
         if (editClientDialog.opened) { editClientDialog.close(); return }
         if (Updater.updateAvailable || Updater.downloading || Updater.readyToInstall
-                || Updater.checking || Updater.state === 5) {
+                || Updater.checking || Updater.failed) {
             Updater.dismiss()
             return
         }
@@ -70,10 +72,34 @@ ApplicationWindow {
         Ui.windowHeight = height
         if (Qt.platform.os === "android")
             showMaximized()
+        // Vérif silencieuse au démarrage (bandeau si une release GitHub est plus récente)
+        startupUpdateCheck.restart()
     }
 
     onWidthChanged: Ui.windowWidth = width
     onHeightChanged: Ui.windowHeight = height
+
+    Timer {
+        id: startupUpdateCheck
+        interval: 2500
+        repeat: false
+        onTriggered: {
+            if (!Updater.checking && !Updater.downloading)
+                Updater.check()
+        }
+    }
+
+    // PackageInstaller Android : remonter besoin de permission / succès / erreur
+    Timer {
+        id: installPollTimer
+        interval: 800
+        repeat: true
+        running: Qt.platform.os === "android"
+                 && (Updater.readyToInstall || Updater.downloading
+                     || Updater.statusMessage.indexOf("Installation") >= 0
+                     || Updater.statusMessage.indexOf("autorisez") >= 0)
+        onTriggered: Updater.pollNativeInstallStatus()
+    }
 
     Connections {
         target: Updater
@@ -81,6 +107,13 @@ ApplicationWindow {
             if (Updater.hasWhatsNew && !Updater.updateAvailable
                 && !Updater.downloading && !Updater.readyToInstall)
                 changelogDialog.openWhatsNew()
+        }
+        function onStatusMessageChanged() {
+            // Idle + message = à jour / erreur réseau sans bandeau
+            if (!Updater.updateAvailable && !Updater.downloading && !Updater.readyToInstall
+                    && !Updater.checking && !Updater.failed
+                    && Updater.statusMessage.length > 0)
+                window.showToast(Updater.statusMessage, 3200)
         }
     }
 
@@ -98,13 +131,13 @@ ApplicationWindow {
         spacing: 0
 
         Rectangle {
-            id: updateBannerDesktop
+            id: updateBanner
             Layout.fillWidth: true
-            Layout.preferredHeight: visible ? 56 : 0
-            visible: Qt.platform.os !== "android"
-                     && (Updater.updateAvailable || Updater.downloading || Updater.readyToInstall
-                         || Updater.state === 5)
-            color: Updater.state === 5 ? "#fdecea" : Theme.surfaceHigh
+            Layout.preferredHeight: visible ? (Ui.isPhone ? 72 : 56) : 0
+            // PC + téléphone : même bandeau (téléchargement APK / AppImage via GitHub Releases)
+            visible: Updater.updateAvailable || Updater.downloading || Updater.readyToInstall
+                     || Updater.failed
+            color: Updater.failed ? "#fdecea" : Theme.surfaceHigh
             RowLayout {
                 anchors.fill: parent
                 anchors.margins: 12
@@ -119,7 +152,7 @@ ApplicationWindow {
                             return Updater.statusMessage.length > 0 ? Updater.statusMessage : "Téléchargement…"
                         if (Updater.readyToInstall)
                             return "Version " + Updater.latestVersion + " prête"
-                        if (Updater.state === 5)
+                        if (Updater.failed)
                             return Updater.statusMessage.length > 0 ? Updater.statusMessage : "Échec de la mise à jour"
                         return "Version " + Updater.latestVersion + " disponible"
                     }
@@ -127,20 +160,19 @@ ApplicationWindow {
                 Button {
                     flat: true
                     visible: !Updater.downloading && !Updater.checking
-                    text: Updater.state === 5 ? "Réessayer"
+                    text: Updater.failed ? "Réessayer"
                          : (Updater.readyToInstall ? "Installer"
                          : (Updater.canInstall ? "Mettre à jour" : "Télécharger"))
                     onClicked: {
-                        if (Updater.state === 5) {
-                            if (Updater.canInstall) Updater.install()
-                            else Updater.check()
+                        if (Updater.failed) {
+                            Updater.startUpdate()
                             return
                         }
                         if (Updater.readyToInstall) { Updater.install(); return }
                         if (Updater.releaseNotes.length > 0)
                             changelogDialog.openPending()
                         else
-                            Updater.download()
+                            Updater.startUpdate()
                     }
                 }
                 ToolButton {
@@ -166,6 +198,8 @@ ApplicationWindow {
                     onRequestNewProject: newProjectDialog.open()
                     onRequestJoin: joinDialog.open()
                     onRequestMateriel: materielDialog.open()
+                    onRequestSyncSend: syncDialog.openSend()
+                    onRequestSyncReceive: syncDialog.openReceive()
                 }
             }
 

@@ -52,20 +52,11 @@ QVariantList HourlyAnalysis::simulateDailyBattery(const QVariantList& pvHours,
     return out;
 }
 
-QVariantList HourlyAnalysis::syntheticLoadProfile(double dailyKwh, double dayShare) const
+QVariantList HourlyAnalysis::syntheticLoadProfile(double dailyKwh, double dayShare, double lat,
+                                                   int month) const
 {
-    // Aligné Hors réseau : nuit 21h–6h, répartition uniforme dans chaque tranche
-    const double dayKwh = dailyKwh * std::clamp(dayShare, 0.0, 1.0);
-    const double nightKwh = dailyKwh - dayKwh;
-    int nDay = 0, nNight = 0;
-    for (int h = 0; h < 24; ++h)
-        ((h >= 21 || h < 6) ? nNight : nDay)++;
-    const double perDay = nDay > 0 ? dayKwh / nDay : 0;
-    const double perNight = nNight > 0 ? nightKwh / nNight : 0;
-    QVariantList out;
-    for (int h = 0; h < 24; ++h)
-        out.append((h >= 21 || h < 6) ? perNight : perDay);
-    return out;
+    const int doy = SolarMath::midMonthDay(std::clamp(month, 1, 12));
+    return SolarMath::dayNightLoadProfile24(dailyKwh, dayShare, lat, doy, 0.0);
 }
 
 QVariantList HourlyAnalysis::pvHourlyProfile(double lat, int month, double GHI, double DHI,
@@ -114,7 +105,7 @@ QVariantMap HourlyAnalysis::analyzeMonth(const QVariantMap& params) const
 
     const QVariantList pv = pvHourlyProfile(lat, month, GHI, DHI, Ppeak, tilt, azimuth, losses,
                                             Tavg, keep);
-    const QVariantList load = syntheticLoadProfile(dailyKwh, dayShare);
+    const QVariantList load = syntheticLoadProfile(dailyKwh, dayShare, lat, month);
     const QVariantList sim = battKwh > 0 ? simulateDailyBattery(pv, load, battKwh, dod)
                                          : [&]() {
                                                QVariantList r;

@@ -89,8 +89,12 @@ QVariantMap SizingEngine::run(const QVariantMap& input) const
 
     // Pertes système effectives : pertes techniques + ombrage annuel si pas de courbe mensuelle
     double effLosses = losses;
-    if (input.contains(QStringLiteral("lossTree"))) {
-        const double f = YearPv::effectiveLossFactor(input);
+    {
+        QVariantMap tree = input.value(QStringLiteral("lossTree")).toMap();
+        if (tree.isEmpty())
+            tree = YearPv::defaultLossTree(losses);
+        const double f = YearPv::effectiveLossFactor(
+            {{QStringLiteral("lossTree"), tree}, {QStringLiteral("losses"), losses}});
         effLosses = (1.0 - f) * 100.0;
     }
     if (monthlyLoss.isEmpty() && annualLossPct > 0)
@@ -103,7 +107,11 @@ QVariantMap SizingEngine::run(const QVariantMap& input) const
     QVariantList studyMonthlyPerKwc;
     if (studyYield) {
         QVariantMap yp = input;
-        yp.insert(QStringLiteral("losses"), effLosses);
+        yp.insert(QStringLiteral("losses"), losses);
+        QVariantMap tree = input.value(QStringLiteral("lossTree")).toMap();
+        if (tree.isEmpty())
+            tree = YearPv::defaultLossTree(losses);
+        yp.insert(QStringLiteral("lossTree"), tree);
         if (input.contains(QStringLiteral("halfHourlyKeep")))
             yp.insert(QStringLiteral("halfHourlyKeep"), input.value(QStringLiteral("halfHourlyKeep")));
         else if (!monthlyLoss.isEmpty()) {
@@ -154,12 +162,12 @@ QVariantMap SizingEngine::run(const QVariantMap& input) const
         double autoconso = 0;
         double injected = 0;
         QVariantList months = annual.value(QStringLiteral("monthly")).toList();
+        bool studyBalanceDone = false;
         if (studyYield && studyMonthlyPerKwc.size() >= 12) {
             E = 0;
             QVariantList rebuilt;
             for (int i = 0; i < 12; ++i) {
                 double E_m = studyMonthlyPerKwc[i].toDouble() * Ppeak;
-                // Si keep déjà dans YearPv, ne pas re-appliquer monthlyLoss
                 if (!input.contains(QStringLiteral("halfHourlyKeep"))
                     || input.value(QStringLiteral("halfHourlyKeep")).toList().isEmpty())
                     E_m *= shadeFactor(monthlyLoss, i);
@@ -171,21 +179,56 @@ QVariantMap SizingEngine::run(const QVariantMap& input) const
                 rebuilt.append(row);
             }
             months = rebuilt;
+
+            // Autoconso / injection au pas 30 min (aligné horizon / analyse journalière)
+            const double dailyFromAnnual = annualLoad / 365.0;
+            const double dailyKwh = input.value(QStringLiteral("loadDayKwh")).isValid()
+                                           || input.value(QStringLiteral("loadNightKwh")).isValid()
+                                       ? (input.value(QStringLiteral("loadDayKwh"), 0).toDouble()
+                                          + input.value(QStringLiteral("loadNightKwh"), 0).toDouble())
+                                       : (input.value(QStringLiteral("dailyKwh"), dailyFromAnnual).toDouble() > 0
+                                              ? input.value(QStringLiteral("dailyKwh")).toDouble()
+                                              : dailyFromAnnual);
+            QVariantMap sp = input;
+            QVariantMap tree = input.value(QStringLiteral("lossTree")).toMap();
+            if (tree.isEmpty())
+                tree = YearPv::defaultLossTree(losses);
+            sp.insert(QStringLiteral("lossTree"), tree);
+            sp.insert(QStringLiteral("losses"), losses);
+            sp.insert(QStringLiteral("Ppeak"), Ppeak);
+            sp.insert(QStringLiteral("dailyKwh"), dailyKwh > 0 ? dailyKwh : dailyFromAnnual);
+            sp.insert(QStringLiteral("dayShare"), dayShare);
+            sp.insert(QStringLiteral("battKwh"), hybrid ? battKwh : 0.0);
+            sp.insert(QStringLiteral("dod"), dod);
+            const QVariantMap study = YearPv::analyzeStudyYear(sp);
+            if (study.value(QStringLiteral("ok")).toBool()
+                || study.contains(QStringLiteral("autoconso"))) {
+                autoconso = study.value(QStringLiteral("autoconso")).toDouble();
+                injected = study.value(QStringLiteral("surplusYear"),
+                                       study.value(QStringLiteral("surplus"))).toDouble();
+                const double eStudy = study.value(QStringLiteral("E_annual"),
+                                                 study.value(QStringLiteral("pvYear"))).toDouble();
+                if (eStudy > 0)
+                    E = eStudy;
+                studyBalanceDone = true;
+            }
         }
-        for (int i = 0; i < months.size(); ++i) {
-            double E_m = months[i].toMap().value(QStringLiteral("E_month")).toDouble();
-            if (!studyYield)
-                E_m *= shadeFactor(monthlyLoss, i);
-            const double load_m = monthLoad(monthlyKwh, i, annualLoad);
-            if (hybrid && battUsable > 0) {
-                double ac = 0, inj = 0;
-                hybridMonth(E_m, load_m, dayShare, battUsable, &ac, &inj);
-                autoconso += ac;
-                injected += inj;
-            } else {
-                const double ac = std::min(E_m, load_m);
-                autoconso += ac;
-                injected += std::max(0.0, E_m - load_m);
+        if (!studyBalanceDone) {
+            for (int i = 0; i < months.size(); ++i) {
+                double E_m = months[i].toMap().value(QStringLiteral("E_month")).toDouble();
+                if (!studyYield)
+                    E_m *= shadeFactor(monthlyLoss, i);
+                const double load_m = monthLoad(monthlyKwh, i, annualLoad);
+                if (hybrid && battUsable > 0) {
+                    double ac = 0, inj = 0;
+                    hybridMonth(E_m, load_m, dayShare, battUsable, &ac, &inj);
+                    autoconso += ac;
+                    injected += inj;
+                } else {
+                    const double ac = std::min(E_m, load_m);
+                    autoconso += ac;
+                    injected += std::max(0.0, E_m - load_m);
+                }
             }
         }
         // Recalcule E après shade mensuel (sauf study avec keep déjà dans YearPv)
@@ -196,7 +239,7 @@ QVariantMap SizingEngine::run(const QVariantMap& input) const
                 E += E_m * shadeFactor(monthlyLoss, i);
             }
         } else if (studyYield) {
-            // E déjà construit depuis studyMonthlyPerKwc
+            // E déjà construit depuis study / analyzeStudyYear
         }
 
         const double savings = autoconso * priceBase + injected * injectionPrice;
@@ -208,6 +251,23 @@ QVariantMap SizingEngine::run(const QVariantMap& input) const
                                        {{QStringLiteral("lifetime"), 25},
                                         {QStringLiteral("discountRate"), 0.03},
                                         {QStringLiteral("panelDegradation"), 0.005}});
+        const double H = annual.value(QStringLiteral("H_annual")).toDouble();
+        // PR après ombrage / étude (pas le PR pré-shade de gridSystemAnnual)
+        const double prFinal = (Ppeak > 0 && H > 0) ? (E / (Ppeak * H))
+                                                    : annual.value(QStringLiteral("PR")).toDouble();
+        const double lcoeFinal = [&]() {
+            if (systemCost <= 0 || E <= 0)
+                return annual.value(QStringLiteral("LCOE")).toDouble();
+            const double omAnnual = systemCost * 0.005;
+            const double inverterRpl = systemCost * 0.12;
+            double cumCost = systemCost;
+            double cumProd25 = 0;
+            for (int y = 1; y <= 25; ++y) {
+                cumProd25 += E * std::pow(1 - 0.005, y - 1);
+                cumCost += omAnnual + (y == 15 ? inverterRpl : 0);
+            }
+            return cumProd25 > 0 ? cumCost / cumProd25 : 0;
+        }();
 
         QVariantMap c{
             {QStringLiteral("Ppeak"), std::round(Ppeak * 10) / 10},
@@ -219,13 +279,14 @@ QVariantMap SizingEngine::run(const QVariantMap& input) const
             {QStringLiteral("coverage"), std::round(coverage * 1000) / 10},
             {QStringLiteral("autoconsoRate"), std::round(autoconsoRate * 1000) / 10},
             {QStringLiteral("payback"), payback},
-            {QStringLiteral("PR"), annual.value(QStringLiteral("PR"))},
-            {QStringLiteral("LCOE"), annual.value(QStringLiteral("LCOE"))},
+            {QStringLiteral("PR"), std::round(prFinal * 1000) / 1000},
+            {QStringLiteral("LCOE"), std::round(lcoeFinal * 10000) / 10000},
             {QStringLiteral("incentive"), int(std::lround(incentive))},
             {QStringLiteral("npv"), int(std::lround(npv))},
             {QStringLiteral("hybrid"), hybrid && battKwh > 0},
             {QStringLiteral("battKwh"), battKwh},
-            {QStringLiteral("shadeApplied"), !monthlyLoss.isEmpty() || annualLossPct > 0},
+            {QStringLiteral("shadeApplied"), !monthlyLoss.isEmpty() || annualLossPct > 0
+                                              || !input.value(QStringLiteral("halfHourlyKeep")).toList().isEmpty()},
         };
         candidates.append(c);
 

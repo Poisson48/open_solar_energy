@@ -28,8 +28,8 @@ QT_HOST="${QT_HOST:-$QT_ROOT/$QT_VER/gcc_64}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${OUT:-$ROOT/opensolarenergy-arm64.apk}"
 
-VERSION_NAME="${VERSION_NAME:-2.0.75}"
-VERSION_CODE="${VERSION_CODE:-20075}"
+VERSION_NAME="${VERSION_NAME:-2.0.94}"
+VERSION_CODE="${VERSION_CODE:-20094}"
 
 # Dépendances Android (OpenSSL KDAB + secp256k1)
 if [ ! -f "$ROOT/third_party/android_openssl/android_openssl.cmake" ]; then
@@ -93,6 +93,8 @@ if [ -n "${ANDROID_KEYSTORE_B64:-}" ]; then
   STOREPASS="${STOREPASS:?ANDROID_KEYSTORE_B64 sans STOREPASS}"
   KEYPASS="${KEYPASS:-$STOREPASS}"
 else
+  # Doit rester stable : même keystore que les installs adb locales (-r conserve les données).
+  # Défaut = keystore Android Studio (celui actuellement sur le Pixel).
   KEYSTORE="${KEYSTORE:-$HOME/.android/debug.keystore}"
   KEYALIAS="${KEYALIAS:-androiddebugkey}"
   STOREPASS="${STOREPASS:-android}"

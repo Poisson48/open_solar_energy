@@ -331,8 +331,48 @@ bool ProjectStore::importProjectJson(const QString& json)
     QJsonObject o = doc.object();
     if (!o.contains(QStringLiteral("id")))
         o.insert(QStringLiteral("id"), newId());
-    o.insert(QStringLiteral("updatedAt"), QDateTime::currentDateTimeUtc().toString(Qt::ISODate));
-    const int existing = indexOfId(o.value(QStringLiteral("id")).toString());
+    if (!upsertProjectObject(o, true))
+        return false;
+    openProject(o.value(QStringLiteral("id")).toString());
+    return true;
+}
+
+QJsonObject ProjectStore::projectObject(const QString& id) const
+{
+    const int i = indexOfId(id);
+    if (i < 0)
+        return {};
+    return m_projects.at(i).toObject();
+}
+
+QStringList ProjectStore::projectIds() const
+{
+    QStringList ids;
+    ids.reserve(m_projects.size());
+    for (const QJsonValue& v : m_projects)
+        ids.append(v.toObject().value(QStringLiteral("id")).toString());
+    return ids;
+}
+
+bool ProjectStore::upsertProjectObject(const QJsonObject& obj, bool stampUpdatedAt)
+{
+    QJsonObject o = obj;
+    if (!o.contains(QStringLiteral("id")) || o.value(QStringLiteral("id")).toString().isEmpty())
+        o.insert(QStringLiteral("id"), newId());
+    if (stampUpdatedAt)
+        o.insert(QStringLiteral("updatedAt"), QDateTime::currentDateTimeUtc().toString(Qt::ISODate));
+    return replaceProjectObject(o);
+}
+
+bool ProjectStore::replaceProjectObject(const QJsonObject& obj)
+{
+    QJsonObject o = obj;
+    const QString id = o.value(QStringLiteral("id")).toString();
+    if (id.isEmpty()) {
+        emit errorOccurred(QStringLiteral("Projet sans id"));
+        return false;
+    }
+    const int existing = indexOfId(id);
     if (existing >= 0) {
         m_projects.replace(existing, o);
         emit dataChanged(index(existing), index(existing));
@@ -340,10 +380,11 @@ bool ProjectStore::importProjectJson(const QString& json)
         beginInsertRows({}, 0, 0);
         m_projects.prepend(o);
         endInsertRows();
+        emit countChanged();
     }
     saveAll();
-    emit countChanged();
-    openProject(o.value(QStringLiteral("id")).toString());
+    if (m_currentId == id)
+        emit currentChanged();
     return true;
 }
 

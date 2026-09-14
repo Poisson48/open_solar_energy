@@ -643,4 +643,58 @@ QVariantMap CatalogStore::getInverter(const QString& id) const
     return {};
 }
 
+bool CatalogStore::upsertUserPanels(const QJsonArray& arr)
+{
+    for (const QJsonValue& v : arr) {
+        if (!v.isObject())
+            continue;
+        QJsonObject o = normalizePanel(v.toObject());
+        QString id = o.value(QStringLiteral("id")).toString();
+        if (id.isEmpty() || id.startsWith(QLatin1String("rexel_")))
+            continue;
+        o.remove(QStringLiteral("source"));
+        int idx = -1;
+        for (int i = 0; i < m_userPanels.size(); ++i) {
+            if (m_userPanels[i].toObject().value(QStringLiteral("id")).toString() == id) {
+                idx = i;
+                break;
+            }
+        }
+        if (idx >= 0)
+            m_userPanels.replace(idx, o);
+        else
+            m_userPanels.prepend(o);
+    }
+    writeArray(panelsPath(), m_userPanels);
+    emit panelsChanged();
+    return true;
+}
+
+bool CatalogStore::upsertUserInverters(const QJsonArray& arr)
+{
+    for (const QJsonValue& v : arr) {
+        if (!v.isObject())
+            continue;
+        QJsonObject o = normalizeInverter(v.toObject());
+        QString id = o.value(QStringLiteral("id")).toString();
+        if (id.isEmpty() || id.startsWith(QLatin1String("rexel_")))
+            continue;
+        o.remove(QStringLiteral("source"));
+        int idx = -1;
+        for (int i = 0; i < m_userInverters.size(); ++i) {
+            if (m_userInverters[i].toObject().value(QStringLiteral("id")).toString() == id) {
+                idx = i;
+                break;
+            }
+        }
+        if (idx >= 0)
+            m_userInverters.replace(idx, o);
+        else
+            m_userInverters.prepend(o);
+    }
+    writeArray(invertersPath(), m_userInverters);
+    emit invertersChanged();
+    return true;
+}
+
 } // namespace ose

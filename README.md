@@ -110,6 +110,7 @@ L’APK est signé avec la clé de publication du projet — les versions suivan
 - Capture de 60+ champs de formulaire + localisation + météo + devis
 - Clonage pour comparer plusieurs scénarios (orientation, technologie batterie, surface…)
 - Export / import JSON (partage entre machines)
+- **Sync USB PC ↔ téléphone** : boutons Envoyer / Récupérer, sélection granulaire (ex. diagramme solaire seul), dossier `Documents/OpenSolarEnergy/sync/` (MTP) ; Bluetooth prévu ensuite
 - Raccourci `Ctrl+S` pour sauvegarder
 
 ### Analyse horaire

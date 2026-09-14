@@ -61,3 +61,6 @@ memory/
 # Rexel datasheet PDFs (lourds — régénérables via scripts/scrape_rexel_catalog.py --download-pdfs)
 data/rexel_catalog/pdfs/
 .tmp-shots/
+
+.backup-phone-*/
+*.apk.idsig
