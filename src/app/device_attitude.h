@@ -83,6 +83,7 @@ private:
     bool m_smoothInit = false;
     qreal m_screenAngle = 0;
     qint64 m_lastStatusMs = 0;
+    qint64 m_lastAttitudeEmitMs = 0;
     QString m_status;
 
     qreal m_ex = 1, m_ey = 0, m_ez = 0;

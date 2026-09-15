@@ -88,8 +88,8 @@ public final class CameraAttitude implements SensorEventListener {
             Log.w(TAG, "Pas de rotation vector");
             return false;
         }
-        // SENSOR_DELAY_GAME ≈ 20 ms — fluide comme Stellarium, sans vider la batterie
-        boolean ok = mSm.registerListener(this, mSensor, SensorManager.SENSOR_DELAY_GAME);
+        // SENSOR_DELAY_UI ≈ 60 ms — assez fluide, moins de charge UI que GAME
+        boolean ok = mSm.registerListener(this, mSensor, SensorManager.SENSOR_DELAY_UI);
         mRegistered = ok;
         Log.i(TAG, "start sensor=" + mSensor.getName() + " ok=" + ok);
         return ok;

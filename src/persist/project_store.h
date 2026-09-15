@@ -6,6 +6,8 @@
 #include <QObject>
 #include <QVariantMap>
 
+class QTimer;
+
 namespace ose {
 
 class ProjectStore : public QAbstractListModel {
@@ -74,9 +76,12 @@ private:
     QString backupPath() const;
     QString newId() const;
     void sortByUpdated();
+    bool flushToDisk();
+    void scheduleSave();
 
     QJsonArray m_projects;
     QString m_currentId;
+    QTimer* m_saveTimer = nullptr;
 };
 
 } // namespace ose

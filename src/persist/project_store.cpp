@@ -6,12 +6,19 @@
 #include <QJsonDocument>
 #include <QRandomGenerator>
 #include <QStandardPaths>
+#include <QTimer>
 
 #include <algorithm>
 
 namespace ose {
 
-ProjectStore::ProjectStore(QObject* parent) : QAbstractListModel(parent) {}
+ProjectStore::ProjectStore(QObject* parent) : QAbstractListModel(parent)
+{
+    m_saveTimer = new QTimer(this);
+    m_saveTimer->setSingleShot(true);
+    m_saveTimer->setInterval(350);
+    connect(m_saveTimer, &QTimer::timeout, this, &ProjectStore::flushToDisk);
+}
 
 int ProjectStore::rowCount(const QModelIndex& parent) const
 {
@@ -140,18 +147,25 @@ bool ProjectStore::load()
 
 bool ProjectStore::saveAll()
 {
-    sortByUpdated();
+    // Écriture disque seule — pas de beginResetModel (ANR Android + freeze UI)
+    return flushToDisk();
+}
+
+bool ProjectStore::flushToDisk()
+{
     QFile f(backupPath());
     if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         emit errorOccurred(QStringLiteral("Impossible d'écrire la sauvegarde projets"));
         return false;
     }
     f.write(QJsonDocument(m_projects).toJson(QJsonDocument::Compact));
-    emit countChanged();
-    // refresh model order
-    beginResetModel();
-    endResetModel();
     return true;
+}
+
+void ProjectStore::scheduleSave()
+{
+    if (m_saveTimer)
+        m_saveTimer->start();
 }
 
 void ProjectStore::seedDemosIfEmpty()
@@ -273,8 +287,11 @@ bool ProjectStore::updateCurrent(const QVariantMap& patch)
     m_projects.replace(i, o);
     const QModelIndex idx = index(i);
     emit dataChanged(idx, idx);
+    // currentChanged recharge tous les onglets — coûteux ; on l’émet mais
+    // la sauvegarde disque est différée pour ne pas figer le thread UI (ANR).
     emit currentChanged();
-    return saveAll();
+    scheduleSave();
+    return true;
 }
 
 bool ProjectStore::setCurrentField(const QString& key, const QVariant& value)

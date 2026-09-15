@@ -119,7 +119,7 @@ DeviceAttitude::DeviceAttitude(QObject* parent) : QObject(parent)
         if (m_useAndroid) {
             m_available = true;
             m_androidPoll = new QTimer(this);
-            m_androidPoll->setInterval(33); // ~30 Hz UI
+            m_androidPoll->setInterval(66); // ~15 Hz — aligné sur throttle QML
             connect(m_androidPoll, &QTimer::timeout, this, &DeviceAttitude::pollAndroid);
             setStatus(QStringLiteral("Rotation vector (qualité Stellarium)"));
         }
@@ -286,8 +286,12 @@ void DeviceAttitude::applyAttitude(qreal heading, qreal elev,
     m_hasElevation = true;
     m_hasBasis = true;
     m_smoothInit = true;
-    emit attitudeChanged();
-    // Status text : pas à 30 Hz (coûteux QML) — ~4 Hz
+    // QML overlay : max ~15 Hz (30 Hz = ANR / jank Android avec Repeater)
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (now - m_lastAttitudeEmitMs >= 66) {
+        m_lastAttitudeEmitMs = now;
+        emit attitudeChanged();
+    }
     refreshStatusThrottled();
 }
 
