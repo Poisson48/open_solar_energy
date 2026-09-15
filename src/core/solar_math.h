@@ -53,10 +53,16 @@ public:
                                                   double solarHour);
 
     Q_INVOKABLE QVariantMap optimalTilt(double lat, const QVariantList& weatherData,
-                                        bool optimizeAzimuth = false) const;
+                                        bool optimizeAzimuth = false,
+                                        const QVariantMap& shade = {}) const;
     Q_INVOKABLE QVariantMap gridSystemAnnual(const QVariantMap& params) const;
     Q_INVOKABLE QVariantList offgridSystem(const QVariantMap& params) const;
-    Q_INVOKABLE QVariantList tiltAzimuthHeatmap(double lat, const QVariantList& weatherData) const;
+    /**
+     * Heatmap tilt×azimut. shade optionnel : { monthlyLoss, annualLossPct, halfHourlyKeep }
+     * — le productible tient compte du masque site (diagramme / ombrage).
+     */
+    Q_INVOKABLE QVariantList tiltAzimuthHeatmap(double lat, const QVariantList& weatherData,
+                                                const QVariantMap& shade = {}) const;
 
     static std::vector<MonthWeather> weatherFromVariant(const QVariantList& list);
 };

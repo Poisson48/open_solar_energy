@@ -26,7 +26,16 @@ OseTabPage {
             return
         }
         const loc = Projects.currentProject.location || {}
-        heat = SolarMath.tiltAzimuthHeatmap(loc.lat || 43.6, weather)
+        const site = Projects.currentProject.siteSurvey || {}
+        const shade = {
+            monthlyLoss: site.monthlyLoss || [],
+            annualLossPct: Number(site.annualLossPct) || 0,
+            halfHourlyKeep: site.halfHourlyKeep || []
+        }
+        const hasShade = (shade.halfHourlyKeep && shade.halfHourlyKeep.length >= 12)
+                         || (shade.monthlyLoss && shade.monthlyLoss.length > 0)
+                         || shade.annualLossPct > 0
+        heat = SolarMath.tiltAzimuthHeatmap(loc.lat || 43.6, weather, shade)
         let b = null
         for (let i = 0; i < heat.length; ++i) {
             const e = Number(heat[i].value !== undefined ? heat[i].value : heat[i].E) || 0
@@ -37,7 +46,9 @@ OseTabPage {
         computed = heat.length > 0
         heatCanvas.requestPaint()
         if (computed)
-            AppController.autoSave("Optimisation tilt/azimut — meilleur "
+            AppController.autoSave("Optimisation tilt/azimut"
+                                   + (hasShade ? " (+ ombrage site)" : "")
+                                   + " — meilleur "
                                    + (best.tilt || "?") + "° / "
                                    + (best.az !== undefined ? best.az : best.azimuth) + "°")
     }
@@ -64,11 +75,34 @@ OseTabPage {
         OseStep {
             step: 1
             title: "Calcul"
-            hint: "Grille tilt 0–90° × azimut −90° (Est) à +90° (Ouest), Sud = 0°."
+            hint: "Grille tilt 0–90° × azimut −90° (Est) à +90° (Ouest), Sud = 0°. Le masque d’ombrage site (diagramme) est appliqué s’il est calculé."
             OseAlert {
                 visible: !(Projects.currentProject.weatherData || []).length
                 kind: "warning"
                 text: "Météo manquante — chargez Open-Meteo ou PVGIS dans Lieu."
+            }
+            OseAlert {
+                visible: {
+                    const s = Projects.currentProject.siteSurvey || {}
+                    const has = (s.halfHourlyKeep && s.halfHourlyKeep.length >= 12)
+                                || (s.monthlyLoss && s.monthlyLoss.length)
+                                || Number(s.annualLossPct) > 0
+                    return !has
+                }
+                kind: "warning"
+                text: "Pas d’ombrage site — l’optimum ignore le diagramme. Calculez l’ombrage dans Site d’abord."
+            }
+            OseAlert {
+                visible: {
+                    const s = Projects.currentProject.siteSurvey || {}
+                    return !!(s.halfHourlyKeep && s.halfHourlyKeep.length >= 12)
+                           || !!(s.monthlyLoss && s.monthlyLoss.length)
+                           || Number(s.annualLossPct) > 0
+                }
+                kind: "info"
+                text: "Ombrage site pris en compte ("
+                      + ((Projects.currentProject.siteSurvey || {}).annualLossPct || 0)
+                      + " % perte beam)."
             }
             Label {
                 Layout.fillWidth: true

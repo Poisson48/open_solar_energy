@@ -126,6 +126,10 @@ QVariantMap SizingEngine::run(const QVariantMap& input) const
     if (limitMode == QLatin1String("fixed")) {
         const double fp = input.value(QStringLiteral("fixedPpeak"), 3).toDouble();
         minPpeak = maxPpeak = std::max(0.1, fp);
+    } else if (limitMode == QLatin1String("panels")) {
+        const int n = std::max(1, input.value(QStringLiteral("panelCount")).toInt());
+        const double panelWp = input.value(QStringLiteral("panelWp"), 400).toDouble();
+        minPpeak = maxPpeak = std::max(0.1, n * panelWp / 1000.0);
     } else if (limitMode == QLatin1String("roof")) {
         const double area = input.value(QStringLiteral("roofAreaM2"), 40).toDouble();
         const double panelArea = input.value(QStringLiteral("panelAreaM2"), 2.0).toDouble();

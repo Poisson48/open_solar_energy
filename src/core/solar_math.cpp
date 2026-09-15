@@ -28,13 +28,82 @@ double monthShadeFactor(const QVariantList& monthlyLoss, int month0, double annu
             loss /= 100.0;
         return 1.0 - std::clamp(loss, 0.0, 0.95);
     }
-    if (annualLossPct > 0) {
-        double loss = annualLossPct;
-        if (loss > 1.0)
-            loss /= 100.0;
-        return 1.0 - std::clamp(loss, 0.0, 0.95);
-    }
+    if (annualLossPct > 0)
+        return 1.0 - std::clamp(annualLossPct > 1.0 ? annualLossPct / 100.0 : annualLossPct, 0.0, 0.95);
     return 1.0;
+}
+
+/** Facteur keep mensuel depuis halfHourlyKeep (moyenne créneaux diurnes keep&lt;1 ou tous). */
+double monthKeepFromHalfHourly(const QVariantList& halfHourlyKeep, int month0)
+{
+    if (month0 < 0 || month0 >= halfHourlyKeep.size())
+        return 1.0;
+    const QVariantList row = halfHourlyKeep[month0].toList();
+    if (row.isEmpty())
+        return 1.0;
+    double sum = 0;
+    int n = 0;
+    for (const QVariant& v : row) {
+        const double k = v.toDouble();
+        // Ignorer nuit typique (keep≈1 partout) dilue peu ; on moyenne tous les slots
+        sum += std::clamp(k, 0.0, 1.0);
+        ++n;
+    }
+    return n > 0 ? sum / n : 1.0;
+}
+
+double shadeFactorForMonth(const QVariantMap& shade, int month0)
+{
+    if (shade.isEmpty())
+        return 1.0;
+    // monthlyLoss = fraction beam perdue (issue du diagramme) — priorité
+    const QVariantList monthlyLoss = shade.value(QStringLiteral("monthlyLoss")).toList();
+    if (month0 >= 0 && month0 < monthlyLoss.size())
+        return monthShadeFactor(monthlyLoss, month0, 0);
+    const QVariantList halfKeep = shade.value(QStringLiteral("halfHourlyKeep")).toList();
+    if (halfKeep.size() >= 12)
+        return monthKeepFromHalfHourly(halfKeep, month0);
+    return monthShadeFactor({}, month0, shade.value(QStringLiteral("annualLossPct")).toDouble());
+}
+
+/**
+ * Productible relatif tilt×azimut.
+ * Avec halfHourlyKeep : irradiation horaire × keep (masque dépend de l’heure → oriente
+ * correctement face à un masque Ouest/Est). Sinon : Htilt mensuel × facteur mensuel.
+ */
+double scoredIrradiation(double lat, double tilt, double az,
+                         const std::vector<MonthWeather>& weather, const QVariantMap& shade)
+{
+    const QVariantList halfKeep = shade.value(QStringLiteral("halfHourlyKeep")).toList();
+    if (halfKeep.size() >= 12) {
+        double total = 0;
+        for (size_t i = 0; i < weather.size(); ++i) {
+            const int month = static_cast<int>(i) + 1;
+            const QVariantList row = halfKeep[static_cast<int>(i)].toList();
+            for (int h = 0; h < 24; ++h) {
+                const double irr = SolarMath::hourlyIrradiance(
+                    lat, month, h, weather[i].GHI, weather[i].DHI, tilt, az);
+                if (irr <= 0)
+                    continue;
+                double k = 1.0;
+                if (row.size() >= 48) {
+                    const int s0 = std::min(47, h * 2);
+                    const int s1 = std::min(47, h * 2 + 1);
+                    k = 0.5 * (std::clamp(row[s0].toDouble(), 0.0, 1.0)
+                               + std::clamp(row[s1].toDouble(), 0.0, 1.0));
+                }
+                total += irr * k;
+            }
+        }
+        return total;
+    }
+    double total = 0;
+    for (size_t i = 0; i < weather.size(); ++i) {
+        const double H = SolarMath::tiltedIrradiation(weather[i].GHI, weather[i].DHI, lat, tilt, az,
+                                                      static_cast<int>(i) + 1);
+        total += H * shadeFactorForMonth(shade, static_cast<int>(i));
+    }
+    return total;
 }
 
 } // namespace
@@ -346,7 +415,7 @@ std::vector<MonthWeather> SolarMath::weatherFromVariant(const QVariantList& list
 }
 
 QVariantMap SolarMath::optimalTilt(double lat, const QVariantList& weatherData,
-                                   bool optimizeAzimuth) const
+                                   bool optimizeAzimuth, const QVariantMap& shade) const
 {
     const auto weather = weatherFromVariant(weatherData);
     QVector<double> azimuths = {0};
@@ -358,11 +427,7 @@ QVariantMap SolarMath::optimalTilt(double lat, const QVariantList& weatherData,
     double bestTotal = 0;
     for (int tilt = 0; tilt <= 90; ++tilt) {
         for (double az : azimuths) {
-            double total = 0;
-            for (size_t i = 0; i < weather.size(); ++i) {
-                total += tiltedIrradiation(weather[i].GHI, weather[i].DHI, lat, tilt, az,
-                                           static_cast<int>(i) + 1);
-            }
+            const double total = scoredIrradiation(lat, tilt, az, weather, shade);
             if (total > bestTotal) {
                 bestTotal = total;
                 bestTilt = tilt;
@@ -372,7 +437,8 @@ QVariantMap SolarMath::optimalTilt(double lat, const QVariantList& weatherData,
     }
     return {{QStringLiteral("tilt"), bestTilt},
             {QStringLiteral("azimuth"), bestAz},
-            {QStringLiteral("total"), bestTotal}};
+            {QStringLiteral("total"), bestTotal},
+            {QStringLiteral("shadeApplied"), !shade.isEmpty()}};
 }
 
 QVariantMap SolarMath::gridSystemAnnual(const QVariantMap& params) const
@@ -520,7 +586,8 @@ QVariantList SolarMath::offgridSystem(const QVariantMap& params) const
     return out;
 }
 
-QVariantList SolarMath::tiltAzimuthHeatmap(double lat, const QVariantList& weatherData) const
+QVariantList SolarMath::tiltAzimuthHeatmap(double lat, const QVariantList& weatherData,
+                                           const QVariantMap& shade) const
 {
     const auto weather = weatherFromVariant(weatherData);
     const QVector<int> tilts = {0, 10, 20, 30, 40, 50, 60, 70, 80, 90};
@@ -529,10 +596,7 @@ QVariantList SolarMath::tiltAzimuthHeatmap(double lat, const QVariantList& weath
     double maxVal = 0;
     for (int tilt : tilts) {
         for (int az : azimuths) {
-            double total = 0;
-            for (size_t i = 0; i < weather.size(); ++i)
-                total += tiltedIrradiation(weather[i].GHI, weather[i].DHI, lat, tilt, az,
-                                           static_cast<int>(i) + 1);
+            const double total = scoredIrradiation(lat, tilt, az, weather, shade);
             if (total > maxVal)
                 maxVal = total;
             results.append(QVariantMap{{QStringLiteral("tilt"), tilt},

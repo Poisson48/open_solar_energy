@@ -6,11 +6,13 @@ import "controls"
 OseTabPage {
     id: root
     title: "Dimensionnement réseau"
-    subtitle: "Parcours facture → stratégie → résultat. Vérifiez le lieu et la météo avant de calculer."
+    subtitle: "1) Estimer le besoin selon la conso → 2) Choisir le modèle et le nombre de panneaux."
     nextTabId: AppController.nextPrimaryTab()
     nextTabLabel: AppController.tabLabel(AppController.nextPrimaryTab())
 
     property var lastResult: Projects.currentProject.sizingResult || ({})
+    /** Suggestion après estimation libre (avant choix manuel). */
+    property var estimateHint: ({})
     property bool isHybrid: (Projects.currentProject.installType || "grid") === "hybrid"
     property bool syncing: false
     readonly property var monthShort: [
@@ -165,10 +167,20 @@ OseTabPage {
         }
         strategyBox.currentIndex = comboIndexFor(strategyBox, f.strategy || "roi", 0)
         covTarget.text = String(f.coverageTarget !== undefined ? f.coverageTarget : 70)
-        limitBox.currentIndex = comboIndexFor(limitBox, f.limitMode || "none", 0)
         roofArea.text = String(f.roofArea !== undefined ? f.roofArea : 40)
         fixedPpeak.text = String(f.fixedPpeak !== undefined ? f.fixedPpeak
                                  : (f.Ppeak !== undefined ? f.Ppeak : 3))
+        panelCountField.text = String(f.panelCount !== undefined ? f.panelCount
+                                      : (f.suggestedPanelCount !== undefined ? f.suggestedPanelCount
+                                      : (f.panelWp > 0 && f.Ppeak > 0
+                                         ? Math.max(1, Math.round(Number(f.Ppeak) * 1000 / Number(f.panelWp)))
+                                         : 10)))
+        if (f.suggestedPanelCount !== undefined || f.suggestedPpeak !== undefined) {
+            estimateHint = {
+                panelCount: f.suggestedPanelCount,
+                Ppeak: f.suggestedPpeak
+            }
+        }
         battKwh.text = String(f.battKwh !== undefined ? f.battKwh : 5)
         battDod.text = String(f.battDod !== undefined ? f.battDod : 80)
         syncing = false
@@ -193,10 +205,13 @@ OseTabPage {
             injectionPrice: Number(injPrice.text),
             strategy: strategyBox.currentValue,
             coverageTarget: Number(covTarget.text),
-            limitMode: limitBox.currentValue,
+            limitMode: "panels",
             roofArea: Number(roofArea.text),
             fixedPpeak: Number(fixedPpeak.text),
+            panelCount: Math.max(1, Math.round(Number(panelCountField.text) || 1)),
             panelWp: Number(panelWpField.text),
+            Ppeak: root.derivedPpeak(),
+            systemCost: root.derivedSystemCost(),
             battKwh: Number(battKwh.text),
             battDod: Number(battDod.text),
             loadDayKwh: loadDay.text.length ? Number(loadDay.text) : undefined,
@@ -227,6 +242,33 @@ OseTabPage {
         }
     }
 
+    function derivedPpeak() {
+        const wp = Number(panelWpField.text) || 400
+        const n = Math.max(1, Math.round(Number(panelCountField.text) || 1))
+        return Math.round(n * wp / 10) / 100
+    }
+
+    function derivedSystemCost() {
+        return Math.round(derivedPpeak() * (Number(costKwc.text) || 1200))
+    }
+
+    function syncPeakFromPanels() {
+        const p = derivedPpeak()
+        const n = Math.max(1, Math.round(Number(panelCountField.text) || 1))
+        persistForm({
+            Ppeak: p,
+            fixedPpeak: p,
+            panelCount: n,
+            systemCost: derivedSystemCost(),
+            limitMode: "panels"
+        })
+    }
+
+    function panelCountForPeak(ppeak) {
+        const wp = Number(panelWpField.text) || 400
+        return Math.max(1, Math.round((Number(ppeak) || 0) * 1000 / wp))
+    }
+
     function ensureWeather() {
         const weather = Projects.currentProject.weatherData || []
         if (!weather.length) {
@@ -243,7 +285,9 @@ OseTabPage {
         return out
     }
 
-    function runSizing() {
+    function runSizing(phase) {
+        // phase: "estimate" = sweep selon conso ; "confirm" = nb panneaux choisi
+        const mode = phase || "confirm"
         const weather = ensureWeather()
         if (!weather.length) return
         let monthly = monthlyFromUi()
@@ -269,6 +313,12 @@ OseTabPage {
             const n = Number(enedis.loadNightKwh)
             dayShare = d / Math.max(0.1, d + n)
         }
+
+        const limitMode = (mode === "estimate")
+                          ? (roofLimitCheck.checked ? "roof" : "none")
+                          : "panels"
+        if (mode === "confirm")
+            syncPeakFromPanels()
 
         lastResult = Sizing.run({
             lat: loc.lat || 43.6,
@@ -299,18 +349,56 @@ OseTabPage {
             hourlyWeatherData: Projects.currentProject.hourlyWeatherData || {},
             useElectricalShade: form.energyMode === "study",
             thermal: form.thermal || undefined,
-            limitMode: limitBox.currentValue,
+            limitMode: limitMode,
             roofAreaM2: Number(roofArea.text) || 40,
             panelWp: Number(panelWpField.text) || 400,
             panelAreaM2: Number(panelArea.text) || 2.0,
-            fixedPpeak: Number(fixedPpeak.text) || 3
+            fixedPpeak: Number(fixedPpeak.text) || derivedPpeak(),
+            panelCount: Math.max(1, Math.round(Number(panelCountField.text) || 1))
         })
         const best = lastResult.best || {}
+        const nPanels = mode === "confirm"
+                        ? Math.max(1, Math.round(Number(panelCountField.text) || 1))
+                        : panelCountForPeak(best.Ppeak)
+
+        const bill = {
+            tariff: tariffBox.currentValue,
+            priceBase: Number(priceBase.text),
+            subscriptionPerYear: Number(subscription.text),
+            monthlyKwh: monthly,
+            priceHpHc: { hp: Number(priceHp.text), hc: Number(priceHc.text) }
+        }
+        const annualBill = Finance.calcCurrentAnnualBill(bill)
+
+        if (mode === "estimate") {
+            estimateHint = {
+                Ppeak: best.Ppeak,
+                panelCount: nPanels,
+                E_annual: best.E_annual,
+                coverage: best.coverage,
+                payback: best.payback,
+                systemCost: best.systemCost
+            }
+            panelCountField.text = String(nPanels)
+            statusLabel.text = "Suggestion : " + nPanels + " panneaux ≈ " + (best.Ppeak || "?")
+                              + " kWc — choisissez le modèle, ajustez N, puis validez."
+            lastResult = Object.assign({}, lastResult, { annualBill: annualBill, phase: "estimate" })
+            persistForm({
+                suggestedPpeak: best.Ppeak,
+                suggestedPanelCount: nPanels
+            })
+            Projects.updateCurrent({ sizingResult: lastResult })
+            AppController.toast("Estimation selon conso : ~" + nPanels + " panneaux ("
+                                + (best.Ppeak || "?") + " kWc)", 4000)
+            return
+        }
+
+        // confirm : figer N panneaux choisis
         const bal = YearPv.buildBalancesReport({
             lat: loc.lat || 43.6,
             tilt: Number(tiltField.text),
             azimuth: Number(azField.text),
-            Ppeak: best.Ppeak || Number(fixedPpeak.text) || 3,
+            Ppeak: best.Ppeak || derivedPpeak(),
             weatherData: weather,
             losses: Number(lossField.text),
             lossTree: (form.lossTree && Object.keys(form.lossTree).length)
@@ -331,15 +419,7 @@ OseTabPage {
                 wind: Number(form.wind) || 1
             }
         })
-        const bill = {
-            tariff: tariffBox.currentValue,
-            priceBase: Number(priceBase.text),
-            subscriptionPerYear: Number(subscription.text),
-            monthlyKwh: monthly,
-            priceHpHc: { hp: Number(priceHp.text), hc: Number(priceHc.text) }
-        }
-        const annualBill = Finance.calcCurrentAnnualBill(bill)
-        lastResult = Object.assign({}, lastResult, { annualBill: annualBill })
+        lastResult = Object.assign({}, lastResult, { annualBill: annualBill, phase: "confirm" })
         const nextForm = Object.assign({}, form, {
             tilt: Number(tiltField.text),
             azimuth: Number(azField.text),
@@ -349,27 +429,50 @@ OseTabPage {
             priceHc: Number(priceHc.text),
             annualKwh: annual,
             strategy: strategyBox.currentValue,
-            limitMode: limitBox.currentValue,
+            limitMode: "panels",
             battKwh: isHybrid ? Number(battKwh.text) : 0,
             Ppeak: best.Ppeak,
             systemCost: best.systemCost,
             panelWp: Number(panelWpField.text) || 400,
+            panelCount: nPanels,
+            fixedPpeak: best.Ppeak,
             loadDayKwh: day || enedis.loadDayKwh,
             loadNightKwh: night || enedis.loadNightKwh
         })
+        let layoutPatch = Projects.currentProject.layout || {}
+        if (nPanels > 0) {
+            layoutPatch = LayoutRoofs.migrate(layoutPatch)
+            let r = 2, c = Math.ceil(nPanels / 2)
+            for (let tryC = nPanels; tryC >= 1; --tryC) {
+                if (nPanels % tryC === 0) {
+                    c = tryC
+                    r = nPanels / tryC
+                    break
+                }
+            }
+            layoutPatch = LayoutRoofs.generateGrid(layoutPatch, r, c, {
+                panelWp: Number(panelWpField.text) || 400,
+                tilt: Number(tiltField.text),
+                azimuth: Number(azField.text),
+                panelW: Number(form.panelW) || undefined,
+                panelH: Number(form.panelH) || undefined
+            })
+        }
         Projects.updateCurrent({
             sizingResult: lastResult,
             monthlyKwh: monthly,
             formState: nextForm,
             bill: bill,
-            pvsystBalances: bal
+            pvsystBalances: bal,
+            layout: layoutPatch
         })
         Projects.updateCurrent({
             resultsFingerprint: Pipeline.fingerprint(Projects.currentProject),
             resultsBasis: Pipeline.fingerprintParts(Projects.currentProject)
         })
-        AppController.autoSave("Calcul dimensionnement — "
-                               + (best.Ppeak || "?") + " kWc")
+        statusLabel.text = "Validé : " + nPanels + " panneaux · " + (best.Ppeak || "?") + " kWc"
+        AppController.autoSave("Dimensionnement validé — "
+                               + nPanels + " panneaux · " + (best.Ppeak || "?") + " kWc")
     }
 
     function effectivePrice() {
@@ -383,11 +486,18 @@ OseTabPage {
         const weather = ensureWeather()
         if (!weather.length) return
         const loc = Projects.currentProject.location || {}
-        const opt = SolarMath.optimalTilt(loc.lat || 43.6, weather, true)
+        const site = Projects.currentProject.siteSurvey || {}
+        const shade = {
+            monthlyLoss: site.monthlyLoss || [],
+            annualLossPct: Number(site.annualLossPct) || 0,
+            halfHourlyKeep: site.halfHourlyKeep || []
+        }
+        const opt = SolarMath.optimalTilt(loc.lat || 43.6, weather, true, shade)
         tiltField.text = String(opt.tilt)
         azField.text = String(opt.azimuth)
         persistForm()
-        AppController.toast("Tilt optimal " + opt.tilt + "° / az " + opt.azimuth + "°")
+        const shadeNote = opt.shadeApplied ? " (avec ombrage site)" : ""
+        AppController.toast("Tilt optimal " + opt.tilt + "° / az " + opt.azimuth + "°" + shadeNote)
     }
 
     OseFormResults {
@@ -748,6 +858,64 @@ OseTabPage {
                     })
                 }
             }
+        }
+
+        OseStep {
+            step: 3
+            title: "1 — Estimer le besoin (selon la conso)"
+            hint: "L’algo balaye les puissances pour ROI / autoconso / couverture. Ça propose un nombre de panneaux — ce n’est pas encore le choix final."
+            ComboBox {
+                id: strategyBox
+                Layout.fillWidth: true
+                model: [
+                    { label: "ROI / payback optimal", value: "roi" },
+                    { label: "Autoconsommation max", value: "autoconso" },
+                    { label: "Couverture cible", value: "coverage" }
+                ]
+                textRole: "label"
+                valueRole: "value"
+                onActivated: root.persistForm()
+            }
+            RowLayout {
+                visible: strategyBox.currentValue === "coverage"
+                Layout.fillWidth: true
+                Label { text: "Couverture cible" }
+                OseInputUnit { id: covTarget; text: "70"; unit: "%"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+            }
+            CheckBox {
+                id: roofLimitCheck
+                text: "Borner l’estimation par la surface toiture"
+                checked: false
+                onToggled: root.persistForm()
+            }
+            RowLayout {
+                visible: roofLimitCheck.checked
+                Layout.fillWidth: true
+                Label { text: "Surface utile" }
+                OseInputUnit { id: roofArea; text: "40"; unit: "m²"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+            }
+            // champs techniques conservés (non visibles) pour compat persist
+            OseInputUnit { id: fixedPpeak; visible: false; text: "3" }
+            OseBtn {
+                text: "Estimer le besoin"
+                kind: "primary"
+                onClicked: root.runSizing("estimate")
+            }
+            OseAlert {
+                visible: estimateHint.panelCount !== undefined
+                kind: "info"
+                text: "Suggestion : ~" + (estimateHint.panelCount || "?") + " panneaux ≈ "
+                      + (estimateHint.Ppeak || "?") + " kWc"
+                      + (estimateHint.coverage !== undefined ? (" · couverture " + estimateHint.coverage + " %") : "")
+                      + (estimateHint.payback !== undefined ? (" · payback " + estimateHint.payback + " ans") : "")
+                      + " — passez à l’étape 2 pour choisir le modèle et le nombre exact."
+            }
+        }
+
+        OseStep {
+            step: 4
+            title: "2 — Choisir modèle + nombre de panneaux"
+            hint: "Ex. vous avez acheté 10 panneaux : sélectionnez le modèle, tapez 10, validez. Ppeak et coût se recalculent."
             Label { text: "Panneau catalogue"; color: Theme.textDim; font.pixelSize: 12 }
             RowLayout {
                 Layout.fillWidth: true
@@ -780,6 +948,11 @@ OseTabPage {
                         if (!it || !it.value) return
                         panelWpField.text = String(it.wp || 400)
                         panelArea.text = String((it.area || 2).toFixed(2))
+                        // Après estimation : recalculer N depuis le kWc suggéré
+                        const hintPeak = Number(estimateHint.Ppeak)
+                                      || Number((Projects.currentProject.formState || {}).suggestedPpeak)
+                        if (hintPeak > 0 && (it.wp || 0) > 0)
+                            panelCountField.text = String(Math.max(1, Math.round(hintPeak * 1000 / it.wp)))
                         const form = Projects.currentProject.formState || {}
                         Projects.updateCurrent({
                             formState: Object.assign({}, form, {
@@ -787,10 +960,11 @@ OseTabPage {
                                 panelWp: it.wp,
                                 panelArea: it.area,
                                 panelW: it.w,
-                                panelH: it.h
+                                panelH: it.h,
+                                panelModel: it.label
                             })
                         })
-                        root.persistForm()
+                        root.syncPeakFromPanels()
                     }
                 }
                 OseBtn {
@@ -807,65 +981,56 @@ OseTabPage {
                 RowLayout {
                     Layout.fillWidth: true
                     Label { text: "Wc module"; Layout.preferredWidth: 90 }
-                    OseInputUnit { id: panelWpField; text: "400"; unit: "Wc"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                    OseInputUnit {
+                        id: panelWpField
+                        text: "400"
+                        unit: "Wc"
+                        Layout.fillWidth: true
+                        onEditingFinished: root.syncPeakFromPanels()
+                    }
                 }
                 RowLayout {
                     Layout.fillWidth: true
                     Label { text: "Surface"; Layout.preferredWidth: 90 }
                     OseInputUnit { id: panelArea; text: "2.0"; unit: "m²"; Layout.fillWidth: true }
                 }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "Nb panneaux"; Layout.preferredWidth: 90 }
+                    OseInputUnit {
+                        id: panelCountField
+                        text: "10"
+                        unit: "pcs"
+                        Layout.fillWidth: true
+                        inputMethodHints: Qt.ImhDigitsOnly
+                        onEditingFinished: root.syncPeakFromPanels()
+                    }
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+                color: Theme.text
+                text: {
+                    const n = Math.max(1, Math.round(Number(panelCountField.text) || 1))
+                    const wp = Number(panelWpField.text) || 400
+                    const p = Math.round(n * wp / 10) / 100
+                    const cost = Math.round(p * (Number(costKwc.text) || 1200))
+                    return "Installation : " + n + " × " + wp + " Wc = " + p + " kWc · coût ~ "
+                           + cost + " €"
+                }
+            }
+            OseBtn {
+                text: "Valider avec ces panneaux"
+                kind: "primary"
+                onClicked: root.runSizing("confirm")
             }
         }
 
         OseStep {
-            step: 3
-            title: "Stratégie & limite"
-            ComboBox {
-                id: strategyBox
-                Layout.fillWidth: true
-                model: [
-                    { label: "ROI / payback optimal", value: "roi" },
-                    { label: "Autoconsommation max", value: "autoconso" },
-                    { label: "Couverture cible", value: "coverage" }
-                ]
-                textRole: "label"
-                valueRole: "value"
-                onActivated: root.persistForm()
-            }
-            RowLayout {
-                visible: strategyBox.currentValue === "coverage"
-                Layout.fillWidth: true
-                Label { text: "Couverture cible" }
-                OseInputUnit { id: covTarget; text: "70"; unit: "%"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
-            }
-            ComboBox {
-                id: limitBox
-                Layout.fillWidth: true
-                model: [
-                    { label: "Limite : libre (sweep)", value: "none" },
-                    { label: "Limite : surface toiture", value: "roof" },
-                    { label: "Limite : puissance fixe", value: "fixed" }
-                ]
-                textRole: "label"
-                valueRole: "value"
-                onActivated: root.persistForm()
-            }
-            RowLayout {
-                visible: limitBox.currentValue === "roof"
-                Layout.fillWidth: true
-                Label { text: "Surface utile" }
-                OseInputUnit { id: roofArea; text: "40"; unit: "m²"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
-            }
-            RowLayout {
-                visible: limitBox.currentValue === "fixed"
-                Layout.fillWidth: true
-                Label { text: "Ppeak fixe" }
-                OseInputUnit { id: fixedPpeak; text: "3"; unit: "kWc"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
-            }
-        }
-
-        OseStep {
-            step: 4
+            step: 5
             title: "Batterie hybride"
             visible: root.isHybrid
             hint: "Mode Hybride : Enedis 30 min recommandé."
@@ -887,9 +1052,12 @@ OseTabPage {
             }
         }
 
-        RowLayout {
-            OseBtn { text: "Dimensionner"; onClicked: root.runSizing() }
-            Label { id: statusLabel; color: Theme.textDim; Layout.fillWidth: true }
+        Label {
+            id: statusLabel
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+            color: Theme.textDim
+            font.pixelSize: 12
         }
 
         results: ColumnLayout {
@@ -900,6 +1068,15 @@ OseTabPage {
                 visible: lastResult.best !== undefined && lastResult.best !== null
                 Layout.fillWidth: true
                 KpiCard { title: "Puissance"; value: ((lastResult.best && lastResult.best.Ppeak) || 0) + " kWc" }
+                KpiCard {
+                    title: "Panneaux"
+                    value: {
+                        const n = (Projects.currentProject.formState || {}).panelCount
+                                  || (estimateHint.panelCount)
+                                  || "—"
+                        return String(n)
+                    }
+                }
                 KpiCard { title: "Production"; value: ((lastResult.best && lastResult.best.E_annual) || 0) + " kWh" }
             }
             RowLayout {
@@ -955,9 +1132,12 @@ OseTabPage {
                     Projects.updateCurrent({
                         formState: Object.assign({}, form, {
                             Ppeak: lastResult.best.Ppeak,
+                            panelCount: form.panelCount
+                                        || root.panelCountForPeak(lastResult.best.Ppeak),
                             tilt: Number(tiltField.text),
                             azimuth: Number(azField.text),
-                            systemCost: lastResult.best.systemCost
+                            systemCost: lastResult.best.systemCost,
+                            limitMode: "panels"
                         })
                     })
                     AppController.currentTab = "grid"
