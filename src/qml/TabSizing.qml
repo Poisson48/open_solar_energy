@@ -153,6 +153,13 @@ OseTabPage {
         azField.text = String(f.azimuth !== undefined ? f.azimuth : 0)
         lossField.text = String(f.losses !== undefined ? f.losses : 14)
         costKwc.text = String(f.costPerKwc !== undefined ? f.costPerKwc : 1200)
+        const ppeak0 = Number(f.Ppeak) || Number(f.fixedPpeak) || 0
+        if (f.systemCost !== undefined && Number(f.systemCost) > 0)
+            systemCostField.text = String(Math.round(Number(f.systemCost)))
+        else if (ppeak0 > 0)
+            systemCostField.text = String(Math.round(ppeak0 * (Number(costKwc.text) || 1200)))
+        else
+            systemCostField.text = String(f.systemCost !== undefined ? Math.round(Number(f.systemCost)) : 3600)
         injPrice.text = String(f.injectionPrice !== undefined ? f.injectionPrice : "0.04")
         panelWpField.text = String(f.panelWp !== undefined ? f.panelWp : 400)
         if (f.panelArea !== undefined)
@@ -211,7 +218,7 @@ OseTabPage {
             panelCount: Math.max(1, Math.round(Number(panelCountField.text) || 1)),
             panelWp: Number(panelWpField.text),
             Ppeak: root.derivedPpeak(),
-            systemCost: root.derivedSystemCost(),
+            systemCost: Math.max(0, Math.round(Number(systemCostField.text) || 0)),
             battKwh: Number(battKwh.text),
             battDod: Number(battDod.text),
             loadDayKwh: loadDay.text.length ? Number(loadDay.text) : undefined,
@@ -249,17 +256,39 @@ OseTabPage {
     }
 
     function derivedSystemCost() {
+        // Priorité au devis / coût total saisi (ne pas écraser avec €/kWc × Ppeak)
+        const typed = Math.round(Number(systemCostField.text) || 0)
+        if (typed > 0)
+            return typed
         return Math.round(derivedPpeak() * (Number(costKwc.text) || 1200))
+    }
+
+    /** Après changement N/Wc : garde le coût total, met à jour €/kWc. */
+    function syncCostPerKwcFromTotal() {
+        const p = derivedPpeak()
+        const total = Math.max(0, Math.round(Number(systemCostField.text) || 0))
+        if (p > 0 && total > 0)
+            costKwc.text = String(Math.round(total / p))
+    }
+
+    /** Après édition €/kWc : recalcule le total. */
+    function syncTotalFromCostPerKwc() {
+        const p = derivedPpeak()
+        const c = Number(costKwc.text) || 0
+        if (p > 0 && c > 0)
+            systemCostField.text = String(Math.round(p * c))
     }
 
     function syncPeakFromPanels() {
         const p = derivedPpeak()
         const n = Math.max(1, Math.round(Number(panelCountField.text) || 1))
+        syncCostPerKwcFromTotal()
         persistForm({
             Ppeak: p,
             fixedPpeak: p,
             panelCount: n,
             systemCost: derivedSystemCost(),
+            costPerKwc: Number(costKwc.text) || 1200,
             limitMode: "panels"
         })
     }
@@ -320,7 +349,7 @@ OseTabPage {
         if (mode === "confirm")
             syncPeakFromPanels()
 
-        lastResult = Sizing.run({
+        const sizingOpts = {
             lat: loc.lat || 43.6,
             weatherData: weather,
             monthlyKwh: monthly,
@@ -355,7 +384,12 @@ OseTabPage {
             panelAreaM2: Number(panelArea.text) || 2.0,
             fixedPpeak: Number(fixedPpeak.text) || derivedPpeak(),
             panelCount: Math.max(1, Math.round(Number(panelCountField.text) || 1))
-        })
+        }
+        // Confirm : utiliser le devis / coût total (ne pas le recalculer via €/kWc)
+        if (mode === "confirm")
+            sizingOpts.systemCost = derivedSystemCost()
+
+        lastResult = Sizing.run(sizingOpts)
         const best = lastResult.best || {}
         const nPanels = mode === "confirm"
                         ? Math.max(1, Math.round(Number(panelCountField.text) || 1))
@@ -433,6 +467,7 @@ OseTabPage {
             battKwh: isHybrid ? Number(battKwh.text) : 0,
             Ppeak: best.Ppeak,
             systemCost: best.systemCost,
+            costPerKwc: Number(costKwc.text) || 1200,
             panelWp: Number(panelWpField.text) || 400,
             panelCount: nPanels,
             fixedPpeak: best.Ppeak,
@@ -757,8 +792,38 @@ OseTabPage {
                 RowLayout {
                     Layout.fillWidth: true
                     Label { text: "Coût / kWc"; Layout.preferredWidth: 100 }
-                    OseInputUnit { id: costKwc; text: "1200"; unit: "€"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                    OseInputUnit {
+                        id: costKwc
+                        text: "1200"
+                        unit: "€"
+                        Layout.fillWidth: true
+                        onEditingFinished: {
+                            root.syncTotalFromCostPerKwc()
+                            root.persistForm()
+                        }
+                    }
                 }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "Coût total"; Layout.preferredWidth: 100 }
+                    OseInputUnit {
+                        id: systemCostField
+                        text: "3600"
+                        unit: "€"
+                        Layout.fillWidth: true
+                        onEditingFinished: {
+                            root.syncCostPerKwcFromTotal()
+                            root.persistForm()
+                        }
+                    }
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                font.pixelSize: 11
+                color: Theme.textDim
+                text: "L’estimation (étape 1) balaye avec le €/kWc. La validation (étape 2) utilise le coût total (devis)."
             }
             Label {
                 Layout.fillWidth: true
@@ -1017,9 +1082,10 @@ OseTabPage {
                     const n = Math.max(1, Math.round(Number(panelCountField.text) || 1))
                     const wp = Number(panelWpField.text) || 400
                     const p = Math.round(n * wp / 10) / 100
-                    const cost = Math.round(p * (Number(costKwc.text) || 1200))
-                    return "Installation : " + n + " × " + wp + " Wc = " + p + " kWc · coût ~ "
-                           + cost + " €"
+                    const cost = Math.max(0, Math.round(Number(systemCostField.text) || 0))
+                    const cpk = p > 0 && cost > 0 ? Math.round(cost / p) : (Number(costKwc.text) || 1200)
+                    return "Installation : " + n + " × " + wp + " Wc = " + p + " kWc · devis "
+                           + cost + " € (" + cpk + " €/kWc)"
                 }
             }
             OseBtn {

@@ -146,9 +146,16 @@ QVariantMap SizingEngine::run(const QVariantMap& input) const
 
     const int stepMin = static_cast<int>(std::round(minPpeak * 10));
     const int stepMax = static_cast<int>(std::round(maxPpeak * 10));
+    // Coût total forcé (ex. devis) pour limite fixed/panels — sinon Ppeak × €/kWc
+    const bool hasFixedCost = input.contains(QStringLiteral("systemCost"))
+                              && input.value(QStringLiteral("systemCost")).toDouble() > 0
+                              && (limitMode == QLatin1String("fixed")
+                                  || limitMode == QLatin1String("panels"));
+    const double fixedSystemCost = input.value(QStringLiteral("systemCost")).toDouble();
+
     for (int step = stepMin; step <= stepMax; ++step) {
         const double Ppeak = step * 0.1;
-        double systemCost = Ppeak * costPerKwc;
+        double systemCost = hasFixedCost ? fixedSystemCost : (Ppeak * costPerKwc);
         if (hybrid && battKwh > 0)
             systemCost += battKwh * battCostPerKwh;
 
