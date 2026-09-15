@@ -243,47 +243,31 @@ void DeviceAttitude::applyAttitude(qreal heading, qreal elev,
                                    qreal ux, qreal uy, qreal uz,
                                    bool fromAndroid)
 {
-    // Rotation vector déjà filtré côté HAL → lissage léger
-    // Accel/mag bruts → un peu plus fort
-    const qreal kH = fromAndroid ? 0.35 : 0.20;
-    const qreal kE = fromAndroid ? 0.40 : 0.25;
-    const qreal kB = fromAndroid ? 0.45 : 0.28;
+    // Overlay AR : base RAW (sinon les points « glissent » derrière le viseur).
+    // HUD : léger lissage du cap / élévation affichés seulement.
+    m_ex = ex;
+    m_ey = ey;
+    m_ez = ez;
+    m_nx = nx;
+    m_ny = ny;
+    m_nz = nz;
+    m_ux = ux;
+    m_uy = uy;
+    m_uz = uz;
 
+    const qreal kH = fromAndroid ? 0.55 : 0.30;
+    const qreal kE = fromAndroid ? 0.60 : 0.35;
     if (!m_smoothInit || !m_hasHeading) {
         m_heading = heading;
         m_elevation = elev;
-        m_ex = ex;
-        m_ey = ey;
-        m_ez = ez;
-        m_nx = nx;
-        m_ny = ny;
-        m_nz = nz;
-        m_ux = ux;
-        m_uy = uy;
-        m_uz = uz;
     } else {
         qreal d = heading - m_heading;
         while (d > 180)
             d -= 360;
         while (d < -180)
             d += 360;
-        const qreal kh = std::abs(d) > 40 ? kH * 0.7 : kH;
-        m_heading = normAz(m_heading + kh * d);
+        m_heading = normAz(m_heading + kH * d);
         m_elevation = m_elevation * (1.0 - kE) + elev * kE;
-
-        auto lerp = [&](qreal& a, qreal b) { a = a * (1.0 - kB) + b * kB; };
-        lerp(m_ex, ex);
-        lerp(m_ey, ey);
-        lerp(m_ez, ez);
-        lerp(m_nx, nx);
-        lerp(m_ny, ny);
-        lerp(m_nz, nz);
-        lerp(m_ux, ux);
-        lerp(m_uy, uy);
-        lerp(m_uz, uz);
-        normalize3(m_ex, m_ey, m_ez, 1e-9);
-        normalize3(m_nx, m_ny, m_nz, 1e-9);
-        normalize3(m_ux, m_uy, m_uz, 1e-9);
     }
 
     m_pitch = m_elevation + 90.0;

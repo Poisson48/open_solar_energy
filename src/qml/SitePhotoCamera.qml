@@ -16,8 +16,8 @@ Item {
     property bool active: false
     property var points: []
     property real compassOffset: 0
-    property real hFov: 62
-    property real vFov: 48
+    property real hFov: 70
+    property real vFov: 54
     // Force le recalcul de projection des points à chaque tick capteurs
     property int attitudeTick: 0
 
@@ -98,9 +98,9 @@ Item {
         void attitudeTick
         if (!DeviceAttitude.hasBasis)
             return null
+        // Points stockés en repère diagramme (cap + offset) ; la base capteurs est magnétique
         let az = Number(p.az) || 0
-        // Offset boussole utilisateur = rotation du nord de référence
-        az += compassOffset
+        az -= compassOffset
         while (az < 0) az += 360
         while (az >= 360) az -= 360
         const pt = DeviceAttitude.projectToScreen(az, Number(p.elev) || 0,
@@ -316,7 +316,7 @@ Item {
                             AppController.toast("Élévation indisponible → 0° (horizon). Forcez-la si besoin.", 3500)
                         }
                         root.placeRequested(az, elev)
-                        AppController.toast("Point az " + Math.round(az) + "° · élév " + Math.round(elev) + "°", 2500)
+                        // Pas de toast long : ça coûte du frame time sur le viseur
                     }
                 }
                 OseBtn {

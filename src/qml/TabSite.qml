@@ -319,12 +319,12 @@ OseTabPage {
             source: source || "manual",
             id: root.nextPointId++
         })
-        pts.sort(function (a, b) { return a.az - b.az })
+        // Pas de sort pendant le mode photo : évite de reconstruire tout le Repeater
+        if (!(deferShade || root.photoMode))
+            pts.sort(function (a, b) { return a.az - b.az })
         root.points = pts
         if (deferShade || root.photoMode) {
-            root.persistSiteInputs()
-            if (typeof sunHost !== "undefined" && sunHost.repaintAll)
-                sunHost.repaintAll()
+            // Mémoire seule — persist/saveAll + loadFromProject figent la caméra 1–2 s
             return
         }
         root.persistAndCompute()
@@ -334,23 +334,15 @@ OseTabPage {
         let pts = root.points.slice()
         pts.splice(index, 1)
         root.points = pts
-        if (root.photoMode) {
-            root.persistSiteInputs()
-            if (typeof sunHost !== "undefined" && sunHost.repaintAll)
-                sunHost.repaintAll()
+        if (root.photoMode)
             return
-        }
         root.persistAndCompute()
     }
 
     function removePointById(id) {
         root.points = root.points.filter(function (p) { return Number(p.id) !== Number(id) })
-        if (root.photoMode) {
-            root.persistSiteInputs()
-            if (typeof sunHost !== "undefined" && sunHost.repaintAll)
-                sunHost.repaintAll()
+        if (root.photoMode)
             return
-        }
         root.persistAndCompute()
     }
 
@@ -458,7 +450,12 @@ OseTabPage {
 
     Connections {
         target: Projects
-        function onCurrentChanged() { root.loadFromProject() }
+        function onCurrentChanged() {
+            // Ne pas recharger le projet pendant le viseur ( Persistance → freeze caméra )
+            if (root.photoMode)
+                return
+            root.loadFromProject()
+        }
     }
 
     OseFormResults {
@@ -1456,6 +1453,9 @@ OseTabPage {
             // Calcul ombrage uniquement à la sortie (pas pendant la prise de points)
             if (root.photoMode) {
                 root.photoMode = false
+                let pts = root.points.slice()
+                pts.sort(function (a, b) { return a.az - b.az })
+                root.points = pts
                 root.persistAndCompute()
                 AppController.toast("Ombrage recalculé (" + root.points.length + " point(s))", 3000)
             }
