@@ -38,6 +38,12 @@ public:
     Q_INVOKABLE void seedDefaults();
     Q_INVOKABLE bool isCatalogId(const QString& id) const;
 
+    QJsonArray userPanelsArray() const { return m_userPanels; }
+    QJsonArray userInvertersArray() const { return m_userInverters; }
+    /** Upsert par id (écrase les entrées user présentes dans arr). */
+    bool upsertUserPanels(const QJsonArray& arr);
+    bool upsertUserInverters(const QJsonArray& arr);
+
 signals:
     void panelsChanged();
     void invertersChanged();

@@ -14,44 +14,29 @@ namespace {
 
 constexpr int kHours = 24;
 
-/** Nuit batterie alignée web / Enedis : 21h–6h. */
-static bool isNightHour(int h)
-{
-    return h >= 21 || h < 6;
-}
-
-/** Répartition uniforme jour (6–21) / nuit (21–6) — prioritaire si day+night saisis. */
-std::array<double, kHours> buildDayNightLoad(double dayKwh, double nightKwh)
+/** Répartition uniforme sur heures de soleil du mois (lat) / nuit. */
+std::array<double, kHours> buildDayNightLoad(double dayKwh, double nightKwh, double lat, int month)
 {
     dayKwh = std::max(0.0, dayKwh);
     nightKwh = std::max(0.0, nightKwh);
-    int nDay = 0, nNight = 0;
-    for (int h = 0; h < kHours; ++h)
-        (isNightHour(h) ? nNight : nDay)++;
-    const double perDay = nDay > 0 ? dayKwh / nDay : 0;
-    const double perNight = nNight > 0 ? nightKwh / nNight : 0;
+    const double daily = dayKwh + nightKwh;
+    const double share = daily > 0 ? dayKwh / daily : 0.55;
+    const QVariantList prof = SolarMath::dayNightLoadProfile24(daily, share, lat, SolarMath::midMonthDay(month), 0.0);
     std::array<double, kHours> out{};
-    for (int h = 0; h < kHours; ++h)
-        out[static_cast<size_t>(h)] = isNightHour(h) ? perNight : perDay;
+    for (int h = 0; h < kHours && h < prof.size(); ++h)
+        out[static_cast<size_t>(h)] = prof[h].toDouble();
     return out;
 }
 
-/** Profil charge résidentiel (fallback si seulement un total journalier). */
-std::array<double, kHours> buildLoadProfile(double dailyKwh, double dayShare)
+/** Profil charge résidentiel (fallback total journalier) — aussi calé soleil. */
+std::array<double, kHours> buildLoadProfile(double dailyKwh, double dayShare, double lat, int month)
 {
-    static constexpr double kWeights[kHours] = {
-        0.02, 0.015, 0.012, 0.012, 0.015, 0.025, 0.045, 0.06,
-        0.05, 0.04,  0.035, 0.035, 0.04,  0.04,  0.035, 0.035,
-        0.04, 0.055, 0.07,  0.075, 0.065, 0.05,  0.035, 0.025};
-    double sumW = 0;
-    for (double w : kWeights)
-        sumW += w;
+    dayShare = std::clamp(dayShare, 0.0, 1.0);
+    const QVariantList prof = SolarMath::dayNightLoadProfile24(dailyKwh, dayShare, lat,
+                                                               SolarMath::midMonthDay(month), 0.0);
     std::array<double, kHours> out{};
-    for (int h = 0; h < kHours; ++h) {
-        const bool day = !isNightHour(h);
-        const double adj = day ? (dayShare / 0.55) : ((1.0 - dayShare) / 0.45);
-        out[static_cast<size_t>(h)] = dailyKwh * (kWeights[h] / sumW) * adj;
-    }
+    for (int h = 0; h < kHours && h < prof.size(); ++h)
+        out[static_cast<size_t>(h)] = prof[h].toDouble();
     return out;
 }
 
@@ -171,33 +156,36 @@ QVariantMap OffgridSizing::run(const QVariantMap& input) const
     std::array<double, kHours> loadHour{};
     QString loadSource = QStringLiteral("synthetic");
     double dayKwh = 0, nightKwh = 0, dailyKwh = 0;
-    if (halfHourlyLoad.size() >= 48) {
+    const bool loadFixedProfile = halfHourlyLoad.size() >= 48;
+    if (loadFixedProfile) {
         loadHour = buildLoadFromHalfHourly(halfHourlyLoad);
         loadSource = QStringLiteral("enedis_halfhourly");
+        const int doyRef = SolarMath::midMonthDay(6);
         for (int h = 0; h < kHours; ++h) {
             const double v = loadHour[static_cast<size_t>(h)];
             dailyKwh += v;
-            if (isNightHour(h))
-                nightKwh += v;
-            else
+            if (SolarMath::isDaylightSolar(lat, doyRef, h + 0.5))
                 dayKwh += v;
+            else
+                nightKwh += v;
         }
     } else if (dayKwhIn >= 0 || nightKwhIn >= 0) {
         dayKwh = std::max(0.0, dayKwhIn);
         nightKwh = std::max(0.0, nightKwhIn);
         dailyKwh = dayKwh + nightKwh;
-        loadHour = buildDayNightLoad(dayKwh, nightKwh);
+        loadHour = buildDayNightLoad(dayKwh, nightKwh, lat, 6);
         loadSource = QStringLiteral("day_night");
     } else {
         dailyKwh = dailyWhIn / 1000.0;
-        loadHour = buildLoadProfile(dailyKwh, dayShare);
+        loadHour = buildLoadProfile(dailyKwh, dayShare, lat, 6);
         loadSource = QStringLiteral("daily_total");
         for (int h = 0; h < kHours; ++h) {
             const double v = loadHour[static_cast<size_t>(h)];
-            if (isNightHour(h))
-                nightKwh += v;
-            else
+            const int doyRef = SolarMath::midMonthDay(6);
+            if (SolarMath::isDaylightSolar(lat, doyRef, h + 0.5))
                 dayKwh += v;
+            else
+                nightKwh += v;
         }
     }
     const double dailyWh = dailyKwh * 1000.0;
@@ -326,8 +314,15 @@ QVariantMap OffgridSizing::run(const QVariantMap& input) const
                         pvUnit[static_cast<size_t>(m)][static_cast<size_t>(h)] * Ppeak;
 
                 const int days = kDaysInMonth[static_cast<size_t>(m)];
+                std::array<double, kHours> loadM = loadHour;
+                if (!loadFixedProfile) {
+                    if (loadSource == QLatin1String("day_night"))
+                        loadM = buildDayNightLoad(dayKwh, nightKwh, lat, m + 1);
+                    else
+                        loadM = buildLoadProfile(dailyKwh, dayShare, lat, m + 1);
+                }
                 const MonthResult sim =
-                    simulateMonthHourly(pvHour, loadHour, days, soc, C_usable, eta);
+                    simulateMonthHourly(pvHour, loadM, days, soc, C_usable, eta);
                 soc = sim.soc_end;
                 totalConso += sim.conso_kwh;
                 totalDeficit += sim.deficit_kwh;

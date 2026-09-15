@@ -17,6 +17,10 @@ OseTabPage {
     property var obstacles: []
     property var shadeResult: ({})
     property bool syncing: false
+    property bool photoMode: false
+    /** Empêche loadFromProject pendant patch post-photo / calcul async */
+    property bool suppressProjectReload: false
+    property bool _awaitingSiteShade: false
     property int nextPointId: 1
     property real roofAzimuth: 0
     property real roofLineLenM: 0
@@ -240,69 +244,95 @@ OseTabPage {
     }
 
     function persistAndCompute() {
+        // Chemin async — ne jamais bloquer le thread UI (ANR Android)
+        root.startShadeComputeAsync()
+    }
+
+    function startShadeComputeAsync() {
         let weather = Projects.currentProject.weatherData || []
         if (!weather.length) {
             AppController.toast("Chargez une météo dans Lieu et météo", 3500)
             persistSiteInputs()
             return
         }
-        const loc = Projects.currentProject.location || {}
-        const site = Projects.currentProject.siteSurvey || {}
-        const layout = LayoutRoofs.migrate(Projects.currentProject.layout || {})
-        const hasPanels = LayoutRoofs.totalPanels(layout) > 0
-        const hasObstacles = (root.obstacles || []).length > 0
-
-        let monthly = []
-        let keep = []
-        let annual = 0
-        let source = "horizon"
-
-        // Panneaux / obstacles 3D → moteur riche ; sinon horizon seul (plus rapide)
-        if (hasPanels || hasObstacles) {
-            const full = ShadingEngine.computeFull({
-                lat: loc.lat || 43.6,
-                weatherData: weather,
-                horizonPoints: points,
-                obstacles: root.obstacles || [],
-                layout: layout,
-                shadeEngine: "precise"
-            })
-            monthly = full.monthlyLoss || []
-            keep = full.halfHourlyKeep || []
-            annual = Number(full.annualLossPct) || 0
-            source = "shading3d"
-            shadeResult = {
-                monthly: monthly,
-                halfHourlyKeep: keep,
-                halfHourlyKeepElectrical: full.halfHourlyKeepElectrical || [],
-                annualLossPct: annual,
-                mode: full.mode
-            }
-        } else {
-            shadeResult = SiteShade.computeShading(loc.lat || 43.6, points, weather)
-            monthly = shadeResult.monthly || []
-            keep = shadeResult.halfHourlyKeep || []
-            annual = Number(shadeResult.annualLossPct) || 0
-            source = "horizon"
+        if (ShadingEngine.computing) {
+            AppController.toast("Calcul ombrage déjà en cours…", 2000)
+            persistSiteInputs()
+            return
         }
+        const loc = Projects.currentProject.location || {}
+        const layout = LayoutRoofs.migrate(Projects.currentProject.layout || {})
+        persistSiteInputs()
+        root._awaitingSiteShade = true
+        const ok = ShadingEngine.startComputeFull({
+            lat: loc.lat || 43.6,
+            weatherData: weather,
+            horizonPoints: root.points,
+            obstacles: root.obstacles || [],
+            layout: layout,
+            shadeEngine: "precise"
+        })
+        if (!ok) {
+            root._awaitingSiteShade = false
+            AppController.toast("Impossible de démarrer le calcul d’ombrage", 3000)
+        } else {
+            AppController.toast("Calcul ombrage…", 2000)
+        }
+    }
 
+    function applyShadeComputeResult(result) {
+        if (!result)
+            return
+        const site = Projects.currentProject.siteSurvey || {}
+        const monthly = result.monthlyLoss || result.monthly || []
+        const keep = result.halfHourlyKeep || []
+        const annual = Number(result.annualLossPct) || 0
+        const layout = LayoutRoofs.migrate(Projects.currentProject.layout || {})
+        const source = (LayoutRoofs.totalPanels(layout) > 0 || (root.obstacles || []).length > 0)
+                       ? "shading3d" : "horizon"
+        root.suppressProjectReload = true
+        shadeResult = {
+            monthly: monthly,
+            halfHourlyKeep: keep,
+            halfHourlyKeepElectrical: result.halfHourlyKeepElectrical || [],
+            annualLossPct: annual,
+            mode: result.mode
+        }
         Projects.updateCurrent({
             siteSurvey: Object.assign({}, site, {
-                points: points,
+                points: root.points,
                 obstacles: root.obstacles,
                 compassOffset: Number(compass.text),
                 slope: Number(slope.text),
                 monthlyLoss: monthly,
                 halfHourlyKeep: keep,
-                halfHourlyKeepElectrical: shadeResult.halfHourlyKeepElectrical
+                halfHourlyKeepElectrical: result.halfHourlyKeepElectrical
                         || (site.halfHourlyKeepElectrical || []),
                 annualLossPct: annual,
                 source: source
             }),
             resultsFingerprint: ""
         })
+        root.suppressProjectReload = false
         if (typeof sunHost !== "undefined" && sunHost.repaintAll)
             sunHost.repaintAll()
+        AppController.toast("Ombrage OK — " + annual + " %/an", 3000)
+    }
+
+    Connections {
+        target: ShadingEngine
+        function onComputeFinished(result) {
+            if (!root._awaitingSiteShade)
+                return
+            root._awaitingSiteShade = false
+            root.applyShadeComputeResult(result)
+        }
+        function onComputeFailed(err) {
+            if (!root._awaitingSiteShade)
+                return
+            root._awaitingSiteShade = false
+            AppController.toast("Ombrage échoué : " + (err || "?"), 4000)
+        }
     }
 
     Component.onCompleted: {
@@ -310,11 +340,22 @@ OseTabPage {
         // Ne pas recalculer l'ombrage horizon au boot (lent) — bouton « Calculer »
     }
 
-    function addPoint(az, elev) {
+    function addPoint(az, elev, source, deferShade) {
         let pts = root.points.slice()
-        pts.push({ az: az, elev: elev, source: "manual", id: root.nextPointId++ })
-        pts.sort(function (a, b) { return a.az - b.az })
+        pts.push({
+            az: az,
+            elev: elev,
+            source: source || "manual",
+            id: root.nextPointId++
+        })
+        // Pas de sort pendant le mode photo : évite de reconstruire tout le Repeater
+        if (!(deferShade || root.photoMode))
+            pts.sort(function (a, b) { return a.az - b.az })
         root.points = pts
+        if (deferShade || root.photoMode) {
+            // Mémoire seule — persist/saveAll + loadFromProject figent la caméra 1–2 s
+            return
+        }
         root.persistAndCompute()
     }
 
@@ -322,11 +363,15 @@ OseTabPage {
         let pts = root.points.slice()
         pts.splice(index, 1)
         root.points = pts
+        if (root.photoMode)
+            return
         root.persistAndCompute()
     }
 
     function removePointById(id) {
         root.points = root.points.filter(function (p) { return Number(p.id) !== Number(id) })
+        if (root.photoMode)
+            return
         root.persistAndCompute()
     }
 
@@ -434,7 +479,12 @@ OseTabPage {
 
     Connections {
         target: Projects
-        function onCurrentChanged() { root.loadFromProject() }
+        function onCurrentChanged() {
+            // Ne pas recharger le projet pendant le viseur / patch async (ANR)
+            if (root.photoMode || root.suppressProjectReload)
+                return
+            root.loadFromProject()
+        }
     }
 
     OseFormResults {
@@ -462,14 +512,26 @@ OseTabPage {
                     onClicked: root.addPoint(Number(azIn.text), Number(elIn.text))
                 }
                 OseBtn {
+                    text: root.photoMode ? "Stop photo + calcul" : "📷 Mode photo + boussole"
+                    kind: "primary"
+                    visible: AppController.isPhoneDevice || Qt.platform.os === "android"
+                    onClicked: {
+                        if (root.photoMode)
+                            photoCam.stop()
+                        else
+                            root.startPhotoMode()
+                    }
+                }
+                OseBtn {
                     text: "Recalculer"
                     kind: "outline"
+                    enabled: !root.photoMode
                     onClicked: root.persistAndCompute()
                 }
                 OseBtn {
                     text: "Tout effacer"
                     kind: "flat"
-                    enabled: root.points.length > 0
+                    enabled: root.points.length > 0 && !root.photoMode
                     onClicked: {
                         root.points = []
                         root.shadeResult = {}
@@ -712,13 +774,13 @@ OseTabPage {
                 wrapMode: Text.WordWrap
                 font.pixelSize: 12
                 color: Theme.textDim
-                text: "Boussole device / photo terrain : pas encore branchés en natif — offset manuel pour l’instant."
+                text: "Mode photo + boussole : viseur, mire et points en direct. L’ombrage se calcule seulement après Stop photo."
             }
         }
 
         OseCard {
             title: "Diagramme solaire"
-            hint: "Horizon (vert) · trajectoires soleil été / équinoxe / hiver. Cliquez pour ajouter, glissez un point."
+            hint: "Horizon (vert) · trajectoires soleil été / équinoxe / hiver. Cliquez pour ajouter, glissez un point. Ou mode photo (cap + pitch)."
 
             Item {
                 id: sunHost
@@ -950,6 +1012,9 @@ OseTabPage {
                 Connections {
                     target: root
                     function onPointsChanged() {
+                        // Pendant le viseur : ne pas repeindre le diagramme (freeze 1–2 s)
+                        if (root.photoMode)
+                            return
                         if (sunHost.dragIndex < 0)
                             sunHost.repaintAll()
                         else
@@ -1401,5 +1466,74 @@ OseTabPage {
                 text: "Le masque 30 min alimente Analyse ; les pertes mensuelles sont reprises dans Dimensionnement / Hors réseau."
             }
         }
+    }
+
+    Popup {
+        id: photoPopup
+        parent: Overlay.overlay
+        modal: true
+        focus: true
+        closePolicy: Popup.NoAutoClose
+        width: parent ? parent.width : 400
+        height: parent ? parent.height : 700
+        padding: 0
+        background: Rectangle { color: "#000" }
+        onOpened: photoCam.start()
+        onClosed: {
+            photoCam.active = false
+            DeviceAttitude.active = false
+            // Sortie viseur : ne JAMAIS calculer/sauvegarder de façon synchrone (ANR)
+            if (root.photoMode) {
+                Qt.callLater(function () {
+                    root.finishPhotoSession()
+                })
+            }
+        }
+
+        SitePhotoCamera {
+            id: photoCam
+            anchors.fill: parent
+            points: root.points
+            compassOffset: Number(compass.text) || 0
+            onSessionFinished: function (newPoints) {
+                // Fusion unique hors viseur — un seul persist/compute
+                if (!newPoints || !newPoints.length)
+                    return
+                let pts = root.points.slice()
+                for (let i = 0; i < newPoints.length; ++i) {
+                    const p = newPoints[i]
+                    pts.push({
+                        az: Number(p.az) || 0,
+                        elev: Number(p.elev) || 0,
+                        source: "photo",
+                        id: root.nextPointId++
+                    })
+                }
+                pts.sort(function (a, b) { return a.az - b.az })
+                root.points = pts
+            }
+            onStopRequested: {
+                // photoMode reste true → finishPhotoSession après fermeture
+                photoPopup.close()
+            }
+        }
+    }
+
+    function finishPhotoSession() {
+        // photoMode encore true → bloque loadFromProject pendant le patch
+        root.suppressProjectReload = true
+        let pts = root.points.slice()
+        pts.sort(function (a, b) { return a.az - b.az })
+        root.points = pts
+        root.persistSiteInputs()
+        root.suppressProjectReload = false
+        root.photoMode = false
+        root.startShadeComputeAsync()
+    }
+
+    function startPhotoMode() {
+        root.photoMode = true
+        photoPopup.open()
+        AppController.toast("Mode photo : visez, placez les points — l’ombrage se calcule à l’arrêt.", 4500)
     }
 }

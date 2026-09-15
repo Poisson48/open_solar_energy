@@ -6,13 +6,21 @@ import "controls"
 OseTabPage {
     id: root
     title: "Dimensionnement réseau"
-    subtitle: "Parcours facture → stratégie → résultat. Vérifiez le lieu et la météo avant de calculer."
+    subtitle: "1) Estimer le besoin selon la conso → 2) Choisir le modèle et le nombre de panneaux."
     nextTabId: AppController.nextPrimaryTab()
     nextTabLabel: AppController.tabLabel(AppController.nextPrimaryTab())
 
     property var lastResult: Projects.currentProject.sizingResult || ({})
+    /** Suggestion après estimation libre (avant choix manuel). */
+    property var estimateHint: ({})
     property bool isHybrid: (Projects.currentProject.installType || "grid") === "hybrid"
     property bool syncing: false
+    readonly property var monthShort: [
+        "Jan", "Fév", "Mar", "Avr", "Mai", "Juin",
+        "Juil", "Aoû", "Sep", "Oct", "Nov", "Déc"
+    ]
+    /** Textes des 12 champs kWh (source de vérité UI). */
+    property var monthKwhTexts: ["0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0"]
 
     function comboIndexFor(box, value, fallback) {
         const m = box.model
@@ -21,6 +29,89 @@ OseTabPage {
                 return i
         }
         return fallback !== undefined ? fallback : 0
+    }
+
+    function setMonthKwhTexts(arr) {
+        const next = []
+        for (let i = 0; i < 12; ++i)
+            next.push(String(Math.round(Number(arr && arr[i]) || 0)))
+        monthKwhTexts = next
+    }
+
+    function monthlyFromUi() {
+        const out = []
+        for (let i = 0; i < 12; ++i)
+            out.push(Math.max(0, Number(monthKwhTexts[i]) || 0))
+        return out
+    }
+
+    function sumMonths(arr) {
+        let s = 0
+        for (let i = 0; i < 12; ++i)
+            s += Math.max(0, Number(arr[i]) || 0)
+        return Math.round(s)
+    }
+
+    function syncAnnualFromMonths() {
+        annualField.text = String(sumMonths(monthlyFromUi()))
+    }
+
+    /** Enregistre seulement l’annuel — ne touche pas aux 12 mois. */
+    function persistAnnualOnly() {
+        if (syncing)
+            return
+        const a = Math.round(Math.max(0, Number(annualField.text) || 0))
+        annualField.text = String(a)
+        const f = Projects.currentProject.formState || {}
+        syncing = true
+        Projects.updateCurrent({
+            formState: Object.assign({}, f, { annualKwh: a })
+        })
+        syncing = false
+    }
+
+    function distributeAnnualToMonths() {
+        if (syncing)
+            return
+        const a = Math.round(Math.max(0, Number(annualField.text) || 0))
+        annualField.text = String(a)
+        setMonthKwhTexts(monthlyFromAnnual(a))
+        persistMonthlyAndForm()
+        AppController.toast("Annuel réparti sur 12 mois (" + a + " kWh)", 2500)
+    }
+
+    function onMonthEdited(index, text) {
+        if (syncing)
+            return
+        const next = monthKwhTexts.slice()
+        next[index] = text
+        monthKwhTexts = next
+        syncAnnualFromMonths()
+        persistMonthlyAndForm()
+    }
+
+    function persistMonthlyAndForm() {
+        if (syncing)
+            return
+        const monthly = monthlyFromUi()
+        const annual = sumMonths(monthly)
+        annualField.text = String(annual)
+        const f = Projects.currentProject.formState || {}
+        const b = Projects.currentProject.bill || {}
+        // syncing pendant update pour éviter loadFromProject qui écrase la saisie
+        syncing = true
+        Projects.updateCurrent({
+            monthlyKwh: monthly,
+            formState: Object.assign({}, f, { annualKwh: annual }),
+            bill: Object.assign({}, b, {
+                tariff: tariffBox.currentValue,
+                priceBase: Number(priceBase.text),
+                subscriptionPerYear: Number(subscription.text),
+                priceHpHc: { hp: Number(priceHp.text), hc: Number(priceHc.text) },
+                monthlyKwh: monthly
+            })
+        })
+        syncing = false
     }
 
     function loadFromProject() {
@@ -39,7 +130,21 @@ OseTabPage {
                               : (f.priceHp !== undefined ? f.priceHp : "0.246"))
         priceHc.text = String(hpHc.hc !== undefined ? hpHc.hc
                               : (f.priceHc !== undefined ? f.priceHc : "0.186"))
-        annualField.text = String(f.annualKwh !== undefined ? f.annualKwh : 4500)
+
+        let monthly = Projects.currentProject.monthlyKwh || b.monthlyKwh || []
+        if (!monthly.length || monthly.length < 12) {
+            const annual = Number(f.annualKwh !== undefined ? f.annualKwh : 4500)
+            monthly = monthlyFromAnnual(annual)
+        }
+        setMonthKwhTexts(monthly)
+        // Garder l’annuel saisi (formState) même s’il n’a pas encore été réparti
+        const monthSum = sumMonths(monthly)
+        const storedAnnual = Number(f.annualKwh)
+        if (storedAnnual > 0)
+            annualField.text = String(Math.round(storedAnnual))
+        else
+            annualField.text = String(monthSum > 0 ? monthSum : 4500)
+
         loadDay.text = f.loadDayKwh !== undefined ? String(f.loadDayKwh)
                       : (e.loadDayKwh !== undefined ? String(e.loadDayKwh) : "")
         loadNight.text = f.loadNightKwh !== undefined ? String(f.loadNightKwh)
@@ -48,6 +153,13 @@ OseTabPage {
         azField.text = String(f.azimuth !== undefined ? f.azimuth : 0)
         lossField.text = String(f.losses !== undefined ? f.losses : 14)
         costKwc.text = String(f.costPerKwc !== undefined ? f.costPerKwc : 1200)
+        const ppeak0 = Number(f.Ppeak) || Number(f.fixedPpeak) || 0
+        if (f.systemCost !== undefined && Number(f.systemCost) > 0)
+            systemCostField.text = String(Math.round(Number(f.systemCost)))
+        else if (ppeak0 > 0)
+            systemCostField.text = String(Math.round(ppeak0 * (Number(costKwc.text) || 1200)))
+        else
+            systemCostField.text = String(f.systemCost !== undefined ? Math.round(Number(f.systemCost)) : 3600)
         injPrice.text = String(f.injectionPrice !== undefined ? f.injectionPrice : "0.04")
         panelWpField.text = String(f.panelWp !== undefined ? f.panelWp : 400)
         if (f.panelArea !== undefined)
@@ -62,10 +174,20 @@ OseTabPage {
         }
         strategyBox.currentIndex = comboIndexFor(strategyBox, f.strategy || "roi", 0)
         covTarget.text = String(f.coverageTarget !== undefined ? f.coverageTarget : 70)
-        limitBox.currentIndex = comboIndexFor(limitBox, f.limitMode || "none", 0)
         roofArea.text = String(f.roofArea !== undefined ? f.roofArea : 40)
         fixedPpeak.text = String(f.fixedPpeak !== undefined ? f.fixedPpeak
                                  : (f.Ppeak !== undefined ? f.Ppeak : 3))
+        panelCountField.text = String(f.panelCount !== undefined ? f.panelCount
+                                      : (f.suggestedPanelCount !== undefined ? f.suggestedPanelCount
+                                      : (f.panelWp > 0 && f.Ppeak > 0
+                                         ? Math.max(1, Math.round(Number(f.Ppeak) * 1000 / Number(f.panelWp)))
+                                         : 10)))
+        if (f.suggestedPanelCount !== undefined || f.suggestedPpeak !== undefined) {
+            estimateHint = {
+                panelCount: f.suggestedPanelCount,
+                Ppeak: f.suggestedPpeak
+            }
+        }
         battKwh.text = String(f.battKwh !== undefined ? f.battKwh : 5)
         battDod.text = String(f.battDod !== undefined ? f.battDod : 80)
         syncing = false
@@ -90,29 +212,90 @@ OseTabPage {
             injectionPrice: Number(injPrice.text),
             strategy: strategyBox.currentValue,
             coverageTarget: Number(covTarget.text),
-            limitMode: limitBox.currentValue,
+            limitMode: "panels",
             roofArea: Number(roofArea.text),
             fixedPpeak: Number(fixedPpeak.text),
+            panelCount: Math.max(1, Math.round(Number(panelCountField.text) || 1)),
             panelWp: Number(panelWpField.text),
+            Ppeak: root.derivedPpeak(),
+            systemCost: Math.max(0, Math.round(Number(systemCostField.text) || 0)),
             battKwh: Number(battKwh.text),
             battDod: Number(battDod.text),
             loadDayKwh: loadDay.text.length ? Number(loadDay.text) : undefined,
             loadNightKwh: loadNight.text.length ? Number(loadNight.text) : undefined
         }, extra || {})
+        const monthly = monthlyFromUi()
         const bill = Object.assign({}, b, {
             tariff: tariffBox.currentValue,
             priceBase: Number(priceBase.text),
             subscriptionPerYear: Number(subscription.text),
-            priceHpHc: { hp: Number(priceHp.text), hc: Number(priceHc.text) }
+            priceHpHc: { hp: Number(priceHp.text), hc: Number(priceHc.text) },
+            monthlyKwh: monthly
         })
-        Projects.updateCurrent({ formState: Object.assign({}, f, patch), bill: bill })
+        Projects.updateCurrent({
+            formState: Object.assign({}, f, patch),
+            bill: bill,
+            monthlyKwh: monthly
+        })
     }
 
     Component.onCompleted: loadFromProject()
 
     Connections {
         target: Projects
-        function onCurrentChanged() { root.loadFromProject() }
+        function onCurrentChanged() {
+            if (!root.syncing)
+                root.loadFromProject()
+        }
+    }
+
+    function derivedPpeak() {
+        const wp = Number(panelWpField.text) || 400
+        const n = Math.max(1, Math.round(Number(panelCountField.text) || 1))
+        return Math.round(n * wp / 10) / 100
+    }
+
+    function derivedSystemCost() {
+        // Priorité au devis / coût total saisi (ne pas écraser avec €/kWc × Ppeak)
+        const typed = Math.round(Number(systemCostField.text) || 0)
+        if (typed > 0)
+            return typed
+        return Math.round(derivedPpeak() * (Number(costKwc.text) || 1200))
+    }
+
+    /** Après changement N/Wc : garde le coût total, met à jour €/kWc. */
+    function syncCostPerKwcFromTotal() {
+        const p = derivedPpeak()
+        const total = Math.max(0, Math.round(Number(systemCostField.text) || 0))
+        if (p > 0 && total > 0)
+            costKwc.text = String(Math.round(total / p))
+    }
+
+    /** Après édition €/kWc : recalcule le total. */
+    function syncTotalFromCostPerKwc() {
+        const p = derivedPpeak()
+        const c = Number(costKwc.text) || 0
+        if (p > 0 && c > 0)
+            systemCostField.text = String(Math.round(p * c))
+    }
+
+    function syncPeakFromPanels() {
+        const p = derivedPpeak()
+        const n = Math.max(1, Math.round(Number(panelCountField.text) || 1))
+        syncCostPerKwcFromTotal()
+        persistForm({
+            Ppeak: p,
+            fixedPpeak: p,
+            panelCount: n,
+            systemCost: derivedSystemCost(),
+            costPerKwc: Number(costKwc.text) || 1200,
+            limitMode: "panels"
+        })
+    }
+
+    function panelCountForPeak(ppeak) {
+        const wp = Number(panelWpField.text) || 400
+        return Math.max(1, Math.round((Number(ppeak) || 0) * 1000 / wp))
     }
 
     function ensureWeather() {
@@ -131,13 +314,19 @@ OseTabPage {
         return out
     }
 
-    function runSizing() {
+    function runSizing(phase) {
+        // phase: "estimate" = sweep selon conso ; "confirm" = nb panneaux choisi
+        const mode = phase || "confirm"
         const weather = ensureWeather()
         if (!weather.length) return
-        let monthly = Projects.currentProject.monthlyKwh || []
-        const annual = Number(annualField.text) || 4500
-        if (!monthly.length)
+        let monthly = monthlyFromUi()
+        let annual = sumMonths(monthly)
+        if (annual <= 0) {
+            annual = Number(annualField.text) || 4500
             monthly = monthlyFromAnnual(annual)
+            setMonthKwhTexts(monthly)
+        }
+        annualField.text = String(annual)
         const loc = Projects.currentProject.location || {}
         const form = Projects.currentProject.formState || {}
         const site = Projects.currentProject.siteSurvey || {}
@@ -154,7 +343,13 @@ OseTabPage {
             dayShare = d / Math.max(0.1, d + n)
         }
 
-        lastResult = Sizing.run({
+        const limitMode = (mode === "estimate")
+                          ? (roofLimitCheck.checked ? "roof" : "none")
+                          : "panels"
+        if (mode === "confirm")
+            syncPeakFromPanels()
+
+        const sizingOpts = {
             lat: loc.lat || 43.6,
             weatherData: weather,
             monthlyKwh: monthly,
@@ -166,12 +361,16 @@ OseTabPage {
             costPerKwc: Number(costKwc.text),
             coverageTarget: Number(covTarget.text),
             losses: Number(lossField.text),
-            lossTree: form.lossTree || undefined,
+            lossTree: (form.lossTree && Object.keys(form.lossTree).length)
+                      ? form.lossTree
+                      : YearPv.defaultLossTree(Number(lossField.text) || 14),
             injectionPrice: Number(injPrice.text),
             installType: Projects.currentProject.installType || "grid",
             battKwh: isHybrid ? Number(battKwh.text) : 0,
             dod: isHybrid ? Number(battDod.text) : 80,
             dayShare: dayShare,
+            loadDayKwh: day || undefined,
+            loadNightKwh: night || undefined,
             monthlyLoss: site.monthlyLoss || [],
             annualLossPct: site.annualLossPct || 0,
             halfHourlyKeep: site.halfHourlyKeep || [],
@@ -179,34 +378,23 @@ OseTabPage {
             hourlyWeatherData: Projects.currentProject.hourlyWeatherData || {},
             useElectricalShade: form.energyMode === "study",
             thermal: form.thermal || undefined,
-            limitMode: limitBox.currentValue,
+            limitMode: limitMode,
             roofAreaM2: Number(roofArea.text) || 40,
             panelWp: Number(panelWpField.text) || 400,
             panelAreaM2: Number(panelArea.text) || 2.0,
-            fixedPpeak: Number(fixedPpeak.text) || 3
-        })
+            fixedPpeak: Number(fixedPpeak.text) || derivedPpeak(),
+            panelCount: Math.max(1, Math.round(Number(panelCountField.text) || 1))
+        }
+        // Confirm : utiliser le devis / coût total (ne pas le recalculer via €/kWc)
+        if (mode === "confirm")
+            sizingOpts.systemCost = derivedSystemCost()
+
+        lastResult = Sizing.run(sizingOpts)
         const best = lastResult.best || {}
-        const bal = YearPv.buildBalancesReport({
-            lat: loc.lat || 43.6,
-            tilt: Number(tiltField.text),
-            azimuth: Number(azField.text),
-            Ppeak: best.Ppeak || Number(fixedPpeak.text) || 3,
-            weatherData: weather,
-            losses: Number(lossField.text),
-            lossTree: form.lossTree || YearPv.defaultLossTree(Number(lossField.text) || 14),
-            halfHourlyKeep: site.halfHourlyKeep || [],
-            monthlyLoss: site.monthlyLoss || [],
-            annualLossPct: site.annualLossPct || 0,
-            useElectricalShade: form.energyMode === "study",
-            useInverterModel: !!form.useInverterModel,
-            pacNom: Number(form.pacNom) || (best.Ppeak || 3) * 0.9,
-            etaEuro: Number(form.etaEuro) || 0.97,
-            thermal: form.thermal || {
-                model: form.energyMode === "study" ? "uValue" : "noct",
-                U: Number(form.mountU) || 29,
-                wind: Number(form.wind) || 1
-            }
-        })
+        const nPanels = mode === "confirm"
+                        ? Math.max(1, Math.round(Number(panelCountField.text) || 1))
+                        : panelCountForPeak(best.Ppeak)
+
         const bill = {
             tariff: tariffBox.currentValue,
             priceBase: Number(priceBase.text),
@@ -215,7 +403,57 @@ OseTabPage {
             priceHpHc: { hp: Number(priceHp.text), hc: Number(priceHc.text) }
         }
         const annualBill = Finance.calcCurrentAnnualBill(bill)
-        lastResult = Object.assign({}, lastResult, { annualBill: annualBill })
+
+        if (mode === "estimate") {
+            estimateHint = {
+                Ppeak: best.Ppeak,
+                panelCount: nPanels,
+                E_annual: best.E_annual,
+                coverage: best.coverage,
+                payback: best.payback,
+                systemCost: best.systemCost
+            }
+            panelCountField.text = String(nPanels)
+            statusLabel.text = "Suggestion : " + nPanels + " panneaux ≈ " + (best.Ppeak || "?")
+                              + " kWc — choisissez le modèle, ajustez N, puis validez."
+            lastResult = Object.assign({}, lastResult, { annualBill: annualBill, phase: "estimate" })
+            persistForm({
+                suggestedPpeak: best.Ppeak,
+                suggestedPanelCount: nPanels
+            })
+            Projects.updateCurrent({ sizingResult: lastResult })
+            AppController.toast("Estimation selon conso : ~" + nPanels + " panneaux ("
+                                + (best.Ppeak || "?") + " kWc)", 4000)
+            return
+        }
+
+        // confirm : figer N panneaux choisis
+        const bal = YearPv.buildBalancesReport({
+            lat: loc.lat || 43.6,
+            tilt: Number(tiltField.text),
+            azimuth: Number(azField.text),
+            Ppeak: best.Ppeak || derivedPpeak(),
+            weatherData: weather,
+            losses: Number(lossField.text),
+            lossTree: (form.lossTree && Object.keys(form.lossTree).length)
+                      ? form.lossTree
+                      : YearPv.defaultLossTree(Number(lossField.text) || 14),
+            halfHourlyKeep: site.halfHourlyKeep || [],
+            monthlyLoss: site.monthlyLoss || [],
+            annualLossPct: site.annualLossPct || 0,
+            useElectricalShade: form.energyMode === "study",
+            useInverterModel: !!form.useInverterModel,
+            pacNom: Number(form.pacNom) || (best.Ppeak || 3) * 0.9,
+            etaEuro: Number(form.etaEuro) || 0.97,
+            energyMode: form.energyMode || "fast",
+            hourlyWeatherData: Projects.currentProject.hourlyWeatherData || {},
+            thermal: form.thermal || {
+                model: form.energyMode === "study" ? "uValue" : "noct",
+                U: Number(form.mountU) || 29,
+                wind: Number(form.wind) || 1
+            }
+        })
+        lastResult = Object.assign({}, lastResult, { annualBill: annualBill, phase: "confirm" })
         const nextForm = Object.assign({}, form, {
             tilt: Number(tiltField.text),
             azimuth: Number(azField.text),
@@ -225,27 +463,51 @@ OseTabPage {
             priceHc: Number(priceHc.text),
             annualKwh: annual,
             strategy: strategyBox.currentValue,
-            limitMode: limitBox.currentValue,
+            limitMode: "panels",
             battKwh: isHybrid ? Number(battKwh.text) : 0,
             Ppeak: best.Ppeak,
             systemCost: best.systemCost,
+            costPerKwc: Number(costKwc.text) || 1200,
             panelWp: Number(panelWpField.text) || 400,
+            panelCount: nPanels,
+            fixedPpeak: best.Ppeak,
             loadDayKwh: day || enedis.loadDayKwh,
             loadNightKwh: night || enedis.loadNightKwh
         })
+        let layoutPatch = Projects.currentProject.layout || {}
+        if (nPanels > 0) {
+            layoutPatch = LayoutRoofs.migrate(layoutPatch)
+            let r = 2, c = Math.ceil(nPanels / 2)
+            for (let tryC = nPanels; tryC >= 1; --tryC) {
+                if (nPanels % tryC === 0) {
+                    c = tryC
+                    r = nPanels / tryC
+                    break
+                }
+            }
+            layoutPatch = LayoutRoofs.generateGrid(layoutPatch, r, c, {
+                panelWp: Number(panelWpField.text) || 400,
+                tilt: Number(tiltField.text),
+                azimuth: Number(azField.text),
+                panelW: Number(form.panelW) || undefined,
+                panelH: Number(form.panelH) || undefined
+            })
+        }
         Projects.updateCurrent({
             sizingResult: lastResult,
             monthlyKwh: monthly,
             formState: nextForm,
             bill: bill,
-            pvsystBalances: bal
+            pvsystBalances: bal,
+            layout: layoutPatch
         })
         Projects.updateCurrent({
             resultsFingerprint: Pipeline.fingerprint(Projects.currentProject),
             resultsBasis: Pipeline.fingerprintParts(Projects.currentProject)
         })
-        AppController.autoSave("Calcul dimensionnement — "
-                               + (best.Ppeak || "?") + " kWc")
+        statusLabel.text = "Validé : " + nPanels + " panneaux · " + (best.Ppeak || "?") + " kWc"
+        AppController.autoSave("Dimensionnement validé — "
+                               + nPanels + " panneaux · " + (best.Ppeak || "?") + " kWc")
     }
 
     function effectivePrice() {
@@ -259,11 +521,18 @@ OseTabPage {
         const weather = ensureWeather()
         if (!weather.length) return
         const loc = Projects.currentProject.location || {}
-        const opt = SolarMath.optimalTilt(loc.lat || 43.6, weather, true)
+        const site = Projects.currentProject.siteSurvey || {}
+        const shade = {
+            monthlyLoss: site.monthlyLoss || [],
+            annualLossPct: Number(site.annualLossPct) || 0,
+            halfHourlyKeep: site.halfHourlyKeep || []
+        }
+        const opt = SolarMath.optimalTilt(loc.lat || 43.6, weather, true, shade)
         tiltField.text = String(opt.tilt)
         azField.text = String(opt.azimuth)
         persistForm()
-        AppController.toast("Tilt optimal " + opt.tilt + "° / az " + opt.azimuth + "°")
+        const shadeNote = opt.shadeApplied ? " (avec ombrage site)" : ""
+        AppController.toast("Tilt optimal " + opt.tilt + "° / az " + opt.azimuth + "°" + shadeNote)
     }
 
     OseFormResults {
@@ -315,6 +584,24 @@ OseTabPage {
                     Label { text: "Abo."; Layout.preferredWidth: 80 }
                     OseInputUnit { id: subscription; text: "147"; unit: "€/an"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
                 }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "Revente surplus"; Layout.preferredWidth: Ui.isPhone ? 110 : 110 }
+                    OseInputUnit {
+                        id: injPrice
+                        text: "0.04"
+                        unit: "€/kWh"
+                        Layout.fillWidth: true
+                        onEditingFinished: root.persistForm()
+                    }
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                font.pixelSize: 11
+                color: Theme.textDim
+                text: "Tarif de rachat du surplus injecté (EDF OA / agrégateur). Défaut 0,04 €/kWh."
             }
             GridLayout {
                 visible: tariffBox.currentValue === "hphc"
@@ -342,7 +629,69 @@ OseTabPage {
                     unit: "kWh"
                     Layout.fillWidth: true
                     inputMethodHints: Qt.ImhFormattedNumbersOnly
-                    onEditingFinished: root.persistForm()
+                    onEditingFinished: root.persistAnnualOnly()
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                font.pixelSize: 12
+                font.weight: Font.DemiBold
+                color: Theme.text
+                text: "Conso mensuelle (kWh)"
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                font.pixelSize: 11
+                color: Theme.textDim
+                text: "Saisissez les 12 mois, ou l’annuel puis « Répartir l’annuel sur 12 mois »."
+            }
+            GridLayout {
+                columns: Ui.isPhone ? 2 : 4
+                Layout.fillWidth: true
+                columnSpacing: 8
+                rowSpacing: 6
+                Repeater {
+                    model: 12
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+                        Label {
+                            text: root.monthShort[index]
+                            Layout.preferredWidth: Ui.isPhone ? 36 : 40
+                            font.pixelSize: 12
+                            color: Theme.textDim
+                        }
+                        OseInputUnit {
+                            Layout.fillWidth: true
+                            text: root.monthKwhTexts[index]
+                            unit: "kWh"
+                            inputMethodHints: Qt.ImhFormattedNumbersOnly
+                            onEditingFinished: root.onMonthEdited(index, text)
+                        }
+                    }
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                OseBtn {
+                    text: "Répartir l’annuel sur 12 mois"
+                    kind: "outline"
+                    Layout.fillWidth: true
+                    onClicked: root.distributeAnnualToMonths()
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                font.pixelSize: 12
+                color: Theme.textDim
+                text: {
+                    const a = Number(annualField.text) || 0
+                    const d = a / 365
+                    return "Moyenne : " + d.toFixed(1).replace(".", ",") + " kWh/jour"
                 }
             }
             GridLayout {
@@ -373,19 +722,23 @@ OseTabPage {
                         statusLabel.text = r.error || "Import échoué"
                         return
                     }
-                    annualField.text = String(r.annualKwh)
+                    root.setMonthKwhTexts(r.monthlyKwh || root.monthlyFromAnnual(r.annualKwh || 0))
+                    annualField.text = String(r.annualKwh || root.sumMonths(root.monthlyFromUi()))
                     if (r.loadDayKwh !== undefined) loadDay.text = String(r.loadDayKwh)
                     if (r.loadNightKwh !== undefined) loadNight.text = String(r.loadNightKwh)
                     Projects.updateCurrent({
-                        monthlyKwh: r.monthlyKwh,
+                        monthlyKwh: root.monthlyFromUi(),
                         enedisImport: r,
                         formState: Object.assign({}, Projects.currentProject.formState || {}, {
-                            annualKwh: r.annualKwh,
+                            annualKwh: Number(annualField.text),
                             loadDayKwh: r.loadDayKwh,
                             loadNightKwh: r.loadNightKwh
+                        }),
+                        bill: Object.assign({}, Projects.currentProject.bill || {}, {
+                            monthlyKwh: root.monthlyFromUi()
                         })
                     })
-                    statusLabel.text = "Enedis OK — " + r.annualKwh + " kWh/an"
+                    statusLabel.text = "Enedis OK — " + annualField.text + " kWh/an"
                               + (r.halfHourly ? " (profil 30 min)" : "")
                 }
             }
@@ -439,8 +792,38 @@ OseTabPage {
                 RowLayout {
                     Layout.fillWidth: true
                     Label { text: "Coût / kWc"; Layout.preferredWidth: 100 }
-                    OseInputUnit { id: costKwc; text: "1200"; unit: "€"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                    OseInputUnit {
+                        id: costKwc
+                        text: "1200"
+                        unit: "€"
+                        Layout.fillWidth: true
+                        onEditingFinished: {
+                            root.syncTotalFromCostPerKwc()
+                            root.persistForm()
+                        }
+                    }
                 }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "Coût total"; Layout.preferredWidth: 100 }
+                    OseInputUnit {
+                        id: systemCostField
+                        text: "3600"
+                        unit: "€"
+                        Layout.fillWidth: true
+                        onEditingFinished: {
+                            root.syncCostPerKwcFromTotal()
+                            root.persistForm()
+                        }
+                    }
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                font.pixelSize: 11
+                color: Theme.textDim
+                text: "L’estimation (étape 1) balaye avec le €/kWc. La validation (étape 2) utilise le coût total (devis)."
             }
             Label {
                 Layout.fillWidth: true
@@ -540,11 +923,64 @@ OseTabPage {
                     })
                 }
             }
-            RowLayout {
+        }
+
+        OseStep {
+            step: 3
+            title: "1 — Estimer le besoin (selon la conso)"
+            hint: "L’algo balaye les puissances pour ROI / autoconso / couverture. Ça propose un nombre de panneaux — ce n’est pas encore le choix final."
+            ComboBox {
+                id: strategyBox
                 Layout.fillWidth: true
-                Label { text: "Injection"; Layout.preferredWidth: 100 }
-                OseInputUnit { id: injPrice; text: "0.04"; unit: "€/kWh"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                model: [
+                    { label: "ROI / payback optimal", value: "roi" },
+                    { label: "Autoconsommation max", value: "autoconso" },
+                    { label: "Couverture cible", value: "coverage" }
+                ]
+                textRole: "label"
+                valueRole: "value"
+                onActivated: root.persistForm()
             }
+            RowLayout {
+                visible: strategyBox.currentValue === "coverage"
+                Layout.fillWidth: true
+                Label { text: "Couverture cible" }
+                OseInputUnit { id: covTarget; text: "70"; unit: "%"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+            }
+            CheckBox {
+                id: roofLimitCheck
+                text: "Borner l’estimation par la surface toiture"
+                checked: false
+                onToggled: root.persistForm()
+            }
+            RowLayout {
+                visible: roofLimitCheck.checked
+                Layout.fillWidth: true
+                Label { text: "Surface utile" }
+                OseInputUnit { id: roofArea; text: "40"; unit: "m²"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+            }
+            // champs techniques conservés (non visibles) pour compat persist
+            OseInputUnit { id: fixedPpeak; visible: false; text: "3" }
+            OseBtn {
+                text: "Estimer le besoin"
+                kind: "primary"
+                onClicked: root.runSizing("estimate")
+            }
+            OseAlert {
+                visible: estimateHint.panelCount !== undefined
+                kind: "info"
+                text: "Suggestion : ~" + (estimateHint.panelCount || "?") + " panneaux ≈ "
+                      + (estimateHint.Ppeak || "?") + " kWc"
+                      + (estimateHint.coverage !== undefined ? (" · couverture " + estimateHint.coverage + " %") : "")
+                      + (estimateHint.payback !== undefined ? (" · payback " + estimateHint.payback + " ans") : "")
+                      + " — passez à l’étape 2 pour choisir le modèle et le nombre exact."
+            }
+        }
+
+        OseStep {
+            step: 4
+            title: "2 — Choisir modèle + nombre de panneaux"
+            hint: "Ex. vous avez acheté 10 panneaux : sélectionnez le modèle, tapez 10, validez. Ppeak et coût se recalculent."
             Label { text: "Panneau catalogue"; color: Theme.textDim; font.pixelSize: 12 }
             RowLayout {
                 Layout.fillWidth: true
@@ -577,6 +1013,11 @@ OseTabPage {
                         if (!it || !it.value) return
                         panelWpField.text = String(it.wp || 400)
                         panelArea.text = String((it.area || 2).toFixed(2))
+                        // Après estimation : recalculer N depuis le kWc suggéré
+                        const hintPeak = Number(estimateHint.Ppeak)
+                                      || Number((Projects.currentProject.formState || {}).suggestedPpeak)
+                        if (hintPeak > 0 && (it.wp || 0) > 0)
+                            panelCountField.text = String(Math.max(1, Math.round(hintPeak * 1000 / it.wp)))
                         const form = Projects.currentProject.formState || {}
                         Projects.updateCurrent({
                             formState: Object.assign({}, form, {
@@ -584,10 +1025,11 @@ OseTabPage {
                                 panelWp: it.wp,
                                 panelArea: it.area,
                                 panelW: it.w,
-                                panelH: it.h
+                                panelH: it.h,
+                                panelModel: it.label
                             })
                         })
-                        root.persistForm()
+                        root.syncPeakFromPanels()
                     }
                 }
                 OseBtn {
@@ -604,65 +1046,57 @@ OseTabPage {
                 RowLayout {
                     Layout.fillWidth: true
                     Label { text: "Wc module"; Layout.preferredWidth: 90 }
-                    OseInputUnit { id: panelWpField; text: "400"; unit: "Wc"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                    OseInputUnit {
+                        id: panelWpField
+                        text: "400"
+                        unit: "Wc"
+                        Layout.fillWidth: true
+                        onEditingFinished: root.syncPeakFromPanels()
+                    }
                 }
                 RowLayout {
                     Layout.fillWidth: true
                     Label { text: "Surface"; Layout.preferredWidth: 90 }
                     OseInputUnit { id: panelArea; text: "2.0"; unit: "m²"; Layout.fillWidth: true }
                 }
+                RowLayout {
+                    Layout.fillWidth: true
+                    Label { text: "Nb panneaux"; Layout.preferredWidth: 90 }
+                    OseInputUnit {
+                        id: panelCountField
+                        text: "10"
+                        unit: "pcs"
+                        Layout.fillWidth: true
+                        inputMethodHints: Qt.ImhDigitsOnly
+                        onEditingFinished: root.syncPeakFromPanels()
+                    }
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+                color: Theme.text
+                text: {
+                    const n = Math.max(1, Math.round(Number(panelCountField.text) || 1))
+                    const wp = Number(panelWpField.text) || 400
+                    const p = Math.round(n * wp / 10) / 100
+                    const cost = Math.max(0, Math.round(Number(systemCostField.text) || 0))
+                    const cpk = p > 0 && cost > 0 ? Math.round(cost / p) : (Number(costKwc.text) || 1200)
+                    return "Installation : " + n + " × " + wp + " Wc = " + p + " kWc · devis "
+                           + cost + " € (" + cpk + " €/kWc)"
+                }
+            }
+            OseBtn {
+                text: "Valider avec ces panneaux"
+                kind: "primary"
+                onClicked: root.runSizing("confirm")
             }
         }
 
         OseStep {
-            step: 3
-            title: "Stratégie & limite"
-            ComboBox {
-                id: strategyBox
-                Layout.fillWidth: true
-                model: [
-                    { label: "ROI / payback optimal", value: "roi" },
-                    { label: "Autoconsommation max", value: "autoconso" },
-                    { label: "Couverture cible", value: "coverage" }
-                ]
-                textRole: "label"
-                valueRole: "value"
-                onActivated: root.persistForm()
-            }
-            RowLayout {
-                visible: strategyBox.currentValue === "coverage"
-                Layout.fillWidth: true
-                Label { text: "Couverture cible" }
-                OseInputUnit { id: covTarget; text: "70"; unit: "%"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
-            }
-            ComboBox {
-                id: limitBox
-                Layout.fillWidth: true
-                model: [
-                    { label: "Limite : libre (sweep)", value: "none" },
-                    { label: "Limite : surface toiture", value: "roof" },
-                    { label: "Limite : puissance fixe", value: "fixed" }
-                ]
-                textRole: "label"
-                valueRole: "value"
-                onActivated: root.persistForm()
-            }
-            RowLayout {
-                visible: limitBox.currentValue === "roof"
-                Layout.fillWidth: true
-                Label { text: "Surface utile" }
-                OseInputUnit { id: roofArea; text: "40"; unit: "m²"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
-            }
-            RowLayout {
-                visible: limitBox.currentValue === "fixed"
-                Layout.fillWidth: true
-                Label { text: "Ppeak fixe" }
-                OseInputUnit { id: fixedPpeak; text: "3"; unit: "kWc"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
-            }
-        }
-
-        OseStep {
-            step: 4
+            step: 5
             title: "Batterie hybride"
             visible: root.isHybrid
             hint: "Mode Hybride : Enedis 30 min recommandé."
@@ -684,9 +1118,12 @@ OseTabPage {
             }
         }
 
-        RowLayout {
-            OseBtn { text: "Dimensionner"; onClicked: root.runSizing() }
-            Label { id: statusLabel; color: Theme.textDim; Layout.fillWidth: true }
+        Label {
+            id: statusLabel
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+            color: Theme.textDim
+            font.pixelSize: 12
         }
 
         results: ColumnLayout {
@@ -697,6 +1134,15 @@ OseTabPage {
                 visible: lastResult.best !== undefined && lastResult.best !== null
                 Layout.fillWidth: true
                 KpiCard { title: "Puissance"; value: ((lastResult.best && lastResult.best.Ppeak) || 0) + " kWc" }
+                KpiCard {
+                    title: "Panneaux"
+                    value: {
+                        const n = (Projects.currentProject.formState || {}).panelCount
+                                  || (estimateHint.panelCount)
+                                  || "—"
+                        return String(n)
+                    }
+                }
                 KpiCard { title: "Production"; value: ((lastResult.best && lastResult.best.E_annual) || 0) + " kWh" }
             }
             RowLayout {
@@ -752,9 +1198,12 @@ OseTabPage {
                     Projects.updateCurrent({
                         formState: Object.assign({}, form, {
                             Ppeak: lastResult.best.Ppeak,
+                            panelCount: form.panelCount
+                                        || root.panelCountForPeak(lastResult.best.Ppeak),
                             tilt: Number(tiltField.text),
                             azimuth: Number(azField.text),
-                            systemCost: lastResult.best.systemCost
+                            systemCost: lastResult.best.systemCost,
+                            limitMode: "panels"
                         })
                     })
                     AppController.currentTab = "grid"

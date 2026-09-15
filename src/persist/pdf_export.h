@@ -24,8 +24,8 @@ public:
                                                 const QVariantMap& opts = {});
 
     /**
-     * Rapport de simulation multi-pages (style étude PVsyst) :
-     * site, météo, système, bilan mensuel, ombrage, finances, hors-réseau.
+     * Rapport projet client : ROI / économies en tête, puis perf. énergétique,
+     * système, bilan mensuel ; annexe technique (balances / pertes / PVGIS).
      */
     Q_INVOKABLE QString exportSimulationReport(const QVariantMap& project);
 

@@ -186,7 +186,7 @@ void Updater::setState(State s)
     else if (s == Available) {
         qInfo() << "[Updater] version" << m_latestVersion << "disponible (nous sommes en"
                 << currentVersion() << ")";
-        setStatusMessage(QStringLiteral("Version %1 disponible — touchez « Mettre à jour » en haut")
+        setStatusMessage(QStringLiteral("Version %1 disponible — touchez « Mettre à jour »")
                              .arg(m_latestVersion));
     } else if (s == Downloading)
         setStatusMessage(QStringLiteral("Téléchargement de la version %1…").arg(m_latestVersion));

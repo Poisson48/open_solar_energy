@@ -58,6 +58,17 @@ public class OseActivity extends QtActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == Platform.REQ_BLUETOOTH) {
+            boolean ok = grantResults.length > 0;
+            for (int r : grantResults) {
+                if (r != PackageManager.PERMISSION_GRANTED) {
+                    ok = false;
+                    break;
+                }
+            }
+            Platform.setBluetoothPermissionResult(ok ? "granted" : "denied");
+            return;
+        }
         if (requestCode != Platform.REQ_CAMERA)
             return;
         boolean ok = grantResults.length > 0

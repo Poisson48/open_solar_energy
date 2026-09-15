@@ -15,8 +15,9 @@ public:
                                                   const QVariantList& consoHours, double battKwh,
                                                   double dod, double eta = 0.97) const;
 
-    /** Profil conso 24 h à partir de kWh mensuel (ou day/night). */
-    Q_INVOKABLE QVariantList syntheticLoadProfile(double dailyKwh, double dayShare = 0.55) const;
+    /** Profil conso 24 h : part jour sur heures de soleil (lat + mois). */
+    Q_INVOKABLE QVariantList syntheticLoadProfile(double dailyKwh, double dayShare = 0.55,
+                                                  double lat = 46.0, int month = 6) const;
 
     /** PV 24 h pour un mois via SolarMath::hourlyIrradiance × Ppeak × PR approx. */
     Q_INVOKABLE QVariantList pvHourlyProfile(double lat, int month, double GHI, double DHI,

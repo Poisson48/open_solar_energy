@@ -5,6 +5,7 @@
 #include <QQmlContext>
 #include <QQuickStyle>
 #include <QDebug>
+#include <QTimer>
 
 #include "appcontroller.h"
 #include "net/osm_tile_provider.h"
@@ -23,6 +24,20 @@ int main(int argc, char* argv[])
     const bool gridProof = [&]() {
         for (int i = 1; i < argc; ++i) {
             if (QString::fromLocal8Bit(argv[i]) == QLatin1String("--grid-proof"))
+                return true;
+        }
+        return false;
+    }();
+    const bool btHost = [&]() {
+        for (int i = 1; i < argc; ++i) {
+            if (QString::fromLocal8Bit(argv[i]) == QLatin1String("--bt-host"))
+                return true;
+        }
+        return false;
+    }();
+    const bool btCatalog = [&]() {
+        for (int i = 1; i < argc; ++i) {
+            if (QString::fromLocal8Bit(argv[i]) == QLatin1String("--bt-catalog"))
                 return true;
         }
         return false;
@@ -52,6 +67,37 @@ int main(int argc, char* argv[])
                 qCritical().noquote() << "  -" << e.toString();
         }
         return ok ? 0 : 2;
+    }
+
+    if (btHost || btCatalog) {
+        auto* bt = controller.syncBluetooth();
+        if (!bt) {
+            qCritical() << "SyncBluetooth indisponible";
+            return 3;
+        }
+        if (btHost) {
+            if (!controller.syncSend({})) {
+                qCritical().noquote() << "bt-host FAIL" << bt->lastError();
+                return 4;
+            }
+            qInfo().noquote() << "bt-host OK — waiting 600s" << bt->status();
+            QTimer::singleShot(600000, &app, &QCoreApplication::quit);
+            return app.exec();
+        }
+        // --bt-catalog : scan + fetch remote tree
+        const QVariantMap tree = controller.syncFetchRemoteCatalog();
+        if (tree.isEmpty()) {
+            qCritical().noquote() << "bt-catalog FAIL" << bt->lastError() << bt->status();
+            return 5;
+        }
+        const QVariantList projects = tree.value(QStringLiteral("projects")).toList();
+        qInfo().noquote() << "bt-catalog OK projects=" << projects.size();
+        for (const QVariant& p : projects) {
+            const QVariantMap m = p.toMap();
+            qInfo().noquote() << " -" << m.value(QStringLiteral("id")).toString()
+                              << m.value(QStringLiteral("name")).toString();
+        }
+        return 0;
     }
 
     QObject::connect(
@@ -93,6 +139,11 @@ int main(int argc, char* argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("LayoutRoofs"), controller.layoutRoofs());
     engine.rootContext()->setContextProperty(QStringLiteral("ShadingEngine"), controller.shadingEngine());
     engine.rootContext()->setContextProperty(QStringLiteral("YearPv"), controller.yearPv());
+    engine.rootContext()->setContextProperty(QStringLiteral("SyncEngine"), controller.syncEngine());
+    engine.rootContext()->setContextProperty(QStringLiteral("SyncLan"), controller.syncLan());
+    engine.rootContext()->setContextProperty(QStringLiteral("SyncBluetooth"), controller.syncBluetooth());
+    engine.rootContext()->setContextProperty(QStringLiteral("SyncTransport"), controller.syncTransport());
+    engine.rootContext()->setContextProperty(QStringLiteral("DeviceAttitude"), controller.deviceAttitude());
 
     const QUrl url = gridProof
                          ? QUrl(QStringLiteral("qrc:/qt/qml/OpenSolarEnergy/qml/GridProof.qml"))

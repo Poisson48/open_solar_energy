@@ -28,6 +28,11 @@
 #include "persist/project_share.h"
 #include "persist/project_store.h"
 #include "persist/snapshot_history.h"
+#include "persist/sync_engine.h"
+#include "persist/sync_lan.h"
+#include "persist/sync_bluetooth.h"
+#include "persist/sync_transport.h"
+#include "device_attitude.h"
 
 namespace app {
 
@@ -59,8 +64,15 @@ class AppController : public QObject {
     Q_PROPERTY(ose::ShadingEngine* shadingEngine READ shadingEngine CONSTANT)
     Q_PROPERTY(ose::YearPv* yearPv READ yearPv CONSTANT)
     Q_PROPERTY(ose::ProjectPipeline* pipeline READ pipeline CONSTANT)
+    Q_PROPERTY(ose::SyncEngine* syncEngine READ syncEngine CONSTANT)
+    Q_PROPERTY(ose::SyncLan* syncLan READ syncLan CONSTANT)
+    Q_PROPERTY(ose::SyncBluetooth* syncBluetooth READ syncBluetooth CONSTANT)
+    Q_PROPERTY(ose::UsbFileTransport* syncTransport READ syncTransport CONSTANT)
+    Q_PROPERTY(DeviceAttitude* deviceAttitude READ deviceAttitude CONSTANT)
     Q_PROPERTY(QString currentTab READ currentTab WRITE setCurrentTab NOTIFY currentTabChanged)
     Q_PROPERTY(bool inWorkspace READ inWorkspace NOTIFY inWorkspaceChanged)
+    /** true sur Android / téléphone ; false sur PC. */
+    Q_PROPERTY(bool isPhoneDevice READ isPhoneDevice CONSTANT)
 
 public:
     explicit AppController(QObject* parent = nullptr);
@@ -92,6 +104,12 @@ public:
     ose::LayoutRoofs* layoutRoofs() { return m_layoutRoofs; }
     ose::ShadingEngine* shadingEngine() { return m_shadingEngine; }
     ose::YearPv* yearPv() { return m_yearPv; }
+    ose::SyncEngine* syncEngine() { return m_syncEngine; }
+    ose::SyncLan* syncLan() { return m_syncLan; }
+    ose::SyncBluetooth* syncBluetooth() { return m_syncBluetooth; }
+    ose::UsbFileTransport* syncTransport() { return m_syncTransport; }
+    DeviceAttitude* deviceAttitude() { return m_deviceAttitude; }
+    bool isPhoneDevice() const;
 
     QString currentTab() const { return m_currentTab; }
     void setCurrentTab(const QString& tab);
@@ -158,13 +176,54 @@ public:
     /** Recalcule sizing / hors-réseau / PV selon le projet et met à jour l’empreinte. */
     Q_INVOKABLE QVariantMap refreshStaleResults();
 
+    /**
+     * Sync USB : construit le bundle selon selection et l’écrit pour l’autre appareil.
+     * toOther=true : PC→tel ou tel→PC selon isPhoneDevice.
+     */
+    /**
+     * Sync : API asynchrone (pas de blocage UI / ANR Android).
+     * Les anciennes méthodes sync* restent pour le CLI headless.
+     */
+    Q_PROPERTY(bool syncBusy READ syncBusy NOTIFY syncBusyChanged)
+    Q_INVOKABLE void requestRemoteCatalog();
+    Q_INVOKABLE void requestSyncReceive(const QVariantMap& selection);
+    Q_INVOKABLE void requestSyncSend(const QVariantMap& selection);
+    Q_INVOKABLE bool syncSend(const QVariantMap& selection);
+    /** Scan BT + catalogue distant (projets de l’autre appareil). */
+    Q_INVOKABLE QVariantMap syncFetchRemoteCatalog();
+    /** Télécharge la sélection depuis le peer déjà découvert et applique. */
+    Q_INVOKABLE bool syncReceive(const QVariantMap& selection);
+    /** Charge un .osebundle depuis un chemin fichier (secours sans MTP). */
+    Q_INVOKABLE bool syncApplyFile(const QString& path, const QVariantMap& selection);
+    /** Enregistre un bundle localement (dialogue / chemin). */
+    Q_INVOKABLE bool syncSaveBundleFile(const QString& suggestedName, const QVariantMap& selection);
+    Q_INVOKABLE QString syncDirPath() const;
+    Q_INVOKABLE void syncRefreshTransport();
+    bool syncBusy() const { return m_syncBusy; }
+
 signals:
     void currentTabChanged();
     void inWorkspaceChanged();
     void toastRequested(const QString& message, int ms);
     void materielRequested();
+    void syncBusyChanged();
+    void remoteCatalogReady(const QVariantMap& tree);
+    void syncFinished(bool ok, const QString& message);
 
 private:
+    void setSyncBusy(bool v);
+    void clearSyncConnections();
+    void finishSync(bool ok, const QString& message);
+    void onCatalogLanScanFinished();
+    void onCatalogLanPeersChanged();
+    void continueCatalogAfterLanScan();
+    void onLanCatalogFetched(const QVariantMap& tree);
+    void onReceiveBundleFetched(const QByteArray& zip);
+    void onSendLanPushFinished(bool ok);
+    void startCatalogBluetooth();
+    void startReceiveBluetooth(const QVariantMap& selection);
+    void startSendBluetooth(const QByteArray& zip);
+
     Updater m_updater;
     ose::ProjectStore* m_projects = nullptr;
     ose::SolarMath* m_solar = nullptr;
@@ -191,6 +250,18 @@ private:
     ose::LayoutRoofs* m_layoutRoofs = nullptr;
     ose::ShadingEngine* m_shadingEngine = nullptr;
     ose::YearPv* m_yearPv = nullptr;
+    ose::SyncEngine* m_syncEngine = nullptr;
+    ose::SyncLan* m_syncLan = nullptr;
+    ose::SyncBluetooth* m_syncBluetooth = nullptr;
+    ose::UsbFileTransport* m_syncTransport = nullptr;
+    DeviceAttitude* m_deviceAttitude = nullptr;
+    bool m_lastSyncViaLan = false;
+    bool m_syncBusy = false;
+    enum class SyncOp { None, Catalog, Receive, SendPhone };
+    SyncOp m_syncOp = SyncOp::None;
+    QVariantMap m_pendingSyncSelection;
+    QByteArray m_pendingSyncZip;
+    QList<QMetaObject::Connection> m_syncConnections;
     QString m_currentTab = QStringLiteral("location");
     bool m_inWorkspace = false;
 };

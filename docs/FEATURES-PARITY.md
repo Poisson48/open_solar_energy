@@ -15,6 +15,7 @@ Légende : **OK** = présent et branché · **PARTIEL** = incomplet · **MANQUE*
 | Import JSON | OK |
 | Export tous les projets | OK |
 | Export projet ZIP | OK (via `zip` CLI, fallback JSON) |
+| Sync USB sélectif PC↔téléphone | SUPERSEDE → Sync BT in-app pairing, PC héberge (v2.0.92) |
 | Démos seedées grid + hybride | OK (seed si vide) |
 | Confirmation suppression | OK |
 | Largeur hub utilisable | OK (max 1100) |
@@ -44,8 +45,8 @@ Légende : **OK** = présent et branché · **PARTIEL** = incomplet · **MANQUE*
 |----------|--------|
 | Horizon manuel, canvas, pertes, halfHourlyKeep | OK |
 | Drag points | OK |
-| Boussole device | PARTIEL (offset manuel) |
-| Photo + caméra | PARTIEL (Android ; stub desktop) |
+| Boussole device | OK (DeviceAttitude + offset manuel) |
+| Photo + caméra | OK (mode photo Site : mire, points live, ombrage différé) |
 | Terrain depuis Site | OK |
 | Obstacles 3D → ombrage | OK (`ShadingEngine` si panneaux/obstacles) |
 | Recalc horizon n’écrase plus le 3D si panneaux/obstacles | OK |

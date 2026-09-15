@@ -24,24 +24,59 @@ OseTabPage {
         }
         const loc = Projects.currentProject.location || {}
         const form = Projects.currentProject.formState || {}
+        const site = Projects.currentProject.siteSurvey || {}
+        const energyMode = form.energyMode || "fast"
         result = SolarMath.gridSystemAnnual({
             lat: loc.lat || 43.6,
             weatherData: weather,
             Ppeak: Number(pField.text),
             losses: Number(lossField.text),
+            lossTree: form.lossTree && Object.keys(form.lossTree).length
+                      ? form.lossTree
+                      : YearPv.defaultLossTree(Number(lossField.text) || 14),
             tilt: Number(tiltField.text),
             azimuth: Number(azField.text),
             systemCost: Number(costField.text),
-            kwhPrice: Number(priceField.text)
+            kwhPrice: Number(priceField.text),
+            monthlyLoss: site.monthlyLoss || [],
+            annualLossPct: site.annualLossPct || 0,
+            halfHourlyKeep: site.halfHourlyKeep || [],
+            energyMode: energyMode,
+            hourlyWeatherData: Projects.currentProject.hourlyWeatherData || {},
+            useElectricalShade: energyMode === "study"
         })
-        const npv = Finance.calcNPV(Number(costField.text),
-                                    (result.E_annual || 0) * Number(priceField.text) * 0.7,
-                                    { lifetime: 25, discountRate: 0.03, panelDegradation: 0.005 })
-        const payback = Finance.calcPayback(Number(costField.text),
-                                            (result.E_annual || 0) * Number(priceField.text) * 0.7,
-                                            { lifetime: 25, discountRate: 0.03 })
-        const incentive = Finance.calcFrenchIncentive(Number(pField.text))
-        result = Object.assign({}, result, { npv: npv, payback: payback, incentive: incentive })
+        const sizingBest = (Projects.currentProject.sizingResult || {}).best || {}
+        const ppeak = Number(pField.text)
+        const injPrice = Number(form.injectionPrice !== undefined ? form.injectionPrice : 0.04)
+        const price = Number(priceField.text)
+        let annualGain = 0
+        let npv = 0
+        let payback = null
+        let incentive = Finance.calcFrenchIncentive(ppeak)
+        // Même finance que le dimensionnement si Ppeak aligné
+        if (sizingBest.Ppeak !== undefined
+                && Math.abs(Number(sizingBest.Ppeak) - ppeak) < 0.06
+                && Number(sizingBest.savings) > 0) {
+            annualGain = Number(sizingBest.savings)
+            npv = sizingBest.npv
+            payback = sizingBest.payback
+            if (sizingBest.incentive !== undefined)
+                incentive = sizingBest.incentive
+        } else {
+            // Fallback : ~55 % autoconso + surplus au tarif injection
+            annualGain = (result.E_annual || 0) * 0.55 * price
+                       + (result.E_annual || 0) * 0.45 * injPrice
+            npv = Finance.calcNPV(Number(costField.text), annualGain,
+                                  { lifetime: 25, discountRate: 0.03, panelDegradation: 0.005 })
+            payback = Finance.calcPayback(Number(costField.text), annualGain,
+                                          { lifetime: 25, discountRate: 0.03 })
+        }
+        result = Object.assign({}, result, {
+            npv: npv,
+            payback: payback,
+            incentive: incentive,
+            savings: Math.round(annualGain)
+        })
         const panel = Catalog.getPanel(panelBox.currentValue) || {}
         const inv = Catalog.getInverter(invBox.currentValue) || {}
         Projects.updateCurrent({
