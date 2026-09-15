@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QPointF>
 #include <QString>
+#include <QtGlobal>
 
 class QAccelerometer;
 class QMagnetometer;
@@ -59,6 +60,7 @@ signals:
 private:
     void setStatus(const QString& s);
     void refreshStatus();
+    void refreshStatusThrottled();
     void onAccel();
     void onMag();
     void tryFusion();
@@ -80,6 +82,7 @@ private:
     bool m_hasBasis = false;
     bool m_smoothInit = false;
     qreal m_screenAngle = 0;
+    qint64 m_lastStatusMs = 0;
     QString m_status;
 
     qreal m_ex = 1, m_ey = 0, m_ez = 0;

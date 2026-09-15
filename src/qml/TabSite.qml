@@ -983,6 +983,9 @@ OseTabPage {
                 Connections {
                     target: root
                     function onPointsChanged() {
+                        // Pendant le viseur : ne pas repeindre le diagramme (freeze 1–2 s)
+                        if (root.photoMode)
+                            return
                         if (sunHost.dragIndex < 0)
                             sunHost.repaintAll()
                         else
@@ -1466,8 +1469,22 @@ OseTabPage {
             anchors.fill: parent
             points: root.points
             compassOffset: Number(compass.text) || 0
-            onPlaceRequested: function (az, elev) {
-                root.addPoint(az, elev, "photo", true)
+            onSessionFinished: function (newPoints) {
+                // Fusion unique hors viseur — un seul persist/compute
+                if (!newPoints || !newPoints.length)
+                    return
+                let pts = root.points.slice()
+                for (let i = 0; i < newPoints.length; ++i) {
+                    const p = newPoints[i]
+                    pts.push({
+                        az: Number(p.az) || 0,
+                        elev: Number(p.elev) || 0,
+                        source: "photo",
+                        id: root.nextPointId++
+                    })
+                }
+                pts.sort(function (a, b) { return a.az - b.az })
+                root.points = pts
             }
             onStopRequested: {
                 // photoMode reste true → onClosed lance le calcul une seule fois

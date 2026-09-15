@@ -1,5 +1,6 @@
 #include "device_attitude.h"
 
+#include <QDateTime>
 #include <QTimer>
 #include <QtMath>
 #include <algorithm>
@@ -184,6 +185,15 @@ void DeviceAttitude::refreshStatus()
     }
 }
 
+void DeviceAttitude::refreshStatusThrottled()
+{
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (now - m_lastStatusMs < 250)
+        return;
+    m_lastStatusMs = now;
+    refreshStatus();
+}
+
 void DeviceAttitude::setActive(bool on)
 {
     if (m_active == on)
@@ -243,8 +253,8 @@ void DeviceAttitude::applyAttitude(qreal heading, qreal elev,
                                    qreal ux, qreal uy, qreal uz,
                                    bool fromAndroid)
 {
-    // Overlay AR : base RAW (sinon les points « glissent » derrière le viseur).
-    // HUD : léger lissage du cap / élévation affichés seulement.
+    // Overlay AR + placement : base et look RAW (même instant).
+    // Tout lissage du cap/élév crée un décalage mire ↔ point posé et un « glissement ».
     m_ex = ex;
     m_ey = ey;
     m_ez = ez;
@@ -255,12 +265,13 @@ void DeviceAttitude::applyAttitude(qreal heading, qreal elev,
     m_uy = uy;
     m_uz = uz;
 
-    const qreal kH = fromAndroid ? 0.55 : 0.30;
-    const qreal kE = fromAndroid ? 0.60 : 0.35;
-    if (!m_smoothInit || !m_hasHeading) {
+    if (fromAndroid || !m_smoothInit || !m_hasHeading) {
         m_heading = heading;
         m_elevation = elev;
     } else {
+        // Secours accel+magnéto seulement : bruit élevé → léger EMA
+        constexpr qreal kH = 0.35;
+        constexpr qreal kE = 0.40;
         qreal d = heading - m_heading;
         while (d > 180)
             d -= 360;
@@ -276,7 +287,8 @@ void DeviceAttitude::applyAttitude(qreal heading, qreal elev,
     m_hasBasis = true;
     m_smoothInit = true;
     emit attitudeChanged();
-    refreshStatus();
+    // Status text : pas à 30 Hz (coûteux QML) — ~4 Hz
+    refreshStatusThrottled();
 }
 
 void DeviceAttitude::pollAndroid()

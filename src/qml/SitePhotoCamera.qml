@@ -15,11 +15,22 @@ Item {
 
     property bool active: false
     property var points: []
+    /** Points posés pendant cette session (évite de toucher TabSite à chaque clic) */
+    property var sessionPoints: []
     property real compassOffset: 0
     property real hFov: 70
     property real vFov: 54
     // Force le recalcul de projection des points à chaque tick capteurs
     property int attitudeTick: 0
+
+    readonly property var overlayPoints: {
+        // points initiaux + session (session a priorité visuelle via concat)
+        const base = Array.isArray(points) ? points : []
+        const extra = Array.isArray(sessionPoints) ? sessionPoints : []
+        if (!extra.length)
+            return base
+        return base.concat(extra)
+    }
 
     readonly property real liveHeading: {
         void attitudeTick
@@ -35,11 +46,40 @@ Item {
         return DeviceAttitude.hasElevation ? DeviceAttitude.elevation : NaN
     }
 
-    signal placeRequested(real az, real elev)
     signal stopRequested()
+    /** Session terminée : az/elev à fusionner dans le projet (une seule fois) */
+    signal sessionFinished(var newPoints)
+
+    function placeAtCrosshair() {
+        let az = root.liveHeading
+        let elev = root.liveElev
+        const ov = elevOverride.text.trim()
+        if (ov !== "" && !isNaN(Number(ov)))
+            elev = Number(ov)
+        if (isNaN(az)) {
+            AppController.toast("Cap indisponible — éloignez le métal / attendez le magnéto.", 4500)
+            return
+        }
+        if (isNaN(elev)) {
+            elev = 0
+            AppController.toast("Élévation indisponible → 0° (horizon). Forcez-la si besoin.", 3500)
+        }
+        // Stockage local uniquement — pas d’émission vers TabSite (freeze)
+        let pts = root.sessionPoints.slice()
+        pts.push({
+            az: az,
+            elev: elev,
+            source: "photo",
+            id: -1 // id assigné par TabSite à la fusion
+        })
+        root.sessionPoints = pts
+    }
 
     function syncScreenAngle() {
-        // Aligne le repère overlay sur le viseur, quelle que soit l’orientation
+        // Sur Android, CameraAttitude.poll() pousse Display.getRotation() — ne pas écraser.
+        // Desktop / secours Qt Sensors : Screen.orientation.
+        if (Qt.platform.os === "android")
+            return
         let ang = 0
         try {
             ang = Screen.angleBetween(Qt.PrimaryOrientation, Screen.orientation)
@@ -61,6 +101,7 @@ Item {
 
     function start() {
         active = true
+        sessionPoints = []
         syncScreenAngle()
         DeviceAttitude.active = true
         ensureCamera()
@@ -73,6 +114,9 @@ Item {
         camera.active = false
         DeviceAttitude.active = false
         active = false
+        const placed = sessionPoints.slice()
+        sessionPoints = []
+        sessionFinished(placed)
         stopRequested()
     }
 
@@ -103,11 +147,25 @@ Item {
         az -= compassOffset
         while (az < 0) az += 360
         while (az >= 360) az -= 360
+        // Projeter dans le rectangle vidéo réel (PreserveAspectFit), pas tout le widget
+        const cr = viewfinder.contentRect
+        const vw = (cr && cr.width > 1) ? cr.width : width
+        const vh = (cr && cr.height > 1) ? cr.height : height
+        const ox = (cr && cr.width > 1) ? cr.x : 0
+        const oy = (cr && cr.height > 1) ? cr.y : 0
+        // FOV effectif selon le ratio widget/vidéo (évite étirement si contentRect ≈ full)
+        let hf = hFov
+        let vf = vFov
+        if (vw > 1 && vh > 1) {
+            const aspect = vw / vh
+            // Capteur typique ~4:3 → hFov nominal ; adapter vFov au cadre affiché
+            vf = 2 * (180 / Math.PI) * Math.atan(Math.tan((hf * 0.5) * Math.PI / 180) / aspect)
+        }
         const pt = DeviceAttitude.projectToScreen(az, Number(p.elev) || 0,
-                                                  width, height, hFov, vFov)
+                                                  vw, vh, hf, vf)
         if (!pt || pt.x < 0 || pt.y < 0)
             return null
-        return pt
+        return Qt.point(ox + pt.x, oy + pt.y)
     }
 
     MediaDevices { id: mediaDevices }
@@ -125,7 +183,8 @@ Item {
     VideoOutput {
         id: viewfinder
         anchors.fill: parent
-        fillMode: VideoOutput.PreserveAspectCrop
+        // Letterbox : le frustum projeté = zone vidéo réelle (pas de crop → plus de glissement AR)
+        fillMode: VideoOutput.PreserveAspectFit
     }
 
     Rectangle {
@@ -142,7 +201,7 @@ Item {
 
     // Points déjà posés (projection live)
     Repeater {
-        model: root.points
+        model: root.overlayPoints
         delegate: Item {
             required property var modelData
             required property int index
@@ -164,7 +223,8 @@ Item {
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.top: parent.bottom
-                text: "#" + (modelData.id !== undefined ? modelData.id : (index + 1))
+                text: "#" + (modelData.id !== undefined && modelData.id > 0
+                             ? modelData.id : (index + 1))
                 color: "#fff"
                 font.pixelSize: 11
                 font.bold: true
@@ -301,23 +361,7 @@ Item {
                     Layout.fillWidth: true
                     text: "➕ Placer le point"
                     kind: "primary"
-                    onClicked: {
-                        let az = root.liveHeading
-                        let elev = root.liveElev
-                        const ov = elevOverride.text.trim()
-                        if (ov !== "" && !isNaN(Number(ov)))
-                            elev = Number(ov)
-                        if (isNaN(az)) {
-                            AppController.toast("Cap indisponible — éloignez le métal / attendez le magnéto.", 4500)
-                            return
-                        }
-                        if (isNaN(elev)) {
-                            elev = 0
-                            AppController.toast("Élévation indisponible → 0° (horizon). Forcez-la si besoin.", 3500)
-                        }
-                        root.placeRequested(az, elev)
-                        // Pas de toast long : ça coûte du frame time sur le viseur
-                    }
+                    onClicked: root.placeAtCrosshair()
                 }
                 OseBtn {
                     text: "Stop photo"
