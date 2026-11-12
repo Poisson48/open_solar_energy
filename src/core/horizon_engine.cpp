@@ -84,22 +84,14 @@ QVariantMap HorizonEngine::simulate(const QVariantMap& params) const
                 std::clamp(row[s].toDouble(), 0.0, 1.0);
     }
 
-    // Profil charge 48 × 30 min (jour type)
-    std::array<double, kSlotsDay> loadSlot{};
+    // Profil charge par mois : lever/coucher au jour médian du mois
+    std::array<std::array<double, kSlotsDay>, 12> loadMonth{};
     {
-        const double weights[24] = {
-            0.02, 0.015, 0.012, 0.012, 0.015, 0.025, 0.045, 0.06,
-            0.05, 0.04,  0.035, 0.035, 0.04,  0.04,  0.035, 0.035,
-            0.04, 0.055, 0.07,  0.075, 0.065, 0.05,  0.035, 0.025};
-        double sumW = 0;
-        for (double w : weights)
-            sumW += w;
-        for (int h = 0; h < 24; ++h) {
-            const bool day = h >= 7 && h < 22;
-            const double adj = day ? (dayShare / 0.55) : ((1.0 - dayShare) / 0.45);
-            const double hourKwh = dailyKwh * (weights[h] / sumW) * adj;
-            loadSlot[static_cast<size_t>(h * 2)] = hourKwh * 0.5;
-            loadSlot[static_cast<size_t>(h * 2 + 1)] = hourKwh * 0.5;
+        const double share = std::clamp(dayShare, 0.0, 1.0);
+        for (int m = 0; m < 12; ++m) {
+            SolarMath::fillDayNightLoadSlots48(loadMonth[static_cast<size_t>(m)].data(),
+                                               dailyKwh, share, lat,
+                                               SolarMath::midMonthDay(m + 1), 0.0);
         }
     }
 
@@ -143,7 +135,7 @@ QVariantMap HorizonEngine::simulate(const QVariantMap& params) const
                 double dayGrid = 0;
                 for (int s = 0; s < kSlotsDay; ++s) {
                     const double pv = pvUnit[static_cast<size_t>(m)][static_cast<size_t>(s)] * pScale;
-                    const double load = loadSlot[static_cast<size_t>(s)];
+                    const double load = loadMonth[static_cast<size_t>(m)][static_cast<size_t>(s)];
                     ++steps;
 
                     yPv += pv;

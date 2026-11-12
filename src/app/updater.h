@@ -25,6 +25,7 @@ class Updater : public QObject {
     Q_PROPERTY(bool downloading READ downloading NOTIFY stateChanged)
     Q_PROPERTY(bool readyToInstall READ readyToInstall NOTIFY stateChanged)
     Q_PROPERTY(bool checking READ checking NOTIFY stateChanged)
+    Q_PROPERTY(bool failed READ failed NOTIFY stateChanged)
     Q_PROPERTY(bool canInstall READ canInstall CONSTANT)
     Q_PROPERTY(QString statusMessage READ statusMessage NOTIFY statusMessageChanged)
 
@@ -48,6 +49,7 @@ public:
     bool downloading() const { return m_state == Downloading; }
     bool readyToInstall() const { return m_state == Ready; }
     bool checking() const { return m_state == Checking; }
+    bool failed() const { return m_state == Failed; }
     QString statusMessage() const { return m_statusMessage; }
 
     static bool isNewer(const QString& candidate, const QString& current);

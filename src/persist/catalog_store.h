@@ -11,8 +11,10 @@ class CatalogStore : public QObject {
     Q_OBJECT
     Q_PROPERTY(QVariantList panels READ panels NOTIFY panelsChanged)
     Q_PROPERTY(QVariantList inverters READ inverters NOTIFY invertersChanged)
+    Q_PROPERTY(QVariantList batteries READ batteries NOTIFY batteriesChanged)
     Q_PROPERTY(int catalogPanelCount READ catalogPanelCount NOTIFY panelsChanged)
     Q_PROPERTY(int catalogInverterCount READ catalogInverterCount NOTIFY invertersChanged)
+    Q_PROPERTY(int catalogBatteryCount READ catalogBatteryCount NOTIFY batteriesChanged)
     Q_PROPERTY(int userPanelCount READ userPanelCount NOTIFY panelsChanged)
     Q_PROPERTY(int userInverterCount READ userInverterCount NOTIFY invertersChanged)
 
@@ -21,8 +23,10 @@ public:
 
     QVariantList panels() const;
     QVariantList inverters() const;
+    QVariantList batteries() const;
     int catalogPanelCount() const { return m_catalogPanels.size(); }
     int catalogInverterCount() const { return m_catalogInverters.size(); }
+    int catalogBatteryCount() const { return m_catalogBatteries.size(); }
     int userPanelCount() const { return m_userPanels.size(); }
     int userInverterCount() const { return m_userInverters.size(); }
 
@@ -33,14 +37,23 @@ public:
     Q_INVOKABLE bool removeInverter(const QString& id);
     Q_INVOKABLE QVariantMap getPanel(const QString& id) const;
     Q_INVOKABLE QVariantMap getInverter(const QString& id) const;
+    Q_INVOKABLE QVariantMap getBattery(const QString& id) const;
     Q_INVOKABLE QVariantList searchPanels(const QString& query) const;
     Q_INVOKABLE QVariantList searchInverters(const QString& query) const;
+    Q_INVOKABLE QVariantList searchBatteries(const QString& query) const;
     Q_INVOKABLE void seedDefaults();
     Q_INVOKABLE bool isCatalogId(const QString& id) const;
+
+    QJsonArray userPanelsArray() const { return m_userPanels; }
+    QJsonArray userInvertersArray() const { return m_userInverters; }
+    /** Upsert par id (écrase les entrées user présentes dans arr). */
+    bool upsertUserPanels(const QJsonArray& arr);
+    bool upsertUserInverters(const QJsonArray& arr);
 
 signals:
     void panelsChanged();
     void invertersChanged();
+    void batteriesChanged();
 
 private:
     QString panelsPath() const;
@@ -48,6 +61,7 @@ private:
     bool writeArray(const QString& path, const QJsonArray& arr) const;
     QJsonArray readArray(const QString& path) const;
     void loadBundledRexel();
+    void loadBundledBatteries();
     void ensureDemoSeeds();
     static QJsonObject normalizePanel(const QJsonObject& raw);
     static QJsonObject normalizeInverter(const QJsonObject& raw);
@@ -60,6 +74,7 @@ private:
     QJsonArray m_userInverters;
     QJsonArray m_catalogPanels;
     QJsonArray m_catalogInverters;
+    QJsonArray m_catalogBatteries;
 };
 
 } // namespace ose

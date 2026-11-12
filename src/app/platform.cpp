@@ -2,9 +2,11 @@
 
 #ifdef Q_OS_ANDROID
 #  include <QCoreApplication>
+#  include <QEventLoop>
 #  include <QGuiApplication>
 #  include <QJniEnvironment>
 #  include <QJniObject>
+#  include <QTimer>
 #else
 #  include <QDesktopServices>
 #  include <QDir>
@@ -218,6 +220,151 @@ bool platformHasCameraPermission()
         "(Landroid/content/Context;)Z", ctx.object());
 }
 
+bool platformRequestBluetoothPermission()
+{
+    const QJniObject ctx = androidContext();
+    if (!ctx.isValid())
+        return false;
+    return QJniObject::callStaticMethod<jboolean>(
+        kPlatformClass, "requestBluetoothPermission",
+        "(Landroid/content/Context;)Z", ctx.object());
+}
+
+QString platformPollBluetoothPermission()
+{
+    const QJniObject r = QJniObject::callStaticObjectMethod(
+        kPlatformClass, "pollBluetoothPermission", "()Ljava/lang/String;");
+    if (!r.isValid())
+        return {};
+    return r.toString();
+}
+
+bool platformHasBluetoothPermission()
+{
+    const QJniObject ctx = androidContext();
+    if (!ctx.isValid())
+        return false;
+    return QJniObject::callStaticMethod<jboolean>(
+        kPlatformClass, "hasBluetoothPermission",
+        "(Landroid/content/Context;)Z", ctx.object());
+}
+
+bool platformEnsureBluetoothPermissions()
+{
+    if (platformHasBluetoothPermission())
+        return true;
+    if (!platformRequestBluetoothPermission())
+        return false;
+    if (platformHasBluetoothPermission())
+        return true;
+
+    bool granted = false;
+    QEventLoop loop;
+    QTimer poll;
+    poll.setInterval(200);
+    QObject::connect(&poll, &QTimer::timeout, &loop, [&]() {
+        const QString s = platformPollBluetoothPermission();
+        if (s == QLatin1String("granted")) {
+            granted = true;
+            loop.quit();
+        } else if (s == QLatin1String("denied") || s == QLatin1String("unavailable")) {
+            granted = false;
+            loop.quit();
+        } else if (platformHasBluetoothPermission()) {
+            granted = true;
+            loop.quit();
+        }
+    });
+    QTimer::singleShot(60000, &loop, &QEventLoop::quit);
+    poll.start();
+    loop.exec();
+    return granted || platformHasBluetoothPermission();
+}
+
+bool platformRequestBluetoothDiscoverable(int seconds)
+{
+    const QJniObject ctx = androidContext();
+    if (!ctx.isValid())
+        return false;
+    return QJniObject::callStaticMethod<jboolean>(
+        kPlatformClass, "requestBluetoothDiscoverable",
+        "(Landroid/content/Context;I)Z", ctx.object(), static_cast<jint>(seconds));
+}
+
+bool platformIsBluetoothDiscoverable()
+{
+    const QJniObject ctx = androidContext();
+    if (!ctx.isValid())
+        return false;
+    return QJniObject::callStaticMethod<jboolean>(
+        kPlatformClass, "isBluetoothDiscoverable",
+        "(Landroid/content/Context;)Z", ctx.object());
+}
+
+bool platformEnsureBluetoothOn()
+{
+    // Sur Android, power on via Adaptateur est géré par Qt / permissions.
+    return true;
+}
+
+QString platformSyncDocumentsDir()
+{
+    const QJniObject ctx = androidContext();
+    if (!ctx.isValid())
+        return {};
+    const QJniObject r = QJniObject::callStaticObjectMethod(
+        kPlatformClass, "syncDocumentsDir",
+        "(Landroid/content/Context;)Ljava/lang/String;", ctx.object());
+    if (!r.isValid())
+        return {};
+    return r.toString();
+}
+
+bool platformPublishSyncFile(const QString& filename, const QByteArray& data)
+{
+    const QJniObject ctx = androidContext();
+    if (!ctx.isValid())
+        return false;
+    QJniEnvironment jni;
+    JNIEnv* env = jni.jniEnv();
+    if (!env)
+        return false;
+    jbyteArray jData = toJByteArray(env, data);
+    if (!jData)
+        return false;
+    const QJniObject jName = QJniObject::fromString(filename);
+    const jboolean ok = QJniObject::callStaticMethod<jboolean>(
+        kPlatformClass, "publishSyncFile",
+        "(Landroid/content/Context;Ljava/lang/String;[B)Z",
+        ctx.object(), jName.object<jstring>(), jData);
+    env->DeleteLocalRef(jData);
+    return ok;
+}
+
+QByteArray platformReadSyncFile(const QString& filename)
+{
+    const QJniObject ctx = androidContext();
+    if (!ctx.isValid())
+        return {};
+    const QJniObject jName = QJniObject::fromString(filename);
+    const QJniObject r = QJniObject::callStaticObjectMethod(
+        kPlatformClass, "readSyncFile",
+        "(Landroid/content/Context;Ljava/lang/String;)[B",
+        ctx.object(), jName.object<jstring>());
+    if (!r.isValid())
+        return {};
+    QJniEnvironment jni;
+    JNIEnv* env = jni.jniEnv();
+    if (!env)
+        return {};
+    const auto arr = static_cast<jbyteArray>(r.object());
+    const jsize n = env->GetArrayLength(arr);
+    QByteArray out;
+    out.resize(n);
+    env->GetByteArrayRegion(arr, 0, n, reinterpret_cast<jbyte*>(out.data()));
+    return out;
+}
+
 #else
 
 void initNotifications() {}
@@ -278,6 +425,37 @@ void platformKeepScreenOn(bool) {}
 bool platformRequestCameraPermission() { return false; }
 QString platformPollCameraPermission() { return {}; }
 bool platformHasCameraPermission() { return false; }
+bool platformRequestBluetoothPermission() { return true; }
+QString platformPollBluetoothPermission() { return QStringLiteral("granted"); }
+bool platformHasBluetoothPermission() { return true; }
+bool platformEnsureBluetoothPermissions() { return true; }
+bool platformRequestBluetoothDiscoverable(int) { return true; }
+bool platformIsBluetoothDiscoverable() { return true; }
+bool platformEnsureBluetoothOn() { return true; }
+
+QString platformSyncDocumentsDir()
+{
+    return QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)
+           + QStringLiteral("/OpenSolarEnergy/sync");
+}
+
+bool platformPublishSyncFile(const QString& filename, const QByteArray& data)
+{
+    const QString dir = platformSyncDocumentsDir();
+    QDir().mkpath(dir);
+    QFile f(dir + QLatin1Char('/') + filename);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        return false;
+    return f.write(data) == data.size();
+}
+
+QByteArray platformReadSyncFile(const QString& filename)
+{
+    QFile f(platformSyncDocumentsDir() + QLatin1Char('/') + filename);
+    if (!f.open(QIODevice::ReadOnly))
+        return {};
+    return f.readAll();
+}
 
 #endif
 

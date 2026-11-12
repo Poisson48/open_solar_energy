@@ -28,8 +28,8 @@ QT_HOST="${QT_HOST:-$QT_ROOT/$QT_VER/gcc_64}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${OUT:-$ROOT/opensolarenergy-arm64.apk}"
 
-VERSION_NAME="${VERSION_NAME:-2.0.75}"
-VERSION_CODE="${VERSION_CODE:-20075}"
+VERSION_NAME="${VERSION_NAME:-2.0.114}"
+VERSION_CODE="${VERSION_CODE:-20114}"
 
 # Dépendances Android (OpenSSL KDAB + secp256k1)
 if [ ! -f "$ROOT/third_party/android_openssl/android_openssl.cmake" ]; then
@@ -75,7 +75,11 @@ sed -i -E \
   -DOSE_VERSION_NAME="$VERSION_NAME" \
   -DOSE_VERSION_CODE="$VERSION_CODE"
 
-cmake --build "$ROOT/build-android" --target apk -j"$(nproc)"
+if ! cmake --build "$ROOT/build-android" --target apk -j"$(nproc)"; then
+  echo "Build Android échoué — nouvelle tentative après 15 s (dépendances Gradle transitoires)…" >&2
+  sleep 15
+  cmake --build "$ROOT/build-android" --target apk -j"$(nproc)"
+fi
 
 UNSIGNED="$(find "$ROOT/build-android" -name '*-release-unsigned.apk' | head -1)"
 [ -n "$UNSIGNED" ] || { echo "APK non signé introuvable" >&2; exit 1; }
@@ -93,6 +97,8 @@ if [ -n "${ANDROID_KEYSTORE_B64:-}" ]; then
   STOREPASS="${STOREPASS:?ANDROID_KEYSTORE_B64 sans STOREPASS}"
   KEYPASS="${KEYPASS:-$STOREPASS}"
 else
+  # Doit rester stable : même keystore que les installs adb locales (-r conserve les données).
+  # Défaut = keystore Android Studio (celui actuellement sur le Pixel).
   KEYSTORE="${KEYSTORE:-$HOME/.android/debug.keystore}"
   KEYALIAS="${KEYALIAS:-androiddebugkey}"
   STOREPASS="${STOREPASS:-android}"

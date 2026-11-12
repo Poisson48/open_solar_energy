@@ -28,11 +28,127 @@ Dialog {
     property int tab: 0
     property string search: ""
     property string editingId: ""
+    property string sortKey: "wp"
+    property bool sortAsc: false
+    property bool compatibleOnly: true
 
     readonly property int totalPanels: Catalog.catalogPanelCount + Catalog.userPanelCount
     readonly property int totalInverters: Catalog.catalogInverterCount + Catalog.userInverterCount
-    readonly property var filtered: tab === 0 ? Catalog.searchPanels(search)
-                                              : Catalog.searchInverters(search)
+    readonly property var sortOptions: tab === 0 ? [
+        { label: "Puissance", value: "wp" },
+        { label: "Marque", value: "brand" },
+        { label: "Modèle", value: "model" },
+        { label: "Technologie", value: "tech" },
+        { label: "Surface", value: "m2" }
+    ] : [
+        { label: "Puissance", value: "pac" },
+        { label: "Marque", value: "brand" },
+        { label: "Type", value: "type" },
+        { label: "Phase", value: "phase" },
+        { label: "MPPT", value: "mpptCount" },
+        { label: "Vmax DC", value: "maxInputV" },
+        { label: "Imax", value: "maxInputI" },
+        { label: "Prix (saisi)", value: "price_eur" }
+    ]
+    readonly property bool hasCompatContext: {
+        const f = Projects.currentProject.formState || {}
+        return !!(f.panelId || f.batteryId)
+    }
+    readonly property var baseFiltered: tab === 0 ? Catalog.searchPanels(search)
+                                                  : Catalog.searchInverters(search)
+    readonly property var filtered: {
+        let arr = sortItems(baseFiltered)
+        if (tab === 1 && compatibleOnly && hasCompatContext) {
+            const out = []
+            for (let i = 0; i < arr.length; ++i) {
+                if (inverterCompat(arr[i]).status !== "danger")
+                    out.push(arr[i])
+            }
+            return out
+        }
+        return arr
+    }
+
+    function inverterCompat(item) {
+        const f = Projects.currentProject.formState || {}
+        if (!f.panelId && !f.batteryId)
+            return { status: "unknown", errors: [], warnings: [] }
+        const panel = Catalog.getPanel(f.panelId) || {}
+        const battery = Catalog.getBattery(f.batteryId) || {}
+        return Inverter.checkCompatibility(panel, item, battery,
+                                           Number(f.panelCount) || 0,
+                                           Number(f.battKwh) || Number(battery.energy_kwh) || 0)
+    }
+
+    function compatBadge(item) {
+        const c = inverterCompat(item)
+        if (c.status === "danger") return "⛔"
+        if (c.status === "warning") return "⚠️"
+        if (c.status === "ok") return "✅"
+        return "•"
+    }
+
+    function compatTooltip(item) {
+        const c = inverterCompat(item)
+        const lines = []
+        for (let i = 0; i < (c.errors || []).length; ++i) lines.push("⛔ " + c.errors[i])
+        for (let i = 0; i < (c.warnings || []).length; ++i) lines.push("⚠️ " + c.warnings[i])
+        return lines.length ? lines.join("\n") : "Compatible avec le panneau et la batterie du projet."
+    }
+
+    function resetCompatFilter() {
+        const f = Projects.currentProject.formState || {}
+        compatibleOnly = !!(f.panelId || f.batteryId)
+    }
+
+    function sortValue(item, key) {
+        let v = item ? item[key] : undefined
+        if ((key === "brand") && (!v))
+            v = item ? item.fabricant : ""
+        if (key === "pac" && (!v))
+            v = item ? item.pnom : 0
+        if (key === "mpptCount" && (!v))
+            v = item ? item.nMppt : 0
+        return v
+    }
+
+    function sortItems(items) {
+        if (!items || items.length === 0)
+            return []
+        const numeric = ["wp", "pac", "m2", "phase", "mpptCount", "maxInputV", "maxInputI", "price_eur"].indexOf(sortKey) >= 0
+        const arr = []
+        for (let i = 0; i < items.length; ++i)
+            arr.push(items[i])
+        arr.sort(function(a, b) {
+            let va = sortValue(a, sortKey)
+            let vb = sortValue(b, sortKey)
+            if (numeric) {
+                va = Number(va) || 0
+                vb = Number(vb) || 0
+            } else {
+                va = String(va || "").toLowerCase()
+                vb = String(vb || "").toLowerCase()
+            }
+            if (va < vb) return sortAsc ? -1 : 1
+            if (va > vb) return sortAsc ? 1 : -1
+            const sa = (String(sortValue(a, "brand") || "") + " " + String(a.model || "")).toLowerCase()
+            const sb = (String(sortValue(b, "brand") || "") + " " + String(b.model || "")).toLowerCase()
+            return sa < sb ? -1 : (sa > sb ? 1 : 0)
+        })
+        return arr
+    }
+
+    function resetSort() {
+        sortKey = tab === 0 ? "wp" : "pac"
+        sortAsc = false
+        if (sortBox)
+            sortBox.currentIndex = 0
+    }
+
+    onTabChanged: {
+        resetSort()
+        resetCompatFilter()
+    }
 
     background: Rectangle {
         color: Theme.surface
@@ -61,6 +177,8 @@ Dialog {
         } else {
             iBrand.text = ""; iModel.text = ""; iPac.text = ""
             iMppt.text = "2"; iMaxV.text = ""; iMaxI.text = ""
+            iMpptMin.text = ""; iMpptMax.text = ""; iMaxPdc.text = ""; iPrice.text = ""
+            iBattMin.text = ""; iBattMax.text = ""
             iType.currentIndex = 0; iPhase.currentIndex = 0
             iNotes.text = ""
         }
@@ -96,6 +214,12 @@ Dialog {
             iMppt.text = String(item.nMppt || item.mpptCount || 2)
             iMaxV.text = (item.maxInputV || item.maxVocInput) ? String(item.maxInputV || item.maxVocInput) : ""
             iMaxI.text = item.maxInputI ? String(item.maxInputI) : ""
+            iMpptMin.text = item.mpptMinV ? String(item.mpptMinV) : ""
+            iMpptMax.text = item.mpptMaxV ? String(item.mpptMaxV) : ""
+            iMaxPdc.text = item.maxInputPowerKw ? String(item.maxInputPowerKw) : ""
+            iPrice.text = item.price_eur ? String(item.price_eur) : ""
+            iBattMin.text = item.batteryMinV ? String(item.batteryMinV) : ""
+            iBattMax.text = item.batteryMaxV ? String(item.batteryMaxV) : ""
             iNotes.text = item.notes || ""
             const t = item.type || "string"
             for (let i = 0; i < iType.model.length; ++i) {
@@ -140,7 +264,24 @@ Dialog {
                     inverterType: item.type
                 })
             })
-            AppController.toast("Onduleur appliqué au projet")
+            const f = Projects.currentProject.formState || {}
+            if (f.panelId || f.batteryId) {
+                const panel = Catalog.getPanel(f.panelId) || {}
+                const battery = Catalog.getBattery(f.batteryId) || {}
+                const c = Inverter.checkCompatibility(panel, item, battery,
+                                                      Number(f.panelCount) || 0,
+                                                      Number(f.battKwh) || 0)
+                const errs = c.errors || []
+                const warns = c.warnings || []
+                if (errs.length > 0)
+                    AppController.toast("⚠️ Onduleur appliqué — " + errs[0], 6000)
+                else if (warns.length > 0)
+                    AppController.toast("⚠️ Onduleur appliqué — " + warns[0], 5000)
+                else
+                    AppController.toast("Onduleur appliqué au projet")
+            } else {
+                AppController.toast("Onduleur appliqué au projet")
+            }
             AppController.autoSave("Onduleur — "
                                    + (((item.brand || item.fabricant || "") + " " + (item.model || "")).trim()))
         }
@@ -193,8 +334,11 @@ Dialog {
                 maxInputV: Number(iMaxV.text) || null,
                 maxVocInput: Number(iMaxV.text) || null,
                 maxInputI: Number(iMaxI.text) || null,
-                mpptMinV: 120,
-                mpptMaxV: Number(iMaxV.text) ? Number(iMaxV.text) * 0.9 : 550,
+                batteryMinV: Number(iBattMin.text) || null,
+                batteryMaxV: Number(iBattMax.text) || null,
+                mpptMinV: Number(iMpptMin.text) || 120,
+                mpptMaxV: Number(iMpptMax.text) || (Number(iMaxV.text) ? Number(iMaxV.text) * 0.9 : 550),
+                maxInputPowerKw: Number(iMaxPdc.text) || null,
                 notes: iNotes.text
             })
             editingId = id
@@ -227,6 +371,12 @@ Dialog {
                 color: Theme.text
                 font.pixelSize: 18
                 font.weight: Font.DemiBold
+            }
+            OseBtn {
+                text: "Batteries (" + Catalog.catalogBatteryCount + ")"
+                kind: "outline"
+                implicitHeight: Theme.controlHeightMd
+                onClicked: batteryDialog.open()
             }
             OseBtn {
                 text: "Fermer"
@@ -300,7 +450,9 @@ Dialog {
             font.pixelSize: Theme.fontSizeCaption
             color: Theme.textDim
             text: "Catalogue Rexel embarqué (" + Catalog.catalogPanelCount + " panneaux, "
-                  + Catalog.catalogInverterCount + " onduleurs) + vos modèles perso."
+                  + Catalog.catalogInverterCount + " onduleurs) + vos modèles perso.\n"
+                  + "Prix Rexel : visibles après connexion au compte Rexel ; le tri « Prix (saisi) » "
+                  + "utilise les prix renseignés dans vos fiches."
         }
 
         // Corps liste | formulaire
@@ -364,11 +516,73 @@ Dialog {
                         Layout.fillWidth: true
                         Layout.leftMargin: Theme.spaceSm
                         Layout.rightMargin: Theme.spaceSm
-                        Layout.bottomMargin: Theme.spaceSm
+                        Layout.bottomMargin: Theme.spaceXs
                         hint: root.tab === 0
                             ? "Rechercher (marque, modèle, Wc, réf. Rexel…)"
                             : "Rechercher (marque, kW, hybride, réf. Rexel…)"
                         onTextChanged: root.search = text
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Theme.spaceSm
+                        Layout.rightMargin: Theme.spaceSm
+                        Layout.bottomMargin: Theme.spaceSm
+                        spacing: Theme.spaceXs
+                        Label {
+                            text: "Trier"
+                            color: Theme.textDim
+                            font.pixelSize: Theme.fontSizeCaption
+                        }
+                        ComboBox {
+                            id: sortBox
+                            Layout.fillWidth: true
+                            implicitHeight: 32
+                            model: root.sortOptions
+                            textRole: "label"
+                            valueRole: "value"
+                            onActivated: {
+                                root.sortKey = currentValue
+                                root.sortAsc = ["brand", "model", "tech", "type"].indexOf(currentValue) >= 0
+                            }
+                        }
+                        OseBtn {
+                            text: root.sortAsc ? "↑" : "↓"
+                            kind: "outline"
+                            implicitHeight: 32
+                            leftPadding: 8
+                            rightPadding: 8
+                            ToolTip.visible: hovered
+                            ToolTip.text: root.sortAsc ? "Croissant" : "Décroissant"
+                            onClicked: root.sortAsc = !root.sortAsc
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Theme.spaceSm
+                        Layout.rightMargin: Theme.spaceSm
+                        Layout.bottomMargin: Theme.spaceSm
+                        visible: root.tab === 1
+                        Label {
+                            Layout.fillWidth: true
+                            text: root.hasCompatContext
+                                  ? (root.compatibleOnly ? "Filtre : compatibles avec le projet" : "Filtre : tous les onduleurs")
+                                  : "Sélectionnez un panneau ou une batterie pour filtrer"
+                            color: Theme.textDim
+                            font.pixelSize: Theme.fontSizeCaption
+                            elide: Text.ElideRight
+                        }
+                        OseBtn {
+                            text: root.compatibleOnly ? "✅ Compatibles" : "Tous"
+                            kind: root.compatibleOnly ? "accent" : "outline"
+                            implicitHeight: 30
+                            font.pixelSize: Theme.fontSizeCaption
+                            leftPadding: 8
+                            rightPadding: 8
+                            enabled: root.hasCompatContext
+                            onClicked: root.compatibleOnly = !root.compatibleOnly
+                        }
                     }
 
                     Rectangle {
@@ -447,6 +661,14 @@ Dialog {
                                             let s = typeLbl
                                             const p = modelData.pac || modelData.pnom
                                             if (p) s += " · " + p + " kW"
+                                            const vmax = modelData.maxInputV || modelData.maxVocInput
+                                            if (vmax) s += " · Vmax " + vmax + " V"
+                                            const mp = modelData.nMppt || modelData.mpptCount
+                                            if (mp) s += " · " + mp + " MPPT"
+                                            if (modelData.maxInputI) s += " · Imax " + modelData.maxInputI + " A"
+                                            if (modelData.batteryMinV && modelData.batteryMaxV)
+                                                s += " · batt. " + modelData.batteryMinV + "–" + modelData.batteryMaxV + " V"
+                                            if (modelData.price_eur) s += " · " + modelData.price_eur + " €"
                                             const ref = modelData.sku || modelData.rexelPartNumber || ""
                                             if (ref) s += " · réf. " + ref
                                             else if ((modelData.id || "").indexOf("rexel_") === 0) s += " · Rexel"
@@ -455,6 +677,15 @@ Dialog {
                                     }
                                 }
 
+                                Label {
+                                    id: compatBadgeLabel
+                                    visible: root.tab === 1
+                                    text: root.compatBadge(modelData)
+                                    font.pixelSize: 18
+                                    HoverHandler { id: compatHover }
+                                    ToolTip.visible: compatHover.hovered
+                                    ToolTip.text: root.compatTooltip(modelData)
+                                }
                                 OseBtn {
                                     text: "Utiliser"
                                     kind: "primary"
@@ -666,6 +897,21 @@ Dialog {
                             OseTextField { id: iMaxV; Layout.fillWidth: true; hint: "600"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
                             OseTextField { id: iMaxI; Layout.fillWidth: true; hint: "18"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
 
+                            Label { text: "MPPT min (V)"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim }
+                            Label { text: "MPPT max (V)"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim }
+                            OseTextField { id: iMpptMin; Layout.fillWidth: true; hint: "ex. 120"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
+                            OseTextField { id: iMpptMax; Layout.fillWidth: true; hint: "ex. 550"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
+
+                            Label { text: "Pdc max (kW)"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim }
+                            Label { text: "Prix indicatif TTC (€)"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim }
+                            OseTextField { id: iMaxPdc; Layout.fillWidth: true; hint: "ex. 9"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
+                            OseTextField { id: iPrice; Layout.fillWidth: true; hint: "ex. 1200"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
+
+                            Label { text: "Batterie min (V)"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim }
+                            Label { text: "Batterie max (V)"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim }
+                            OseTextField { id: iBattMin; Layout.fillWidth: true; hint: "ex. 40"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
+                            OseTextField { id: iBattMax; Layout.fillWidth: true; hint: "ex. 60"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
+
                             Label { text: "Notes"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim; Layout.columnSpan: Ui.isPhone ? 1 : 2 }
                             ScrollView {
                                 Layout.fillWidth: true
@@ -704,5 +950,9 @@ Dialog {
                 }
             }
         }
+    }
+
+    BatteryCatalogDialog {
+        id: batteryDialog
     }
 }

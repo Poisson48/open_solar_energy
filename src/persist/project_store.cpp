@@ -3,15 +3,24 @@
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
+#include <QHash>
 #include <QJsonDocument>
 #include <QRandomGenerator>
 #include <QStandardPaths>
+#include <QTimer>
 
 #include <algorithm>
+#include <cmath>
 
 namespace ose {
 
-ProjectStore::ProjectStore(QObject* parent) : QAbstractListModel(parent) {}
+ProjectStore::ProjectStore(QObject* parent) : QAbstractListModel(parent)
+{
+    m_saveTimer = new QTimer(this);
+    m_saveTimer->setSingleShot(true);
+    m_saveTimer->setInterval(350);
+    connect(m_saveTimer, &QTimer::timeout, this, &ProjectStore::flushToDisk);
+}
 
 int ProjectStore::rowCount(const QModelIndex& parent) const
 {
@@ -131,6 +140,59 @@ bool ProjectStore::load()
         if (err.error == QJsonParseError::NoError && doc.isArray())
             m_projects = doc.array();
     }
+    // Migration : une batterie EVShop sélectionnée impose sa capacité réelle.
+    // Corrige les anciens projets où l'optimiseur hors-réseau avait écrasé
+    // 75 kWh par sa recommandation (ex. 2 kWh) et purge le résultat obsolète.
+    bool repaired = false;
+    QHash<QString, QPair<QString, double>> packs;
+    QFile batteryFile(QStringLiteral(":/data/evshop_batteries/catalog.json"));
+    if (batteryFile.open(QIODevice::ReadOnly)) {
+        const QJsonDocument bdoc = QJsonDocument::fromJson(batteryFile.readAll());
+        const QJsonArray items = bdoc.object().value(QStringLiteral("items")).toArray();
+        for (const QJsonValue& v : items) {
+            const QJsonObject o = v.toObject();
+            const QString id = o.value(QStringLiteral("id")).toString();
+            const double kwh = o.value(QStringLiteral("energy_kwh")).toDouble();
+            if (!id.isEmpty() && kwh > 0)
+                packs.insert(id, {o.value(QStringLiteral("name")).toString(), kwh});
+        }
+    }
+    if (!packs.isEmpty()) {
+        for (int i = 0; i < m_projects.size(); ++i) {
+            QJsonObject project = m_projects.at(i).toObject();
+            QJsonObject form = project.value(QStringLiteral("formState")).toObject();
+            const QString batteryId = form.value(QStringLiteral("batteryId")).toString();
+            if (batteryId.isEmpty() || !packs.contains(batteryId))
+                continue;
+            const auto pack = packs.value(batteryId);
+            const double kwh = pack.second;
+            bool projectChanged = false;
+            if (std::abs(form.value(QStringLiteral("battKwh")).toDouble() - kwh) > 0.1) {
+                form.insert(QStringLiteral("battKwh"), kwh);
+                projectChanged = true;
+            }
+            if (form.value(QStringLiteral("batteryModel")).toString().isEmpty()) {
+                form.insert(QStringLiteral("batteryModel"), pack.first);
+                projectChanged = true;
+            }
+            if (projectChanged)
+                project.insert(QStringLiteral("formState"), form);
+            const QJsonObject og = project.value(QStringLiteral("offgridResult")).toObject();
+            const QJsonObject best = og.value(QStringLiteral("best")).toObject();
+            const double bestKwh = best.value(QStringLiteral("battKwh")).toDouble();
+            if (bestKwh > 0 && std::abs(bestKwh - kwh) > 0.1) {
+                project.insert(QStringLiteral("offgridResult"), QJsonObject());
+                projectChanged = true;
+            }
+            if (projectChanged) {
+                m_projects.replace(i, project);
+                repaired = true;
+            }
+        }
+    }
+    if (repaired)
+        flushToDisk();
+
     sortByUpdated();
     endResetModel();
     emit countChanged();
@@ -140,18 +202,25 @@ bool ProjectStore::load()
 
 bool ProjectStore::saveAll()
 {
-    sortByUpdated();
+    // Écriture disque seule — pas de beginResetModel (ANR Android + freeze UI)
+    return flushToDisk();
+}
+
+bool ProjectStore::flushToDisk()
+{
     QFile f(backupPath());
     if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         emit errorOccurred(QStringLiteral("Impossible d'écrire la sauvegarde projets"));
         return false;
     }
     f.write(QJsonDocument(m_projects).toJson(QJsonDocument::Compact));
-    emit countChanged();
-    // refresh model order
-    beginResetModel();
-    endResetModel();
     return true;
+}
+
+void ProjectStore::scheduleSave()
+{
+    if (m_saveTimer)
+        m_saveTimer->start();
 }
 
 void ProjectStore::seedDemosIfEmpty()
@@ -273,8 +342,11 @@ bool ProjectStore::updateCurrent(const QVariantMap& patch)
     m_projects.replace(i, o);
     const QModelIndex idx = index(i);
     emit dataChanged(idx, idx);
+    // currentChanged recharge tous les onglets — coûteux ; on l’émet mais
+    // la sauvegarde disque est différée pour ne pas figer le thread UI (ANR).
     emit currentChanged();
-    return saveAll();
+    scheduleSave();
+    return true;
 }
 
 bool ProjectStore::setCurrentField(const QString& key, const QVariant& value)
@@ -331,8 +403,48 @@ bool ProjectStore::importProjectJson(const QString& json)
     QJsonObject o = doc.object();
     if (!o.contains(QStringLiteral("id")))
         o.insert(QStringLiteral("id"), newId());
-    o.insert(QStringLiteral("updatedAt"), QDateTime::currentDateTimeUtc().toString(Qt::ISODate));
-    const int existing = indexOfId(o.value(QStringLiteral("id")).toString());
+    if (!upsertProjectObject(o, true))
+        return false;
+    openProject(o.value(QStringLiteral("id")).toString());
+    return true;
+}
+
+QJsonObject ProjectStore::projectObject(const QString& id) const
+{
+    const int i = indexOfId(id);
+    if (i < 0)
+        return {};
+    return m_projects.at(i).toObject();
+}
+
+QStringList ProjectStore::projectIds() const
+{
+    QStringList ids;
+    ids.reserve(m_projects.size());
+    for (const QJsonValue& v : m_projects)
+        ids.append(v.toObject().value(QStringLiteral("id")).toString());
+    return ids;
+}
+
+bool ProjectStore::upsertProjectObject(const QJsonObject& obj, bool stampUpdatedAt)
+{
+    QJsonObject o = obj;
+    if (!o.contains(QStringLiteral("id")) || o.value(QStringLiteral("id")).toString().isEmpty())
+        o.insert(QStringLiteral("id"), newId());
+    if (stampUpdatedAt)
+        o.insert(QStringLiteral("updatedAt"), QDateTime::currentDateTimeUtc().toString(Qt::ISODate));
+    return replaceProjectObject(o);
+}
+
+bool ProjectStore::replaceProjectObject(const QJsonObject& obj)
+{
+    QJsonObject o = obj;
+    const QString id = o.value(QStringLiteral("id")).toString();
+    if (id.isEmpty()) {
+        emit errorOccurred(QStringLiteral("Projet sans id"));
+        return false;
+    }
+    const int existing = indexOfId(id);
     if (existing >= 0) {
         m_projects.replace(existing, o);
         emit dataChanged(index(existing), index(existing));
@@ -340,10 +452,11 @@ bool ProjectStore::importProjectJson(const QString& json)
         beginInsertRows({}, 0, 0);
         m_projects.prepend(o);
         endInsertRows();
+        emit countChanged();
     }
     saveAll();
-    emit countChanged();
-    openProject(o.value(QStringLiteral("id")).toString());
+    if (m_currentId == id)
+        emit currentChanged();
     return true;
 }
 

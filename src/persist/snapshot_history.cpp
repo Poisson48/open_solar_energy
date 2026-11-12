@@ -260,4 +260,43 @@ bool SnapshotHistory::switchBranch(const QString& projectId, const QString& bran
     return true;
 }
 
+bool SnapshotHistory::exportGitBundle(const QString& projectId, const QString& outFile) const
+{
+    if (!gitAvailable() || projectId.isEmpty() || outFile.isEmpty())
+        return false;
+    if (!QDir(repoDir(projectId) + QStringLiteral("/.git")).exists())
+        return false;
+    QFile::remove(outFile);
+    return runGit(projectId,
+                  {QStringLiteral("bundle"), QStringLiteral("create"), outFile, QStringLiteral("--all")},
+                  nullptr, nullptr, 60000);
+}
+
+bool SnapshotHistory::importGitBundle(const QString& projectId, const QString& bundleFile)
+{
+    if (!gitAvailable() || projectId.isEmpty() || !QFile::exists(bundleFile))
+        return false;
+    const QString dest = repoDir(projectId);
+    // Remplace le dépôt existant
+    QDir(dest + QStringLiteral("/.git")).removeRecursively();
+    QFile::remove(dest + QStringLiteral("/project.json"));
+    QFile::remove(dest + QStringLiteral("/.ose-stamp"));
+
+    QProcess p;
+    p.setProcessChannelMode(QProcess::SeparateChannels);
+    p.start(QStringLiteral("git"),
+            {QStringLiteral("clone"), bundleFile, dest});
+    if (!p.waitForFinished(60000) || p.exitCode() != 0) {
+        // Fallback : init + fetch bundle
+        if (!ensureRepo(projectId))
+            return false;
+        if (!runGit(projectId,
+                    {QStringLiteral("fetch"), bundleFile, QStringLiteral("refs/heads/*:refs/heads/*")},
+                    nullptr, nullptr, 60000))
+            return false;
+    }
+    emit historyChanged();
+    return true;
+}
+
 } // namespace ose

@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       version_name:
-        description: "Version AppImage (ex. 2.0.76)"
+        description: "Version AppImage (ex. 2.0.114)"
         type: string
-        default: "2.0.76"
+        default: "2.0.114"
 
 env:
   QT_VER: 6.8.2
@@ -31,7 +31,8 @@ jobs:
               libxcb-cursor0 libxcb-icccm4 libxcb-image0 \
               libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 \
               libxcb-xinerama0 libxcb-xkb1 libxcb-util1 \
-              libssl-dev && break
+              libssl-dev libpulse-dev libasound2-dev libsndfile1-dev \
+              libflac-dev libvorbis-dev libogg-dev libmp3lame-dev libmpg123-dev && break
             echo "apt tentatif $i échoué — nouvel essai…"
             sleep $((i * 15))
           done
@@ -40,13 +41,13 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/Qt
-          key: qt-desktop-${{ env.QT_VER }}-ose-qml-quick3d-v2
+          key: qt-desktop-${{ env.QT_VER }}-ose-qml-mm-sensors-v1
       - name: Install Qt
         if: steps.cache-qt.outputs.cache-hit != 'true'
         run: |
           python3 -m pip install --user aqtinstall
           python3 -m aqt install-qt linux desktop "$QT_VER" linux_gcc_64 \
-            -m qtcharts qtquick3d qtshadertools qtquicktimeline -O "$HOME/Qt"
+            -m qtcharts qtquick3d qtshadertools qtquicktimeline qtconnectivity qtmultimedia qtsensors qtpdf -O "$HOME/Qt"
       - name: Dépendances natives
         run: |
           git clone --depth 1 --branch v0.5.1 https://github.com/bitcoin-core/secp256k1.git third_party/secp256k1
@@ -54,7 +55,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: build/appimage-tools
-          key: appimage-tools-ose-native
+          key: appimage-tools-ose-native-runtime-v2
       - name: Build
         env:
           VERSION_NAME: ${{ inputs.version_name }}

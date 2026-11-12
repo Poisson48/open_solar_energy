@@ -58,6 +58,14 @@ tests/artifacts/
 # Local memory (claude context)
 memory/
 
-# Rexel datasheet PDFs (lourds — régénérables via scripts/scrape_rexel_catalog.py --download-pdfs)
+# Python
+__pycache__/
+*.pyc
+
+# Rexel datasheet PDFs/index (lourds — régénérables via scripts/download_rexel_inverter_datasheets.py)
 data/rexel_catalog/pdfs/
+data/rexel_catalog/inverter_datasheets.csv
 .tmp-shots/
+
+.backup-phone-*/
+*.apk.idsig

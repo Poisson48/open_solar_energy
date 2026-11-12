@@ -24,11 +24,11 @@ on:
       version_name:
         description: "versionName APK"
         type: string
-        default: "2.0.76"
+        default: "2.0.114"
       version_code:
         description: "versionCode APK"
         type: string
-        default: "20076"
+        default: "20114"
 
 env:
   QT_VER: 6.8.2
@@ -62,15 +62,15 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/Qt
-          key: qt-${{ env.QT_VER }}-ose-android-qml-quick3d-v2
+          key: qt-${{ env.QT_VER }}-ose-android-qml-mm-sensors-v1
       - name: Install Qt
         if: steps.cache-qt.outputs.cache-hit != 'true'
         run: |
           python3 -m pip install --user aqtinstall
           python3 -m aqt install-qt linux desktop "$QT_VER" linux_gcc_64 \
-            -m qtcharts qtquick3d qtshadertools qtquicktimeline -O "$HOME/Qt"
+            -m qtcharts qtquick3d qtshadertools qtquicktimeline qtconnectivity qtmultimedia qtsensors -O "$HOME/Qt"
           python3 -m aqt install-qt all_os android "$QT_VER" android_arm64_v8a \
-            -m qtcharts qtquick3d qtshadertools qtquicktimeline -O "$HOME/Qt"
+            -m qtcharts qtquick3d qtshadertools qtquicktimeline qtconnectivity qtmultimedia qtsensors -O "$HOME/Qt"
       - name: Dépendances natives Android
         run: |
           git clone --depth 1 https://github.com/KDAB/android_openssl.git third_party/android_openssl

@@ -290,7 +290,7 @@ OseTabPage {
                     }
                     Projects.updateCurrent({ reportPdf: path })
                     AppController.autoSave("Rapport simulation PDF")
-                    pdfPreviewDialog.openPath(path, "Aperçu — Rapport type étude")
+                    pdfPreviewDialog.openPath(path, "Aperçu — Rapport projet")
                 }
             }
             OseBtn {
@@ -310,8 +310,9 @@ OseTabPage {
             wrapMode: Text.WordWrap
             font.pixelSize: 11
             color: Theme.textDim
-            text: "Le devis reprend SIRET/RGE, client, chantier, lignes HT, TVA et signature. "
-                  + "Le rapport de simulation détaille site, météo, système, bilan mensuel et finances (approche type PVsyst)."
+            text: "Le devis = document commercial (SIRET, lignes, TVA, signature). "
+                  + "Le rapport = aide à la décision client : ROI, économies, production — "
+                  + "avec annexe technique (balances / pertes)."
         }
     }
 

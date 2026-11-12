@@ -6,6 +6,8 @@
 #include <QObject>
 #include <QVariantMap>
 
+class QTimer;
+
 namespace ose {
 
 class ProjectStore : public QAbstractListModel {
@@ -52,6 +54,18 @@ public:
     Q_INVOKABLE QVariantMap clientObject() const;
     Q_INVOKABLE bool setClientObject(const QVariantMap& client);
 
+    /** Objet projet brut (sync). */
+    QJsonObject projectObject(const QString& id) const;
+    /** Liste des ids. */
+    QStringList projectIds() const;
+    /**
+     * Remplace ou crée un projet entier (sync full).
+     * stampUpdatedAt=false conserve updatedAt distant.
+     */
+    bool upsertProjectObject(const QJsonObject& obj, bool stampUpdatedAt = true);
+    /** Remplace uniquement l’objet déjà merge-sélectif (sync partiel). */
+    bool replaceProjectObject(const QJsonObject& obj);
+
 signals:
     void countChanged();
     void currentChanged();
@@ -62,9 +76,12 @@ private:
     QString backupPath() const;
     QString newId() const;
     void sortByUpdated();
+    bool flushToDisk();
+    void scheduleSave();
 
     QJsonArray m_projects;
     QString m_currentId;
+    QTimer* m_saveTimer = nullptr;
 };
 
 } // namespace ose
