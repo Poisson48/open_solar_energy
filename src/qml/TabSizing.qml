@@ -15,6 +15,7 @@ OseTabPage {
     property var estimateHint: ({})
     property bool isHybrid: (Projects.currentProject.installType || "grid") === "hybrid"
     property bool syncing: false
+    property bool showAllInverters: false
     property var compatibility: ({})
     readonly property var monthShort: [
         "Jan", "Fév", "Mar", "Avr", "Mai", "Juin",
@@ -205,7 +206,8 @@ OseTabPage {
                 Ppeak: f.suggestedPpeak
             }
         }
-        battKwh.text = String(f.battKwh !== undefined ? f.battKwh : 5)
+        const selectedBattery = Catalog.getBattery(f.batteryId) || {}
+        battKwh.text = String(selectedBattery.energy_kwh || (f.battKwh !== undefined ? f.battKwh : 5))
         battDod.text = String(f.battDod !== undefined ? f.battDod : 80)
         syncing = false
         updateCompatibility()
@@ -1129,13 +1131,27 @@ OseTabPage {
                     id: inverterBox
                     Layout.fillWidth: true
                     model: {
+                        const f = Projects.currentProject.formState || {}
+                        const panel = Catalog.getPanel(panelCatalog.currentValue || f.panelId) || {}
+                        const battery = Catalog.getBattery(f.batteryId) || {}
+                        const hasCtx = !!(panel.id || battery.id)
+                        const n = Math.max(1, Math.round(Number(f.panelCount) || 1))
+                        const kwh = root.isHybrid ? (Number(f.battKwh) || 0) : 0
                         let m = [{ label: "— Aucun —", value: "" }]
                         const ps = Catalog.inverters || []
                         for (let i = 0; i < Math.min(ps.length, 400); ++i) {
+                            let badge = ""
+                            if (hasCtx) {
+                                const c = Inverter.checkCompatibility(panel, ps[i], battery, n, kwh)
+                                if (c.status === "danger" && !root.showAllInverters)
+                                    continue
+                                badge = c.status === "danger" ? "⛔ "
+                                      : (c.status === "warning" ? "⚠️ " : "✅ ")
+                            }
                             const typ = ps[i].type === "hybrid" ? "hybride"
                                       : (ps[i].type === "micro" ? "micro" : "string")
                             m.push({
-                                label: (ps[i].brand || ps[i].fabricant || "") + " "
+                                label: badge + (ps[i].brand || ps[i].fabricant || "") + " "
                                        + (ps[i].model || "") + " · "
                                        + (ps[i].pac || ps[i].pnom || "?") + " kW · " + typ,
                                 value: ps[i].id
@@ -1146,6 +1162,26 @@ OseTabPage {
                     textRole: "label"
                     valueRole: "value"
                     onActivated: root.applySelectedInverter()
+                    onModelChanged: {
+                        const f = Projects.currentProject.formState || {}
+                        let idx = 0
+                        for (let i = 0; i < model.length; ++i) {
+                            if (model[i].value === f.inverterId) { idx = i; break }
+                        }
+                        currentIndex = idx
+                    }
+                }
+                OseBtn {
+                    text: root.showAllInverters ? "Tous" : "✅ Compatibles"
+                    kind: root.showAllInverters ? "outline" : "accent"
+                    implicitHeight: 32
+                    font.pixelSize: Theme.fontSizeCaption
+                    leftPadding: 8
+                    rightPadding: 8
+                    ToolTip.visible: hovered
+                    ToolTip.text: root.showAllInverters ? "Afficher aussi les onduleurs incompatibles"
+                                                        : "Afficher uniquement les onduleurs compatibles"
+                    onClicked: root.showAllInverters = !root.showAllInverters
                 }
                 OseBtn {
                     text: "Lib."

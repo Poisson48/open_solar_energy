@@ -34,6 +34,7 @@ private slots:
     void site_shade_blocks_beam();
     void sizing_roi_positive();
     void offgrid_engine_best();
+    void offgrid_fixed_battery_keeps_capacity();
     void enedis_parse_monthly();
     void inverter_stringing_options();
     void inverter_compatibility_warns();
@@ -256,6 +257,24 @@ void TstCore::offgrid_engine_best()
             covBigBatt = cov;
     }
     QVERIFY(covBigBatt >= covSmallBatt);
+}
+
+void TstCore::offgrid_fixed_battery_keeps_capacity()
+{
+    ose::OffgridSizing eng;
+    const QVariantMap r = eng.run({{QStringLiteral("lat"), 43.6},
+                                   {QStringLiteral("weatherData"), demoWeather()},
+                                   {QStringLiteral("dailyConsumptionWh"), 8000},
+                                   {QStringLiteral("dod"), 80},
+                                   {QStringLiteral("coverageTarget"), 50},
+                                   {QStringLiteral("maxDeficitDaysPct"), 100},
+                                   {QStringLiteral("battKwhFixed"), 20.0}});
+    const QVariantMap best = r.value(QStringLiteral("best")).toMap();
+    QCOMPARE(best.value(QStringLiteral("battKwh")).toDouble(), 20.0);
+    for (const QVariant& v : r.value(QStringLiteral("candidates")).toList()) {
+        const QVariantMap c = v.toMap();
+        QCOMPARE(c.value(QStringLiteral("battKwh")).toDouble(), 20.0);
+    }
 }
 
 void TstCore::enedis_parse_monthly()

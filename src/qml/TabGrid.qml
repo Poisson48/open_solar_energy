@@ -13,6 +13,7 @@ OseTabPage {
     property var result: ({})
     property var stringing: ({})
     property var compatibility: ({})
+    property bool showAllInverters: false
 
     readonly property var panels: Catalog.panels
     readonly property var inverters: Catalog.inverters
@@ -123,7 +124,7 @@ OseTabPage {
         const nPanels = Number(form.panelCount) > 0
                       ? Number(form.panelCount)
                       : Math.max(1, Math.round((Number(pField.text) || 3) * 1000 / panelWp))
-        const batteryKwh = Number(form.battKwh) || Number(battery.energy_kwh) || 0
+        const batteryKwh = Number(battery.energy_kwh) || Number(form.battKwh) || 0
         stringing = Inverter.calcStringing(panel, inv)
         compatibility = Inverter.checkCompatibility(actualPanel, actualInv, battery, nPanels, batteryKwh)
     }
@@ -219,11 +220,28 @@ OseTabPage {
                     id: invBox
                     Layout.fillWidth: true
                     model: {
+                        const f = Projects.currentProject.formState || {}
+                        const panel = Catalog.getPanel(panelBox.currentValue || f.panelId) || {}
+                        const battery = Catalog.getBattery(f.batteryId) || {}
+                        const hasCtx = !!(panel.id || battery.id)
+                        const n = Number(f.panelCount) > 0
+                                  ? Number(f.panelCount)
+                                  : Math.max(1, Math.round((Number(f.Ppeak) || 3) * 1000
+                                                           / (Number(panel.pmax || panel.wp) || 400)))
+                        const kwh = Number(f.battKwh) || Number(battery.energy_kwh) || 0
                         let m = [{ label: "Générique 5 kVA", value: "" }]
                         const ps = Catalog.inverters || []
                         for (let i = 0; i < Math.min(ps.length, 400); ++i) {
+                            let badge = ""
+                            if (hasCtx) {
+                                const c = Inverter.checkCompatibility(panel, ps[i], battery, n, kwh)
+                                if (c.status === "danger" && !root.showAllInverters)
+                                    continue
+                                badge = c.status === "danger" ? "⛔ "
+                                      : (c.status === "warning" ? "⚠️ " : "✅ ")
+                            }
                             m.push({
-                                label: (ps[i].brand || "") + " " + (ps[i].model || "")
+                                label: badge + (ps[i].brand || "") + " " + (ps[i].model || "")
                                        + " · " + (ps[i].pac || ps[i].pnom || "") + " kW",
                                 value: ps[i].id
                             })
@@ -233,6 +251,26 @@ OseTabPage {
                     textRole: "label"
                     valueRole: "value"
                     onActivated: root.runStringing()
+                    onModelChanged: {
+                        const f = Projects.currentProject.formState || {}
+                        let idx = 0
+                        for (let i = 0; i < model.length; ++i) {
+                            if (model[i].value === f.inverterId) { idx = i; break }
+                        }
+                        currentIndex = idx
+                    }
+                }
+                OseBtn {
+                    text: root.showAllInverters ? "Tous" : "✅ Compatibles"
+                    kind: root.showAllInverters ? "outline" : "accent"
+                    implicitHeight: 32
+                    font.pixelSize: Theme.fontSizeCaption
+                    leftPadding: 8
+                    rightPadding: 8
+                    ToolTip.visible: hovered
+                    ToolTip.text: root.showAllInverters ? "Afficher aussi les onduleurs incompatibles"
+                                                        : "Afficher uniquement les onduleurs compatibles"
+                    onClicked: root.showAllInverters = !root.showAllInverters
                 }
                 OseBtn { text: "Lib."; kind: "outline"; onClicked: AppController.openMateriel() }
             }

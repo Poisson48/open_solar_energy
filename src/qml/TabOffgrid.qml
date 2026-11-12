@@ -22,6 +22,40 @@ OseTabPage {
         else dodField.text = "50"
     }
 
+    function selectedBattery() {
+        const f = Projects.currentProject.formState || {}
+        return Catalog.getBattery(offgridBatteryBox.currentValue || f.batteryId) || {}
+    }
+
+    function applyOffgridBattery() {
+        const b = Catalog.getBattery(offgridBatteryBox.currentValue) || {}
+        const f = Projects.currentProject.formState || {}
+        if (!b.id) {
+            Projects.updateCurrent({
+                formState: Object.assign({}, f, {
+                    batteryId: "",
+                    batteryModel: ""
+                })
+            })
+            return
+        }
+        const chem = (b.chemistry || "").toUpperCase()
+        const tech = chem.indexOf("LFP") >= 0 ? "LiFePO4"
+                   : (chem.indexOf("NMC") >= 0 ? "NMC" : (f.battTech || "NMC"))
+        Projects.updateCurrent({
+            formState: Object.assign({}, f, {
+                batteryId: b.id,
+                batteryModel: b.name || b.id,
+                battKwh: b.energy_kwh || f.battKwh || 0,
+                battTech: tech
+            })
+        })
+        const m = battTech.model
+        for (let i = 0; i < m.length; ++i) {
+            if (m[i] === tech) { battTech.currentIndex = i; break }
+        }
+    }
+
     function syncFromProject() {
         const form = Projects.currentProject.formState || {}
         const en = Projects.currentProject.enedisImport || {}
@@ -46,6 +80,14 @@ OseTabPage {
                 if (m[i] === form.battTech) { battTech.currentIndex = i; break }
             }
         }
+        if (form.batteryId) {
+            for (let i = 0; i < offgridBatteryBox.model.length; ++i) {
+                if (offgridBatteryBox.model[i].value === form.batteryId) {
+                    offgridBatteryBox.currentIndex = i
+                    break
+                }
+            }
+        }
         recommendedBest = (lastResult && lastResult.best) ? lastResult.best : {}
     }
 
@@ -67,6 +109,7 @@ OseTabPage {
         const site = Projects.currentProject.siteSurvey || {}
         const en = Projects.currentProject.enedisImport || {}
         const dailyWh = Math.round((dayK + nightK) * 1000)
+        const chosenBattery = Catalog.getBattery(offgridBatteryBox.currentValue || form.batteryId) || {}
         const params = {
             lat: loc.lat || 43.6,
             weatherData: weather,
@@ -91,6 +134,9 @@ OseTabPage {
             useElectricalShade: form.energyMode === "study",
             thermal: form.thermal || undefined
         }
+        if (chosenBattery.energy_kwh) {
+            params.battKwhFixed = chosenBattery.energy_kwh
+        }
         // Si Enedis a fourni un profil 30 min, on l’utilise (forme réelle jour/nuit)
         if (en.halfHourly && en.halfHourlyProfile && en.halfHourlyProfile.length >= 48)
             params.halfHourlyLoadProfile = en.halfHourlyProfile
@@ -101,7 +147,9 @@ OseTabPage {
             offgridResult: lastResult,
             formState: Object.assign({}, form, {
                 Ppeak: (lastResult.best || {}).Ppeak,
-                battKwh: (lastResult.best || {}).battKwh,
+                battKwh: chosenBattery.energy_kwh || (lastResult.best || {}).battKwh,
+                batteryId: chosenBattery.id || "",
+                batteryModel: chosenBattery.name || form.batteryModel || "",
                 dailyWh: dailyWh,
                 loadDayKwh: dayK,
                 loadNightKwh: nightK,
@@ -119,7 +167,9 @@ OseTabPage {
                                + (b.battKwh || "?") + " kWh batterie")
     }
 
-    Component.onCompleted: syncFromProject()
+    Component.onCompleted: {
+        syncFromProject()
+    }
 
     OseFormResults {
         Layout.fillWidth: true
@@ -235,6 +285,45 @@ OseTabPage {
                     model: ["LiFePO4", "NMC", "Plomb gel"]
                     onActivated: root.applyBattTech()
                 }
+            }
+            Label { text: "Batterie catalogue (optionnel)"; color: Theme.textDim; font.pixelSize: 12 }
+            RowLayout {
+                Layout.fillWidth: true
+                ComboBox {
+                    id: offgridBatteryBox
+                    Layout.fillWidth: true
+                    model: {
+                        let m = [{ label: "— Aucune / optimisation libre —", value: "" }]
+                        const bs = Catalog.batteries || []
+                        for (let i = 0; i < bs.length; ++i) {
+                            m.push({
+                                label: (bs[i].name || bs[i].id) + " · "
+                                       + (bs[i].energy_kwh || "?") + " kWh · "
+                                       + (bs[i].voltage_nominal_v || "?") + " V",
+                                value: bs[i].id
+                            })
+                        }
+                        return m
+                    }
+                    textRole: "label"
+                    valueRole: "value"
+                    onActivated: root.applyOffgridBattery()
+                }
+                OseBtn {
+                    text: "Lib."
+                    kind: "outline"
+                    onClicked: AppController.openMateriel()
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                font.pixelSize: 12
+                color: root.selectedBattery().id ? Theme.primary : Theme.textDim
+                text: root.selectedBattery().id
+                      ? ("Batterie sélectionnée : " + (root.selectedBattery().name || root.selectedBattery().id)
+                         + " · " + (root.selectedBattery().energy_kwh || "?") + " kWh")
+                      : "Aucune batterie catalogue : l’optimiseur choisit la capacité."
             }
             Label {
                 Layout.fillWidth: true

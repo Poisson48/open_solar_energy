@@ -271,6 +271,7 @@ python3 scripts/update_rexel_catalog.py --dry-run --limit 2 --only panels
 - **EVShop** : met à jour prix, prix barré, stock, nom et URL ; ajoute les nouvelles références dans `À qualifier` ; marque les disparues `active: false` ; régénère `docs/CATALOGUE-BATTERIES-EVSHOP.md` et `data/evshop_batteries/catalog.csv`.
 - **Rexel** : fusionne par SKU dans `data/rexel_catalog/catalog.json`, préserve `notes`, `datasheetLocal`, `seeded` et les champs locaux, ajoute les nouveaux produits et marque les disparus `active: false`.
 - **Fiches PDF onduleurs Rexel** : `python3 scripts/download_rexel_inverter_datasheets.py --resolve-missing` télécharge les PDF dans `data/rexel_catalog/pdfs/` et met à jour l'index `inverter_datasheets.csv`.
+- **Caractéristiques électriques onduleurs** : `nice -n 19 ionice -c 3 python3 scripts/enrich_rexel_inverter_specs.py` remplit Vmax, plage MPPT, Imax, nombre de MPPT et plage batterie depuis les attributs Rexel et les PDF. Les deux scripts sont volontairement séparés pour ne pas saturer le PC.
 - Un scan partiel (`--limit` / `--only`) ne désactive jamais le reste du catalogue.
 - Les fonctions réutilisables sont dans `scripts/update_evshop_battery_catalog.py` (`scrape_evshop_batteries`, `update_evshop_catalog`), `scripts/update_rexel_catalog.py` (`scrape_rexel_catalog`, `update_rexel_catalog`) et `scripts/update_all_catalogs.py` (`update_all`).
 

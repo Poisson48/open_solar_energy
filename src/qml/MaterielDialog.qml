@@ -30,6 +30,7 @@ Dialog {
     property string editingId: ""
     property string sortKey: "wp"
     property bool sortAsc: false
+    property bool compatibleOnly: true
 
     readonly property int totalPanels: Catalog.catalogPanelCount + Catalog.userPanelCount
     readonly property int totalInverters: Catalog.catalogInverterCount + Catalog.userInverterCount
@@ -46,10 +47,59 @@ Dialog {
         { label: "Phase", value: "phase" },
         { label: "MPPT", value: "mpptCount" },
         { label: "Vmax DC", value: "maxInputV" },
-        { label: "Imax", value: "maxInputI" }
+        { label: "Imax", value: "maxInputI" },
+        { label: "Prix (saisi)", value: "price_eur" }
     ]
-    readonly property var filtered: sortItems(tab === 0 ? Catalog.searchPanels(search)
-                                                        : Catalog.searchInverters(search))
+    readonly property bool hasCompatContext: {
+        const f = Projects.currentProject.formState || {}
+        return !!(f.panelId || f.batteryId)
+    }
+    readonly property var baseFiltered: tab === 0 ? Catalog.searchPanels(search)
+                                                  : Catalog.searchInverters(search)
+    readonly property var filtered: {
+        let arr = sortItems(baseFiltered)
+        if (tab === 1 && compatibleOnly && hasCompatContext) {
+            const out = []
+            for (let i = 0; i < arr.length; ++i) {
+                if (inverterCompat(arr[i]).status !== "danger")
+                    out.push(arr[i])
+            }
+            return out
+        }
+        return arr
+    }
+
+    function inverterCompat(item) {
+        const f = Projects.currentProject.formState || {}
+        if (!f.panelId && !f.batteryId)
+            return { status: "unknown", errors: [], warnings: [] }
+        const panel = Catalog.getPanel(f.panelId) || {}
+        const battery = Catalog.getBattery(f.batteryId) || {}
+        return Inverter.checkCompatibility(panel, item, battery,
+                                           Number(f.panelCount) || 0,
+                                           Number(f.battKwh) || Number(battery.energy_kwh) || 0)
+    }
+
+    function compatBadge(item) {
+        const c = inverterCompat(item)
+        if (c.status === "danger") return "⛔"
+        if (c.status === "warning") return "⚠️"
+        if (c.status === "ok") return "✅"
+        return "•"
+    }
+
+    function compatTooltip(item) {
+        const c = inverterCompat(item)
+        const lines = []
+        for (let i = 0; i < (c.errors || []).length; ++i) lines.push("⛔ " + c.errors[i])
+        for (let i = 0; i < (c.warnings || []).length; ++i) lines.push("⚠️ " + c.warnings[i])
+        return lines.length ? lines.join("\n") : "Compatible avec le panneau et la batterie du projet."
+    }
+
+    function resetCompatFilter() {
+        const f = Projects.currentProject.formState || {}
+        compatibleOnly = !!(f.panelId || f.batteryId)
+    }
 
     function sortValue(item, key) {
         let v = item ? item[key] : undefined
@@ -65,7 +115,7 @@ Dialog {
     function sortItems(items) {
         if (!items || items.length === 0)
             return []
-        const numeric = ["wp", "pac", "m2", "phase", "mpptCount", "maxInputV", "maxInputI"].indexOf(sortKey) >= 0
+        const numeric = ["wp", "pac", "m2", "phase", "mpptCount", "maxInputV", "maxInputI", "price_eur"].indexOf(sortKey) >= 0
         const arr = []
         for (let i = 0; i < items.length; ++i)
             arr.push(items[i])
@@ -95,7 +145,10 @@ Dialog {
             sortBox.currentIndex = 0
     }
 
-    onTabChanged: resetSort()
+    onTabChanged: {
+        resetSort()
+        resetCompatFilter()
+    }
 
     background: Rectangle {
         color: Theme.surface
@@ -124,6 +177,7 @@ Dialog {
         } else {
             iBrand.text = ""; iModel.text = ""; iPac.text = ""
             iMppt.text = "2"; iMaxV.text = ""; iMaxI.text = ""
+            iMpptMin.text = ""; iMpptMax.text = ""; iMaxPdc.text = ""; iPrice.text = ""
             iBattMin.text = ""; iBattMax.text = ""
             iType.currentIndex = 0; iPhase.currentIndex = 0
             iNotes.text = ""
@@ -160,6 +214,10 @@ Dialog {
             iMppt.text = String(item.nMppt || item.mpptCount || 2)
             iMaxV.text = (item.maxInputV || item.maxVocInput) ? String(item.maxInputV || item.maxVocInput) : ""
             iMaxI.text = item.maxInputI ? String(item.maxInputI) : ""
+            iMpptMin.text = item.mpptMinV ? String(item.mpptMinV) : ""
+            iMpptMax.text = item.mpptMaxV ? String(item.mpptMaxV) : ""
+            iMaxPdc.text = item.maxInputPowerKw ? String(item.maxInputPowerKw) : ""
+            iPrice.text = item.price_eur ? String(item.price_eur) : ""
             iBattMin.text = item.batteryMinV ? String(item.batteryMinV) : ""
             iBattMax.text = item.batteryMaxV ? String(item.batteryMaxV) : ""
             iNotes.text = item.notes || ""
@@ -278,8 +336,9 @@ Dialog {
                 maxInputI: Number(iMaxI.text) || null,
                 batteryMinV: Number(iBattMin.text) || null,
                 batteryMaxV: Number(iBattMax.text) || null,
-                mpptMinV: 120,
-                mpptMaxV: Number(iMaxV.text) ? Number(iMaxV.text) * 0.9 : 550,
+                mpptMinV: Number(iMpptMin.text) || 120,
+                mpptMaxV: Number(iMpptMax.text) || (Number(iMaxV.text) ? Number(iMaxV.text) * 0.9 : 550),
+                maxInputPowerKw: Number(iMaxPdc.text) || null,
                 notes: iNotes.text
             })
             editingId = id
@@ -391,7 +450,9 @@ Dialog {
             font.pixelSize: Theme.fontSizeCaption
             color: Theme.textDim
             text: "Catalogue Rexel embarqué (" + Catalog.catalogPanelCount + " panneaux, "
-                  + Catalog.catalogInverterCount + " onduleurs) + vos modèles perso."
+                  + Catalog.catalogInverterCount + " onduleurs) + vos modèles perso.\n"
+                  + "Prix Rexel : visibles après connexion au compte Rexel ; le tri « Prix (saisi) » "
+                  + "utilise les prix renseignés dans vos fiches."
         }
 
         // Corps liste | formulaire
@@ -497,6 +558,33 @@ Dialog {
                         }
                     }
 
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Theme.spaceSm
+                        Layout.rightMargin: Theme.spaceSm
+                        Layout.bottomMargin: Theme.spaceSm
+                        visible: root.tab === 1
+                        Label {
+                            Layout.fillWidth: true
+                            text: root.hasCompatContext
+                                  ? (root.compatibleOnly ? "Filtre : compatibles avec le projet" : "Filtre : tous les onduleurs")
+                                  : "Sélectionnez un panneau ou une batterie pour filtrer"
+                            color: Theme.textDim
+                            font.pixelSize: Theme.fontSizeCaption
+                            elide: Text.ElideRight
+                        }
+                        OseBtn {
+                            text: root.compatibleOnly ? "✅ Compatibles" : "Tous"
+                            kind: root.compatibleOnly ? "accent" : "outline"
+                            implicitHeight: 30
+                            font.pixelSize: Theme.fontSizeCaption
+                            leftPadding: 8
+                            rightPadding: 8
+                            enabled: root.hasCompatContext
+                            onClicked: root.compatibleOnly = !root.compatibleOnly
+                        }
+                    }
+
                     Rectangle {
                         Layout.fillWidth: true
                         height: 1
@@ -573,6 +661,14 @@ Dialog {
                                             let s = typeLbl
                                             const p = modelData.pac || modelData.pnom
                                             if (p) s += " · " + p + " kW"
+                                            const vmax = modelData.maxInputV || modelData.maxVocInput
+                                            if (vmax) s += " · Vmax " + vmax + " V"
+                                            const mp = modelData.nMppt || modelData.mpptCount
+                                            if (mp) s += " · " + mp + " MPPT"
+                                            if (modelData.maxInputI) s += " · Imax " + modelData.maxInputI + " A"
+                                            if (modelData.batteryMinV && modelData.batteryMaxV)
+                                                s += " · batt. " + modelData.batteryMinV + "–" + modelData.batteryMaxV + " V"
+                                            if (modelData.price_eur) s += " · " + modelData.price_eur + " €"
                                             const ref = modelData.sku || modelData.rexelPartNumber || ""
                                             if (ref) s += " · réf. " + ref
                                             else if ((modelData.id || "").indexOf("rexel_") === 0) s += " · Rexel"
@@ -581,6 +677,15 @@ Dialog {
                                     }
                                 }
 
+                                Label {
+                                    id: compatBadgeLabel
+                                    visible: root.tab === 1
+                                    text: root.compatBadge(modelData)
+                                    font.pixelSize: 18
+                                    HoverHandler { id: compatHover }
+                                    ToolTip.visible: compatHover.hovered
+                                    ToolTip.text: root.compatTooltip(modelData)
+                                }
                                 OseBtn {
                                     text: "Utiliser"
                                     kind: "primary"
@@ -791,6 +896,16 @@ Dialog {
                             Label { text: "Imax (A)"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim }
                             OseTextField { id: iMaxV; Layout.fillWidth: true; hint: "600"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
                             OseTextField { id: iMaxI; Layout.fillWidth: true; hint: "18"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
+
+                            Label { text: "MPPT min (V)"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim }
+                            Label { text: "MPPT max (V)"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim }
+                            OseTextField { id: iMpptMin; Layout.fillWidth: true; hint: "ex. 120"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
+                            OseTextField { id: iMpptMax; Layout.fillWidth: true; hint: "ex. 550"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
+
+                            Label { text: "Pdc max (kW)"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim }
+                            Label { text: "Prix indicatif TTC (€)"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim }
+                            OseTextField { id: iMaxPdc; Layout.fillWidth: true; hint: "ex. 9"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
+                            OseTextField { id: iPrice; Layout.fillWidth: true; hint: "ex. 1200"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
 
                             Label { text: "Batterie min (V)"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim }
                             Label { text: "Batterie max (V)"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim }

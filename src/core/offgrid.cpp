@@ -278,6 +278,9 @@ QVariantMap OffgridSizing::run(const QVariantMap& input) const
     if (!battIn.isEmpty()) {
         for (const QVariant& v : battIn)
             batts.push_back(std::max(0.1, v.toDouble()));
+    } else if (input.value(QStringLiteral("battKwhFixed"), 0.0).toDouble() > 0.05) {
+        // Batterie physique déjà choisie : on optimise uniquement le PV pour cette capacité.
+        batts.push_back(input.value(QStringLiteral("battKwhFixed")).toDouble());
     } else {
         const double battCeil = std::min(100.0, std::max(50.0, std::ceil(std::max(1.0, dailyKwh) * 8)));
         // Grille fine bas de gamme puis pas de 5 — 1 kWh inclus (cas courant DIY)
