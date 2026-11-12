@@ -2049,7 +2049,7 @@
       "maxInputI": 20.0,
       "maxInputPowerKw": 0.67,
       "specsSource": "pdf+rexel-attributes",
-      "specsUpdatedAt": "2026-11-12T12:44:57Z"
+      "specsUpdatedAt": "2026-11-12T12:59:21Z"
     },
     {
       "sku": "73978606",
@@ -2090,10 +2090,10 @@
         "Type de tension d'alimentation": "AC",
         "Avec transformateur": "Oui"
       },
-      "maxInputI": 18.0,
+      "maxInputI": 20.0,
       "maxInputPowerKw": 0.67,
       "specsSource": "pdf+rexel-attributes",
-      "specsUpdatedAt": "2026-11-12T12:44:57Z"
+      "specsUpdatedAt": "2026-11-12T12:59:22Z"
     },
     {
       "sku": "74886389",
@@ -2141,7 +2141,7 @@
       "mpptMinV": 33.0,
       "mpptMaxV": 55.0,
       "specsSource": "pdf+rexel-attributes",
-      "specsUpdatedAt": "2026-11-12T12:34:22Z"
+      "specsUpdatedAt": "2026-11-12T12:59:23Z"
     },
     {
       "sku": "74888838",
@@ -2550,7 +2550,7 @@
       "maxInputI": 20.0,
       "maxInputPowerKw": 0.72,
       "specsSource": "pdf+rexel-attributes",
-      "specsUpdatedAt": "2026-11-12T12:44:58Z"
+      "specsUpdatedAt": "2026-11-12T12:59:44Z"
     },
     {
       "sku": "75060902",
@@ -2598,7 +2598,7 @@
       "mpptMinV": 33.0,
       "mpptMaxV": 55.0,
       "specsSource": "pdf+rexel-attributes",
-      "specsUpdatedAt": "2026-11-12T12:34:49Z"
+      "specsUpdatedAt": "2026-11-12T12:59:45Z"
     },
     {
       "sku": "75199385",
@@ -2716,10 +2716,10 @@
         "Type de tension d'alimentation": "AC",
         "Avec transformateur": "Oui"
       },
-      "maxInputI": 18.0,
+      "maxInputI": 20.0,
       "maxInputPowerKw": 0.67,
       "specsSource": "pdf+rexel-attributes",
-      "specsUpdatedAt": "2026-11-12T12:44:58Z"
+      "specsUpdatedAt": "2026-11-12T12:59:50Z"
     },
     {
       "sku": "73188835",
@@ -2760,10 +2760,10 @@
         "Type de tension d'alimentation": "AC",
         "Avec transformateur": "Oui"
       },
-      "maxInputI": 18.0,
+      "maxInputI": 20.0,
       "maxInputPowerKw": 0.67,
       "specsSource": "pdf+rexel-attributes",
-      "specsUpdatedAt": "2026-11-12T12:44:58Z"
+      "specsUpdatedAt": "2026-11-12T12:59:51Z"
     },
     {
       "sku": "74171636",
@@ -2861,7 +2861,7 @@
       "maxInputI": 55.0,
       "maxInputPowerKw": 0.7,
       "specsSource": "pdf+rexel-attributes",
-      "specsUpdatedAt": "2026-11-12T12:35:00Z"
+      "specsUpdatedAt": "2026-11-12T12:59:56Z"
     },
     {
       "sku": "74888840",
@@ -5872,7 +5872,7 @@
         "Surveillance du réseau": "triphasé"
       },
       "specsSource": "rexel-attributes",
-      "specsUpdatedAt": "2026-11-12T12:38:14Z"
+      "specsUpdatedAt": "2026-11-12T13:01:50Z"
     },
     {
       "sku": "74708130",
@@ -5925,7 +5925,7 @@
       "maxInputV": 1000.0,
       "maxInputPowerKw": 12.36,
       "specsSource": "rexel-attributes",
-      "specsUpdatedAt": "2026-11-12T12:38:16Z"
+      "specsUpdatedAt": "2026-11-12T13:01:52Z"
     },
     {
       "sku": "74884141",
@@ -6645,7 +6645,48 @@
       "nMppt": 2,
       "datasheetLocal": "data/rexel_catalog/pdfs/73975681.pdf",
       "datasheetBytes": 776883,
-      "datasheetDownloadedAt": "2026-11-12T10:12:45Z"
+      "datasheetDownloadedAt": "2026-11-12T10:12:45Z",
+      "attributes": {
+        "Niveau de gamme": "Medium",
+        "Multiple de vente": "1",
+        "Gamme": "Sun2000",
+        "Avec enregistreur de données": "Oui",
+        "Puissance nominale de sortie en CA": "8000...8000 W",
+        "Courant de court-circuit max. par MPPT": "19.5 A",
+        "Connexion AC": "raccordement à vis",
+        "Connexion DC": "connecteur (mâle)",
+        "Connexions de chaîne par entrée MPPT": "1",
+        "Commutateur CC intégré": "Oui",
+        "Efficacité max.": "98.6 %",
+        "Courant d'entrée CC max. par entrée de chaîne": "13.5 A",
+        "Courant d'entrée DC max. par tracker MPP": "13.5 A",
+        "Tension d'entrée DC max.": "1100 V",
+        "Compatible alimentation de secours": "Oui",
+        "Convient pour une installation extérieure": "Oui",
+        "Nombre de trackers MPP": "2",
+        "Courant d'entrée max. CC": "13.5 A",
+        "Batterie incorporée": "Non",
+        "Classe de protection (IP)": "IP65",
+        "Surveillance du réseau": "triphasé",
+        "Tension MPP nominale": "600...600 V",
+        "Puissance d'entrée max. CC": "12000 W",
+        "Rendement européen": "98 %",
+        "Ethernet": "Oui",
+        "Type de tension d'alimentation": "AC/DC",
+        "Écran": "standard",
+        "Consommation d'énergie": "5.5 W",
+        "Avec transformateur": "Non",
+        "Poids": "17 kg",
+        "Profondeur": "146.5 mm",
+        "Sans fil": "Non",
+        "Hauteur": "470 mm",
+        "Largeur": "525 mm"
+      },
+      "maxInputV": 1100.0,
+      "maxInputI": 13.5,
+      "maxInputPowerKw": 12.0,
+      "specsSource": "rexel-attributes",
+      "specsUpdatedAt": "2026-11-12T13:02:10Z"
     },
     {
       "sku": "73975682",
@@ -6666,7 +6707,48 @@
       "nMppt": 2,
       "datasheetLocal": "data/rexel_catalog/pdfs/73975682.pdf",
       "datasheetBytes": 776883,
-      "datasheetDownloadedAt": "2026-11-12T10:12:45Z"
+      "datasheetDownloadedAt": "2026-11-12T10:12:45Z",
+      "attributes": {
+        "Niveau de gamme": "Medium",
+        "Multiple de vente": "1",
+        "Gamme": "Sun2000",
+        "Avec enregistreur de données": "Oui",
+        "Puissance nominale de sortie en CA": "6000...6000 W",
+        "Courant de court-circuit max. par MPPT": "19.5 A",
+        "Connexion AC": "raccordement à vis",
+        "Connexion DC": "connecteur (mâle)",
+        "Connexions de chaîne par entrée MPPT": "1",
+        "Commutateur CC intégré": "Oui",
+        "Efficacité max.": "98.6 %",
+        "Courant d'entrée CC max. par entrée de chaîne": "13.5 A",
+        "Courant d'entrée DC max. par tracker MPP": "13.5 A",
+        "Tension d'entrée DC max.": "1100 V",
+        "Compatible alimentation de secours": "Oui",
+        "Convient pour une installation extérieure": "Oui",
+        "Nombre de trackers MPP": "2",
+        "Courant d'entrée max. CC": "13.5 A",
+        "Batterie incorporée": "Non",
+        "Classe de protection (IP)": "IP65",
+        "Surveillance du réseau": "triphasé",
+        "Tension MPP nominale": "600...600 V",
+        "Puissance d'entrée max. CC": "9000 W",
+        "Rendement européen": "97.7 %",
+        "Ethernet": "Oui",
+        "Type de tension d'alimentation": "AC/DC",
+        "Écran": "standard",
+        "Consommation d'énergie": "5.5 W",
+        "Avec transformateur": "Non",
+        "Poids": "17 kg",
+        "Profondeur": "146.5 mm",
+        "Sans fil": "Non",
+        "Hauteur": "470 mm",
+        "Largeur": "525 mm"
+      },
+      "maxInputV": 1100.0,
+      "maxInputI": 13.5,
+      "maxInputPowerKw": 9.0,
+      "specsSource": "rexel-attributes",
+      "specsUpdatedAt": "2026-11-12T13:02:12Z"
     },
     {
       "sku": "73975687",
@@ -6683,11 +6765,50 @@
       "kind": "inverter",
       "type": "string",
       "phase": 3,
-      "pnom": 0.115,
+      "pnom": 115.0,
       "nMppt": 10,
       "datasheetLocal": "data/rexel_catalog/pdfs/73975687.pdf",
       "datasheetBytes": 259769,
-      "datasheetDownloadedAt": "2026-11-12T10:12:46Z"
+      "datasheetDownloadedAt": "2026-11-12T10:12:46Z",
+      "attributes": {
+        "Niveau de gamme": "Medium",
+        "Multiple de vente": "1",
+        "Gamme": "Sun2000",
+        "Type d'onduleur": "String",
+        "Avec enregistreur de données": "Oui",
+        "Puissance nominale de sortie en CA": "115000...115000 W",
+        "Courant de court-circuit max. par MPPT": "40 A",
+        "Connexion AC": "raccordement à vis",
+        "Connexion DC": "connecteur (mâle)",
+        "Connexions de chaîne par entrée MPPT": "2",
+        "Commutateur CC intégré": "Oui",
+        "Efficacité max.": "98.6 %",
+        "Courant d'entrée CC max. par entrée de chaîne": "20 A",
+        "Courant d'entrée DC max. par tracker MPP": "30 A",
+        "Tension d'entrée DC max.": "1100 V",
+        "Compatible alimentation de secours": "Non",
+        "Convient pour une installation extérieure": "Oui",
+        "Nombre de trackers MPP": "10",
+        "Courant d'entrée max. CC": "30 A",
+        "Batterie incorporée": "Non",
+        "Classe de protection (IP)": "IP66",
+        "Surveillance du réseau": "triphasé",
+        "Tension MPP nominale": "600...600 V",
+        "Rendement européen": "98.4 %",
+        "Ethernet": "Oui",
+        "Type de tension d'alimentation": "AC/DC",
+        "Écran": "standard",
+        "Avec transformateur": "Non",
+        "Poids": "93 kg",
+        "Profondeur": "365 mm",
+        "Sans fil": "Non",
+        "Hauteur": "700 mm",
+        "Largeur": "1035 mm"
+      },
+      "maxInputV": 1100.0,
+      "maxInputI": 30.0,
+      "specsSource": "rexel-attributes",
+      "specsUpdatedAt": "2026-11-12T13:02:13Z"
     },
     {
       "sku": "73975688",
@@ -6708,7 +6829,17 @@
       "nMppt": 10,
       "datasheetLocal": "data/rexel_catalog/pdfs/73975688.pdf",
       "datasheetBytes": 301541,
-      "datasheetDownloadedAt": "2026-11-12T10:12:46Z"
+      "datasheetDownloadedAt": "2026-11-12T10:12:46Z",
+      "attributes": {
+        "Niveau de gamme": "Medium",
+        "Multiple de vente": "1",
+        "Gamme": "Sun2000",
+        "Type d'onduleur": "String",
+        "Connexions de chaîne par entrée MPPT": "10",
+        "Surveillance du réseau": "triphasé"
+      },
+      "specsSource": "rexel-attributes",
+      "specsUpdatedAt": "2026-11-12T13:02:14Z"
     },
     {
       "sku": "74251083",
@@ -6729,7 +6860,17 @@
       "nMppt": null,
       "datasheetLocal": "data/rexel_catalog/pdfs/74251083.pdf",
       "datasheetBytes": 756369,
-      "datasheetDownloadedAt": "2026-11-12T10:12:47Z"
+      "datasheetDownloadedAt": "2026-11-12T10:12:47Z",
+      "attributes": {
+        "Niveau de gamme": "Medium",
+        "Multiple de vente": "1",
+        "Gamme": "Sun2000",
+        "Type d'onduleur": "hybride",
+        "Connexions de chaîne par entrée MPPT": "2",
+        "Surveillance du réseau": "triphasé"
+      },
+      "specsSource": "rexel-attributes",
+      "specsUpdatedAt": "2026-11-12T13:02:15Z"
     },
     {
       "sku": "74251084",
@@ -6750,7 +6891,17 @@
       "nMppt": null,
       "datasheetLocal": "data/rexel_catalog/pdfs/74251084.pdf",
       "datasheetBytes": 756369,
-      "datasheetDownloadedAt": "2026-11-12T10:12:47Z"
+      "datasheetDownloadedAt": "2026-11-12T10:12:47Z",
+      "attributes": {
+        "Niveau de gamme": "Medium",
+        "Multiple de vente": "1",
+        "Gamme": "Sun2000",
+        "Type d'onduleur": "hybride",
+        "Connexions de chaîne par entrée MPPT": "2",
+        "Surveillance du réseau": "triphasé"
+      },
+      "specsSource": "rexel-attributes",
+      "specsUpdatedAt": "2026-11-12T13:02:17Z"
     },
     {
       "sku": "74251085",
@@ -6771,7 +6922,17 @@
       "nMppt": null,
       "datasheetLocal": "data/rexel_catalog/pdfs/74251085.pdf",
       "datasheetBytes": 756369,
-      "datasheetDownloadedAt": "2026-11-12T10:12:48Z"
+      "datasheetDownloadedAt": "2026-11-12T10:12:48Z",
+      "attributes": {
+        "Niveau de gamme": "Medium",
+        "Multiple de vente": "1",
+        "Gamme": "Sun2000",
+        "Type d'onduleur": "hybride",
+        "Connexions de chaîne par entrée MPPT": "2",
+        "Surveillance du réseau": "triphasé"
+      },
+      "specsSource": "rexel-attributes",
+      "specsUpdatedAt": "2026-11-12T13:02:18Z"
     },
     {
       "sku": "74251086",
@@ -6792,7 +6953,17 @@
       "nMppt": null,
       "datasheetLocal": "data/rexel_catalog/pdfs/74251086.pdf",
       "datasheetBytes": 756369,
-      "datasheetDownloadedAt": "2026-11-12T10:12:48Z"
+      "datasheetDownloadedAt": "2026-11-12T10:12:48Z",
+      "attributes": {
+        "Niveau de gamme": "Medium",
+        "Multiple de vente": "1",
+        "Gamme": "Sun2000",
+        "Type d'onduleur": "hybride",
+        "Connexions de chaîne par entrée MPPT": "2",
+        "Surveillance du réseau": "triphasé"
+      },
+      "specsSource": "rexel-attributes",
+      "specsUpdatedAt": "2026-11-12T13:02:19Z"
     },
     {
       "sku": "74251087",
@@ -6813,7 +6984,17 @@
       "nMppt": null,
       "datasheetLocal": "data/rexel_catalog/pdfs/74251087.pdf",
       "datasheetBytes": 756369,
-      "datasheetDownloadedAt": "2026-11-12T10:12:49Z"
+      "datasheetDownloadedAt": "2026-11-12T10:12:49Z",
+      "attributes": {
+        "Niveau de gamme": "Medium",
+        "Multiple de vente": "1",
+        "Gamme": "Sun2000",
+        "Type d'onduleur": "hybride",
+        "Connexions de chaîne par entrée MPPT": "2",
+        "Surveillance du réseau": "triphasé"
+      },
+      "specsSource": "rexel-attributes",
+      "specsUpdatedAt": "2026-11-12T13:02:21Z"
     },
     {
       "sku": "74294560",
@@ -6830,11 +7011,50 @@
       "kind": "inverter",
       "type": "string",
       "phase": 3,
-      "pnom": 0.15,
-      "nMppt": null,
+      "pnom": 150.0,
+      "nMppt": 7,
       "datasheetLocal": "data/rexel_catalog/pdfs/74294560.pdf",
       "datasheetBytes": 200924,
-      "datasheetDownloadedAt": "2026-11-12T10:12:50Z"
+      "datasheetDownloadedAt": "2026-11-12T10:12:50Z",
+      "attributes": {
+        "Niveau de gamme": "Medium",
+        "Multiple de vente": "1",
+        "Gamme": "Sun2000",
+        "Type d'onduleur": "hybride",
+        "Avec enregistreur de données": "Oui",
+        "Puissance nominale de sortie en CA": "150000...150000 W",
+        "Courant de court-circuit max. par MPPT": "66 A",
+        "Connexion AC": "raccordement à vis",
+        "Connexion DC": "connecteur (mâle)",
+        "Connexions de chaîne par entrée MPPT": "3",
+        "Commutateur CC intégré": "Oui",
+        "Efficacité max.": "98.6 %",
+        "Courant d'entrée CC max. par entrée de chaîne": "23 A",
+        "Courant d'entrée DC max. par tracker MPP": "48 A",
+        "Tension d'entrée DC max.": "1100 V",
+        "Compatible alimentation de secours": "Non",
+        "Convient pour une installation extérieure": "Oui",
+        "Nombre de trackers MPP": "7",
+        "Courant d'entrée max. CC": "48 A",
+        "Batterie incorporée": "Non",
+        "Classe de protection (IP)": "IP66",
+        "Surveillance du réseau": "triphasé",
+        "Tension MPP nominale": "600...600 V",
+        "Rendement européen": "98.4 %",
+        "Ethernet": "Oui",
+        "Type de tension d'alimentation": "AC/DC",
+        "Écran": "standard",
+        "Avec transformateur": "Non",
+        "Poids": "99 kg",
+        "Profondeur": "395 mm",
+        "Sans fil": "Non",
+        "Hauteur": "710 mm",
+        "Largeur": "1000 mm"
+      },
+      "maxInputV": 1100.0,
+      "maxInputI": 48.0,
+      "specsSource": "rexel-attributes",
+      "specsUpdatedAt": "2026-11-12T13:02:22Z"
     },
     {
       "sku": "74456973",
@@ -6855,7 +7075,17 @@
       "nMppt": null,
       "datasheetLocal": "data/rexel_catalog/pdfs/74456973.pdf",
       "datasheetBytes": 1886888,
-      "datasheetDownloadedAt": "2026-11-12T10:12:51Z"
+      "datasheetDownloadedAt": "2026-11-12T10:12:51Z",
+      "attributes": {
+        "Niveau de gamme": "Medium",
+        "Multiple de vente": "1",
+        "Gamme": "Sun2000",
+        "Type d'onduleur": "hybride",
+        "Connexions de chaîne par entrée MPPT": "2",
+        "Surveillance du réseau": "triphasé"
+      },
+      "specsSource": "rexel-attributes",
+      "specsUpdatedAt": "2026-11-12T13:02:24Z"
     },
     {
       "sku": "74456975",
@@ -6876,7 +7106,17 @@
       "nMppt": null,
       "datasheetLocal": "data/rexel_catalog/pdfs/74456975.pdf",
       "datasheetBytes": 1886888,
-      "datasheetDownloadedAt": "2026-11-12T10:12:52Z"
+      "datasheetDownloadedAt": "2026-11-12T10:12:52Z",
+      "attributes": {
+        "Niveau de gamme": "Medium",
+        "Multiple de vente": "1",
+        "Gamme": "Sun2000",
+        "Type d'onduleur": "hybride",
+        "Connexions de chaîne par entrée MPPT": "2",
+        "Surveillance du réseau": "triphasé"
+      },
+      "specsSource": "rexel-attributes",
+      "specsUpdatedAt": "2026-11-12T13:02:25Z"
     },
     {
       "sku": "74456977",
@@ -6897,7 +7137,17 @@
       "nMppt": null,
       "datasheetLocal": "data/rexel_catalog/pdfs/74456977.pdf",
       "datasheetBytes": 1886888,
-      "datasheetDownloadedAt": "2026-11-12T10:12:53Z"
+      "datasheetDownloadedAt": "2026-11-12T10:12:53Z",
+      "attributes": {
+        "Niveau de gamme": "Medium",
+        "Multiple de vente": "1",
+        "Gamme": "Sun2000",
+        "Type d'onduleur": "hybride",
+        "Connexions de chaîne par entrée MPPT": "2",
+        "Surveillance du réseau": "triphasé"
+      },
+      "specsSource": "rexel-attributes",
+      "specsUpdatedAt": "2026-11-12T13:02:26Z"
     },
     {
       "sku": "74708120",
@@ -6918,7 +7168,44 @@
       "nMppt": 4,
       "datasheetLocal": "data/rexel_catalog/pdfs/74708120.pdf",
       "datasheetBytes": 353792,
-      "datasheetDownloadedAt": "2026-11-12T10:12:53Z"
+      "datasheetDownloadedAt": "2026-11-12T10:12:53Z",
+      "attributes": {
+        "Niveau de gamme": "Premium",
+        "Multiple de vente": "1",
+        "Code Douane": "85044084",
+        "Gamme": "Verto",
+        "Type d'onduleur": "String",
+        "Avec enregistreur de données": "Oui",
+        "Connexion AC": "raccordement à vis",
+        "Connexion DC": "connecteur (mâle)",
+        "Connexions de chaîne par entrée MPPT": "4",
+        "Commutateur CC intégré": "Oui",
+        "Efficacité max.": "0.9798 %",
+        "Courant d'entrée CC max. par entrée de chaîne": "28 A",
+        "Courant d'entrée DC max. par tracker MPP": "28 A",
+        "Tension d'entrée DC max.": "1000 V",
+        "Compatible alimentation de secours": "Oui",
+        "Nombre de trackers MPP": "4",
+        "Batterie incorporée": "Non",
+        "Classe de protection (IP)": "IP66",
+        "Surveillance du réseau": "triphasé",
+        "Tension MPP nominale": "150...870 V",
+        "Puissance d'entrée max. CC": "33800 W",
+        "Rendement européen": "0.9776 %",
+        "Écran": "sans",
+        "Avec transformateur": "Non",
+        "Poids": "41.75 kg",
+        "Profondeur": "278 mm",
+        "Hauteur": "865 mm",
+        "Largeur": "574 mm"
+      },
+      "maxInputV": 1000.0,
+      "mpptMinV": 150.0,
+      "mpptMaxV": 870.0,
+      "maxInputI": 28.0,
+      "maxInputPowerKw": 33.8,
+      "specsSource": "rexel-attributes",
+      "specsUpdatedAt": "2026-11-12T13:02:28Z"
     },
     {
       "sku": "74708137",
@@ -6939,7 +7226,44 @@
       "nMppt": 4,
       "datasheetLocal": "data/rexel_catalog/pdfs/74708137.pdf",
       "datasheetBytes": 353792,
-      "datasheetDownloadedAt": "2026-11-12T10:12:54Z"
+      "datasheetDownloadedAt": "2026-11-12T10:12:54Z",
+      "attributes": {
+        "Niveau de gamme": "Premium",
+        "Multiple de vente": "1",
+        "Code Douane": "85044084",
+        "Gamme": "Verto",
+        "Type d'onduleur": "String",
+        "Avec enregistreur de données": "Oui",
+        "Connexion AC": "raccordement à vis",
+        "Connexion DC": "connecteur (mâle)",
+        "Connexions de chaîne par entrée MPPT": "4",
+        "Commutateur CC intégré": "Oui",
+        "Efficacité max.": "0.9802 %",
+        "Courant d'entrée CC max. par entrée de chaîne": "28 A",
+        "Courant d'entrée DC max. par tracker MPP": "28 A",
+        "Tension d'entrée DC max.": "1000 V",
+        "Compatible alimentation de secours": "Oui",
+        "Nombre de trackers MPP": "4",
+        "Batterie incorporée": "Non",
+        "Classe de protection (IP)": "IP66",
+        "Surveillance du réseau": "triphasé",
+        "Tension MPP nominale": "150...870 V",
+        "Puissance d'entrée max. CC": "30500 W",
+        "Rendement européen": "0.978 %",
+        "Écran": "sans",
+        "Avec transformateur": "Non",
+        "Poids": "41.75 kg",
+        "Profondeur": "278 mm",
+        "Hauteur": "865 mm",
+        "Largeur": "574 mm"
+      },
+      "maxInputV": 1000.0,
+      "mpptMinV": 150.0,
+      "mpptMaxV": 870.0,
+      "maxInputI": 28.0,
+      "maxInputPowerKw": 30.5,
+      "specsSource": "rexel-attributes",
+      "specsUpdatedAt": "2026-11-12T13:02:30Z"
     },
     {
       "sku": "74708138",
@@ -7122,7 +7446,7 @@
         "Surveillance du réseau": "triphasé"
       },
       "specsSource": "rexel-attributes",
-      "specsUpdatedAt": "2026-11-12T12:39:08Z"
+      "specsUpdatedAt": "2026-11-12T13:02:35Z"
     },
     {
       "sku": "75033102",
@@ -7795,7 +8119,7 @@
         "Surveillance du réseau": "triphasé"
       },
       "specsSource": "rexel-attributes",
-      "specsUpdatedAt": "2026-11-12T12:39:36Z"
+      "specsUpdatedAt": "2026-11-12T13:03:17Z"
     },
     {
       "sku": "74884250",
@@ -7832,7 +8156,7 @@
       },
       "maxInputI": 8.0,
       "specsSource": "rexel-attributes",
-      "specsUpdatedAt": "2026-11-12T12:39:38Z"
+      "specsUpdatedAt": "2026-11-12T13:03:18Z"
     },
     {
       "sku": "74884251",
@@ -7934,7 +8258,7 @@
         "Surveillance du réseau": "triphasé"
       },
       "specsSource": "rexel-attributes",
-      "specsUpdatedAt": "2026-11-12T12:39:41Z"
+      "specsUpdatedAt": "2026-11-12T13:03:21Z"
     },
     {
       "sku": "75033099",
@@ -7966,7 +8290,7 @@
         "Surveillance du réseau": "triphasé"
       },
       "specsSource": "rexel-attributes",
-      "specsUpdatedAt": "2026-11-12T12:39:42Z"
+      "specsUpdatedAt": "2026-11-12T13:03:22Z"
     },
     {
       "sku": "75033100",
@@ -7998,7 +8322,7 @@
         "Surveillance du réseau": "triphasé"
       },
       "specsSource": "rexel-attributes",
-      "specsUpdatedAt": "2026-11-12T12:39:44Z"
+      "specsUpdatedAt": "2026-11-12T13:03:24Z"
     },
     {
       "sku": "75033103",
@@ -8030,7 +8354,7 @@
         "Surveillance du réseau": "triphasé"
       },
       "specsSource": "rexel-attributes",
-      "specsUpdatedAt": "2026-11-12T12:39:45Z"
+      "specsUpdatedAt": "2026-11-12T13:03:25Z"
     },
     {
       "sku": "75123532",
@@ -9753,8 +10077,45 @@
       "mpptMaxV": 1000.0,
       "maxInputI": 32.0,
       "maxInputPowerKw": 18.0,
-      "specsSource": "pdf",
-      "specsUpdatedAt": "2026-11-12T12:45:02Z"
+      "specsSource": "pdf+rexel-attributes",
+      "specsUpdatedAt": "2026-11-12T13:04:43Z",
+      "attributes": {
+        "Niveau de gamme": "Access",
+        "Multiple de vente": "1",
+        "Code Douane": "85044084",
+        "Gamme": "Pv-photovoltaique",
+        "Type d'onduleur": "String",
+        "Avec enregistreur de données": "Oui",
+        "Courant de court-circuit max. par MPPT": "40 A",
+        "Connexion AC": "autre",
+        "Connexion DC": "autre",
+        "Connexions de chaîne par entrée MPPT": "2",
+        "Commutateur CC intégré": "Oui",
+        "Efficacité max.": "98.6 %",
+        "Courant d'entrée CC max. par entrée de chaîne": "16 A",
+        "Courant d'entrée DC max. par tracker MPP": "32 A",
+        "Tension d'entrée DC max.": "600 V",
+        "Compatible alimentation de secours": "Non",
+        "Nombre de trackers MPP": "2",
+        "Courant d'entrée max. CC": "32 A",
+        "Batterie incorporée": "Non",
+        "Classe de protection (IP)": "IP66",
+        "Surveillance du réseau": "triphasé",
+        "Tension MPP nominale": "160...1000 V",
+        "Puissance d'entrée max. CC": "18000 W",
+        "Rendement européen": "98 %",
+        "Ethernet": "Oui",
+        "Type de tension d'alimentation": "AC",
+        "Écran": "standard",
+        "Consommation d'énergie": "0.9 W",
+        "Avec transformateur": "Non",
+        "Poids": "17.8 kg",
+        "Profondeur": "563 mm",
+        "Sans fil": "Oui",
+        "Hauteur": "563 mm",
+        "Largeur": "219 mm"
+      },
+      "maxInputV": 600.0
     },
     {
       "sku": "74292406",
@@ -9780,8 +10141,44 @@
       "mpptMaxV": 850.0,
       "maxInputI": 16.0,
       "maxInputPowerKw": 8.0,
-      "specsSource": "pdf",
-      "specsUpdatedAt": "2026-11-12T12:45:02Z"
+      "specsSource": "pdf+rexel-attributes",
+      "specsUpdatedAt": "2026-11-12T13:04:44Z",
+      "attributes": {
+        "Niveau de gamme": "Access",
+        "Multiple de vente": "1",
+        "Code Douane": "85044084",
+        "Gamme": "Pv-photovoltaique",
+        "Type d'onduleur": "hybride",
+        "Avec enregistreur de données": "Oui",
+        "Courant de court-circuit max. par MPPT": "24 A",
+        "Connexion AC": "autre",
+        "Connexion DC": "autre",
+        "Connexions de chaîne par entrée MPPT": "1",
+        "Commutateur CC intégré": "Oui",
+        "Efficacité max.": "97.9 %",
+        "Courant d'entrée CC max. par entrée de chaîne": "16 A",
+        "Courant d'entrée DC max. par tracker MPP": "16 A",
+        "Tension d'entrée DC max.": "600 V",
+        "Compatible alimentation de secours": "Oui",
+        "Nombre de trackers MPP": "3",
+        "Courant d'entrée max. CC": "16 A",
+        "Batterie incorporée": "Non",
+        "Classe de protection (IP)": "IP66",
+        "Surveillance du réseau": "triphasé",
+        "Tension MPP nominale": "200...850 V",
+        "Puissance d'entrée max. CC": "8000 W",
+        "Rendement européen": "96.8 %",
+        "Ethernet": "Oui",
+        "Type de tension d'alimentation": "AC",
+        "Écran": "standard",
+        "Avec transformateur": "Non",
+        "Poids": "32.6 kg",
+        "Profondeur": "500 mm",
+        "Sans fil": "Oui",
+        "Hauteur": "500 mm",
+        "Largeur": "230 mm"
+      },
+      "maxInputV": 600.0
     },
     {
       "sku": "74292408",
@@ -9807,8 +10204,45 @@
       "mpptMaxV": 1000.0,
       "maxInputI": 16.0,
       "maxInputPowerKw": 9.0,
-      "specsSource": "pdf",
-      "specsUpdatedAt": "2026-11-12T12:45:03Z"
+      "specsSource": "pdf+rexel-attributes",
+      "specsUpdatedAt": "2026-11-12T13:04:46Z",
+      "attributes": {
+        "Niveau de gamme": "Access",
+        "Multiple de vente": "1",
+        "Code Douane": "85044084",
+        "Gamme": "Pv-photovoltaique",
+        "Type d'onduleur": "String",
+        "Avec enregistreur de données": "Oui",
+        "Courant de court-circuit max. par MPPT": "20 A",
+        "Connexion AC": "autre",
+        "Connexion DC": "autre",
+        "Connexions de chaîne par entrée MPPT": "1",
+        "Commutateur CC intégré": "Oui",
+        "Efficacité max.": "98.3 %",
+        "Courant d'entrée CC max. par entrée de chaîne": "16 A",
+        "Courant d'entrée DC max. par tracker MPP": "16 A",
+        "Tension d'entrée DC max.": "600 V",
+        "Compatible alimentation de secours": "Non",
+        "Nombre de trackers MPP": "2",
+        "Courant d'entrée max. CC": "16 A",
+        "Batterie incorporée": "Non",
+        "Classe de protection (IP)": "IP66",
+        "Surveillance du réseau": "triphasé",
+        "Tension MPP nominale": "160...1000 V",
+        "Puissance d'entrée max. CC": "9000 W",
+        "Rendement européen": "97.7 %",
+        "Ethernet": "Oui",
+        "Type de tension d'alimentation": "AC",
+        "Écran": "standard",
+        "Consommation d'énergie": "0.9 W",
+        "Avec transformateur": "Non",
+        "Poids": "17.8 kg",
+        "Profondeur": "563 mm",
+        "Sans fil": "Oui",
+        "Hauteur": "563 mm",
+        "Largeur": "219 mm"
+      },
+      "maxInputV": 600.0
     },
     {
       "sku": "74292410",
@@ -9834,8 +10268,44 @@
       "mpptMaxV": 850.0,
       "maxInputI": 16.0,
       "maxInputPowerKw": 16.0,
-      "specsSource": "pdf",
-      "specsUpdatedAt": "2026-11-12T12:45:03Z"
+      "specsSource": "pdf+rexel-attributes",
+      "specsUpdatedAt": "2026-11-12T13:04:47Z",
+      "attributes": {
+        "Niveau de gamme": "Access",
+        "Multiple de vente": "1",
+        "Code Douane": "85044084",
+        "Gamme": "Pv-photovoltaique",
+        "Type d'onduleur": "hybride",
+        "Avec enregistreur de données": "Oui",
+        "Courant de court-circuit max. par MPPT": "24 A",
+        "Connexion AC": "autre",
+        "Connexion DC": "autre",
+        "Connexions de chaîne par entrée MPPT": "1",
+        "Commutateur CC intégré": "Oui",
+        "Efficacité max.": "98 %",
+        "Courant d'entrée CC max. par entrée de chaîne": "16 A",
+        "Courant d'entrée DC max. par tracker MPP": "16 A",
+        "Tension d'entrée DC max.": "600 V",
+        "Compatible alimentation de secours": "Oui",
+        "Nombre de trackers MPP": "4",
+        "Courant d'entrée max. CC": "16 A",
+        "Batterie incorporée": "Non",
+        "Classe de protection (IP)": "IP66",
+        "Surveillance du réseau": "triphasé",
+        "Tension MPP nominale": "200...850 V",
+        "Puissance d'entrée max. CC": "16000 W",
+        "Rendement européen": "97.5 %",
+        "Ethernet": "Oui",
+        "Type de tension d'alimentation": "AC",
+        "Écran": "standard",
+        "Avec transformateur": "Non",
+        "Poids": "32.6 kg",
+        "Profondeur": "500 mm",
+        "Sans fil": "Oui",
+        "Hauteur": "500 mm",
+        "Largeur": "230 mm"
+      },
+      "maxInputV": 600.0
     },
     {
       "sku": "74292411",
@@ -9980,11 +10450,49 @@
       "kind": "inverter",
       "type": "string",
       "phase": 3,
-      "pnom": 0.215,
+      "pnom": 200.0,
       "nMppt": 9,
       "datasheetLocal": "data/rexel_catalog/pdfs/74106256.pdf",
       "datasheetBytes": 6010161,
-      "datasheetDownloadedAt": "2026-11-12T10:15:25Z"
+      "datasheetDownloadedAt": "2026-11-12T10:15:25Z",
+      "attributes": {
+        "Niveau de gamme": "Medium",
+        "Multiple de vente": "1",
+        "Gamme": "Sun2000",
+        "Avec enregistreur de données": "Oui",
+        "Puissance nominale de sortie en CA": "200000...200000 W",
+        "Courant de court-circuit max. par MPPT": "50 A",
+        "Connexion AC": "raccordement à vis",
+        "Connexion DC": "connecteur (mâle)",
+        "Connexions de chaîne par entrée MPPT": "2",
+        "Commutateur CC intégré": "Oui",
+        "Efficacité max.": "99 %",
+        "Courant d'entrée CC max. par entrée de chaîne": "30 A",
+        "Courant d'entrée DC max. par tracker MPP": "30 A",
+        "Tension d'entrée DC max.": "1500 V",
+        "Compatible alimentation de secours": "Non",
+        "Convient pour une installation extérieure": "Oui",
+        "Nombre de trackers MPP": "9",
+        "Courant d'entrée max. CC": "30 A",
+        "Batterie incorporée": "Non",
+        "Classe de protection (IP)": "IP66",
+        "Surveillance du réseau": "triphasé",
+        "Tension MPP nominale": "1080...1080 V",
+        "Rendement européen": "98.8 %",
+        "Ethernet": "Non",
+        "Type de tension d'alimentation": "AC/DC",
+        "Écran": "standard",
+        "Avec transformateur": "Non",
+        "Poids": "86 kg",
+        "Profondeur": "365 mm",
+        "Sans fil": "Non",
+        "Hauteur": "700 mm",
+        "Largeur": "1035 mm"
+      },
+      "maxInputV": 1500.0,
+      "maxInputI": 30.0,
+      "specsSource": "rexel-attributes",
+      "specsUpdatedAt": "2026-11-12T13:04:48Z"
     },
     {
       "sku": "74106257",
@@ -10144,7 +10652,7 @@
       },
       "maxInputI": 16.0,
       "specsSource": "rexel-attributes",
-      "specsUpdatedAt": "2026-11-12T12:41:45Z"
+      "specsUpdatedAt": "2026-11-12T13:04:51Z"
     },
     {
       "sku": "74884183",
@@ -10162,7 +10670,18 @@
       "type": "string",
       "phase": 3,
       "pnom": 33.3,
-      "nMppt": null
+      "nMppt": null,
+      "attributes": {
+        "Niveau de gamme": "Medium",
+        "Multiple de vente": "1",
+        "Efficacité max.": "98 %",
+        "Tension d'entrée DC max.": "1000 V",
+        "Classe de protection (IP)": "IP65",
+        "Rendement européen": "98.3 %"
+      },
+      "maxInputV": 1000.0,
+      "specsSource": "rexel-attributes",
+      "specsUpdatedAt": "2026-11-12T13:04:53Z"
     },
     {
       "sku": "74884196",
@@ -10180,7 +10699,28 @@
       "type": "string",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "attributes": {
+        "Niveau de gamme": "Medium",
+        "Multiple de vente": "1",
+        "Type d'onduleur": "String",
+        "Commutateur CC intégré": "Non",
+        "Efficacité max.": "98 %",
+        "Tension d'entrée DC max.": "1000 V",
+        "Courant d'entrée max. CC": "23.2 A",
+        "Classe de protection (IP)": "IP65",
+        "Surveillance du réseau": "triphasé",
+        "Puissance d'entrée max. CC": "21000 W",
+        "Rendement européen": "97.7 %",
+        "Ethernet": "Oui",
+        "Écran": "sans",
+        "Sans fil": "Oui"
+      },
+      "maxInputV": 1000.0,
+      "maxInputI": 23.2,
+      "maxInputPowerKw": 21.0,
+      "specsSource": "rexel-attributes",
+      "specsUpdatedAt": "2026-11-12T13:04:54Z"
     },
     {
       "sku": "74884216",
@@ -10285,7 +10825,7 @@
       },
       "maxInputI": 13.0,
       "specsSource": "rexel-attributes",
-      "specsUpdatedAt": "2026-11-12T12:42:33Z"
+      "specsUpdatedAt": "2026-11-12T13:04:55Z"
     },
     {
       "sku": "75069871",
@@ -11433,5 +11973,5 @@
     "errors": 0
   },
   "datasheetsUpdatedAt": "2026-11-12T10:15:44Z",
-  "specsUpdatedAt": "2026-11-12T12:45:03Z"
+  "specsUpdatedAt": "2026-11-12T13:05:15Z"
 }

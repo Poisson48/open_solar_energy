@@ -150,13 +150,19 @@ def extract(text: str, inv: dict) -> dict:
     return out
 
 
-def fetch_attrs(sku: str) -> dict:
-    try:
-        html = http_get(f"https://www.rexel.fr/frx/p/{sku}").decode("utf-8", "ignore")
-        product = parse_ng_product(html)
-        return attr_map(product) if product else {}
-    except Exception:
-        return {}
+def fetch_attrs(sku: str, retries: int = 2) -> dict:
+    for attempt in range(retries + 1):
+        try:
+            html = http_get(f"https://www.rexel.fr/frx/p/{sku}").decode("utf-8", "ignore")
+            product = parse_ng_product(html)
+            attrs = attr_map(product) if product else {}
+            if attrs:
+                return attrs
+        except Exception:
+            pass
+        if attempt < retries:
+            time.sleep(0.35)
+    return {}
 
 
 def map_attrs(attrs: dict) -> dict:
@@ -239,12 +245,15 @@ def main() -> int:
     ap.add_argument("--no-pdf", action="store_true", help="Ne pas analyser les PDF")
     ap.add_argument("--pdf-only", action="store_true", help="Uniquement les PDF (pas d'attributs Rexel)")
     ap.add_argument("--max-pdf-mb", type=float, default=20.0, help="Ignorer les PDF plus gros que cette taille (Mo)")
+    ap.add_argument("--missing-only", action="store_true", help="Ne traiter que les onduleurs sans Vmax/Imax")
     args = ap.parse_args()
     if args.pdf_only:
         args.no_attributes = True
     root = json.loads(DATA.read_text(encoding="utf-8"))
     inverters = root.get("inverters", [])
     todo = inverters
+    if args.missing_only:
+        todo = [x for x in todo if not (x.get("maxInputV") and x.get("maxInputI"))]
     if args.limit:
         todo = todo[: args.limit]
     print(f"{len(todo)} onduleurs à analyser", flush=True)
