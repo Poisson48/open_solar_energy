@@ -24,7 +24,9 @@ OseTabPage {
 
     function selectedBattery() {
         const f = Projects.currentProject.formState || {}
-        return Catalog.getBattery(offgridBatteryBox.currentValue || f.batteryId) || {}
+        // L'ID du projet fait foi : le ComboBox peut être resté sur une
+        // sélection précédente après application depuis le catalogue.
+        return Catalog.getBattery(f.batteryId || offgridBatteryBox.currentValue) || {}
     }
 
     function applyOffgridBattery() {
@@ -129,7 +131,7 @@ OseTabPage {
         const site = Projects.currentProject.siteSurvey || {}
         const en = Projects.currentProject.enedisImport || {}
         const dailyWh = Math.round((dayK + nightK) * 1000)
-        const chosenBattery = Catalog.getBattery(offgridBatteryBox.currentValue || form.batteryId) || {}
+        const chosenBattery = Catalog.getBattery(form.batteryId || offgridBatteryBox.currentValue) || {}
         const fixedKwh = Number(chosenBattery.energy_kwh) || (form.batteryId ? Number(form.battKwh) || 0 : 0)
         const params = {
             lat: loc.lat || 43.6,
