@@ -156,7 +156,8 @@ OseTabPage {
                 batteryId: b.id || "",
                 batteryModel: b.name || "",
                 battKwh: b.energy_kwh || f.battKwh || 0,
-                battTech: tech
+                battTech: tech,
+                offgridResult: {}
             })
         })
         root.runStringing()

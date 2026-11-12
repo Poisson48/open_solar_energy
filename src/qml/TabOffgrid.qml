@@ -43,6 +43,7 @@ OseTabPage {
         const tech = chem.indexOf("LFP") >= 0 ? "LiFePO4"
                    : (chem.indexOf("NMC") >= 0 ? "NMC" : (f.battTech || "NMC"))
         Projects.updateCurrent({
+            offgridResult: {},
             formState: Object.assign({}, f, {
                 batteryId: b.id,
                 batteryModel: b.name || b.id,
@@ -50,6 +51,8 @@ OseTabPage {
                 battTech: tech
             })
         })
+        lastResult = {}
+        recommendedBest = {}
         const m = battTech.model
         for (let i = 0; i < m.length; ++i) {
             if (m[i] === tech) { battTech.currentIndex = i; break }
@@ -88,7 +91,16 @@ OseTabPage {
                 }
             }
         }
-        recommendedBest = (lastResult && lastResult.best) ? lastResult.best : {}
+        const chosen = Catalog.getBattery(form.batteryId) || {}
+        const bestKwh = Number((lastResult.best || {}).battKwh) || 0
+        if (chosen.energy_kwh && bestKwh > 0 && Math.abs(Number(chosen.energy_kwh) - bestKwh) > 0.1) {
+            // Ancien résultat calculé avec une autre capacité : on l'invalide.
+            lastResult = {}
+            recommendedBest = {}
+            Projects.updateCurrent({ offgridResult: {} })
+        } else {
+            recommendedBest = (lastResult && lastResult.best) ? lastResult.best : {}
+        }
     }
 
     function run() {
@@ -110,6 +122,7 @@ OseTabPage {
         const en = Projects.currentProject.enedisImport || {}
         const dailyWh = Math.round((dayK + nightK) * 1000)
         const chosenBattery = Catalog.getBattery(offgridBatteryBox.currentValue || form.batteryId) || {}
+        const fixedKwh = Number(chosenBattery.energy_kwh) || (form.batteryId ? Number(form.battKwh) || 0 : 0)
         const params = {
             lat: loc.lat || 43.6,
             weatherData: weather,
@@ -134,8 +147,8 @@ OseTabPage {
             useElectricalShade: form.energyMode === "study",
             thermal: form.thermal || undefined
         }
-        if (chosenBattery.energy_kwh) {
-            params.battKwhFixed = chosenBattery.energy_kwh
+        if (fixedKwh > 0) {
+            params.battKwhFixed = fixedKwh
         }
         // Si Enedis a fourni un profil 30 min, on l’utilise (forme réelle jour/nuit)
         if (en.halfHourly && en.halfHourlyProfile && en.halfHourlyProfile.length >= 48)
@@ -147,8 +160,8 @@ OseTabPage {
             offgridResult: lastResult,
             formState: Object.assign({}, form, {
                 Ppeak: (lastResult.best || {}).Ppeak,
-                battKwh: chosenBattery.energy_kwh || (lastResult.best || {}).battKwh,
-                batteryId: chosenBattery.id || "",
+                battKwh: fixedKwh || (lastResult.best || {}).battKwh,
+                batteryId: chosenBattery.id || form.batteryId || "",
                 batteryModel: chosenBattery.name || form.batteryModel || "",
                 dailyWh: dailyWh,
                 loadDayKwh: dayK,
@@ -348,7 +361,7 @@ OseTabPage {
                 Layout.fillWidth: true
                 spacing: 8
                 KpiCard { title: "PV"; value: ((lastResult.best && lastResult.best.Ppeak) || 0) + " kWc"; width: Ui.isPhone ? (parent.width - 8) / 2 : implicitWidth }
-                KpiCard { title: "Batterie"; value: ((lastResult.best && lastResult.best.battKwh) || 0) + " kWh"; width: Ui.isPhone ? (parent.width - 8) / 2 : implicitWidth }
+                KpiCard { title: "Batterie"; value: (root.selectedBattery().energy_kwh || (lastResult.best && lastResult.best.battKwh) || 0) + " kWh"; width: Ui.isPhone ? (parent.width - 8) / 2 : implicitWidth }
                 KpiCard {
                     title: "Couverture"
                     value: ((lastResult.best && lastResult.best.coverage) || 0) + " %"
@@ -440,11 +453,12 @@ OseTabPage {
                     onCellClicked: function (cand) {
                         lastResult = Object.assign({}, lastResult, { best: cand })
                         const form = Projects.currentProject.formState || {}
+                        const sb = root.selectedBattery()
                         Projects.updateCurrent({
                             offgridResult: lastResult,
                             formState: Object.assign({}, form, {
                                 Ppeak: cand.Ppeak,
-                                battKwh: cand.battKwh
+                                battKwh: sb.energy_kwh || cand.battKwh
                             })
                         })
                         AppController.toast("Config " + cand.Ppeak + " kWc / " + cand.battKwh + " kWh")

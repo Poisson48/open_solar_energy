@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 QT_ROOT="${QT_ROOT:-$HOME/Qt/6.8.2/gcc_64}"
-VERSION_NAME="${VERSION_NAME:-2.0.111}"
+VERSION_NAME="${VERSION_NAME:-2.0.112}"
 OUT_DIR="${OUT_DIR:-$ROOT}"
 BIN="$ROOT/build/src/opensolarenergy"
 [ -x "$BIN" ] || BIN="$ROOT/build-qt/src/opensolarenergy"

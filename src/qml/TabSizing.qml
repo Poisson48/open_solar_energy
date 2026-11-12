@@ -265,6 +265,7 @@ OseTabPage {
                     batteryModel: b.name || b.id,
                     battKwh: b.energy_kwh || f.battKwh || 5,
                     battTech: tech,
+                    offgridResult: {},
                     battDod: f.battDod !== undefined ? f.battDod : 80
                 })
             })
