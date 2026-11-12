@@ -28,11 +28,74 @@ Dialog {
     property int tab: 0
     property string search: ""
     property string editingId: ""
+    property string sortKey: "wp"
+    property bool sortAsc: false
 
     readonly property int totalPanels: Catalog.catalogPanelCount + Catalog.userPanelCount
     readonly property int totalInverters: Catalog.catalogInverterCount + Catalog.userInverterCount
-    readonly property var filtered: tab === 0 ? Catalog.searchPanels(search)
-                                              : Catalog.searchInverters(search)
+    readonly property var sortOptions: tab === 0 ? [
+        { label: "Puissance", value: "wp" },
+        { label: "Marque", value: "brand" },
+        { label: "Modèle", value: "model" },
+        { label: "Technologie", value: "tech" },
+        { label: "Surface", value: "m2" }
+    ] : [
+        { label: "Puissance", value: "pac" },
+        { label: "Marque", value: "brand" },
+        { label: "Type", value: "type" },
+        { label: "Phase", value: "phase" },
+        { label: "MPPT", value: "mpptCount" },
+        { label: "Vmax DC", value: "maxInputV" },
+        { label: "Imax", value: "maxInputI" }
+    ]
+    readonly property var filtered: sortItems(tab === 0 ? Catalog.searchPanels(search)
+                                                        : Catalog.searchInverters(search))
+
+    function sortValue(item, key) {
+        let v = item ? item[key] : undefined
+        if ((key === "brand") && (!v))
+            v = item ? item.fabricant : ""
+        if (key === "pac" && (!v))
+            v = item ? item.pnom : 0
+        if (key === "mpptCount" && (!v))
+            v = item ? item.nMppt : 0
+        return v
+    }
+
+    function sortItems(items) {
+        if (!items || items.length === 0)
+            return []
+        const numeric = ["wp", "pac", "m2", "phase", "mpptCount", "maxInputV", "maxInputI"].indexOf(sortKey) >= 0
+        const arr = []
+        for (let i = 0; i < items.length; ++i)
+            arr.push(items[i])
+        arr.sort(function(a, b) {
+            let va = sortValue(a, sortKey)
+            let vb = sortValue(b, sortKey)
+            if (numeric) {
+                va = Number(va) || 0
+                vb = Number(vb) || 0
+            } else {
+                va = String(va || "").toLowerCase()
+                vb = String(vb || "").toLowerCase()
+            }
+            if (va < vb) return sortAsc ? -1 : 1
+            if (va > vb) return sortAsc ? 1 : -1
+            const sa = (String(sortValue(a, "brand") || "") + " " + String(a.model || "")).toLowerCase()
+            const sb = (String(sortValue(b, "brand") || "") + " " + String(b.model || "")).toLowerCase()
+            return sa < sb ? -1 : (sa > sb ? 1 : 0)
+        })
+        return arr
+    }
+
+    function resetSort() {
+        sortKey = tab === 0 ? "wp" : "pac"
+        sortAsc = false
+        if (sortBox)
+            sortBox.currentIndex = 0
+    }
+
+    onTabChanged: resetSort()
 
     background: Rectangle {
         color: Theme.surface
@@ -392,11 +455,46 @@ Dialog {
                         Layout.fillWidth: true
                         Layout.leftMargin: Theme.spaceSm
                         Layout.rightMargin: Theme.spaceSm
-                        Layout.bottomMargin: Theme.spaceSm
+                        Layout.bottomMargin: Theme.spaceXs
                         hint: root.tab === 0
                             ? "Rechercher (marque, modèle, Wc, réf. Rexel…)"
                             : "Rechercher (marque, kW, hybride, réf. Rexel…)"
                         onTextChanged: root.search = text
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Theme.spaceSm
+                        Layout.rightMargin: Theme.spaceSm
+                        Layout.bottomMargin: Theme.spaceSm
+                        spacing: Theme.spaceXs
+                        Label {
+                            text: "Trier"
+                            color: Theme.textDim
+                            font.pixelSize: Theme.fontSizeCaption
+                        }
+                        ComboBox {
+                            id: sortBox
+                            Layout.fillWidth: true
+                            implicitHeight: 32
+                            model: root.sortOptions
+                            textRole: "label"
+                            valueRole: "value"
+                            onActivated: {
+                                root.sortKey = currentValue
+                                root.sortAsc = ["brand", "model", "tech", "type"].indexOf(currentValue) >= 0
+                            }
+                        }
+                        OseBtn {
+                            text: root.sortAsc ? "↑" : "↓"
+                            kind: "outline"
+                            implicitHeight: 32
+                            leftPadding: 8
+                            rightPadding: 8
+                            ToolTip.visible: hovered
+                            ToolTip.text: root.sortAsc ? "Croissant" : "Décroissant"
+                            onClicked: root.sortAsc = !root.sortAsc
+                        }
                     }
 
                     Rectangle {

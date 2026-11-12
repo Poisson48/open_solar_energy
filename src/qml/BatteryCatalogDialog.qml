@@ -18,9 +18,53 @@ Dialog {
 
     property string search: ""
     property string selectedId: ""
+    property string sortKey: "eur_per_kwh"
+    property bool sortAsc: true
 
-    readonly property var results: Catalog.searchBatteries(search)
+    readonly property var sortOptions: [
+        { label: "€/kWh", value: "eur_per_kwh" },
+        { label: "Prix", value: "price_eur" },
+        { label: "Capacité kWh", value: "energy_kwh" },
+        { label: "Tension", value: "voltage_nominal_v" },
+        { label: "Marque", value: "brand" },
+        { label: "Famille", value: "family" },
+        { label: "Stock", value: "stock_qty" }
+    ]
+    readonly property var rawResults: Catalog.searchBatteries(search)
+    readonly property var results: sortItems(rawResults)
     readonly property var selected: selectedId.length > 0 ? Catalog.getBattery(selectedId) : ({})
+
+    function sortValue(item, key) {
+        return item ? item[key] : undefined
+    }
+
+    function sortItems(items) {
+        if (!items || items.length === 0)
+            return []
+        const numeric = ["eur_per_kwh", "price_eur", "energy_kwh", "voltage_nominal_v", "stock_qty"].indexOf(sortKey) >= 0
+        const arr = []
+        for (let i = 0; i < items.length; ++i)
+            arr.push(items[i])
+        arr.sort(function(a, b) {
+            let va = sortValue(a, sortKey)
+            let vb = sortValue(b, sortKey)
+            if (numeric) {
+                va = Number(va)
+                vb = Number(vb)
+                if (isNaN(va)) va = 1e9
+                if (isNaN(vb)) vb = 1e9
+            } else {
+                va = String(va || "").toLowerCase()
+                vb = String(vb || "").toLowerCase()
+            }
+            if (va < vb) return sortAsc ? -1 : 1
+            if (va > vb) return sortAsc ? 1 : -1
+            const sa = String(a.name || "").toLowerCase()
+            const sb = String(b.name || "").toLowerCase()
+            return sa < sb ? -1 : (sa > sb ? 1 : 0)
+        })
+        return arr
+    }
 
     function ensureSelection() {
         if (results.length === 0) {
@@ -81,6 +125,10 @@ Dialog {
     onOpened: {
         search = ""
         searchField.text = ""
+        sortKey = "eur_per_kwh"
+        sortAsc = true
+        if (batterySortBox)
+            batterySortBox.currentIndex = 0
         ensureSelection()
     }
     onResultsChanged: ensureSelection()
@@ -143,9 +191,44 @@ Dialog {
             Layout.fillWidth: true
             Layout.leftMargin: Theme.spaceLg
             Layout.rightMargin: Theme.spaceLg
-            Layout.bottomMargin: Theme.spaceSm
+            Layout.bottomMargin: Theme.spaceXs
             hint: "Rechercher (marque, 48 V, 36S, X1, 10 kWh…)"
             onTextChanged: root.search = text
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.leftMargin: Theme.spaceLg
+            Layout.rightMargin: Theme.spaceLg
+            Layout.bottomMargin: Theme.spaceSm
+            spacing: Theme.spaceXs
+            Label {
+                text: "Trier"
+                color: Theme.textDim
+                font.pixelSize: Theme.fontSizeCaption
+            }
+            ComboBox {
+                id: batterySortBox
+                Layout.fillWidth: true
+                implicitHeight: 32
+                model: root.sortOptions
+                textRole: "label"
+                valueRole: "value"
+                onActivated: {
+                    root.sortKey = currentValue
+                    root.sortAsc = ["brand", "family"].indexOf(currentValue) >= 0
+                }
+            }
+            OseBtn {
+                text: root.sortAsc ? "↑" : "↓"
+                kind: "outline"
+                implicitHeight: 32
+                leftPadding: 8
+                rightPadding: 8
+                ToolTip.visible: hovered
+                ToolTip.text: root.sortAsc ? "Croissant" : "Décroissant"
+                onClicked: root.sortAsc = !root.sortAsc
+            }
         }
 
         RowLayout {
