@@ -75,7 +75,11 @@ sed -i -E \
   -DOSE_VERSION_NAME="$VERSION_NAME" \
   -DOSE_VERSION_CODE="$VERSION_CODE"
 
-cmake --build "$ROOT/build-android" --target apk -j"$(nproc)"
+if ! cmake --build "$ROOT/build-android" --target apk -j"$(nproc)"; then
+  echo "Build Android échoué — nouvelle tentative après 15 s (dépendances Gradle transitoires)…" >&2
+  sleep 15
+  cmake --build "$ROOT/build-android" --target apk -j"$(nproc)"
+fi
 
 UNSIGNED="$(find "$ROOT/build-android" -name '*-release-unsigned.apk' | head -1)"
 [ -n "$UNSIGNED" ] || { echo "APK non signé introuvable" >&2; exit 1; }

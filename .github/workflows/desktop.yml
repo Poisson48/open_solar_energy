@@ -31,7 +31,8 @@ jobs:
               libxcb-cursor0 libxcb-icccm4 libxcb-image0 \
               libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 \
               libxcb-xinerama0 libxcb-xkb1 libxcb-util1 \
-              libssl-dev && break
+              libssl-dev libpulse-dev libasound2-dev libsndfile1-dev \
+              libflac-dev libvorbis-dev libogg-dev libmp3lame-dev libmpg123-dev && break
             echo "apt tentatif $i échoué — nouvel essai…"
             sleep $((i * 15))
           done
