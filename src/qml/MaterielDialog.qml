@@ -61,6 +61,7 @@ Dialog {
         } else {
             iBrand.text = ""; iModel.text = ""; iPac.text = ""
             iMppt.text = "2"; iMaxV.text = ""; iMaxI.text = ""
+            iBattMin.text = ""; iBattMax.text = ""
             iType.currentIndex = 0; iPhase.currentIndex = 0
             iNotes.text = ""
         }
@@ -96,6 +97,8 @@ Dialog {
             iMppt.text = String(item.nMppt || item.mpptCount || 2)
             iMaxV.text = (item.maxInputV || item.maxVocInput) ? String(item.maxInputV || item.maxVocInput) : ""
             iMaxI.text = item.maxInputI ? String(item.maxInputI) : ""
+            iBattMin.text = item.batteryMinV ? String(item.batteryMinV) : ""
+            iBattMax.text = item.batteryMaxV ? String(item.batteryMaxV) : ""
             iNotes.text = item.notes || ""
             const t = item.type || "string"
             for (let i = 0; i < iType.model.length; ++i) {
@@ -140,7 +143,24 @@ Dialog {
                     inverterType: item.type
                 })
             })
-            AppController.toast("Onduleur appliqué au projet")
+            const f = Projects.currentProject.formState || {}
+            if (f.panelId || f.batteryId) {
+                const panel = Catalog.getPanel(f.panelId) || {}
+                const battery = Catalog.getBattery(f.batteryId) || {}
+                const c = Inverter.checkCompatibility(panel, item, battery,
+                                                      Number(f.panelCount) || 0,
+                                                      Number(f.battKwh) || 0)
+                const errs = c.errors || []
+                const warns = c.warnings || []
+                if (errs.length > 0)
+                    AppController.toast("⚠️ Onduleur appliqué — " + errs[0], 6000)
+                else if (warns.length > 0)
+                    AppController.toast("⚠️ Onduleur appliqué — " + warns[0], 5000)
+                else
+                    AppController.toast("Onduleur appliqué au projet")
+            } else {
+                AppController.toast("Onduleur appliqué au projet")
+            }
             AppController.autoSave("Onduleur — "
                                    + (((item.brand || item.fabricant || "") + " " + (item.model || "")).trim()))
         }
@@ -193,6 +213,8 @@ Dialog {
                 maxInputV: Number(iMaxV.text) || null,
                 maxVocInput: Number(iMaxV.text) || null,
                 maxInputI: Number(iMaxI.text) || null,
+                batteryMinV: Number(iBattMin.text) || null,
+                batteryMaxV: Number(iBattMax.text) || null,
                 mpptMinV: 120,
                 mpptMaxV: Number(iMaxV.text) ? Number(iMaxV.text) * 0.9 : 550,
                 notes: iNotes.text
@@ -671,6 +693,11 @@ Dialog {
                             Label { text: "Imax (A)"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim }
                             OseTextField { id: iMaxV; Layout.fillWidth: true; hint: "600"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
                             OseTextField { id: iMaxI; Layout.fillWidth: true; hint: "18"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
+
+                            Label { text: "Batterie min (V)"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim }
+                            Label { text: "Batterie max (V)"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim }
+                            OseTextField { id: iBattMin; Layout.fillWidth: true; hint: "ex. 40"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
+                            OseTextField { id: iBattMax; Layout.fillWidth: true; hint: "ex. 60"; inputMethodHints: Qt.ImhFormattedNumbersOnly }
 
                             Label { text: "Notes"; font.pixelSize: Theme.fontSizeCaption; color: Theme.textDim; Layout.columnSpan: Ui.isPhone ? 1 : 2 }
                             ScrollView {

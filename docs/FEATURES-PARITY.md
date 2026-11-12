@@ -155,6 +155,9 @@ Légende : **OK** = présent et branché · **PARTIEL** = incomplet · **MANQUE*
 |----------|--------|
 | Panneaux / onduleurs locaux | OK |
 | Rexel embarqué (~92 / ~271) | OK |
+| Sélection batterie EVShop embarquée | OK |
+| Compatibilité panneaux / onduleur / batterie + warnings | OK |
+| PDF datasheets onduleurs Rexel | OK (local, non embarqué) |
 | Rexel remote / sync live | MANQUE |
 
 ## Plateformes

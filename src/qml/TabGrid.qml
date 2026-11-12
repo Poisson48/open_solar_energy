@@ -12,6 +12,7 @@ OseTabPage {
 
     property var result: ({})
     property var stringing: ({})
+    property var compatibility: ({})
 
     readonly property var panels: Catalog.panels
     readonly property var inverters: Catalog.inverters
@@ -90,7 +91,11 @@ OseTabPage {
                 inverterId: invBox.currentValue,
                 panelWp: panel.wp || panel.pmax || 400,
                 panelModel: (panel.fabricant || panel.brand || "") + " " + (panel.model || "Module"),
-                inverterModel: (inv.fabricant || inv.brand || "") + " " + (inv.model || "Onduleur")
+                inverterModel: (inv.fabricant || inv.brand || "") + " " + (inv.model || "Onduleur"),
+                batteryId: batteryBox.currentValue || form.batteryId || "",
+                batteryModel: batteryBox.currentValue
+                              ? ((Catalog.getBattery(batteryBox.currentValue) || {}).name || "")
+                              : (form.batteryModel || "")
             })
         })
         Projects.updateCurrent({
@@ -104,13 +109,56 @@ OseTabPage {
     }
 
     function runStringing() {
-        const panel = Catalog.getPanel(panelBox.currentValue) || {
+        const form = Projects.currentProject.formState || {}
+        const actualPanel = Catalog.getPanel(panelBox.currentValue || form.panelId) || {}
+        const actualInv = Catalog.getInverter(invBox.currentValue || form.inverterId) || {}
+        const panel = actualPanel.voc ? actualPanel : {
             voc: 49.5, vmp: 41, isc: 10.5, imp: 9.8, pmax: 400
         }
-        const inv = Catalog.getInverter(invBox.currentValue) || {
+        const inv = actualInv.maxInputV ? actualInv : {
             maxInputV: 600, mpptMinV: 120, mpptMaxV: 550, maxInputI: 18, pac: 5, mpptCount: 2
         }
+        const battery = Catalog.getBattery(batteryBox.currentValue || form.batteryId) || {}
+        const panelWp = Number(panel.pmax || panel.wp) || 400
+        const nPanels = Number(form.panelCount) > 0
+                      ? Number(form.panelCount)
+                      : Math.max(1, Math.round((Number(pField.text) || 3) * 1000 / panelWp))
+        const batteryKwh = Number(form.battKwh) || Number(battery.energy_kwh) || 0
         stringing = Inverter.calcStringing(panel, inv)
+        compatibility = Inverter.checkCompatibility(actualPanel, actualInv, battery, nPanels, batteryKwh)
+    }
+
+    function compatibilityText() {
+        const c = root.compatibility || {}
+        let lines = []
+        const errs = c.errors || []
+        const warns = c.warnings || []
+        const infos = c.infos || []
+        for (let i = 0; i < errs.length; ++i) lines.push("⛔ " + errs[i])
+        for (let i = 0; i < warns.length; ++i) lines.push("⚠️ " + warns[i])
+        for (let i = 0; i < infos.length; ++i) lines.push("ℹ️ " + infos[i])
+        if (errs.length > 0 || warns.length > 0)
+            lines.push("Sélection conservée : vous pouvez continuer, mais vérifiez ces points.")
+        if (lines.length === 0 && (c.hasPanel || c.hasInverter))
+            lines.push("✅ Panneaux et onduleur compatibles.")
+        return lines.join("\n")
+    }
+
+    function applyBattery() {
+        const b = Catalog.getBattery(batteryBox.currentValue) || {}
+        const f = Projects.currentProject.formState || {}
+        const chem = (b.chemistry || "").toUpperCase()
+        const tech = chem.indexOf("LFP") >= 0 ? "LFP"
+                   : (chem.indexOf("NMC") >= 0 ? "NMC" : (f.battTech || "NMC"))
+        Projects.updateCurrent({
+            formState: Object.assign({}, f, {
+                batteryId: b.id || "",
+                batteryModel: b.name || "",
+                battKwh: b.energy_kwh || f.battKwh || 0,
+                battTech: tech
+            })
+        })
+        root.runStringing()
     }
 
     function selectCombo(box, id) {
@@ -129,7 +177,8 @@ OseTabPage {
         if (form.systemCost) costField.text = String(form.systemCost)
         selectCombo(panelBox, form.panelId)
         selectCombo(invBox, form.inverterId)
-        if (form.panelId || form.inverterId)
+        selectCombo(batteryBox, form.batteryId)
+        if (form.panelId || form.inverterId || form.batteryId)
             root.runStringing()
     }
 
@@ -186,6 +235,37 @@ OseTabPage {
                     onActivated: root.runStringing()
                 }
                 OseBtn { text: "Lib."; kind: "outline"; onClicked: AppController.openMateriel() }
+            }
+            Label { text: "Batterie (optionnelle)"; color: Theme.textDim }
+            RowLayout {
+                Layout.fillWidth: true
+                ComboBox {
+                    id: batteryBox
+                    Layout.fillWidth: true
+                    model: {
+                        let m = [{ label: "Aucune / saisie manuelle", value: "" }]
+                        const bs = Catalog.batteries || []
+                        for (let i = 0; i < Math.min(bs.length, 120); ++i) {
+                            m.push({
+                                label: (bs[i].name || bs[i].id) + " · "
+                                       + (bs[i].energy_kwh || "?") + " kWh · "
+                                       + (bs[i].voltage_nominal_v || "?") + " V",
+                                value: bs[i].id
+                            })
+                        }
+                        return m
+                    }
+                    textRole: "label"
+                    valueRole: "value"
+                    onActivated: root.applyBattery()
+                }
+                OseBtn { text: "Lib."; kind: "outline"; onClicked: AppController.openMateriel() }
+            }
+            OseAlert {
+                visible: !!root.compatibility && (root.compatibility.hasPanel || root.compatibility.hasInverter)
+                kind: root.compatibility.status === "danger" ? "danger"
+                    : root.compatibility.status === "warning" ? "warning" : "success"
+                text: root.compatibilityText()
             }
         }
 

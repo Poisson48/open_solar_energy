@@ -15,6 +15,7 @@ OseTabPage {
     property var estimateHint: ({})
     property bool isHybrid: (Projects.currentProject.installType || "grid") === "hybrid"
     property bool syncing: false
+    property var compatibility: ({})
     readonly property var monthShort: [
         "Jan", "Fév", "Mar", "Avr", "Mai", "Juin",
         "Juil", "Aoû", "Sep", "Oct", "Nov", "Déc"
@@ -172,6 +173,22 @@ OseTabPage {
                 }
             }
         }
+        if (f.inverterId) {
+            for (let i = 0; i < inverterBox.model.length; ++i) {
+                if (inverterBox.model[i].value === f.inverterId) {
+                    inverterBox.currentIndex = i
+                    break
+                }
+            }
+        }
+        if (f.batteryId) {
+            for (let i = 0; i < batteryBox.model.length; ++i) {
+                if (batteryBox.model[i].value === f.batteryId) {
+                    batteryBox.currentIndex = i
+                    break
+                }
+            }
+        }
         strategyBox.currentIndex = comboIndexFor(strategyBox, f.strategy || "roi", 0)
         covTarget.text = String(f.coverageTarget !== undefined ? f.coverageTarget : 70)
         roofArea.text = String(f.roofArea !== undefined ? f.roofArea : 40)
@@ -191,6 +208,67 @@ OseTabPage {
         battKwh.text = String(f.battKwh !== undefined ? f.battKwh : 5)
         battDod.text = String(f.battDod !== undefined ? f.battDod : 80)
         syncing = false
+        updateCompatibility()
+    }
+
+    function updateCompatibility() {
+        const f = Projects.currentProject.formState || {}
+        const panel = Catalog.getPanel(panelCatalog.currentValue || f.panelId) || {}
+        const inv = Catalog.getInverter(inverterBox.currentValue || f.inverterId) || {}
+        const battery = Catalog.getBattery(batteryBox.currentValue || f.batteryId) || {}
+        const n = Math.max(1, Math.round(Number(panelCountField.text) || 1))
+        const kwh = root.isHybrid ? (Number(battKwh.text) || 0) : 0
+        compatibility = Inverter.checkCompatibility(panel, inv, battery, n, kwh)
+    }
+
+    function compatibilityText() {
+        const c = root.compatibility || {}
+        let lines = []
+        const errs = c.errors || []
+        const warns = c.warnings || []
+        const infos = c.infos || []
+        for (let i = 0; i < errs.length; ++i) lines.push("⛔ " + errs[i])
+        for (let i = 0; i < warns.length; ++i) lines.push("⚠️ " + warns[i])
+        for (let i = 0; i < infos.length; ++i) lines.push("ℹ️ " + infos[i])
+        if (errs.length > 0 || warns.length > 0)
+            lines.push("Sélection conservée : vous pouvez continuer, mais vérifiez ces points.")
+        if (lines.length === 0 && (c.hasPanel || c.hasInverter))
+            lines.push("✅ Panneaux et onduleur compatibles.")
+        return lines.join("\n")
+    }
+
+    function applySelectedInverter() {
+        const inv = Catalog.getInverter(inverterBox.currentValue) || {}
+        const f = Projects.currentProject.formState || {}
+        Projects.updateCurrent({
+            formState: Object.assign({}, f, {
+                inverterId: inv.id || "",
+                inverterModel: ((inv.fabricant || inv.brand || "") + " " + (inv.model || "")).trim(),
+                inverterPac: inv.pac || inv.pnom || null
+            })
+        })
+        root.updateCompatibility()
+    }
+
+    function applySelectedBattery() {
+        const b = Catalog.getBattery(batteryBox.currentValue) || {}
+        const f = Projects.currentProject.formState || {}
+        const chem = (b.chemistry || "").toUpperCase()
+        const tech = chem.indexOf("LFP") >= 0 ? "LFP"
+                   : (chem.indexOf("NMC") >= 0 ? "NMC" : (f.battTech || "NMC"))
+        if (b.id) {
+            Projects.updateCurrent({
+                formState: Object.assign({}, f, {
+                    batteryId: b.id,
+                    batteryModel: b.name || b.id,
+                    battKwh: b.energy_kwh || f.battKwh || 5,
+                    battTech: tech,
+                    battDod: f.battDod !== undefined ? f.battDod : 80
+                })
+            })
+            battKwh.text = String(b.energy_kwh || f.battKwh || 5)
+            root.updateCompatibility()
+        }
     }
 
     function persistForm(extra) {
@@ -221,6 +299,10 @@ OseTabPage {
             systemCost: Math.max(0, Math.round(Number(systemCostField.text) || 0)),
             battKwh: Number(battKwh.text),
             battDod: Number(battDod.text),
+            inverterId: inverterBox.currentValue || "",
+            inverterModel: ((Catalog.getInverter(inverterBox.currentValue) || {}).model || ""),
+            batteryId: batteryBox.currentValue || "",
+            batteryModel: ((Catalog.getBattery(batteryBox.currentValue) || {}).name || ""),
             loadDayKwh: loadDay.text.length ? Number(loadDay.text) : undefined,
             loadNightKwh: loadNight.text.length ? Number(loadNight.text) : undefined
         }, extra || {})
@@ -291,6 +373,7 @@ OseTabPage {
             costPerKwc: Number(costKwc.text) || 1200,
             limitMode: "panels"
         })
+        updateCompatibility()
     }
 
     function panelCountForPeak(ppeak) {
@@ -505,6 +588,7 @@ OseTabPage {
             resultsFingerprint: Pipeline.fingerprint(Projects.currentProject),
             resultsBasis: Pipeline.fingerprintParts(Projects.currentProject)
         })
+        root.updateCompatibility()
         statusLabel.text = "Validé : " + nPanels + " panneaux · " + (best.Ppeak || "?") + " kWc"
         AppController.autoSave("Dimensionnement validé — "
                                + nPanels + " panneaux · " + (best.Ppeak || "?") + " kWc")
@@ -1038,6 +1122,37 @@ OseTabPage {
                     onClicked: AppController.openMateriel()
                 }
             }
+            Label { text: "Onduleur catalogue"; color: Theme.textDim; font.pixelSize: 12 }
+            RowLayout {
+                Layout.fillWidth: true
+                ComboBox {
+                    id: inverterBox
+                    Layout.fillWidth: true
+                    model: {
+                        let m = [{ label: "— Aucun —", value: "" }]
+                        const ps = Catalog.inverters || []
+                        for (let i = 0; i < Math.min(ps.length, 400); ++i) {
+                            const typ = ps[i].type === "hybrid" ? "hybride"
+                                      : (ps[i].type === "micro" ? "micro" : "string")
+                            m.push({
+                                label: (ps[i].brand || ps[i].fabricant || "") + " "
+                                       + (ps[i].model || "") + " · "
+                                       + (ps[i].pac || ps[i].pnom || "?") + " kW · " + typ,
+                                value: ps[i].id
+                            })
+                        }
+                        return m
+                    }
+                    textRole: "label"
+                    valueRole: "value"
+                    onActivated: root.applySelectedInverter()
+                }
+                OseBtn {
+                    text: "Lib."
+                    kind: "outline"
+                    onClicked: AppController.openMateriel()
+                }
+            }
             GridLayout {
                 columns: Ui.isPhone ? 1 : 2
                 Layout.fillWidth: true
@@ -1095,6 +1210,13 @@ OseTabPage {
             }
         }
 
+        OseAlert {
+            visible: !!root.compatibility && (root.compatibility.hasPanel || root.compatibility.hasInverter)
+            kind: root.compatibility.status === "danger" ? "danger"
+                : root.compatibility.status === "warning" ? "warning" : "success"
+            text: root.compatibilityText()
+        }
+
         OseStep {
             step: 5
             title: "Batterie hybride"
@@ -1114,6 +1236,35 @@ OseTabPage {
                     Layout.fillWidth: true
                     Label { text: "DoD"; Layout.preferredWidth: 100 }
                     OseInputUnit { id: battDod; text: "80"; unit: "%"; Layout.fillWidth: true; onEditingFinished: root.persistForm() }
+                }
+            }
+            Label { text: "Batterie catalogue"; color: Theme.textDim; font.pixelSize: 12 }
+            RowLayout {
+                Layout.fillWidth: true
+                ComboBox {
+                    id: batteryBox
+                    Layout.fillWidth: true
+                    model: {
+                        let m = [{ label: "— Aucune / manuelle —", value: "" }]
+                        const bs = Catalog.batteries || []
+                        for (let i = 0; i < Math.min(bs.length, 120); ++i) {
+                            m.push({
+                                label: (bs[i].name || bs[i].id) + " · "
+                                       + (bs[i].energy_kwh || "?") + " kWh · "
+                                       + (bs[i].voltage_nominal_v || "?") + " V",
+                                value: bs[i].id
+                            })
+                        }
+                        return m
+                    }
+                    textRole: "label"
+                    valueRole: "value"
+                    onActivated: root.applySelectedBattery()
+                }
+                OseBtn {
+                    text: "Lib."
+                    kind: "outline"
+                    onClicked: AppController.openMateriel()
                 }
             }
         }

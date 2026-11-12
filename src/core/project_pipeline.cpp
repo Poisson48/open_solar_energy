@@ -71,6 +71,10 @@ QVariantMap ProjectPipeline::fingerprintParts(const QVariantMap& project) const
                  .toJson(QJsonDocument::Compact))},
         {QStringLiteral("tilt"), form.value(QStringLiteral("tilt")).toDouble()},
         {QStringLiteral("azimuth"), form.value(QStringLiteral("azimuth")).toDouble()},
+        {QStringLiteral("panelId"), form.value(QStringLiteral("panelId")).toString()},
+        {QStringLiteral("panelCount"), form.value(QStringLiteral("panelCount")).toInt()},
+        {QStringLiteral("inverterId"), form.value(QStringLiteral("inverterId")).toString()},
+        {QStringLiteral("batteryId"), form.value(QStringLiteral("batteryId")).toString()},
         {QStringLiteral("battKwh"), form.value(QStringLiteral("battKwh")).toDouble()},
         {QStringLiteral("strategy"), form.value(QStringLiteral("strategy")).toString()},
         {QStringLiteral("annualKwh"), form.value(QStringLiteral("annualKwh")).toDouble()},
@@ -139,6 +143,10 @@ QVariantMap ProjectPipeline::staleDiagnosis(const QVariantMap& project) const
     addIf(QStringLiteral("monthlyKwh"), QStringLiteral("consommation mensuelle"));
     addIf(QStringLiteral("tilt"), QStringLiteral("inclinaison"));
     addIf(QStringLiteral("azimuth"), QStringLiteral("azimut"));
+    addIf(QStringLiteral("panelId"), QStringLiteral("panneau"));
+    addIf(QStringLiteral("panelCount"), QStringLiteral("nombre de panneaux"));
+    addIf(QStringLiteral("inverterId"), QStringLiteral("onduleur"));
+    addIf(QStringLiteral("batteryId"), QStringLiteral("batterie sélectionnée"));
     addIf(QStringLiteral("battKwh"), QStringLiteral("batterie"));
     addIf(QStringLiteral("strategy"), QStringLiteral("stratégie de dimensionnement"));
     addIf(QStringLiteral("annualKwh"), QStringLiteral("conso annuelle"));

@@ -44,6 +44,27 @@ Dialog {
         return "• " + parts.join("\n• ")
     }
 
+    function applyBattery() {
+        const b = root.selected
+        if (!b || !b.id)
+            return
+        const f = Projects.currentProject.formState || {}
+        const chem = (b.chemistry || "").toUpperCase()
+        const tech = chem.indexOf("LFP") >= 0 ? "LFP"
+                   : (chem.indexOf("NMC") >= 0 ? "NMC" : (f.battTech || "NMC"))
+        Projects.updateCurrent({
+            formState: Object.assign({}, f, {
+                batteryId: b.id,
+                batteryModel: b.name || b.id,
+                battKwh: b.energy_kwh || f.battKwh || 5,
+                battTech: tech,
+                battDod: f.battDod !== undefined ? f.battDod : 80
+            })
+        })
+        AppController.toast("Batterie appliquée au projet", 3000)
+        AppController.autoSave("Batterie — " + (b.name || b.id))
+    }
+
     function sections(item) {
         if (!item || !item.id)
             return []
@@ -385,11 +406,21 @@ Dialog {
                             }
                         }
 
-                        OseBtn {
-                            visible: root.selected && !!root.selected.url
-                            text: "Ouvrir la fiche EVShop"
-                            kind: "outline"
-                            onClicked: Qt.openUrlExternally(root.selected.url)
+                        RowLayout {
+                            width: parent.width
+                            spacing: Theme.spaceSm
+                            OseBtn {
+                                visible: root.selected && !!root.selected.id
+                                text: "Utiliser cette batterie"
+                                kind: "primary"
+                                onClicked: root.applyBattery()
+                            }
+                            OseBtn {
+                                visible: root.selected && !!root.selected.url
+                                text: "Ouvrir la fiche EVShop"
+                                kind: "outline"
+                                onClicked: Qt.openUrlExternally(root.selected.url)
+                            }
                         }
                     }
                 }

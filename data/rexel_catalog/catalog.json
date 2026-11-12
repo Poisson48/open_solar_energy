@@ -1958,7 +1958,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/71588579.pdf",
+      "datasheetBytes": 318536,
+      "datasheetDownloadedAt": "2026-11-12T10:06:41Z"
     },
     {
       "sku": "71588580",
@@ -1976,7 +1979,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/71588580.pdf",
+      "datasheetBytes": 310239,
+      "datasheetDownloadedAt": "2026-11-12T10:06:41Z"
     },
     {
       "sku": "73846049",
@@ -1994,7 +2000,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": 2.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/73846049.pdf",
+      "datasheetBytes": 250944,
+      "datasheetDownloadedAt": "2026-11-12T10:06:42Z"
     },
     {
       "sku": "73978606",
@@ -2012,7 +2021,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": 0.96,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/73978606.pdf",
+      "datasheetBytes": 327946,
+      "datasheetDownloadedAt": "2026-11-12T10:08:10Z"
     },
     {
       "sku": "74886389",
@@ -2030,7 +2042,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": 0.5,
-      "nMppt": 1
+      "nMppt": 1,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74886389.pdf",
+      "datasheetBytes": 1353654,
+      "datasheetDownloadedAt": "2026-11-12T10:08:11Z"
     },
     {
       "sku": "74888838",
@@ -2048,7 +2063,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888838.pdf",
+      "datasheetBytes": 3299293,
+      "datasheetDownloadedAt": "2026-11-12T10:08:12Z"
     },
     {
       "sku": "74888841",
@@ -2066,7 +2084,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888841.pdf",
+      "datasheetBytes": 1254480,
+      "datasheetDownloadedAt": "2026-11-12T10:08:13Z"
     },
     {
       "sku": "74888862",
@@ -2084,7 +2105,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888862.pdf",
+      "datasheetBytes": 220210,
+      "datasheetDownloadedAt": "2026-11-12T10:08:14Z"
     },
     {
       "sku": "74888863",
@@ -2102,7 +2126,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888863.pdf",
+      "datasheetBytes": 185273,
+      "datasheetDownloadedAt": "2026-11-12T10:08:14Z"
     },
     {
       "sku": "74888866",
@@ -2120,7 +2147,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888866.pdf",
+      "datasheetBytes": 3832080,
+      "datasheetDownloadedAt": "2026-11-12T10:08:16Z"
     },
     {
       "sku": "74888868",
@@ -2156,7 +2186,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888869.pdf",
+      "datasheetBytes": 3299293,
+      "datasheetDownloadedAt": "2026-11-12T10:08:17Z"
     },
     {
       "sku": "74888870",
@@ -2174,7 +2207,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888870.pdf",
+      "datasheetBytes": 3299293,
+      "datasheetDownloadedAt": "2026-11-12T10:08:19Z"
     },
     {
       "sku": "74888873",
@@ -2192,7 +2228,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888873.pdf",
+      "datasheetBytes": 3299293,
+      "datasheetDownloadedAt": "2026-11-12T10:08:21Z"
     },
     {
       "sku": "74888880",
@@ -2210,7 +2249,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888880.pdf",
+      "datasheetBytes": 3299293,
+      "datasheetDownloadedAt": "2026-11-12T10:08:23Z"
     },
     {
       "sku": "74888881",
@@ -2246,7 +2288,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888882.pdf",
+      "datasheetBytes": 185242,
+      "datasheetDownloadedAt": "2026-11-12T10:08:23Z"
     },
     {
       "sku": "74888883",
@@ -2264,7 +2309,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888883.pdf",
+      "datasheetBytes": 3299293,
+      "datasheetDownloadedAt": "2026-11-12T10:08:25Z"
     },
     {
       "sku": "74888884",
@@ -2282,7 +2330,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888884.pdf",
+      "datasheetBytes": 1961560,
+      "datasheetDownloadedAt": "2026-11-12T10:08:26Z"
     },
     {
       "sku": "75038542",
@@ -2300,7 +2351,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": 2.2,
-      "nMppt": 4
+      "nMppt": 4,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75038542.pdf",
+      "datasheetBytes": 304923,
+      "datasheetDownloadedAt": "2026-11-12T10:08:26Z"
     },
     {
       "sku": "75060902",
@@ -2318,7 +2372,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": 0.45,
-      "nMppt": 1
+      "nMppt": 1,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75060902.pdf",
+      "datasheetBytes": 1353654,
+      "datasheetDownloadedAt": "2026-11-12T10:08:27Z"
     },
     {
       "sku": "75199385",
@@ -2336,7 +2393,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": 0.9,
-      "nMppt": 1
+      "nMppt": 1,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75199385.pdf",
+      "datasheetBytes": 748507,
+      "datasheetDownloadedAt": "2026-11-12T10:08:28Z"
     },
     {
       "sku": "75199388",
@@ -2354,7 +2414,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": 1.0,
-      "nMppt": 1
+      "nMppt": 1,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75199388.pdf",
+      "datasheetBytes": 748507,
+      "datasheetDownloadedAt": "2026-11-12T10:08:28Z"
     },
     {
       "sku": "75435372",
@@ -2390,7 +2453,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": 0.73,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/73188834.pdf",
+      "datasheetBytes": 327946,
+      "datasheetDownloadedAt": "2026-11-12T10:08:29Z"
     },
     {
       "sku": "73188835",
@@ -2408,7 +2474,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": 0.88,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/73188835.pdf",
+      "datasheetBytes": 327946,
+      "datasheetDownloadedAt": "2026-11-12T10:08:29Z"
     },
     {
       "sku": "74171636",
@@ -2462,7 +2531,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": 0.425,
-      "nMppt": 1
+      "nMppt": 1,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74886394.pdf",
+      "datasheetBytes": 1353654,
+      "datasheetDownloadedAt": "2026-11-12T10:08:31Z"
     },
     {
       "sku": "74888840",
@@ -2516,7 +2588,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888843.pdf",
+      "datasheetBytes": 653124,
+      "datasheetDownloadedAt": "2026-11-12T10:08:31Z"
     },
     {
       "sku": "74888844",
@@ -2534,7 +2609,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888844.pdf",
+      "datasheetBytes": 653124,
+      "datasheetDownloadedAt": "2026-11-12T10:08:32Z"
     },
     {
       "sku": "74888845",
@@ -2552,7 +2630,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888845.pdf",
+      "datasheetBytes": 965047,
+      "datasheetDownloadedAt": "2026-11-12T10:08:33Z"
     },
     {
       "sku": "74888853",
@@ -2588,7 +2669,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888861.pdf",
+      "datasheetBytes": 201792,
+      "datasheetDownloadedAt": "2026-11-12T10:08:33Z"
     },
     {
       "sku": "74888867",
@@ -2606,7 +2690,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888867.pdf",
+      "datasheetBytes": 852919,
+      "datasheetDownloadedAt": "2026-11-12T10:08:34Z"
     },
     {
       "sku": "74888871",
@@ -2624,7 +2711,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888871.pdf",
+      "datasheetBytes": 3299293,
+      "datasheetDownloadedAt": "2026-11-12T10:08:35Z"
     },
     {
       "sku": "74888872",
@@ -2642,7 +2732,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888872.pdf",
+      "datasheetBytes": 3299293,
+      "datasheetDownloadedAt": "2026-11-12T10:08:37Z"
     },
     {
       "sku": "74888874",
@@ -2660,7 +2753,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888874.pdf",
+      "datasheetBytes": 3299293,
+      "datasheetDownloadedAt": "2026-11-12T10:08:39Z"
     },
     {
       "sku": "74888875",
@@ -2678,7 +2774,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888875.pdf",
+      "datasheetBytes": 1961560,
+      "datasheetDownloadedAt": "2026-11-12T10:08:40Z"
     },
     {
       "sku": "74888876",
@@ -2696,7 +2795,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888876.pdf",
+      "datasheetBytes": 1961560,
+      "datasheetDownloadedAt": "2026-11-12T10:08:41Z"
     },
     {
       "sku": "74888877",
@@ -2714,7 +2816,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888877.pdf",
+      "datasheetBytes": 3299293,
+      "datasheetDownloadedAt": "2026-11-12T10:08:43Z"
     },
     {
       "sku": "74888878",
@@ -2732,7 +2837,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888878.pdf",
+      "datasheetBytes": 3299293,
+      "datasheetDownloadedAt": "2026-11-12T10:08:45Z"
     },
     {
       "sku": "74888885",
@@ -2750,7 +2858,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74888885.pdf",
+      "datasheetBytes": 1254480,
+      "datasheetDownloadedAt": "2026-11-12T10:08:45Z"
     },
     {
       "sku": "75038539",
@@ -2768,7 +2879,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": null,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75038539.pdf",
+      "datasheetBytes": 346866,
+      "datasheetDownloadedAt": "2026-11-12T10:08:46Z"
     },
     {
       "sku": "75369880",
@@ -2894,7 +3008,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75121398.pdf",
+      "datasheetBytes": 458767,
+      "datasheetDownloadedAt": "2026-11-12T10:08:47Z"
     },
     {
       "sku": "75121399",
@@ -2912,7 +3029,10 @@
       "type": "micro",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75121399.pdf",
+      "datasheetBytes": 458767,
+      "datasheetDownloadedAt": "2026-11-12T10:08:48Z"
     },
     {
       "sku": "75369882",
@@ -2948,7 +3068,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 6.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/73008751.pdf",
+      "datasheetBytes": 5131209,
+      "datasheetDownloadedAt": "2026-11-12T10:08:50Z"
     },
     {
       "sku": "74258612",
@@ -2966,7 +3089,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 6.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74258612.pdf",
+      "datasheetBytes": 5131209,
+      "datasheetDownloadedAt": "2026-11-12T10:08:53Z"
     },
     {
       "sku": "74294545",
@@ -2984,7 +3110,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 8.0,
-      "nMppt": 3
+      "nMppt": 3,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74294545.pdf",
+      "datasheetBytes": 744216,
+      "datasheetDownloadedAt": "2026-11-12T10:08:54Z"
     },
     {
       "sku": "74294580",
@@ -3002,7 +3131,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 10.0,
-      "nMppt": 3
+      "nMppt": 3,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74294580.pdf",
+      "datasheetBytes": 744216,
+      "datasheetDownloadedAt": "2026-11-12T10:08:55Z"
     },
     {
       "sku": "74884169",
@@ -3020,7 +3152,10 @@
       "type": "string",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74884169.pdf",
+      "datasheetBytes": 165377,
+      "datasheetDownloadedAt": "2026-11-12T10:08:55Z"
     },
     {
       "sku": "74889764",
@@ -3038,7 +3173,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 8.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74889764.pdf",
+      "datasheetBytes": 2260361,
+      "datasheetDownloadedAt": "2026-11-12T10:08:56Z"
     },
     {
       "sku": "74889766",
@@ -3056,7 +3194,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 10.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74889766.pdf",
+      "datasheetBytes": 2260361,
+      "datasheetDownloadedAt": "2026-11-12T10:08:58Z"
     },
     {
       "sku": "74895355",
@@ -3110,7 +3251,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 6.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915860.pdf",
+      "datasheetBytes": 8173019,
+      "datasheetDownloadedAt": "2026-11-12T10:09:02Z"
     },
     {
       "sku": "74915862",
@@ -3128,7 +3272,10 @@
       "type": "string",
       "phase": 1,
       "pnom": 3.0,
-      "nMppt": 1
+      "nMppt": 1,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915862.pdf",
+      "datasheetBytes": 53237,
+      "datasheetDownloadedAt": "2026-11-12T10:09:02Z"
     },
     {
       "sku": "74915868",
@@ -3146,7 +3293,10 @@
       "type": "string",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915868.pdf",
+      "datasheetBytes": 696244,
+      "datasheetDownloadedAt": "2026-11-12T10:09:03Z"
     },
     {
       "sku": "74915872",
@@ -3164,7 +3314,10 @@
       "type": "string",
       "phase": 1,
       "pnom": 6.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915872.pdf",
+      "datasheetBytes": 59533456,
+      "datasheetDownloadedAt": "2026-11-12T10:09:30Z"
     },
     {
       "sku": "74915875",
@@ -3182,7 +3335,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 6.0,
-      "nMppt": 3
+      "nMppt": 3,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915875.pdf",
+      "datasheetBytes": 5990037,
+      "datasheetDownloadedAt": "2026-11-12T10:09:32Z"
     },
     {
       "sku": "74915876",
@@ -3200,7 +3356,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 8.0,
-      "nMppt": 3
+      "nMppt": 3,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915876.pdf",
+      "datasheetBytes": 5990037,
+      "datasheetDownloadedAt": "2026-11-12T10:09:35Z"
     },
     {
       "sku": "75070162",
@@ -3236,7 +3395,10 @@
       "type": "string",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75147126.pdf",
+      "datasheetBytes": 840802,
+      "datasheetDownloadedAt": "2026-11-12T10:09:36Z"
     },
     {
       "sku": "75274829",
@@ -3272,7 +3434,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 3.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75403925.pdf",
+      "datasheetBytes": 5131209,
+      "datasheetDownloadedAt": "2026-11-12T10:09:38Z"
     },
     {
       "sku": "75403933",
@@ -3290,7 +3455,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 5.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75403933.pdf",
+      "datasheetBytes": 5131209,
+      "datasheetDownloadedAt": "2026-11-12T10:09:41Z"
     },
     {
       "sku": "75403935",
@@ -3308,7 +3476,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 6.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75403935.pdf",
+      "datasheetBytes": 5131209,
+      "datasheetDownloadedAt": "2026-11-12T10:09:43Z"
     },
     {
       "sku": "75403936",
@@ -3326,7 +3497,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 6.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75403936.pdf",
+      "datasheetBytes": 5131209,
+      "datasheetDownloadedAt": "2026-11-12T10:09:47Z"
     },
     {
       "sku": "75449840",
@@ -3380,7 +3554,10 @@
       "type": "string",
       "phase": 1,
       "pnom": 4.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/71855532.pdf",
+      "datasheetBytes": 608076,
+      "datasheetDownloadedAt": "2026-11-12T10:09:47Z"
     },
     {
       "sku": "71855537",
@@ -3398,7 +3575,10 @@
       "type": "string",
       "phase": 1,
       "pnom": 6.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/71855537.pdf",
+      "datasheetBytes": 608076,
+      "datasheetDownloadedAt": "2026-11-12T10:09:48Z"
     },
     {
       "sku": "71855539",
@@ -3416,7 +3596,10 @@
       "type": "string",
       "phase": 1,
       "pnom": 3.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/71855539.pdf",
+      "datasheetBytes": 608076,
+      "datasheetDownloadedAt": "2026-11-12T10:09:48Z"
     },
     {
       "sku": "71855541",
@@ -3434,7 +3617,10 @@
       "type": "string",
       "phase": 1,
       "pnom": 3.6,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/71855541.pdf",
+      "datasheetBytes": 608076,
+      "datasheetDownloadedAt": "2026-11-12T10:09:49Z"
     },
     {
       "sku": "74292345",
@@ -3452,7 +3638,10 @@
       "type": "string",
       "phase": 1,
       "pnom": 5.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292345.pdf",
+      "datasheetBytes": 233581,
+      "datasheetDownloadedAt": "2026-11-12T10:09:49Z"
     },
     {
       "sku": "74292346",
@@ -3470,7 +3659,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 5.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292346.pdf",
+      "datasheetBytes": 251040,
+      "datasheetDownloadedAt": "2026-11-12T10:09:50Z"
     },
     {
       "sku": "74292347",
@@ -3488,7 +3680,10 @@
       "type": "string",
       "phase": 1,
       "pnom": 4.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292347.pdf",
+      "datasheetBytes": 233591,
+      "datasheetDownloadedAt": "2026-11-12T10:09:50Z"
     },
     {
       "sku": "74292361",
@@ -3506,7 +3701,10 @@
       "type": "string",
       "phase": 1,
       "pnom": 4.6,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292361.pdf",
+      "datasheetBytes": 234312,
+      "datasheetDownloadedAt": "2026-11-12T10:09:51Z"
     },
     {
       "sku": "74292366",
@@ -3524,7 +3722,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 3.6,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292366.pdf",
+      "datasheetBytes": 251060,
+      "datasheetDownloadedAt": "2026-11-12T10:09:51Z"
     },
     {
       "sku": "74292367",
@@ -3542,7 +3743,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 6.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292367.pdf",
+      "datasheetBytes": 251039,
+      "datasheetDownloadedAt": "2026-11-12T10:09:52Z"
     },
     {
       "sku": "74292372",
@@ -3560,7 +3764,10 @@
       "type": "string",
       "phase": 1,
       "pnom": 3.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292372.pdf",
+      "datasheetBytes": 246137,
+      "datasheetDownloadedAt": "2026-11-12T10:09:52Z"
     },
     {
       "sku": "74292400",
@@ -3578,7 +3785,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 3.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292400.pdf",
+      "datasheetBytes": 259416,
+      "datasheetDownloadedAt": "2026-11-12T10:09:53Z"
     },
     {
       "sku": "74292404",
@@ -3596,7 +3806,10 @@
       "type": "string",
       "phase": 1,
       "pnom": 6.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292404.pdf",
+      "datasheetBytes": 233603,
+      "datasheetDownloadedAt": "2026-11-12T10:09:53Z"
     },
     {
       "sku": "74292405",
@@ -3614,7 +3827,10 @@
       "type": "string",
       "phase": 1,
       "pnom": 3.6,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292405.pdf",
+      "datasheetBytes": 233656,
+      "datasheetDownloadedAt": "2026-11-12T10:09:54Z"
     },
     {
       "sku": "74884168",
@@ -3632,7 +3848,10 @@
       "type": "string",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74884168.pdf",
+      "datasheetBytes": 165377,
+      "datasheetDownloadedAt": "2026-11-12T10:09:54Z"
     },
     {
       "sku": "74884172",
@@ -3650,7 +3869,10 @@
       "type": "string",
       "phase": 1,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74884172.pdf",
+      "datasheetBytes": 807679,
+      "datasheetDownloadedAt": "2026-11-12T10:09:55Z"
     },
     {
       "sku": "74889763",
@@ -3668,7 +3890,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 8.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74889763.pdf",
+      "datasheetBytes": 2260361,
+      "datasheetDownloadedAt": "2026-11-12T10:09:56Z"
     },
     {
       "sku": "74889765",
@@ -3686,7 +3911,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 10.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74889765.pdf",
+      "datasheetBytes": 2260361,
+      "datasheetDownloadedAt": "2026-11-12T10:09:57Z"
     },
     {
       "sku": "74915859",
@@ -3704,7 +3932,10 @@
       "type": "string",
       "phase": 1,
       "pnom": 3.6,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915859.pdf",
+      "datasheetBytes": 59533456,
+      "datasheetDownloadedAt": "2026-11-12T10:10:22Z"
     },
     {
       "sku": "74915861",
@@ -3722,7 +3953,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 7.5,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915861.pdf",
+      "datasheetBytes": 8173019,
+      "datasheetDownloadedAt": "2026-11-12T10:10:26Z"
     },
     {
       "sku": "74915874",
@@ -3740,7 +3974,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 3.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915874.pdf",
+      "datasheetBytes": 5990037,
+      "datasheetDownloadedAt": "2026-11-12T10:10:28Z"
     },
     {
       "sku": "75403926",
@@ -3758,7 +3995,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 3.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75403926.pdf",
+      "datasheetBytes": 5131209,
+      "datasheetDownloadedAt": "2026-11-12T10:10:31Z"
     },
     {
       "sku": "75403928",
@@ -3776,7 +4016,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 3.6,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75403928.pdf",
+      "datasheetBytes": 5131209,
+      "datasheetDownloadedAt": "2026-11-12T10:10:33Z"
     },
     {
       "sku": "75403929",
@@ -3794,7 +4037,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 4.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75403929.pdf",
+      "datasheetBytes": 5131209,
+      "datasheetDownloadedAt": "2026-11-12T10:10:35Z"
     },
     {
       "sku": "74094316",
@@ -3920,7 +4166,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 3.6,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75403927.pdf",
+      "datasheetBytes": 5131209,
+      "datasheetDownloadedAt": "2026-11-12T10:10:38Z"
     },
     {
       "sku": "75403930",
@@ -3938,7 +4187,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 4.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75403930.pdf",
+      "datasheetBytes": 5131209,
+      "datasheetDownloadedAt": "2026-11-12T10:10:40Z"
     },
     {
       "sku": "75403931",
@@ -3956,7 +4208,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 4.6,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75403931.pdf",
+      "datasheetBytes": 5131209,
+      "datasheetDownloadedAt": "2026-11-12T10:10:43Z"
     },
     {
       "sku": "75403932",
@@ -3974,7 +4229,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 4.6,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75403932.pdf",
+      "datasheetBytes": 5131209,
+      "datasheetDownloadedAt": "2026-11-12T10:10:45Z"
     },
     {
       "sku": "75403934",
@@ -3992,7 +4250,10 @@
       "type": "hybrid",
       "phase": 1,
       "pnom": 5.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75403934.pdf",
+      "datasheetBytes": 5131209,
+      "datasheetDownloadedAt": "2026-11-12T10:10:47Z"
     },
     {
       "sku": "74456974",
@@ -4010,7 +4271,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 10.0,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74456974.pdf",
+      "datasheetBytes": 1886888,
+      "datasheetDownloadedAt": "2026-11-12T10:10:48Z"
     },
     {
       "sku": "74708130",
@@ -4028,7 +4292,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 12.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74708130.pdf",
+      "datasheetBytes": 2319355,
+      "datasheetDownloadedAt": "2026-11-12T10:10:49Z"
     },
     {
       "sku": "74884141",
@@ -4046,7 +4313,10 @@
       "type": "string",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74884141.pdf",
+      "datasheetBytes": 180573,
+      "datasheetDownloadedAt": "2026-11-12T10:10:50Z"
     },
     {
       "sku": "74915856",
@@ -4064,7 +4334,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 30.0,
-      "nMppt": 3
+      "nMppt": 3,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915856.pdf",
+      "datasheetBytes": 2107573,
+      "datasheetDownloadedAt": "2026-11-12T10:10:51Z"
     },
     {
       "sku": "74915878",
@@ -4082,7 +4355,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 100.0,
-      "nMppt": 9
+      "nMppt": 9,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915878.pdf",
+      "datasheetBytes": 9342786,
+      "datasheetDownloadedAt": "2026-11-12T10:10:55Z"
     },
     {
       "sku": "74915879",
@@ -4100,7 +4376,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 0.125,
-      "nMppt": 12
+      "nMppt": 12,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915879.pdf",
+      "datasheetBytes": 9342786,
+      "datasheetDownloadedAt": "2026-11-12T10:10:59Z"
     },
     {
       "sku": "74915881",
@@ -4118,7 +4397,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 12.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915881.pdf",
+      "datasheetBytes": 11311816,
+      "datasheetDownloadedAt": "2026-11-12T10:11:04Z"
     },
     {
       "sku": "74915883",
@@ -4136,7 +4418,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 6.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915883.pdf",
+      "datasheetBytes": 11311816,
+      "datasheetDownloadedAt": "2026-11-12T10:11:09Z"
     },
     {
       "sku": "74915884",
@@ -4154,7 +4439,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 8.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915884.pdf",
+      "datasheetBytes": 11311816,
+      "datasheetDownloadedAt": "2026-11-12T10:11:14Z"
     },
     {
       "sku": "74915885",
@@ -4172,7 +4460,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 40.0,
-      "nMppt": 4
+      "nMppt": 4,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915885.pdf",
+      "datasheetBytes": 4556883,
+      "datasheetDownloadedAt": "2026-11-12T10:11:16Z"
     },
     {
       "sku": "74915886",
@@ -4190,7 +4481,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 50.0,
-      "nMppt": 4
+      "nMppt": 4,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915886.pdf",
+      "datasheetBytes": 4556883,
+      "datasheetDownloadedAt": "2026-11-12T10:11:19Z"
     },
     {
       "sku": "74915887",
@@ -4208,7 +4502,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 60.0,
-      "nMppt": 4
+      "nMppt": 4,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915887.pdf",
+      "datasheetBytes": 4556883,
+      "datasheetDownloadedAt": "2026-11-12T10:11:21Z"
     },
     {
       "sku": "74915888",
@@ -4226,7 +4523,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 10.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915888.pdf",
+      "datasheetBytes": 74495836,
+      "datasheetDownloadedAt": "2026-11-12T10:11:53Z"
     },
     {
       "sku": "74915890",
@@ -4244,7 +4544,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 6.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915890.pdf",
+      "datasheetBytes": 74495836,
+      "datasheetDownloadedAt": "2026-11-12T10:12:22Z"
     },
     {
       "sku": "74915893",
@@ -4262,7 +4565,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 30.0,
-      "nMppt": 3
+      "nMppt": 3,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915893.pdf",
+      "datasheetBytes": 32030035,
+      "datasheetDownloadedAt": "2026-11-12T10:12:35Z"
     },
     {
       "sku": "74915894",
@@ -4280,7 +4586,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 20.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915894.pdf",
+      "datasheetBytes": 2107573,
+      "datasheetDownloadedAt": "2026-11-12T10:12:36Z"
     },
     {
       "sku": "75070163",
@@ -4316,7 +4625,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 6.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75143422.pdf",
+      "datasheetBytes": 2178085,
+      "datasheetDownloadedAt": "2026-11-12T10:12:37Z"
     },
     {
       "sku": "75143423",
@@ -4334,7 +4646,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 8.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75143423.pdf",
+      "datasheetBytes": 2178085,
+      "datasheetDownloadedAt": "2026-11-12T10:12:38Z"
     },
     {
       "sku": "75274826",
@@ -4352,7 +4667,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 50.0,
-      "nMppt": 5
+      "nMppt": 5,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75274826.pdf",
+      "datasheetBytes": 1349956,
+      "datasheetDownloadedAt": "2026-11-12T10:12:39Z"
     },
     {
       "sku": "75274827",
@@ -4370,7 +4688,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 60.0,
-      "nMppt": 6
+      "nMppt": 6,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75274827.pdf",
+      "datasheetBytes": 1349956,
+      "datasheetDownloadedAt": "2026-11-12T10:12:40Z"
     },
     {
       "sku": "75274833",
@@ -4388,7 +4709,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 80.0,
-      "nMppt": 9
+      "nMppt": 9,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75274833.pdf",
+      "datasheetBytes": 9342786,
+      "datasheetDownloadedAt": "2026-11-12T10:12:44Z"
     },
     {
       "sku": "75340532",
@@ -4442,7 +4766,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 8.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/73975681.pdf",
+      "datasheetBytes": 776883,
+      "datasheetDownloadedAt": "2026-11-12T10:12:45Z"
     },
     {
       "sku": "73975682",
@@ -4460,7 +4787,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 6.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/73975682.pdf",
+      "datasheetBytes": 776883,
+      "datasheetDownloadedAt": "2026-11-12T10:12:45Z"
     },
     {
       "sku": "73975687",
@@ -4478,7 +4808,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 0.115,
-      "nMppt": 10
+      "nMppt": 10,
+      "datasheetLocal": "data/rexel_catalog/pdfs/73975687.pdf",
+      "datasheetBytes": 259769,
+      "datasheetDownloadedAt": "2026-11-12T10:12:46Z"
     },
     {
       "sku": "73975688",
@@ -4496,7 +4829,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 100.0,
-      "nMppt": 10
+      "nMppt": 10,
+      "datasheetLocal": "data/rexel_catalog/pdfs/73975688.pdf",
+      "datasheetBytes": 301541,
+      "datasheetDownloadedAt": "2026-11-12T10:12:46Z"
     },
     {
       "sku": "74251083",
@@ -4514,7 +4850,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 12.0,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74251083.pdf",
+      "datasheetBytes": 756369,
+      "datasheetDownloadedAt": "2026-11-12T10:12:47Z"
     },
     {
       "sku": "74251084",
@@ -4532,7 +4871,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 15.0,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74251084.pdf",
+      "datasheetBytes": 756369,
+      "datasheetDownloadedAt": "2026-11-12T10:12:47Z"
     },
     {
       "sku": "74251085",
@@ -4550,7 +4892,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 17.0,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74251085.pdf",
+      "datasheetBytes": 756369,
+      "datasheetDownloadedAt": "2026-11-12T10:12:48Z"
     },
     {
       "sku": "74251086",
@@ -4568,7 +4913,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 20.0,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74251086.pdf",
+      "datasheetBytes": 756369,
+      "datasheetDownloadedAt": "2026-11-12T10:12:48Z"
     },
     {
       "sku": "74251087",
@@ -4586,7 +4934,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 25.0,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74251087.pdf",
+      "datasheetBytes": 756369,
+      "datasheetDownloadedAt": "2026-11-12T10:12:49Z"
     },
     {
       "sku": "74294560",
@@ -4604,7 +4955,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 0.15,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74294560.pdf",
+      "datasheetBytes": 200924,
+      "datasheetDownloadedAt": "2026-11-12T10:12:50Z"
     },
     {
       "sku": "74456973",
@@ -4622,7 +4976,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 6.0,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74456973.pdf",
+      "datasheetBytes": 1886888,
+      "datasheetDownloadedAt": "2026-11-12T10:12:51Z"
     },
     {
       "sku": "74456975",
@@ -4640,7 +4997,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 8.0,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74456975.pdf",
+      "datasheetBytes": 1886888,
+      "datasheetDownloadedAt": "2026-11-12T10:12:52Z"
     },
     {
       "sku": "74456977",
@@ -4658,7 +5018,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 12.0,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74456977.pdf",
+      "datasheetBytes": 1886888,
+      "datasheetDownloadedAt": "2026-11-12T10:12:53Z"
     },
     {
       "sku": "74708120",
@@ -4676,7 +5039,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 33.3,
-      "nMppt": 4
+      "nMppt": 4,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74708120.pdf",
+      "datasheetBytes": 353792,
+      "datasheetDownloadedAt": "2026-11-12T10:12:53Z"
     },
     {
       "sku": "74708137",
@@ -4694,7 +5060,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 33.3,
-      "nMppt": 4
+      "nMppt": 4,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74708137.pdf",
+      "datasheetBytes": 353792,
+      "datasheetDownloadedAt": "2026-11-12T10:12:54Z"
     },
     {
       "sku": "74708138",
@@ -4712,7 +5081,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 33.3,
-      "nMppt": 4
+      "nMppt": 4,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74708138.pdf",
+      "datasheetBytes": 353792,
+      "datasheetDownloadedAt": "2026-11-12T10:12:54Z"
     },
     {
       "sku": "74884167",
@@ -4748,7 +5120,10 @@
       "type": "string",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915869.pdf",
+      "datasheetBytes": 696244,
+      "datasheetDownloadedAt": "2026-11-12T10:12:55Z"
     },
     {
       "sku": "74915882",
@@ -4766,7 +5141,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 15.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915882.pdf",
+      "datasheetBytes": 11311816,
+      "datasheetDownloadedAt": "2026-11-12T10:12:59Z"
     },
     {
       "sku": "75033094",
@@ -4784,7 +5162,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75033094.pdf",
+      "datasheetBytes": 1765124,
+      "datasheetDownloadedAt": "2026-11-12T10:13:00Z"
     },
     {
       "sku": "75033102",
@@ -4802,7 +5183,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75033102.pdf",
+      "datasheetBytes": 2453643,
+      "datasheetDownloadedAt": "2026-11-12T10:13:02Z"
     },
     {
       "sku": "75147122",
@@ -4820,7 +5204,10 @@
       "type": "string",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75147122.pdf",
+      "datasheetBytes": 826702,
+      "datasheetDownloadedAt": "2026-11-12T10:13:02Z"
     },
     {
       "sku": "75340536",
@@ -4874,7 +5261,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 25.0,
-      "nMppt": 1
+      "nMppt": 1,
+      "datasheetLocal": "data/rexel_catalog/pdfs/71586553.pdf",
+      "datasheetBytes": 394116,
+      "datasheetDownloadedAt": "2026-11-12T10:13:03Z"
     },
     {
       "sku": "71747806",
@@ -4892,7 +5282,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 6.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/71747806.pdf",
+      "datasheetBytes": 590283,
+      "datasheetDownloadedAt": "2026-11-12T10:13:03Z"
     },
     {
       "sku": "71860592",
@@ -4910,7 +5303,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 10.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/71860592.pdf",
+      "datasheetBytes": 594144,
+      "datasheetDownloadedAt": "2026-11-12T10:13:04Z"
     },
     {
       "sku": "71860596",
@@ -4928,7 +5324,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 8.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/71860596.pdf",
+      "datasheetBytes": 594144,
+      "datasheetDownloadedAt": "2026-11-12T10:13:04Z"
     },
     {
       "sku": "73304175",
@@ -4946,7 +5345,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 12.0,
-      "nMppt": 3
+      "nMppt": 3,
+      "datasheetLocal": "data/rexel_catalog/pdfs/73304175.pdf",
+      "datasheetBytes": 1532572,
+      "datasheetDownloadedAt": "2026-11-12T10:13:05Z"
     },
     {
       "sku": "73975683",
@@ -4964,7 +5366,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 3.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/73975683.pdf",
+      "datasheetBytes": 776883,
+      "datasheetDownloadedAt": "2026-11-12T10:13:06Z"
     },
     {
       "sku": "74258614",
@@ -4982,7 +5387,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 4.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74258614.pdf",
+      "datasheetBytes": 2178085,
+      "datasheetDownloadedAt": "2026-11-12T10:13:07Z"
     },
     {
       "sku": "74588989",
@@ -5054,7 +5462,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 0.125,
-      "nMppt": 10
+      "nMppt": 10,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74708132.pdf",
+      "datasheetBytes": 2159332,
+      "datasheetDownloadedAt": "2026-11-12T10:13:09Z"
     },
     {
       "sku": "74708136",
@@ -5072,7 +5483,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 12.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74708136.pdf",
+      "datasheetBytes": 2319355,
+      "datasheetDownloadedAt": "2026-11-12T10:13:10Z"
     },
     {
       "sku": "74884158",
@@ -5162,7 +5576,10 @@
       "type": "string",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74884250.pdf",
+      "datasheetBytes": 856902,
+      "datasheetDownloadedAt": "2026-11-12T10:13:11Z"
     },
     {
       "sku": "74884251",
@@ -5180,7 +5597,10 @@
       "type": "string",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74884251.pdf",
+      "datasheetBytes": 180573,
+      "datasheetDownloadedAt": "2026-11-12T10:13:11Z"
     },
     {
       "sku": "75033096",
@@ -5198,7 +5618,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75033096.pdf",
+      "datasheetBytes": 2453643,
+      "datasheetDownloadedAt": "2026-11-12T10:13:12Z"
     },
     {
       "sku": "75033097",
@@ -5216,7 +5639,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75033097.pdf",
+      "datasheetBytes": 1765124,
+      "datasheetDownloadedAt": "2026-11-12T10:13:13Z"
     },
     {
       "sku": "75033099",
@@ -5234,7 +5660,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75033099.pdf",
+      "datasheetBytes": 2453643,
+      "datasheetDownloadedAt": "2026-11-12T10:13:15Z"
     },
     {
       "sku": "75033100",
@@ -5252,7 +5681,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75033100.pdf",
+      "datasheetBytes": 1765124,
+      "datasheetDownloadedAt": "2026-11-12T10:13:16Z"
     },
     {
       "sku": "75033103",
@@ -5270,7 +5702,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75033103.pdf",
+      "datasheetBytes": 2453643,
+      "datasheetDownloadedAt": "2026-11-12T10:13:17Z"
     },
     {
       "sku": "75123532",
@@ -5306,7 +5741,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 15.0,
-      "nMppt": 3
+      "nMppt": 3,
+      "datasheetLocal": "data/rexel_catalog/pdfs/73304176.pdf",
+      "datasheetBytes": 1532572,
+      "datasheetDownloadedAt": "2026-11-12T10:13:18Z"
     },
     {
       "sku": "73304177",
@@ -5324,7 +5762,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 20.0,
-      "nMppt": 3
+      "nMppt": 3,
+      "datasheetLocal": "data/rexel_catalog/pdfs/73304177.pdf",
+      "datasheetBytes": 1532572,
+      "datasheetDownloadedAt": "2026-11-12T10:13:19Z"
     },
     {
       "sku": "73304178",
@@ -5342,7 +5783,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 25.0,
-      "nMppt": 3
+      "nMppt": 3,
+      "datasheetLocal": "data/rexel_catalog/pdfs/73304178.pdf",
+      "datasheetBytes": 1532572,
+      "datasheetDownloadedAt": "2026-11-12T10:13:20Z"
     },
     {
       "sku": "73502425",
@@ -5360,7 +5804,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 10.0,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/73502425.pdf",
+      "datasheetBytes": 3858222,
+      "datasheetDownloadedAt": "2026-11-12T10:13:22Z"
     },
     {
       "sku": "73502427",
@@ -5378,7 +5825,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 6.0,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/73502427.pdf",
+      "datasheetBytes": 3858222,
+      "datasheetDownloadedAt": "2026-11-12T10:13:24Z"
     },
     {
       "sku": "73502428",
@@ -5396,7 +5846,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 8.0,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/73502428.pdf",
+      "datasheetBytes": 3858222,
+      "datasheetDownloadedAt": "2026-11-12T10:13:26Z"
     },
     {
       "sku": "73975685",
@@ -5414,7 +5867,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 5.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/73975685.pdf",
+      "datasheetBytes": 776883,
+      "datasheetDownloadedAt": "2026-11-12T10:13:26Z"
     },
     {
       "sku": "73975686",
@@ -5432,7 +5888,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 4.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/73975686.pdf",
+      "datasheetBytes": 776883,
+      "datasheetDownloadedAt": "2026-11-12T10:13:27Z"
     },
     {
       "sku": "74456971",
@@ -5450,7 +5909,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 5.0,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74456971.pdf",
+      "datasheetBytes": 1886888,
+      "datasheetDownloadedAt": "2026-11-12T10:13:28Z"
     },
     {
       "sku": "74915863",
@@ -5468,7 +5930,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 0.15,
-      "nMppt": 6
+      "nMppt": 6,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915863.pdf",
+      "datasheetBytes": 273024,
+      "datasheetDownloadedAt": "2026-11-12T10:13:28Z"
     },
     {
       "sku": "74915864",
@@ -5486,7 +5951,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 10.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915864.pdf",
+      "datasheetBytes": 202493,
+      "datasheetDownloadedAt": "2026-11-12T10:13:29Z"
     },
     {
       "sku": "74915865",
@@ -5504,7 +5972,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 15.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915865.pdf",
+      "datasheetBytes": 202493,
+      "datasheetDownloadedAt": "2026-11-12T10:13:29Z"
     },
     {
       "sku": "74915866",
@@ -5522,7 +5993,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 6.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915866.pdf",
+      "datasheetBytes": 202493,
+      "datasheetDownloadedAt": "2026-11-12T10:13:30Z"
     },
     {
       "sku": "74915867",
@@ -5540,7 +6014,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 8.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915867.pdf",
+      "datasheetBytes": 202493,
+      "datasheetDownloadedAt": "2026-11-12T10:13:30Z"
     },
     {
       "sku": "74915880",
@@ -5558,7 +6035,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 10.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915880.pdf",
+      "datasheetBytes": 11311816,
+      "datasheetDownloadedAt": "2026-11-12T10:13:35Z"
     },
     {
       "sku": "74915889",
@@ -5576,7 +6056,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 15.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915889.pdf",
+      "datasheetBytes": 74495836,
+      "datasheetDownloadedAt": "2026-11-12T10:14:05Z"
     },
     {
       "sku": "74915891",
@@ -5594,7 +6077,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 8.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915891.pdf",
+      "datasheetBytes": 74495836,
+      "datasheetDownloadedAt": "2026-11-12T10:14:37Z"
     },
     {
       "sku": "74915892",
@@ -5612,7 +6098,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 20.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74915892.pdf",
+      "datasheetBytes": 32030035,
+      "datasheetDownloadedAt": "2026-11-12T10:14:50Z"
     },
     {
       "sku": "75033093",
@@ -5630,7 +6119,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75033093.pdf",
+      "datasheetBytes": 1765124,
+      "datasheetDownloadedAt": "2026-11-12T10:14:52Z"
     },
     {
       "sku": "75033095",
@@ -5648,7 +6140,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75033095.pdf",
+      "datasheetBytes": 1765124,
+      "datasheetDownloadedAt": "2026-11-12T10:14:53Z"
     },
     {
       "sku": "75033101",
@@ -5666,7 +6161,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75033101.pdf",
+      "datasheetBytes": 1765124,
+      "datasheetDownloadedAt": "2026-11-12T10:14:54Z"
     },
     {
       "sku": "75274834",
@@ -5684,7 +6182,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 25.0,
-      "nMppt": 3
+      "nMppt": 3,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75274834.pdf",
+      "datasheetBytes": 32030035,
+      "datasheetDownloadedAt": "2026-11-12T10:15:08Z"
     },
     {
       "sku": "75274835",
@@ -5702,7 +6203,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 25.0,
-      "nMppt": 3
+      "nMppt": 3,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75274835.pdf",
+      "datasheetBytes": 2107573,
+      "datasheetDownloadedAt": "2026-11-12T10:15:09Z"
     },
     {
       "sku": "75467725",
@@ -5738,7 +6242,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 5.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/71747795.pdf",
+      "datasheetBytes": 590283,
+      "datasheetDownloadedAt": "2026-11-12T10:15:09Z"
     },
     {
       "sku": "71747797",
@@ -5756,7 +6263,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 4.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/71747797.pdf",
+      "datasheetBytes": 590283,
+      "datasheetDownloadedAt": "2026-11-12T10:15:10Z"
     },
     {
       "sku": "71747802",
@@ -5774,7 +6284,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 3.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/71747802.pdf",
+      "datasheetBytes": 590283,
+      "datasheetDownloadedAt": "2026-11-12T10:15:10Z"
     },
     {
       "sku": "73502426",
@@ -5792,7 +6305,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 5.0,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/73502426.pdf",
+      "datasheetBytes": 3858222,
+      "datasheetDownloadedAt": "2026-11-12T10:15:12Z"
     },
     {
       "sku": "74292343",
@@ -5810,7 +6326,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 40.0,
-      "nMppt": 4
+      "nMppt": 4,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292343.pdf",
+      "datasheetBytes": 267106,
+      "datasheetDownloadedAt": "2026-11-12T10:15:13Z"
     },
     {
       "sku": "74292352",
@@ -5828,7 +6347,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 100.0,
-      "nMppt": 8
+      "nMppt": 8,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292352.pdf",
+      "datasheetBytes": 209022,
+      "datasheetDownloadedAt": "2026-11-12T10:15:13Z"
     },
     {
       "sku": "74292353",
@@ -5846,7 +6368,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 60.0,
-      "nMppt": 6
+      "nMppt": 6,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292353.pdf",
+      "datasheetBytes": 294686,
+      "datasheetDownloadedAt": "2026-11-12T10:15:14Z"
     },
     {
       "sku": "74292354",
@@ -5864,7 +6389,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 30.0,
-      "nMppt": 3
+      "nMppt": 3,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292354.pdf",
+      "datasheetBytes": 264962,
+      "datasheetDownloadedAt": "2026-11-12T10:15:14Z"
     },
     {
       "sku": "74292363",
@@ -5882,7 +6410,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 4.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292363.pdf",
+      "datasheetBytes": 207495,
+      "datasheetDownloadedAt": "2026-11-12T10:15:15Z"
     },
     {
       "sku": "74292365",
@@ -5900,7 +6431,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 15.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292365.pdf",
+      "datasheetBytes": 223965,
+      "datasheetDownloadedAt": "2026-11-12T10:15:15Z"
     },
     {
       "sku": "74292373",
@@ -5918,7 +6452,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 17.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292373.pdf",
+      "datasheetBytes": 223970,
+      "datasheetDownloadedAt": "2026-11-12T10:15:16Z"
     },
     {
       "sku": "74292375",
@@ -5936,7 +6473,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 6.0,
-      "nMppt": 3
+      "nMppt": 3,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292375.pdf",
+      "datasheetBytes": 285639,
+      "datasheetDownloadedAt": "2026-11-12T10:15:16Z"
     },
     {
       "sku": "74292376",
@@ -5954,7 +6494,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 8.0,
-      "nMppt": 4
+      "nMppt": 4,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292376.pdf",
+      "datasheetBytes": 295718,
+      "datasheetDownloadedAt": "2026-11-12T10:15:16Z"
     },
     {
       "sku": "74292379",
@@ -5972,7 +6515,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 10.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292379.pdf",
+      "datasheetBytes": 207524,
+      "datasheetDownloadedAt": "2026-11-12T10:15:17Z"
     },
     {
       "sku": "74292382",
@@ -5990,7 +6536,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 33.0,
-      "nMppt": 3
+      "nMppt": 3,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292382.pdf",
+      "datasheetBytes": 264936,
+      "datasheetDownloadedAt": "2026-11-12T10:15:17Z"
     },
     {
       "sku": "74292386",
@@ -6008,7 +6557,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 0.11,
-      "nMppt": 8
+      "nMppt": 8,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292386.pdf",
+      "datasheetBytes": 209023,
+      "datasheetDownloadedAt": "2026-11-12T10:15:18Z"
     },
     {
       "sku": "74292387",
@@ -6026,7 +6578,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 20.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292387.pdf",
+      "datasheetBytes": 223914,
+      "datasheetDownloadedAt": "2026-11-12T10:15:18Z"
     },
     {
       "sku": "74292396",
@@ -6044,7 +6599,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 5.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292396.pdf",
+      "datasheetBytes": 207509,
+      "datasheetDownloadedAt": "2026-11-12T10:15:19Z"
     },
     {
       "sku": "74292403",
@@ -6062,7 +6620,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 12.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292403.pdf",
+      "datasheetBytes": 223942,
+      "datasheetDownloadedAt": "2026-11-12T10:15:19Z"
     },
     {
       "sku": "74292406",
@@ -6080,7 +6641,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 5.0,
-      "nMppt": 3
+      "nMppt": 3,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292406.pdf",
+      "datasheetBytes": 285610,
+      "datasheetDownloadedAt": "2026-11-12T10:15:20Z"
     },
     {
       "sku": "74292408",
@@ -6098,7 +6662,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 6.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292408.pdf",
+      "datasheetBytes": 207505,
+      "datasheetDownloadedAt": "2026-11-12T10:15:20Z"
     },
     {
       "sku": "74292410",
@@ -6116,7 +6683,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 10.0,
-      "nMppt": 4
+      "nMppt": 4,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292410.pdf",
+      "datasheetBytes": 286078,
+      "datasheetDownloadedAt": "2026-11-12T10:15:21Z"
     },
     {
       "sku": "74292411",
@@ -6134,7 +6704,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 50.0,
-      "nMppt": 5
+      "nMppt": 5,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292411.pdf",
+      "datasheetBytes": 293654,
+      "datasheetDownloadedAt": "2026-11-12T10:15:22Z"
     },
     {
       "sku": "74292416",
@@ -6152,7 +6725,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 8.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74292416.pdf",
+      "datasheetBytes": 207511,
+      "datasheetDownloadedAt": "2026-11-12T10:15:22Z"
     },
     {
       "sku": "74106256",
@@ -6170,7 +6746,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 0.215,
-      "nMppt": 9
+      "nMppt": 9,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74106256.pdf",
+      "datasheetBytes": 6010161,
+      "datasheetDownloadedAt": "2026-11-12T10:15:25Z"
     },
     {
       "sku": "74106257",
@@ -6224,7 +6803,10 @@
       "type": "string",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74884152.pdf",
+      "datasheetBytes": 180573,
+      "datasheetDownloadedAt": "2026-11-12T10:15:25Z"
     },
     {
       "sku": "74884181",
@@ -6242,7 +6824,10 @@
       "type": "string",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74884181.pdf",
+      "datasheetBytes": 856902,
+      "datasheetDownloadedAt": "2026-11-12T10:15:26Z"
     },
     {
       "sku": "74884183",
@@ -6296,7 +6881,10 @@
       "type": "string",
       "phase": 3,
       "pnom": 33.3,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74884216.pdf",
+      "datasheetBytes": 827467,
+      "datasheetDownloadedAt": "2026-11-12T10:15:27Z"
     },
     {
       "sku": "74884248",
@@ -6314,7 +6902,10 @@
       "type": "string",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74884248.pdf",
+      "datasheetBytes": 180573,
+      "datasheetDownloadedAt": "2026-11-12T10:15:27Z"
     },
     {
       "sku": "74884254",
@@ -6332,7 +6923,10 @@
       "type": "string",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74884254.pdf",
+      "datasheetBytes": 856902,
+      "datasheetDownloadedAt": "2026-11-12T10:15:28Z"
     },
     {
       "sku": "75069871",
@@ -6350,7 +6944,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 12.0,
-      "nMppt": 4
+      "nMppt": 4,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75069871.pdf",
+      "datasheetBytes": 320300,
+      "datasheetDownloadedAt": "2026-11-12T10:15:28Z"
     },
     {
       "sku": "75069872",
@@ -6368,7 +6965,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 15.0,
-      "nMppt": 4
+      "nMppt": 4,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75069872.pdf",
+      "datasheetBytes": 311757,
+      "datasheetDownloadedAt": "2026-11-12T10:15:29Z"
     },
     {
       "sku": "75069873",
@@ -6386,7 +6986,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 20.0,
-      "nMppt": 4
+      "nMppt": 4,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75069873.pdf",
+      "datasheetBytes": 320783,
+      "datasheetDownloadedAt": "2026-11-12T10:15:29Z"
     },
     {
       "sku": "75123116",
@@ -6404,7 +7007,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 3.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75123116.pdf",
+      "datasheetBytes": 2178085,
+      "datasheetDownloadedAt": "2026-11-12T10:15:30Z"
     },
     {
       "sku": "75123117",
@@ -6422,7 +7028,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 3.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75123117.pdf",
+      "datasheetBytes": 2178085,
+      "datasheetDownloadedAt": "2026-11-12T10:15:32Z"
     },
     {
       "sku": "75123118",
@@ -6440,7 +7049,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 4.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75123118.pdf",
+      "datasheetBytes": 2178085,
+      "datasheetDownloadedAt": "2026-11-12T10:15:33Z"
     },
     {
       "sku": "75123119",
@@ -6458,7 +7070,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 4.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75123119.pdf",
+      "datasheetBytes": 2178085,
+      "datasheetDownloadedAt": "2026-11-12T10:15:34Z"
     },
     {
       "sku": "75123120",
@@ -6476,7 +7091,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 5.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75123120.pdf",
+      "datasheetBytes": 2178085,
+      "datasheetDownloadedAt": "2026-11-12T10:15:35Z"
     },
     {
       "sku": "75123121",
@@ -6494,7 +7112,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 5.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75123121.pdf",
+      "datasheetBytes": 2178085,
+      "datasheetDownloadedAt": "2026-11-12T10:15:36Z"
     },
     {
       "sku": "75143418",
@@ -6512,7 +7133,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 10.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75143418.pdf",
+      "datasheetBytes": 2178085,
+      "datasheetDownloadedAt": "2026-11-12T10:15:38Z"
     },
     {
       "sku": "75143419",
@@ -6530,7 +7154,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 6.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75143419.pdf",
+      "datasheetBytes": 2178085,
+      "datasheetDownloadedAt": "2026-11-12T10:15:39Z"
     },
     {
       "sku": "75143420",
@@ -6548,7 +7175,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 10.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75143420.pdf",
+      "datasheetBytes": 2178085,
+      "datasheetDownloadedAt": "2026-11-12T10:15:40Z"
     },
     {
       "sku": "75143421",
@@ -6566,7 +7196,10 @@
       "type": "hybrid",
       "phase": 3,
       "pnom": 8.0,
-      "nMppt": 2
+      "nMppt": 2,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75143421.pdf",
+      "datasheetBytes": 2178085,
+      "datasheetDownloadedAt": "2026-11-12T10:15:41Z"
     },
     {
       "sku": "75147125",
@@ -6584,7 +7217,10 @@
       "type": "string",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/75147125.pdf",
+      "datasheetBytes": 826702,
+      "datasheetDownloadedAt": "2026-11-12T10:15:42Z"
     },
     {
       "sku": "74884146",
@@ -6602,7 +7238,10 @@
       "type": "string",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74884146.pdf",
+      "datasheetBytes": 180573,
+      "datasheetDownloadedAt": "2026-11-12T10:15:42Z"
     },
     {
       "sku": "74884148",
@@ -6620,7 +7259,10 @@
       "type": "string",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74884148.pdf",
+      "datasheetBytes": 247061,
+      "datasheetDownloadedAt": "2026-11-12T10:15:43Z"
     },
     {
       "sku": "74884162",
@@ -6638,7 +7280,10 @@
       "type": "string",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74884162.pdf",
+      "datasheetBytes": 180573,
+      "datasheetDownloadedAt": "2026-11-12T10:15:43Z"
     },
     {
       "sku": "74884226",
@@ -6674,7 +7319,10 @@
       "type": "string",
       "phase": 3,
       "pnom": null,
-      "nMppt": null
+      "nMppt": null,
+      "datasheetLocal": "data/rexel_catalog/pdfs/74884234.pdf",
+      "datasheetBytes": 180573,
+      "datasheetDownloadedAt": "2026-11-12T10:15:43Z"
     },
     {
       "sku": "74884237",
@@ -6825,5 +7473,6 @@
     "panels": 92,
     "inverters": 271,
     "errors": 0
-  }
+  },
+  "datasheetsUpdatedAt": "2026-11-12T10:15:44Z"
 }

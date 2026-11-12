@@ -36,6 +36,7 @@ private slots:
     void offgrid_engine_best();
     void enedis_parse_monthly();
     void inverter_stringing_options();
+    void inverter_compatibility_warns();
     void pipeline_quote_and_stale();
     void sizing_shade_reduces_energy();
     void sizing_hybrid_flag();
@@ -288,6 +289,50 @@ void TstCore::inverter_stringing_options()
          {QStringLiteral("mpptCount"), 2}});
     QVERIFY(r.value(QStringLiteral("maxSeries")).toInt() >= 8);
     QVERIFY(!r.value(QStringLiteral("options")).toList().isEmpty());
+}
+
+void TstCore::inverter_compatibility_warns()
+{
+    ose::InverterSizing inv;
+    const QVariantMap panel{
+        {QStringLiteral("voc"), 49.5},
+        {QStringLiteral("vmp"), 41.0},
+        {QStringLiteral("isc"), 10.5},
+        {QStringLiteral("imp"), 9.8},
+        {QStringLiteral("pmax"), 450}};
+    QVariantMap inverter{
+        {QStringLiteral("maxInputV"), 600},
+        {QStringLiteral("mpptMinV"), 120},
+        {QStringLiteral("mpptMaxV"), 550},
+        {QStringLiteral("maxInputI"), 20},
+        {QStringLiteral("pac"), 6},
+        {QStringLiteral("mpptCount"), 2},
+        {QStringLiteral("type"), QStringLiteral("hybrid")}};
+    const QVariantMap battery{
+        {QStringLiteral("name"), QStringLiteral("Test LFP")},
+        {QStringLiteral("energy_kwh"), 10},
+        {QStringLiteral("voltage_min_v"), 40},
+        {QStringLiteral("voltage_max_v"), 58},
+        {QStringLiteral("voltage_nominal_v"), 51.2},
+        {QStringLiteral("chemistry"), QStringLiteral("LFP")}};
+
+    const QVariantMap ok = inv.checkCompatibility(panel, inverter, battery, 12, 10);
+    QVERIFY(ok.value(QStringLiteral("errors")).toList().isEmpty());
+    QVERIFY(ok.value(QStringLiteral("stringing")).toMap().value(QStringLiteral("options")).toList().size() > 0);
+
+    QVariantMap hvInverter = inverter;
+    hvInverter.insert(QStringLiteral("batteryMinV"), 40);
+    hvInverter.insert(QStringLiteral("batteryMaxV"), 60);
+    QVariantMap badBattery = battery;
+    badBattery.insert(QStringLiteral("voltage_min_v"), 30);
+    badBattery.insert(QStringLiteral("voltage_max_v"), 80);
+    const QVariantMap bad = inv.checkCompatibility(panel, hvInverter, badBattery, 12, 10);
+    QVERIFY(!bad.value(QStringLiteral("errors")).toList().isEmpty());
+
+    QVariantMap stringInverter = inverter;
+    stringInverter.insert(QStringLiteral("type"), QStringLiteral("string"));
+    const QVariantMap warn = inv.checkCompatibility(panel, stringInverter, battery, 12, 10);
+    QVERIFY(!warn.value(QStringLiteral("warnings")).toList().isEmpty());
 }
 
 void TstCore::pipeline_quote_and_stale()
