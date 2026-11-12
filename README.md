@@ -119,6 +119,11 @@ L’APK est signé avec la clé de publication du projet — les versions suivan
 - Simulation batterie avec SoC, taux d’autoconsommation, couverture
 - Graphiques : production PV vs consommation, SoC batterie, tableau horaire
 
+### Catalogue batteries EVShop
+- **80 références** embarquées : modules 24/48 V, modules HT, packs 350–800 V
+- Recherche par marque, tension, configuration, usage ; fiche détaillée avec chargeur, onduleur, BMS et protections
+- Données et guide complet : [`docs/CATALOGUE-BATTERIES-EVSHOP.md`](docs/CATALOGUE-BATTERIES-EVSHOP.md)
+
 ### Recommandation onduleurs
 - Catalogue simplifié de 13 modèles (Fronius, SMA, Huawei, Solis, Growatt, GoodWe, Victron, Enphase, APsystems)
 - Types : string monophasé/triphasé, hybride (avec batterie), micro-onduleurs
@@ -221,10 +226,11 @@ open_solar_energy/
 │   ├── net/           WeatherClient (Open-Meteo), NewsClient
 │   └── qml/           Hub, barre projet, onglets, dialogs
 ├── packaging/         Icônes
-├── data/              Données embarquées
+├── data/              Données embarquées + catalogues EVShop / Rexel
 ├── docs/              Landing Pages + legacy-web/
+│   └── CATALOGUE-BATTERIES-EVSHOP.md   Catalogue 80 batteries EVShop + choix chargeur/onduleur
 ├── android/           Manifest + Platform.java
-├── scripts/           build-android, build-appimage, validate-app
+├── scripts/           build, validate, scrapers catalogues EVShop / Rexel
 ├── tests/core/        Qt Test (math / câbles / finance)
 └── .github/workflows/ CI + Release (APK + AppImage)
 ```
@@ -239,6 +245,32 @@ open_solar_energy/
 | Production mensuelle | `E = H_tilt × Ppeak × PR_système × PR_température` |
 | PR température | `1 + γ × max(0, Tc-25)` avec γ = −0,45 %/°C (Si cristallin) |
 | ROI | `Coût / (Économies_annuelles + Revenus_injection)` |
+
+---
+
+## Mise à jour des catalogues
+
+Les deux catalogues embarqués peuvent être rafraîchis par scraping, sans écraser les données curatées :
+
+```bash
+# Les deux catalogues
+python3 scripts/update_all_catalogs.py --dry-run
+python3 scripts/update_all_catalogs.py
+
+# Batteries EVShop seulement
+python3 scripts/update_evshop_battery_catalog.py --dry-run
+
+# Matériel Rexel seulement (panneaux + onduleurs)
+python3 scripts/update_rexel_catalog.py --dry-run
+
+# Test rapide Rexel sur 2 panneaux
+python3 scripts/update_rexel_catalog.py --dry-run --limit 2 --only panels
+```
+
+- **EVShop** : met à jour prix, prix barré, stock, nom et URL ; ajoute les nouvelles références dans `À qualifier` ; marque les disparues `active: false` ; régénère `docs/CATALOGUE-BATTERIES-EVSHOP.md` et `data/evshop_batteries/catalog.csv`.
+- **Rexel** : fusionne par SKU dans `data/rexel_catalog/catalog.json`, préserve `notes`, `datasheetLocal`, `seeded` et les champs locaux, ajoute les nouveaux produits et marque les disparus `active: false`.
+- Un scan partiel (`--limit` / `--only`) ne désactive jamais le reste du catalogue.
+- Les fonctions réutilisables sont dans `scripts/update_evshop_battery_catalog.py` (`scrape_evshop_batteries`, `update_evshop_catalog`), `scripts/update_rexel_catalog.py` (`scrape_rexel_catalog`, `update_rexel_catalog`) et `scripts/update_all_catalogs.py` (`update_all`).
 
 ---
 

@@ -28,8 +28,8 @@ QT_HOST="${QT_HOST:-$QT_ROOT/$QT_VER/gcc_64}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${OUT:-$ROOT/opensolarenergy-arm64.apk}"
 
-VERSION_NAME="${VERSION_NAME:-2.0.94}"
-VERSION_CODE="${VERSION_CODE:-20094}"
+VERSION_NAME="${VERSION_NAME:-2.0.107}"
+VERSION_CODE="${VERSION_CODE:-20107}"
 
 # Dépendances Android (OpenSSL KDAB + secp256k1)
 if [ ! -f "$ROOT/third_party/android_openssl/android_openssl.cmake" ]; then

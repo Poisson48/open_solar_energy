@@ -9,6 +9,13 @@ Usage:
   python3 scripts/scrape_rexel_catalog.py --limit 5   # smoke test
 
 Respecte un délai entre requêtes. Données publiques SSR / API anonyme Rexel.
+
+Pour une mise à jour NON destructive du catalogue existant (fusion par SKU,
+préservation des notes/PDF locaux, `active = false` pour les disparus), utiliser
+plutôt :
+
+    python3 scripts/update_rexel_catalog.py --dry-run
+    python3 scripts/update_rexel_catalog.py
 """
 
 from __future__ import annotations
@@ -339,6 +346,7 @@ def fetch_product(sku: str, meta: dict, download_pdfs: bool) -> dict | None:
         "datasheetPurpose": (datasheet or {}).get("purpose"),
         "source": "rexel",
         "categoryCode": meta.get("code"),
+        "active": True,
     }
 
     if meta["kind"] == "panel":

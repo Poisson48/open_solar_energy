@@ -1,7 +1,7 @@
 set(OSE_WARN_FLAGS -Wall -Wextra -Wpedantic -Wno-unused-parameter)
 
-set(OSE_VERSION_NAME "2.0.106" CACHE STRING "Version affichée")
-set(OSE_VERSION_CODE "20106" CACHE STRING "versionCode Android")
+set(OSE_VERSION_NAME "2.0.107" CACHE STRING "Version affichée")
+set(OSE_VERSION_CODE "20107" CACHE STRING "versionCode Android")
 
 # OpenSSL : KDAB prebuilts sur Android, système ailleurs
 if(ANDROID)
@@ -128,6 +128,7 @@ set(OSE_ASSET_FILES
     "${CMAKE_SOURCE_DIR}/packaging/favicon-32.png"
     "${CMAKE_SOURCE_DIR}/data/demo_weather.json"
     "${CMAKE_SOURCE_DIR}/data/rexel_catalog/catalog.json"
+    "${CMAKE_SOURCE_DIR}/data/evshop_batteries/catalog.json"
 )
 qt_add_resources(applib "native_assets"
     PREFIX "/"
@@ -175,6 +176,7 @@ set(OSE_QML_FILES
     qml/HistoryDialog.qml
     qml/PdfPreviewDialog.qml
     qml/MaterielDialog.qml
+    qml/BatteryCatalogDialog.qml
     qml/ShareDialog.qml
     qml/JoinDialog.qml
     qml/SyncDialog.qml

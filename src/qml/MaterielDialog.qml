@@ -229,6 +229,12 @@ Dialog {
                 font.weight: Font.DemiBold
             }
             OseBtn {
+                text: "Batteries (" + Catalog.catalogBatteryCount + ")"
+                kind: "outline"
+                implicitHeight: Theme.controlHeightMd
+                onClicked: batteryDialog.open()
+            }
+            OseBtn {
                 text: "Fermer"
                 kind: "flat"
                 implicitHeight: Theme.controlHeightMd
@@ -704,5 +710,9 @@ Dialog {
                 }
             }
         }
+    }
+
+    BatteryCatalogDialog {
+        id: batteryDialog
     }
 }

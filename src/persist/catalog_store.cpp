@@ -190,6 +190,9 @@ void CatalogStore::loadBundledRexel()
     const QJsonObject root = doc.object();
     for (const QJsonValue& v : root.value(QStringLiteral("panels")).toArray()) {
         const QJsonObject raw = v.toObject();
+        if (raw.value(QStringLiteral("active")).isBool()
+            && !raw.value(QStringLiteral("active")).toBool())
+            continue;
         if (raw.value(QStringLiteral("wp")).toDouble() <= 0)
             continue;
         QJsonObject p = normalizePanel(raw);
@@ -201,6 +204,9 @@ void CatalogStore::loadBundledRexel()
     }
     for (const QJsonValue& v : root.value(QStringLiteral("inverters")).toArray()) {
         const QJsonObject raw = v.toObject();
+        if (raw.value(QStringLiteral("active")).isBool()
+            && !raw.value(QStringLiteral("active")).toBool())
+            continue;
         if (!isRealInverter(raw))
             continue;
         QJsonObject inv = normalizeInverter(raw);
@@ -209,6 +215,28 @@ void CatalogStore::loadBundledRexel()
         if (!inv.contains(QStringLiteral("notes")))
             inv.insert(QStringLiteral("notes"), QStringLiteral("Catalogue Rexel"));
         m_catalogInverters.append(inv);
+    }
+}
+
+void CatalogStore::loadBundledBatteries()
+{
+    m_catalogBatteries = QJsonArray{};
+    QFile f(QStringLiteral(":/data/evshop_batteries/catalog.json"));
+    if (!f.open(QIODevice::ReadOnly))
+        return;
+    const QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
+    if (!doc.isObject())
+        return;
+    const QJsonArray items = doc.object().value(QStringLiteral("items")).toArray();
+    for (const QJsonValue& v : items) {
+        QJsonObject o = v.toObject();
+        if (o.value(QStringLiteral("active")).isBool()
+            && !o.value(QStringLiteral("active")).toBool())
+            continue;
+        if (o.value(QStringLiteral("name")).toString().isEmpty())
+            continue;
+        o.insert(QStringLiteral("source"), QStringLiteral("evshop"));
+        m_catalogBatteries.append(o);
     }
 }
 
@@ -389,11 +417,13 @@ void CatalogStore::load()
     m_userInverters = cleanI;
 
     loadBundledRexel();
+    loadBundledBatteries();
     ensureDemoSeeds();
     writeArray(panelsPath(), m_userPanels);
     writeArray(invertersPath(), m_userInverters);
     emit panelsChanged();
     emit invertersChanged();
+    emit batteriesChanged();
 }
 
 void CatalogStore::seedDefaults()
@@ -401,8 +431,11 @@ void CatalogStore::seedDefaults()
     ensureDemoSeeds();
     if (m_catalogPanels.isEmpty())
         loadBundledRexel();
+    if (m_catalogBatteries.isEmpty())
+        loadBundledBatteries();
     emit panelsChanged();
     emit invertersChanged();
+    emit batteriesChanged();
 }
 
 QVariantList CatalogStore::mergePanels() const
@@ -464,6 +497,27 @@ QVariantList CatalogStore::mergeInverters() const
 QVariantList CatalogStore::panels() const { return mergePanels(); }
 QVariantList CatalogStore::inverters() const { return mergeInverters(); }
 
+QVariantList CatalogStore::batteries() const
+{
+    QVariantList out;
+    out.reserve(m_catalogBatteries.size());
+    for (const QJsonValue& v : m_catalogBatteries)
+        out.append(v.toObject().toVariantMap());
+    std::sort(out.begin(), out.end(), [](const QVariant& a, const QVariant& b) {
+        const QVariantMap ma = a.toMap();
+        const QVariantMap mb = b.toMap();
+        const double pa = ma.value(QStringLiteral("eur_per_kwh")).toDouble();
+        const double pb = mb.value(QStringLiteral("eur_per_kwh")).toDouble();
+        const double sa = pa > 0.0 ? pa : 1e9;
+        const double sb = pb > 0.0 ? pb : 1e9;
+        if (sa != sb)
+            return sa < sb;
+        return ma.value(QStringLiteral("name")).toString()
+            < mb.value(QStringLiteral("name")).toString();
+    });
+    return out;
+}
+
 bool CatalogStore::matchTokens(const QString& hay, const QString& query)
 {
     if (query.trimmed().isEmpty())
@@ -518,6 +572,35 @@ QVariantList CatalogStore::searchInverters(const QString& query) const
                                      i.value(QStringLiteral("id")).toString());
         if (matchTokens(hay, query))
             out.append(i);
+    }
+    return out;
+}
+
+QVariantList CatalogStore::searchBatteries(const QString& query) const
+{
+    QVariantList out;
+    for (const QVariant& v : batteries()) {
+        const QVariantMap b = v.toMap();
+        QStringList notes;
+        for (const QVariant& n : b.value(QStringLiteral("notes")).toList())
+            notes << n.toString();
+        const QString hay = QStringList{
+            b.value(QStringLiteral("name")).toString(),
+            b.value(QStringLiteral("brand")).toString(),
+            b.value(QStringLiteral("model")).toString(),
+            b.value(QStringLiteral("family")).toString(),
+            b.value(QStringLiteral("form")).toString(),
+            b.value(QStringLiteral("chemistry")).toString(),
+            b.value(QStringLiteral("configuration")).toString(),
+            b.value(QStringLiteral("architecture")).toString(),
+            b.value(QStringLiteral("verdict")).toString(),
+            b.value(QStringLiteral("charger")).toString(),
+            b.value(QStringLiteral("inverter")).toString(),
+            b.value(QStringLiteral("battery_emulator")).toString(),
+            notes.join(QLatin1Char(' ')),
+        }.join(QLatin1Char(' '));
+        if (matchTokens(hay, query))
+            out.append(b);
     }
     return out;
 }
@@ -636,6 +719,18 @@ QVariantMap CatalogStore::getInverter(const QString& id) const
             return o.toVariantMap();
     }
     for (const QJsonValue& v : m_catalogInverters) {
+        const QJsonObject o = v.toObject();
+        if (o.value(QStringLiteral("id")).toString() == id)
+            return o.toVariantMap();
+    }
+    return {};
+}
+
+QVariantMap CatalogStore::getBattery(const QString& id) const
+{
+    if (id.isEmpty())
+        return {};
+    for (const QJsonValue& v : m_catalogBatteries) {
         const QJsonObject o = v.toObject();
         if (o.value(QStringLiteral("id")).toString() == id)
             return o.toVariantMap();
