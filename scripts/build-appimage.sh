@@ -21,6 +21,18 @@ mkdir -p "$APPDIR/usr/bin" \
 
 cp "$BIN" "$APPDIR/usr/bin/opensolarenergy"
 
+# Modules Qt optionnels chargés dynamiquement (caméra, PDF, spatial audio).
+# linuxdeploy-plugin-qt ne les détecte pas toujours : on les copie avant le scan.
+mkdir -p "$APPDIR/usr/lib" "$APPDIR/usr/qml/QtQuick"
+for lib in Qt6Multimedia Qt6MultimediaQuick Qt6Pdf Qt6PdfQuick Qt6SpatialAudio Qt6Quick3DSpatialAudio; do
+  for f in "$QT_ROOT/lib/lib${lib}.so.6"*; do
+    [ -e "$f" ] && cp -a "$f" "$APPDIR/usr/lib/"
+  done
+done
+if [ -d "$QT_ROOT/qml/QtQuick/Pdf" ]; then
+  cp -a "$QT_ROOT/qml/QtQuick/Pdf" "$APPDIR/usr/qml/QtQuick/"
+fi
+
 if [ -f "$ROOT/packaging/open-solar-energy.png" ]; then
   cp "$ROOT/packaging/open-solar-energy.png" \
      "$APPDIR/usr/share/icons/hicolor/512x512/apps/opensolarenergy.png"
@@ -54,6 +66,7 @@ export APPIMAGE_EXTRACT_AND_RUN=1
 export QML_SOURCES_PATHS="$ROOT/src/qml"
 export QMAKE="$QT_ROOT/bin/qmake"
 export PATH="$QT_ROOT/bin:$TOOLS:$PATH"
+export LD_LIBRARY_PATH="$QT_ROOT/lib:${LD_LIBRARY_PATH:-}"
 
 OUTPUT="OpenSolarEnergy-${VERSION_NAME}-x86_64.AppImage"
 export OUTPUT
@@ -64,6 +77,13 @@ cd "$ROOT/build"
   --plugin qt \
   --desktop-file "$APPDIR/usr/share/applications/opensolarenergy.desktop" \
   --icon-file "$APPDIR/usr/share/icons/hicolor/512x512/apps/opensolarenergy.png"
+
+# Re-pin les bibliothèques Qt sur celles qui ont servi à compiler le binaire.
+# Sans cela, linuxdeploy peut mélanger Qt 6.8 (build) et Qt 6.10 (système),
+# ce qui casse QtQuick3D au démarrage.
+for f in "$QT_ROOT"/lib/libQt6*.so.6*; do
+  [ -e "$f" ] && cp -Lf "$f" "$APPDIR/usr/lib/$(basename "$f")"
+done
 
 fetch appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
 # Runtime type2 : téléchargement manuel (évite les 504 appimagetool → GitHub)
