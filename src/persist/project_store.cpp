@@ -3,12 +3,14 @@
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
+#include <QHash>
 #include <QJsonDocument>
 #include <QRandomGenerator>
 #include <QStandardPaths>
 #include <QTimer>
 
 #include <algorithm>
+#include <cmath>
 
 namespace ose {
 
@@ -138,6 +140,59 @@ bool ProjectStore::load()
         if (err.error == QJsonParseError::NoError && doc.isArray())
             m_projects = doc.array();
     }
+    // Migration : une batterie EVShop sélectionnée impose sa capacité réelle.
+    // Corrige les anciens projets où l'optimiseur hors-réseau avait écrasé
+    // 75 kWh par sa recommandation (ex. 2 kWh) et purge le résultat obsolète.
+    bool repaired = false;
+    QHash<QString, QPair<QString, double>> packs;
+    QFile batteryFile(QStringLiteral(":/data/evshop_batteries/catalog.json"));
+    if (batteryFile.open(QIODevice::ReadOnly)) {
+        const QJsonDocument bdoc = QJsonDocument::fromJson(batteryFile.readAll());
+        const QJsonArray items = bdoc.object().value(QStringLiteral("items")).toArray();
+        for (const QJsonValue& v : items) {
+            const QJsonObject o = v.toObject();
+            const QString id = o.value(QStringLiteral("id")).toString();
+            const double kwh = o.value(QStringLiteral("energy_kwh")).toDouble();
+            if (!id.isEmpty() && kwh > 0)
+                packs.insert(id, {o.value(QStringLiteral("name")).toString(), kwh});
+        }
+    }
+    if (!packs.isEmpty()) {
+        for (int i = 0; i < m_projects.size(); ++i) {
+            QJsonObject project = m_projects.at(i).toObject();
+            QJsonObject form = project.value(QStringLiteral("formState")).toObject();
+            const QString batteryId = form.value(QStringLiteral("batteryId")).toString();
+            if (batteryId.isEmpty() || !packs.contains(batteryId))
+                continue;
+            const auto pack = packs.value(batteryId);
+            const double kwh = pack.second;
+            bool projectChanged = false;
+            if (std::abs(form.value(QStringLiteral("battKwh")).toDouble() - kwh) > 0.1) {
+                form.insert(QStringLiteral("battKwh"), kwh);
+                projectChanged = true;
+            }
+            if (form.value(QStringLiteral("batteryModel")).toString().isEmpty()) {
+                form.insert(QStringLiteral("batteryModel"), pack.first);
+                projectChanged = true;
+            }
+            if (projectChanged)
+                project.insert(QStringLiteral("formState"), form);
+            const QJsonObject og = project.value(QStringLiteral("offgridResult")).toObject();
+            const QJsonObject best = og.value(QStringLiteral("best")).toObject();
+            const double bestKwh = best.value(QStringLiteral("battKwh")).toDouble();
+            if (bestKwh > 0 && std::abs(bestKwh - kwh) > 0.1) {
+                project.insert(QStringLiteral("offgridResult"), QJsonObject());
+                projectChanged = true;
+            }
+            if (projectChanged) {
+                m_projects.replace(i, project);
+                repaired = true;
+            }
+        }
+    }
+    if (repaired)
+        flushToDisk();
+
     sortByUpdated();
     endResetModel();
     emit countChanged();

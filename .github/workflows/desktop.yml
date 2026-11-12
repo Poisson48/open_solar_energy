@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       version_name:
-        description: "Version AppImage (ex. 2.0.112)"
+        description: "Version AppImage (ex. 2.0.113)"
         type: string
-        default: "2.0.112"
+        default: "2.0.113"
 
 env:
   QT_VER: 6.8.2

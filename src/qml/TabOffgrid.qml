@@ -93,11 +93,19 @@ OseTabPage {
         }
         const chosen = Catalog.getBattery(form.batteryId) || {}
         const bestKwh = Number((lastResult.best || {}).battKwh) || 0
-        if (chosen.energy_kwh && bestKwh > 0 && Math.abs(Number(chosen.energy_kwh) - bestKwh) > 0.1) {
-            // Ancien résultat calculé avec une autre capacité : on l'invalide.
+        const chosenKwh = Number(chosen.energy_kwh) || 0
+        const capacityMismatch = chosenKwh > 0 && Math.abs(chosenKwh - (Number(form.battKwh) || 0)) > 0.1
+        const resultMismatch = chosenKwh > 0 && bestKwh > 0 && Math.abs(chosenKwh - bestKwh) > 0.1
+        if (capacityMismatch || resultMismatch) {
+            // Ancien projet/calcul avec une autre capacité : on répare la fiche
+            // et on invalide le résultat obsolète (ex. 2 kWh au lieu de 75 kWh).
+            const repaired = Object.assign({}, form, {
+                battKwh: chosenKwh,
+                batteryModel: chosen.name || form.batteryModel || ""
+            })
             lastResult = {}
             recommendedBest = {}
-            Projects.updateCurrent({ offgridResult: {} })
+            Projects.updateCurrent({ offgridResult: {}, formState: repaired })
         } else {
             recommendedBest = (lastResult && lastResult.best) ? lastResult.best : {}
         }

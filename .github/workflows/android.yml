@@ -24,11 +24,11 @@ on:
       version_name:
         description: "versionName APK"
         type: string
-        default: "2.0.112"
+        default: "2.0.113"
       version_code:
         description: "versionCode APK"
         type: string
-        default: "20112"
+        default: "20113"
 
 env:
   QT_VER: 6.8.2
