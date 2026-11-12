@@ -38,7 +38,10 @@ Dialog {
         const n = item && item.notes ? item.notes : []
         if (!n || n.length === 0)
             return "—"
-        return "• " + n.join("\n• ")
+        const parts = []
+        for (let i = 0; i < n.length; ++i)
+            parts.push(String(n[i]))
+        return "• " + parts.join("\n• ")
     }
 
     function sections(item) {
