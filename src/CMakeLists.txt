@@ -1,7 +1,7 @@
 set(OSE_WARN_FLAGS -Wall -Wextra -Wpedantic -Wno-unused-parameter)
 
-set(OSE_VERSION_NAME "2.0.110" CACHE STRING "Version affichée")
-set(OSE_VERSION_CODE "20110" CACHE STRING "versionCode Android")
+set(OSE_VERSION_NAME "2.0.111" CACHE STRING "Version affichée")
+set(OSE_VERSION_CODE "20111" CACHE STRING "versionCode Android")
 
 # OpenSSL : KDAB prebuilts sur Android, système ailleurs
 if(ANDROID)
