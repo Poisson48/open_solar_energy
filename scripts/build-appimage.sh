@@ -85,6 +85,13 @@ for f in "$QT_ROOT"/lib/libQt6*.so.6*; do
   [ -e "$f" ] && cp -Lf "$f" "$APPDIR/usr/lib/$(basename "$f")"
 done
 
+# OpenSSL runtime : nécessaire au backend TLS de Qt (updater, partage).
+# On embarque libssl ET libcrypto de la même version pour éviter un mélange hôte/CI.
+for lib in ssl crypto; do
+  f="$(ldconfig -p 2>/dev/null | awk -v n="lib${lib}.so.3" '$1 == n { print $NF; exit }')"
+  [ -n "$f" ] && [ -e "$f" ] && cp -Lf "$f" "$APPDIR/usr/lib/"
+done
+
 fetch appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
 # Runtime type2 : téléchargement manuel (évite les 504 appimagetool → GitHub)
 RUNTIME="$TOOLS/runtime-x86_64"

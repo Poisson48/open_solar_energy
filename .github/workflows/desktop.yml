@@ -47,7 +47,7 @@ jobs:
         run: |
           python3 -m pip install --user aqtinstall
           python3 -m aqt install-qt linux desktop "$QT_VER" linux_gcc_64 \
-            -m qtcharts qtquick3d qtshadertools qtquicktimeline qtconnectivity qtmultimedia qtsensors -O "$HOME/Qt"
+            -m qtcharts qtquick3d qtshadertools qtquicktimeline qtconnectivity qtmultimedia qtsensors qtpdf -O "$HOME/Qt"
       - name: Dépendances natives
         run: |
           git clone --depth 1 --branch v0.5.1 https://github.com/bitcoin-core/secp256k1.git third_party/secp256k1
